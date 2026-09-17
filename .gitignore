@@ -1,0 +1,41 @@
+# ── AI Agent Workspaces ──────────────────────────
+.claude
+.gemini/
+
+# ── Broken symlinks ──────────────────────────────
+.agents/.agents
+
+# ── PlatformIO ───────────────────────────────────
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# ── Build output ─────────────────────────────────
+include/portal_assets/
+*.bin
+*.elf
+*.map
+*.hex
+
+# ── ESP-IDF ──────────────────────────────────────
+sdkconfig.old
+managed_components/
+
+# ── IDE / Editor ─────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── macOS ────────────────────────────────────────
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+Icon?
+
+# ── OS / temp ────────────────────────────────────
+Thumbs.db
+*.tmp
+*.bak

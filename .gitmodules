@@ -1,0 +1,6 @@
+[submodule ".agents/skills/framework-setup"]
+	path = .agents/skills/framework-setup
+	url = https://github.com/mm-skills/framework-setup.git
+[submodule "framework"]
+	path = framework
+	url = https://github.com/matthewmcneill/esp32-app-foundation.git
