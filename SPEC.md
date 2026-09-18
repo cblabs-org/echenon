@@ -819,6 +819,12 @@ CONFIG_ESP_COEX_POWER_MANAGEMENT=y
 - **OTA download:** OTA is a large sustained WiFi transfer. BLE advertising
   continues (low cost) but **FTMS notifications should pause** — the user is
   not riding during OTA. HRM scan/reconnect should be suppressed.
+- **OTA boot-time safety:** The Foundation's `OTAUpdateManager` with
+  `autoCheck=true` runs a full update **including reboot** as soon as WiFi
+  connects after boot — which is exactly when a rider powers on the trainer.
+  Until upstream [issue #226](https://github.com/matthewmcneill/esp32-app-foundation/issues/226)
+  lands (adds `checkOnBoot` + runtime "busy" guard), Echenon runs with
+  **`autoCheck=false`**. OTA is manual-only via the System portal tab.
 
 **NimBLE connection parameter tuning:**
 
@@ -1588,8 +1594,13 @@ Echenon records your ride autonomously. Open Strava later to see your workout.
 
 > Update Echenon firmware without opening the bike console.
 
+> [!NOTE]
+> Automatic OTA on boot is **disabled** (`autoCheck=false`) until upstream
+> [#226](https://github.com/matthewmcneill/esp32-app-foundation/issues/226)
+> adds a runtime "busy" guard. Without it, OTA could trigger mid-warmup.
+
 1. Navigate to `http://echenon.local` → **System** tab.
-2. The Foundation's OTA manager checks for updates automatically.
+2. Click "Check for Updates" to manually check.
 3. If an update is available: review changelog → click "Update".
 4. Progress bar shows upload and verification. ESP32 reboots.
 5. Dashboard reconnects automatically. New firmware running.
