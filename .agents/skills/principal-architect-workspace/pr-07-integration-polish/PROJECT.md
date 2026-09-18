@@ -16,9 +16,20 @@ Final integration pass — no new features. This PR:
 4. **Secret registration:** verify all OAuth tokens use `Redactor::instance()`.
 5. **Build validation:** zero errors, zero warnings, flash fits 16MB partition,
    free DRAM >40KB for WiFi+BLE stack.
-6. **Radio coexistence test (SPEC §8.5):** measured test with simultaneous FTMS
-   notification + HR relay + WebSocket overlay + HTTP upload. Pass criteria:
-   FTMS gaps <600ms, HR gaps <12s, WebSocket survives, upload completes in 15s.
+6. **Radio coexistence test (SPEC §8.5) — max configuration:**
+   - **3 Peripheral connections** (FTMS notifying 2 Hz on ≥1, plus tablet + nRF
+     Connect)
+   - **1 Central connection** (HR strap relaying ~1 Hz)
+   - Portal `/overlay` WebSocket streaming at 2 Hz
+   - HTTP upload (Strava or simulated)
+   - **5 minutes continuous**
+   - Pass criteria:
+     - FTMS gaps <600ms
+     - HR steady-state gaps <2.5s
+     - HR dropout recovery <35s
+     - WebSocket survives
+     - Upload completes in 15s
+   - HR relay latency: p99 <50ms (measured via `BLENotification.receivedAtMs`)
 7. **README.md:** comprehensive build/flash/setup instructions, wiring reference,
    architecture overview, license badge.
 8. **Known limitations:** document per §13.4 (power accuracy, synthetic speed,

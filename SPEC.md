@@ -595,26 +595,54 @@ as GATT structure references.
 
 ### 7.2 Foundation BLE Integration
 
-`FTMSServer` implements `IBLEServiceProvider` from the Foundation's BLEManager:
+`FTMSServer` implements `IBLEServiceProvider` from the Foundation's BLEManager
+module ([RFC #225 v2](https://github.com/matthewmcneill/esp32-app-foundation/issues/225)).
+It also implements `ITickable` for its own 2 Hz notification timer:
 
 ```cpp
-class FTMSServer : public IBLEServiceProvider {
-    void onBLEServerReady(NimBLEServer* server) override;
-    std::vector<NimBLEUUID> getAdvertisedServiceUUIDs() override;
-    void onClientConnected(uint16_t connHandle) override;
-    void onClientDisconnected(uint16_t connHandle) override;
+class FTMSServer : public IBLEServiceProvider, public ITickable {
+    const char* getProviderId() const override { return "ftms"; }
+
+    // One-shot GATT registration — called before lock, never again (C3)
+    bool registerServices(NimBLEServer& server) override;
+
+    // Contribute FTMS service data + UUID to the advertising packet
+    void contributeAdvertising(BLEAdvertisingBuilder& adv) override {
+        const uint8_t sd[3] = { 0x01 /*available*/, 0x20, 0x00 /*Indoor Bike*/ };
+        adv.addServiceUuid16(0x1826);
+        adv.addServiceData16(0x1826, sd, sizeof sd);
+        adv.setAppearance(kIndoorBikeAppearance);
+    }
+
+    // Track subscribers — only notify when someone is listening
+    void onSubscriptionChanged(BLEConnHandle handle, uint16_t charHandle,
+                               uint16_t charUuid16, bool notify, bool indicate) override;
+
+    // OTA/admin pause — stop the 2 Hz timer
+    void onStackPaused() override;
+    void onStackResumed() override;
+
+    // Connection lifecycle
+    void onPeerConnected(const BLEPeerInfo& peer) override;
+    void onPeerDisconnected(BLEConnHandle handle, BLEDisconnectReason reason) override;
+
+    // 2 Hz notification timer (ITickable)
+    void tick(uint32_t now) override;
 };
 ```
 
 BLEManager handles:
-- NimBLE initialisation
-- Advertising (includes FTMS UUID alongside other services)
-- Connection lifecycle
-- Advertising restart on disconnect
+- NimBLE initialisation and stack lifecycle
+- Advertising: packs contributions from all providers, owns Flags and device
+  name (`"Echenon-XXXX"` with per-unit MAC suffix in the scan response)
+- Connection lifecycle and preferred parameter negotiation
+- Pausing/resuming BLE during OTA (subscribes to `ota.progress`)
 
 FTMSServer handles:
-- Creating the FTMS GATT service and characteristics
-- Assembling and sending Indoor Bike Data notifications
+- Creating the FTMS GATT service and characteristics in `registerServices()`
+- Contributing FTMS service data to the advertisement
+- Assembling and sending Indoor Bike Data notifications at 2 Hz (only when
+  subscribers > 0, paused during OTA)
 
 ### 7.3 GATT Services
 
@@ -654,8 +682,9 @@ synthetic value — the bike is stationary. Strava uses it for estimated distanc
 ### 7.5 Notification Rate & Safety
 
 FTMS notifications are sent at **2 Hz** (every 500 ms). This rate must NOT
-exceed **4 Hz** — higher rates risk starving the FreeRTOS idle task and
-triggering the Task Watchdog Timer (TWDT) on the ESP32-S3.
+exceed **4 Hz** — higher rates increase BLE connection event density and radio
+utilisation, competing with WiFi for the shared radio (see §8.5). FTMSServer
+only notifies when at least one subscriber exists (`onSubscriptionChanged()`).
 
 HR re-broadcast notifications follow the strap's native rate (typically 1 Hz).
 
@@ -686,6 +715,12 @@ Central). This enables scenarios like:
 - Xert EBC (for coaching) + Zwift (for visuals) connected simultaneously
 - Echelon tablet (HR service) + Zwift (FTMS) connected simultaneously
 - Garmin watch + phone app connected simultaneously
+
+**Device name:** BLEManager advertises as `"Echenon-XXXX"` where `XXXX` is the
+last 4 hex digits of the device's BT MAC address (e.g. `"Echenon-1A2B"`). The
+name is placed in the **scan response** (not the primary AD) to maximise space
+for service data in the primary packet. The suffix disambiguates multiple
+Echenon devices in a gym or multi-bike household.
 
 ---
 
@@ -723,39 +758,62 @@ Rhythm+), and HR watches in broadcast mode.
 
 ### 8.2 Foundation BLE Integration
 
-**HRMClient** implements `IBLEClientProvider`:
+**HRMClient** implements `IBLEClientProvider` ([RFC #225 v2](https://github.com/matthewmcneill/esp32-app-foundation/issues/225)).
+It declares what it wants; BLEManager handles scanning, connecting, subscribing:
 
 ```cpp
 class HRMClient : public IBLEClientProvider {
-    NimBLEUUID getTargetServiceUUID() override;   // 0x180D
-    const char* getDeviceTypeName() override;     // "Heart Rate Monitor"
-    bool shouldConnect(const NimBLEAdvertisedDevice& device) override;
-    void onConnected(NimBLEClient* client) override;
-    void onDisconnected() override;
-    std::string getSavedDeviceMAC() override;
-    void onDevicePaired(const std::string& mac, const std::string& name) override;
-    void onDeviceUnpaired() override;
+    const char* getProviderId() const override { return "hrm"; }
+    const char* getDeviceTypeLabel() const override { return "Heart Rate Monitor"; }
+
+    // Declare target service — BLEManager filters discovery results
+    size_t getTargetServiceUUIDs(uint16_t* out, size_t max) const override {
+        if (max) out[0] = 0x180D; return 1;
+    }
+
+    // Declare subscription — BLEManager subscribes after connecting
+    size_t getSubscriptions(BLESubscriptionSpec* out, size_t max) const override {
+        if (max) out[0] = { 0x180D, 0x2A37, /*indicate*/false, /*required*/true };
+        return 1;
+    }
+
+    // Data delivered on the main loop — no raw NimBLE types
+    void onConnected(const BLEStoredDevice& device) override;
+    void onNotification(const BLENotification& n) override {
+        uint8_t bpm = parseHrMeasurement(n.data, n.length);
+        _hrmRepeater.publishHr(bpm);           // relay to re-broadcast
+        _lastHrMs = n.receivedAtMs;            // stale detection (§8.4)
+    }
+    void onDisconnected(BLEDisconnectReason reason) override;
 };
 ```
 
-**HRMRepeater** implements `IBLEServiceProvider`:
+**HRMRepeater** implements `IBLEServiceProvider` — the HR service always exists
+(static GATT, per Q7). It sends 0 BPM / stops notifying if no strap is connected:
 
 ```cpp
 class HRMRepeater : public IBLEServiceProvider {
-    void onBLEServerReady(NimBLEServer* server) override;  // creates 0x180D
-    std::vector<NimBLEUUID> getAdvertisedServiceUUIDs() override; // {0x180D}
+    const char* getProviderId() const override { return "hr-repeater"; }
+    bool registerServices(NimBLEServer& server) override;  // creates 0x180D, 0x2A37
+    void contributeAdvertising(BLEAdvertisingBuilder& adv) override {
+        adv.addServiceUuid16(0x180D);
+    }
+    void publishHr(uint8_t bpm);  // called by HRMClient; notifies if subscribed
 };
 ```
 
 BLEManager handles:
-- Scanning for HR devices
-- Connection and reconnection
+- Discovery scan (user-initiated from the BLE portal tab, bounded to 30s)
+- Automatic reconnection to stored device (direct connect with exponential
+  backoff: 2/4/8/16/32s fast phase, then 60s slow background retry)
+- Device identity: `{address, addressType, name}` owned by BLEManager,
+  persisted via ConfigManager. Opportunistic bonding (bonds if peer supports
+  SMP, never requires it).
 - **HRM pairing page** in the BLE portal tab (scan, select, pair, forget)
-- Saved device MAC persistence
 
 Echenon modules handle:
-- Parsing HR measurement notifications
-- Re-broadcasting to the HR Service characteristic
+- Parsing HR measurement notifications (`onNotification()` on the main loop)
+- Re-broadcasting to the HR Service characteristic via `publishHr()`
 - Injecting HR into FTMS packets and session data
 
 ### 8.3 Tablet BLE Connections
@@ -769,12 +827,27 @@ The tablet maintains two independent BLE connections:
 
 ### 8.4 Stale Data Protection
 
-If no HR update received for 10 seconds:
-- HR Service stops notifying
+If no HR update received for **10 seconds** (stale threshold):
+- HR Service stops notifying (0 BPM)
 - FTMS packet clears bit 9 (HR not present)
 - Session records HR = 0
 
 On reconnect, notifications resume immediately.
+
+**Three-tier HR gap criteria:**
+
+| Criterion | Limit | What it measures |
+|---|---|---|
+| **(a) Stale detection** | HR absent within **12s** of last notification | App-level policy — how fast we mark HR as unavailable (10s threshold + 2s grace) |
+| **(b) Steady state** | No gap **> 2.5s** while connected | Radio coexistence jitter at a ~1 Hz strap. Measured in the PR-07 coexistence test. |
+| **(c) Recovery** | Reconnected within **35s** of strap returning to range | Fast-phase backoff: 2+4+8+16 = 30s for 4 attempts + connection time. After the fast phase, slow 60s background retry continues indefinitely. |
+
+**Reconnect policy** (managed by BLEManager):
+- **Direct connect** to stored address (not a general scan) — cheap on radio
+- Fast phase: 2s, 4s, 8s, 16s, 32s exponential backoff
+- Slow phase: one attempt every 60s, indefinitely while RUNNING
+- `ScanInhibit` tokens suspend the schedule; it resumes afterwards
+- No mid-ride re-pair needed — the device always comes back
 
 ### 8.5 Radio Coexistence Policy (WiFi + BLE)
 
@@ -789,7 +862,7 @@ On reconnect, notifications resume immediately.
 ```
 CONFIG_ESP_COEX_SW_COEXIST_ENABLE=y
 CONFIG_ESP_COEX_EXTERNAL_COEXIST_ENABLE=n
-# Prefer BLE over WiFi for connection events (FTMS timing is user-visible)
+# Enable power management under coexistence (allows radio sleep between events)
 CONFIG_ESP_COEX_POWER_MANAGEMENT=y
 ```
 
@@ -825,9 +898,11 @@ CONFIG_ESP_COEX_POWER_MANAGEMENT=y
 
 **Upload/OTA radio budget:**
 
-- **Strava upload:** StravaUploader should check `bleManager.isScanning()` and
-  defer upload until scan completes. The DataManager's backoff handles this
-  gracefully — a deferred fetch is not a failure.
+- **Strava upload:** StravaUploader acquires a `ScanInhibit` RAII token from
+  BLEManager before starting the upload. While the token is alive, no discovery
+  or reconnect scans start, and running scans stop. Connections and advertising
+  are unaffected. The DataManager's backoff handles any deferred fetches
+  gracefully.
 - **OTA download:** OTA is a large sustained WiFi transfer. BLE advertising
   continues (low cost) but **FTMS notifications should pause** — the user is
   not riding during OTA. HRM scan/reconnect should be suppressed.
@@ -944,26 +1019,29 @@ of the session before the user begins pedalling.
 
 **Verification requirement (PR-07 integration test):**
 
-The following coexistence scenario must be tested and documented:
+The following coexistence scenario must be tested at **maximum configuration**
+and documented:
 
-1. FTMS client connected (Zwift or nRF Connect) receiving 2 Hz notifications
-2. HR strap connected and relaying
+1. **3 Peripheral connections** (FTMS notifying at 2 Hz on at least one, plus
+   the Echelon tablet and one additional app — e.g. nRF Connect × 2 + Zwift)
+2. **1 Central connection** (HR strap connected and relaying at ~1 Hz)
 3. Portal `/overlay` open via WebSocket (2 Hz push)
 4. Trigger Strava upload (or simulate with a large HTTP POST)
 5. **Run for 5 minutes continuously**
 6. **Pass criteria:**
    - FTMS notifications: no gap >600ms (allows one missed 500ms cycle)
    - HR relay (steady-state): no gap >2.5s at a ~1 Hz strap
-   - HR relay (dropout + reconnect): gap <12s (10s stale timeout + 2s grace)
+   - HR relay (dropout + reconnect): reconnected within 35s of strap returning
    - WebSocket: no disconnect during upload
    - Upload: completes within DataManager deadline (15s)
 7. **Measurement points (defined):**
    - FTMS gap: time between consecutive Indoor Bike Data notifications
      received by the Central (nRF Connect log)
-   - HR relay latency (<50ms budget): measured from *notification received
-     by ESP32 NimBLE host callback* to *re-broadcast notification queued on
-     HRMRepeater characteristic*. Over-the-air latency (external Central's
-     connection interval) is outside our control and excluded.
+   - HR relay latency (<50ms budget, p99): measured using
+     `BLENotification.receivedAtMs` — from *host callback receive* to
+     *re-broadcast notification queued on HRMRepeater characteristic*.
+     Over-the-air latency (external Central's connection interval) is
+     outside our control and excluded.
    - HR gap: time between consecutive HR Measurement notifications received
      by the Echelon tablet (or nRF Connect as proxy)
 

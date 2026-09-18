@@ -101,15 +101,19 @@ with Tier 1 defaults.
 ## PR-03: BLE Stack (FTMS Server + HRM Relay)
 
 **Base:** PR-02
-**Scope:** NimBLE integration, `FTMSServer` (GATT service, Indoor Bike Data
-notifications at 2 Hz), `HRMClient` (BLE Central connecting to HR strap),
-`HRMRepeater` (re-broadcasts HR as standard BLE HR Service).
+**Scope:** NimBLE integration via Foundation BLEManager ([RFC #225 v2](https://github.com/matthewmcneill/esp32-app-foundation/issues/225)).
+Three provider modules using the RFC v2 contract:
+- `FTMSServer` (`IBLEServiceProvider` + `ITickable`): `registerServices()`,
+  `contributeAdvertising()`, `onSubscriptionChanged()`, `onStackPaused()`
+- `HRMClient` (`IBLEClientProvider`, declarative): `getTargetServiceUUIDs()`,
+  `getSubscriptions()`, `onNotification()` — no raw NimBLE types
+- `HRMRepeater` (`IBLEServiceProvider`): static HR service, `publishHr()`
 
-**Deliverable:** Device advertises as `"Echenon"` with FTMS service. Fitness apps
-(Zwift, Xert EBC, etc.) can pair and see live power/cadence/HR. HR from the
-Echelon Beat armband is relayed through.
+**Deliverable:** Device advertises as `"Echenon-XXXX"` (BT MAC suffix) with FTMS
++ HR services. Fitness apps pair and see live power/cadence/HR. HR relay from
+Beat armband with <50ms latency (p99). Opportunistic bonding.
 
-**Spec sections:** §7.1–7.7, §8.1–8.4
+**Spec sections:** §7.1–7.7, §8.1–8.5
 
 **Files created:**
 - `src/echenon/FTMSServer.h/.cpp`
@@ -117,16 +121,17 @@ Echelon Beat armband is relayed through.
 - `src/echenon/HRMRepeater.h/.cpp`
 
 **Files modified:**
-- `platformio.ini` (add NimBLE dependency + BLE build flags)
+- `platformio.ini` (add NimBLE dependency + BLE env mix-in + `WITH_BLE`)
 - `src/echenon/EchenonModule.h/.cpp` (register BLE providers, wire updates)
+- `src/main.cpp` (`#ifdef WITH_BLE` registration block)
 
 **Verification:** `pio run -e echenon` compiles clean. GATT service structure
-matches Bluetooth SIG FTMS v1.0.
+matches Bluetooth SIG FTMS v1.0. `contributeAdvertising()` produces ≤29 bytes.
 
 **Prior art:** `archive-pa-decomposition/wo4-ftms/WORKORDER.md`,
 `archive-pa-decomposition/wo5-hrm/WORKORDER.md`
 
-**Note:** This PR depends on Foundation BLEManager (RFC #225). If BLEManager is
+**Note:** This PR depends on Foundation BLEManager (RFC #225 v2). If BLEManager is
 not yet merged upstream, the PA must implement against the RFC'd interface
 contract and stub the registration calls.
 

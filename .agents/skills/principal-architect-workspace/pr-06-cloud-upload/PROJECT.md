@@ -24,6 +24,12 @@ Offline resilience: failed uploads stay in LittleFS queue and retry when WiFi
 returns. Strava OAuth tokens registered with `Redactor::instance().registerSecret()`
 for log safety.
 
+**Radio coexistence:** `StravaUploader` must acquire a `ScanInhibit` RAII token
+from BLEManager before starting any upload. While the token is alive, BLE
+discovery and reconnect scans are suspended — connections and advertising
+continue unaffected. This prevents WiFi/BLE radio contention during the HTTPS
+upload (see SPEC §8.5).
+
 After this PR merges, completed rides auto-upload to Strava. Failed uploads
 retry automatically.
 
