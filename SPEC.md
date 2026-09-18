@@ -793,23 +793,35 @@ CONFIG_ESP_COEX_EXTERNAL_COEXIST_ENABLE=n
 CONFIG_ESP_COEX_POWER_MANAGEMENT=y
 ```
 
-**Scanning discipline:**
+**Scanning discipline (two distinct operations):**
+
+*Discovery scan* — general scan to find new devices:
 
 | Rule | Rationale |
 |---|---|
-| **No active scanning unless user-initiated** | Active scan probes steal radio time from WiFi. Only scan when the user opens the BLE pairing page in the portal. |
+| **User-initiated only** | Only scan when the user opens the BLE pairing page in the portal or triggers via MCP. Never scan autonomously for new devices. |
 | **Scan window ≤ 50% of scan interval** | E.g. interval=100ms, window=50ms. Leaves radio time for WiFi. |
-| **Scan duration bounded to 30s** | Auto-stop after 30s. User can re-trigger. Never scan indefinitely. |
+| **Duration bounded to 30s** | Auto-stop after 30s. User can re-trigger. Never scan indefinitely. |
 | **Stop scanning before WiFi-heavy operations** | Before Strava upload, OTA download, or large portal asset loads — call `NimBLEDevice::getScan()->stop()` first. |
-| **No scanning during FTMS notification window** | If FTMS clients are connected and notifying at 2 Hz, do not start a scan. Queue it until the next notification gap. |
+| **Not allowed during CONFIGURING/AP mode** | WiFi must be responsive for portal setup. |
+
+*Reconnect scan* — automatic reconnection to a known, previously-paired device:
+
+| Rule | Rationale |
+|---|---|
+| **Direct connect to stored address** | Uses the persisted `{address, addressType, name}` identity. Much cheaper than a general scan — no scan at all if the address is known. Falls back to accept-list-filtered scan if direct connect fails. |
+| **Exponential backoff** | 2s → 4s → 8s → 16s → 32s, max 5 attempts (~62s total). |
+| **Conservative duty cycle when connections active** | If FTMS clients are connected, reconnect scan uses interval=160ms, window=40ms (25% duty) to minimise radio contention. |
+| **Give up after max attempts** | After 5 failures, HR = 0 (stale data protection, §8.4). User can re-trigger pairing from the BLE portal tab. |
+| **Not subject to the 30s cap** | Reconnect is a bounded retry sequence, not an open-ended scan. |
 
 **Phase-aware behaviour:**
 
 | Foundation Phase | WiFi State | BLE Behaviour |
 |---|---|---|
 | **BOOT** | Off | BLE not started |
-| **CONFIGURING** (AP mode) | AP active, portal serving | **No BLE scanning.** Advertising only (passive, low radio cost). User configures WiFi via the portal — WiFi must be responsive. |
-| **RUNNING** (STA mode) | Connected | Normal operation. Scan only when user opens BLE pairing page. FTMS notifications and HR relay take priority over WiFi data transfers. |
+| **CONFIGURING** (AP mode) | AP active, portal serving | **No BLE at all.** BLE starts on entering RUNNING only. User configures WiFi first via the portal. |
+| **RUNNING** (STA mode) | Connected | Normal operation. Discovery scan only when user opens BLE pairing page. Reconnect to known strap is automatic with backoff. FTMS notifications and HR relay take priority over WiFi data transfers. |
 
 **Upload/OTA radio budget:**
 
@@ -828,16 +840,23 @@ CONFIG_ESP_COEX_POWER_MANAGEMENT=y
 
 **NimBLE connection parameter tuning:**
 
-```cpp
-// Peripheral (FTMS + HR Service) — optimised for notification reliability
-// conn_interval: 15–30ms (7.5ms units) → responsive notifications
-// supervision_timeout: 400 (4s) → tolerates brief WiFi bursts
-pServer->updateConnParams(connHandle, 12, 24, 0, 400);
+> [!NOTE]
+> In the **Peripheral** role (FTMS, HR re-broadcast), the ESP32 can only
+> *request* preferred connection parameters — the **Central** (Zwift, TrainerRoad,
+> head unit) sets the actual interval. In the **Central** role (HR strap),
+> the ESP32 sets the parameters directly.
 
-// Central (HR strap) — relaxed, HR updates are ~1 Hz
-// conn_interval: 30–75ms → less radio contention
+```cpp
+// Peripheral (FTMS + HR Service) — PREFERRED parameters only
+// The Central (Zwift etc.) decides the actual interval.
+// We request 15–30ms for responsive notifications, but the Central may override.
+// supervision_timeout: 400 (4s) → tolerates brief WiFi bursts
+pServer->setPreferredConnParams(12, 24, 0, 400);  // requested, not guaranteed
+
+// Central (HR strap) — we control these directly
+// conn_interval: 30–75ms → relaxed, HR updates are ~1 Hz
 // supervision_timeout: 600 (6s) → tolerates WiFi uploads
-pClient->updateConnParams(24, 60, 0, 600);
+pClient->updateConnParams(24, 60, 0, 600);         // applied by us
 ```
 
 **FTMS + WebSocket overlay — concurrent operation analysis:**
@@ -852,13 +871,24 @@ primary use case, not an edge case:
 | WebSocket overlay push | WiFi TCP | 2 Hz (500ms) | ~100 bytes JSON | ~1–2ms |
 | HR re-broadcast | BLE notify | ~1 Hz (1000ms) | 4 bytes | ~1.5ms |
 
-**Steady-state radio budget:**
+**Steady-state radio budget (notification payloads only):**
+
+> [!NOTE]
+> This budget counts only notification payload transmissions, not the underlying
+> BLE connection events. Each connection fires a connection event every interval
+> (e.g. ~67/s at 15ms) even with no data. WiFi beacon reception, TCP ACKs, and
+> AP traffic add further overhead. The real duty cycle is several times the figure
+> below. **The measured coexistence test (see verification section) is the
+> arbiter — not this arithmetic.**
+
 - BLE: ~2.5ms × 2 (FTMS) + ~1.5ms × 2 (HR in + HR out) = **~8ms per second**
 - WiFi: ~2ms × 2 (WebSocket) = **~4ms per second**
-- Total: ~12ms of radio time per second = **1.2% duty cycle**
+- Total notification payload: ~12ms of radio time per second = **~1.2% duty cycle**
 
-At 1.2% radio utilisation, the coexistence controller has ample headroom.
-The risk is **not** sustained throughput — it's **collision timing**.
+Despite connection event overhead increasing the real duty cycle, the
+coexistence controller has substantial headroom for these small, infrequent
+payloads. The risk is **not** sustained throughput — it's **collision timing**
+and burst scenarios.
 
 **The collision risk — synchronized 2 Hz ticks:**
 
@@ -870,7 +900,17 @@ priority in `CONFIG_ESP_COEX`). This causes:
 - WebSocket frame delayed by 2–3ms (imperceptible to user)
 - No data loss — TCP retransmits if needed, BLE notification is fire-and-forget
 
-**Mitigation — stagger the two 2 Hz timers:**
+**Application-level timer offset (not a radio-level mitigation):**
+
+> [!NOTE]
+> A notification queued at app time `t` goes over the air at the *next
+> connection event*, which is clocked by the BLE controller, not `millis()`.
+> WiFi transmit timing depends on the TCP stack and the AP. The coexistence
+> arbiter operates per event type and priority — WiFi can preempt BLE, not
+> only the reverse. **Staggering application timers does not phase-lock the
+> radio.** The offset below is an application-level scheduling preference
+> that avoids unnecessary CPU contention in the tick loop, not a coexistence
+> guarantee.
 
 ```cpp
 // In EchenonModule::tick()
@@ -888,9 +928,6 @@ if (now - _lastWSPush >= 500 && (now % 500) >= 250) {
     _overlay.pushData(watts, rpm, hr, resistance, sessionState);
 }
 ```
-
-With 250ms stagger, each protocol gets a clean 250ms window with zero
-contention. The user sees both streams updating smoothly at 2 Hz.
 
 **Burst scenarios (overlay page load):**
 
@@ -913,13 +950,22 @@ The following coexistence scenario must be tested and documented:
 2. HR strap connected and relaying
 3. Portal `/overlay` open via WebSocket (2 Hz push)
 4. Trigger Strava upload (or simulate with a large HTTP POST)
-5. **Pass criteria:**
+5. **Run for 5 minutes continuously**
+6. **Pass criteria:**
    - FTMS notifications: no gap >600ms (allows one missed 500ms cycle)
-   - HR updates: no gap >12s (10s stale timeout + 2s grace)
+   - HR relay (steady-state): no gap >2.5s at a ~1 Hz strap
+   - HR relay (dropout + reconnect): gap <12s (10s stale timeout + 2s grace)
    - WebSocket: no disconnect during upload
    - Upload: completes within DataManager deadline (15s)
-6. **Stagger verification:** confirm FTMS and WebSocket events do not collide
-   (log timestamps of both — offset should be ~250ms ±50ms)
+7. **Measurement points (defined):**
+   - FTMS gap: time between consecutive Indoor Bike Data notifications
+     received by the Central (nRF Connect log)
+   - HR relay latency (<50ms budget): measured from *notification received
+     by ESP32 NimBLE host callback* to *re-broadcast notification queued on
+     HRMRepeater characteristic*. Over-the-air latency (external Central's
+     connection interval) is outside our control and excluded.
+   - HR gap: time between consecutive HR Measurement notifications received
+     by the Echelon tablet (or nRF Connect as proxy)
 
 ---
 
