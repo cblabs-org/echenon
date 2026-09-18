@@ -731,11 +731,32 @@ Echenon devices in a gym or multi-bike household.
 The ESP32 connects to an HR device as a BLE Central, then outputs the heart
 rate through all three paths simultaneously.
 
-**Primary tested device:** Echelon Beat Advanced Armband Heart Rate Monitor
-(included with EX-3 bundle or sold separately). Any standard BLE device
-advertising the Heart Rate Service (`0x180D`) is compatible — chest straps
-(Polar H10, Garmin HRM-Pro), optical armbands (Wahoo TICKR Fit, Scosche
-Rhythm+), and HR watches in broadcast mode.
+**Compatible devices:** Any standard BLE device advertising the Heart Rate
+Service (`0x180D`) — chest straps (Polar H10, Garmin HRM-Pro), optical
+armbands (Wahoo TICKR Fit, Scosche Rhythm+, CooSpo HW808), and HR watches
+in broadcast mode. The parser supports the full `0x2A37` specification:
+uint8 and uint16 HR formats, optional sensor contact status, optional
+RR-intervals, and optional energy expended fields.
+
+**Primary tested device:** Echelon Beat Advanced Armband (model **HW901**,
+OEM Shenzhen GWSTAI, BLE company `0x0F05`, FCC ID `2AWD4HW901`).
+Advertises as `EBEAT-NNNNNNN`. See
+[`docs/echelon-beat-ble-validation.md`](docs/echelon-beat-ble-validation.md)
+for the full GATT dump and comparative test results.
+
+| Beat characteristic | Value | Firmware impact |
+|---|---|---|
+| HR format | uint8 only | Parser handles both — not locked to uint8 |
+| Sensor contact flags | Not supported (flags always `0x00`) | Must not assume all devices lack this — see §8.4 |
+| RR-intervals | Not present | Parser extracts when present; Beat simply won't send them |
+| Energy expended | Not present | No `0x2A39` Control Point on Beat |
+| Body Sensor Location | `0x04` (Hand) | HRMRepeater reads actual value from device, does not hardcode |
+| Battery Service | `0x180F` with Read + Notify | Exposed in portal when available |
+| Pairing | Not required (open connection) | Opportunistic bonding — bonds if peer supports SMP |
+| Max connections | 1 Central only | ESP32 takes the connection exclusively |
+| Notification rate | ~1 Hz | Typical for optical sensors; chest straps may be faster |
+| Auto-sleep | Stops advertising ~30–60s after losing skin contact | Undocumented by Echelon; causes connection drop |
+| No-contact signal | Sends BPM = 0 (not sensor contact flags) | Firmware handles both methods — see §8.4 |
 
 ```
 [HR Strap / Echelon Beat Armband]
@@ -771,21 +792,101 @@ class HRMClient : public IBLEClientProvider {
         if (max) out[0] = 0x180D; return 1;
     }
 
-    // Declare subscription — BLEManager subscribes after connecting
+    // Declare subscriptions — BLEManager subscribes after connecting
     size_t getSubscriptions(BLESubscriptionSpec* out, size_t max) const override {
-        if (max) out[0] = { 0x180D, 0x2A37, /*indicate*/false, /*required*/true };
-        return 1;
+        size_t n = 0;
+        if (n < max) out[n++] = { 0x180D, 0x2A37, false, /*required*/true  };
+        if (n < max) out[n++] = { 0x180F, 0x2A19, false, /*required*/false }; // battery
+        return n;
     }
 
     // Data delivered on the main loop — no raw NimBLE types
     void onConnected(const BLEStoredDevice& device) override;
-    void onNotification(const BLENotification& n) override {
-        uint8_t bpm = parseHrMeasurement(n.data, n.length);
-        _hrmRepeater.publishHr(bpm);           // relay to re-broadcast
-        _lastHrMs = n.receivedAtMs;            // stale detection (§8.4)
-    }
+    void onNotification(const BLENotification& n) override;
     void onDisconnected(BLEDisconnectReason reason) override;
 };
+```
+
+**HR Measurement parsing** — the parser handles the full `0x2A37` specification,
+not just the subset used by the Beat:
+
+```cpp
+void HRMClient::onNotification(const BLENotification& n) {
+    if (n.charUuid == 0x2A19) {  // Battery Level
+        _batteryPct = n.data[0];  // 0–100%
+        return;
+    }
+    if (n.charUuid != 0x2A37 || n.length < 2) return;
+
+    // --- Parse flags byte (Bluetooth SIG Heart Rate Measurement) ---
+    uint8_t flags = n.data[0];
+    bool     hrIs16Bit          = flags & 0x01;
+    bool     contactSupported   = flags & 0x04;  // bit 2
+    bool     contactDetected    = flags & 0x02;  // bit 1 (only valid if bit 2 set)
+    bool     energyPresent      = flags & 0x08;
+    bool     rrPresent          = flags & 0x10;
+
+    // --- Extract HR value ---
+    uint16_t bpm;
+    size_t   idx = 1;
+    if (hrIs16Bit) {
+        if (n.length < 3) return;
+        bpm = n.data[1] | (n.data[2] << 8);
+        idx = 3;
+    } else {
+        bpm = n.data[1];
+        idx = 2;
+    }
+
+    // --- No-contact detection (two methods, device-dependent) ---
+    // Method 1: BLE sensor contact flags (Polar H10, Garmin HRM-Pro, etc.)
+    //   → contactSupported && !contactDetected means off-skin
+    // Method 2: BPM = 0 (Echelon Beat HW901, many Chinese ODM armbands)
+    //   → firmware sends 0 BPM when optical sensor loses pulse
+    // Both methods are handled — the firmware is not locked to either.
+    if (bpm == 0 || (contactSupported && !contactDetected)) {
+        _contactState = HRContactState::NO_CONTACT;
+        _hrmRepeater.publishHr(0);  // suppress — don't relay invalid HR
+        return;
+    }
+
+    // --- Valid HR reading ---
+    _contactState = HRContactState::ACTIVE;
+    _lastValidHrMs = n.receivedAtMs;
+    _hrmRepeater.publishHr(bpm);
+
+    // --- Optional: skip energy expended field ---
+    if (energyPresent && idx + 2 <= n.length) idx += 2;
+
+    // --- Optional: extract RR-intervals (for future TCX enrichment) ---
+    if (rrPresent) {
+        while (idx + 2 <= n.length) {
+            uint16_t rr_raw = n.data[idx] | (n.data[idx+1] << 8);
+            float rr_ms = rr_raw / 1024.0f * 1000.0f;
+            _lastRrMs = rr_ms;  // store for session recording if available
+            idx += 2;
+        }
+    }
+}
+```
+
+**HR contact state** — three-state model derived from hardware validation:
+
+```
+                    ┌─────────────┐
+     Contact made   │   ACTIVE    │  BPM > 0, contact detected (or unsupported)
+    ┌──────────────►│             │  → relay to FTMS/TCX/re-broadcast
+    │               └──────┬──────┘
+    │                      │ BPM = 0 OR contact flags say off-skin
+    │               ┌──────▼──────┐
+    │               │ NO_CONTACT  │  Suppress HR relay, keep connection alive
+    │  Contact back │             │  → armband may regain contact any moment
+    ├──────────────►└──────┬──────┘
+    │                      │ Connection lost (device auto-sleep or out of range)
+    │               ┌──────▼──────┐
+    │               │DISCONNECTED │  onDisconnected() fires
+    │               │             │  → trigger reconnect backoff (§8.4)
+    └──────────────►└─────────────┘
 ```
 
 **HRMRepeater** implements `IBLEServiceProvider` — the HR service always exists
@@ -794,13 +895,17 @@ class HRMClient : public IBLEClientProvider {
 ```cpp
 class HRMRepeater : public IBLEServiceProvider {
     const char* getProviderId() const override { return "hr-repeater"; }
-    bool registerServices(NimBLEServer& server) override;  // creates 0x180D, 0x2A37
+    bool registerServices(NimBLEServer& server) override;  // creates 0x180D, 0x2A37, 0x2A38
     void contributeAdvertising(BLEAdvertisingBuilder& adv) override {
         adv.addServiceUuid16(0x180D);
     }
     void publishHr(uint8_t bpm);  // called by HRMClient; notifies if subscribed
 };
 ```
+
+The `0x2A38` Body Sensor Location characteristic is populated by reading the
+actual value from the connected HR device during `onConnected()`, defaulting
+to `0x00` (Other) if the device does not expose it. The value is **not hardcoded**.
 
 BLEManager handles:
 - Discovery scan (user-initiated from the BLE portal tab, bounded to 30s)
@@ -810,6 +915,9 @@ BLEManager handles:
   persisted via ConfigManager. Opportunistic bonding (bonds if peer supports
   SMP, never requires it).
 - **HRM pairing page** in the BLE portal tab (scan, select, pair, forget)
+- **Battery level** displayed on the BLE portal tab when available (from
+  `0x180F` subscription). Device info (HW/FW/SW revision) read on connect
+  from `0x180A` if present.
 
 Echenon modules handle:
 - Parsing HR measurement notifications (`onNotification()` on the main loop)
@@ -825,21 +933,52 @@ The tablet maintains two independent BLE connections:
 | 1 | Factory Echelon PCB | Bike metrics for class UI |
 | 2 | Echenon ESP32 | Heart rate (re-broadcast from armband) |
 
+> **Single-connection constraint:** Many consumer HR monitors (including the
+> Echelon Beat) support only **one BLE Central** at a time. When the ESP32
+> connects to the armband, the Echelon Fit app on the tablet **cannot** connect
+> to it directly. This is by design — the ESP32 takes the HR connection
+> exclusively and re-broadcasts via `HRMRepeater`, which the tablet connects
+> to instead. Users should ensure no other app (Echelon Fit, Zwift, etc.) is
+> holding the HR monitor connection before pairing via the ESP32 portal.
+> Higher-end monitors that support multiple Centrals (e.g., Polar H10) will
+> work with the ESP32 without this constraint.
+
 ### 8.4 Stale Data Protection
 
-If no HR update received for **10 seconds** (stale threshold):
-- HR Service stops notifying (0 BPM)
+**Two-tier no-contact detection** — the firmware handles both BLE-standard
+and device-specific mechanisms for detecting when HR data is no longer valid:
+
+| Tier | Trigger | Latency | Applies to |
+|---|---|---|---|
+| **Instant** | `BPM = 0` from device (Echelon Beat, Chinese ODM armbands) | **< 1 second** | Devices that send zero when optical sensor loses pulse |
+| **Instant** | Sensor contact flags: `contactSupported && !contactDetected` | **< 1 second** | Devices that implement BLE HR contact status (Polar, Garmin, Wahoo) |
+| **Timeout** | No valid notification for **10 seconds** | **10 seconds** | All devices — catches connection drops, radio interference, device crashes |
+
+When no-contact is detected (by either tier):
+- HR Service stops notifying (0 BPM) — HRMRepeater suppresses
 - FTMS packet clears bit 9 (HR not present)
 - Session records HR = 0
 
-On reconnect, notifications resume immediately.
+On valid HR resuming (BPM > 0, contact restored, or reconnect), notifications
+resume immediately.
+
+**Auto-sleep behaviour** (device-dependent, documented for Echelon Beat):
+
+Some HR monitors (including the Beat) stop BLE advertising entirely after
+~30–60 seconds without skin contact. This causes a full connection drop
+(`onDisconnected()` fires), not just a stale timeout. The reconnect backoff
+handles re-acquisition when the user puts the device back on. This is
+distinct from simply losing radio range — the device actively shuts down
+its BLE radio to conserve battery. User guidance: put the armband on
+**before** starting a session, or the ESP32 will need to wait for the
+device to wake up.
 
 **Three-tier HR gap criteria:**
 
 | Criterion | Limit | What it measures |
 |---|---|---|
-| **(a) Stale detection** | HR absent within **12s** of last notification | App-level policy — how fast we mark HR as unavailable (10s threshold + 2s grace) |
-| **(b) Steady state** | No gap **> 2.5s** while connected | Radio coexistence jitter at a ~1 Hz strap. Measured in the PR-07 coexistence test. |
+| **(a) Stale detection** | HR absent within **12s** of last valid notification | App-level policy — how fast we mark HR as unavailable (10s threshold + 2s grace) |
+| **(b) Steady state** | No gap **> 2.5s** while connected and on-skin | Radio coexistence jitter at a ~1 Hz strap. Measured in the PR-07 coexistence test. |
 | **(c) Recovery** | Reconnected within **35s** of strap returning to range | Fast-phase backoff: 2+4+8+16 = 30s for 4 attempts + connection time. After the fast phase, slow 60s background retry continues indefinitely. |
 
 **Reconnect policy** (managed by BLEManager):
