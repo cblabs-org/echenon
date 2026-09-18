@@ -16,9 +16,12 @@ Final integration pass — no new features. This PR:
 4. **Secret registration:** verify all OAuth tokens use `Redactor::instance()`.
 5. **Build validation:** zero errors, zero warnings, flash fits 16MB partition,
    free DRAM >40KB for WiFi+BLE stack.
-6. **README.md:** comprehensive build/flash/setup instructions, wiring reference,
+6. **Radio coexistence test (SPEC §8.5):** measured test with simultaneous FTMS
+   notification + HR relay + WebSocket overlay + HTTP upload. Pass criteria:
+   FTMS gaps <600ms, HR gaps <12s, WebSocket survives, upload completes in 15s.
+7. **README.md:** comprehensive build/flash/setup instructions, wiring reference,
    architecture overview, license badge.
-7. **Known limitations:** document per §13.4 (power accuracy, synthetic speed,
+8. **Known limitations:** document per §13.4 (power accuracy, synthetic speed,
    no ERG mode, single HR device).
 
 After this PR merges, the firmware is release-candidate quality.

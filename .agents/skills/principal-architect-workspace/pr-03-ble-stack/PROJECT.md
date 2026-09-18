@@ -24,6 +24,14 @@ If not yet merged upstream, implement against the RFC'd `IBLEServiceProvider` /
 `IBLEClientProvider` interface contracts and stub registration calls — the
 integration PR (PR-07) will wire to the real BLEManager.
 
+**Radio coexistence (SPEC §8.5):** WiFi and BLE share one radio on the ESP32-S3.
+This PR must implement:
+- Scanning discipline: window ≤ 50% of interval, bounded 30s, user-initiated only
+- Phase-aware behaviour: no scanning in CONFIGURING/AP mode
+- Connection parameter tuning: tight intervals for FTMS Peripheral (15–30ms),
+  relaxed for HR Central (30–75ms)
+- `sdkconfig.defaults` coex flags: `CONFIG_ESP_COEX_SW_COEXIST_ENABLE=y`
+
 ## Prior Art
 
 - [wo4-ftms/WORKORDER.md](../archive-pa-decomposition/wo4-ftms/WORKORDER.md)
