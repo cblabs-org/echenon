@@ -36,7 +36,9 @@ Echenon operates in two modes:
 
 For complete hardware documentation of the EX-3's internal sensors, wiring
 looms, connectors, and actuators, see
-[`docs/ex3_specification.md`](docs/ex3_specification.md).
+[`docs/ex3_specification.md`](docs/ex3_specification.md). For the intercept
+board circuit design (schematic, net list, assembly), see
+[`docs/hardware_specification.md`](docs/hardware_specification.md).
 
 ### 1.2 Design Principles
 
@@ -555,11 +557,17 @@ GPIO pin.
 | JST-SM 9-pin socket + plug pair | 1 | To purchase | £3 |
 | JST 3-pin socket + plug pair | 1 | To purchase | £1 |
 | Perfboard / protoboard (70×50mm) | 1 | To purchase | £2 |
-| 10kΩ resistors (pull-downs for console motor sense) | 2 | To purchase | £0.20 |
-| 100 nF ceramic capacitors (debounce) | 2 | To purchase | £0.20 |
+| 10kΩ resistors (R1, R2: console motor sense pull-downs) | 2 | To purchase | £0.10 |
+| 10kΩ resistor (R3: cadence pull-up — standalone sensor power) | 1 | To purchase | £0.05 |
+| 100Ω resistor (R4: pot reference — contention protection) | 1 | To purchase | £0.05 |
+| 10Ω resistor (R5: encoder power — contention protection) | 1 | To purchase | £0.05 |
+| 100 nF ceramic capacitors (C1: cadence debounce, C2: pot filter) | 2 | To purchase | £0.20 |
 | 30-pin female header strips (ESP32 carrier) | 2 | To purchase | £1 |
 | Screw terminal blocks (2-pin, motor output) | 1 | To purchase | £0.50 |
 | Hookup wire (22 AWG, assorted colours) | — | To purchase | £3 |
+
+For detailed component designators (R1–R5, C1–C2, U1–U3, J1–J6) and circuit
+connections, see [`docs/hardware_specification.md`](docs/hardware_specification.md).
 
 ---
 
@@ -573,7 +581,10 @@ One active-low pulse per pedal revolution. Cadence from inter-pulse interval.
 - Software debounce lockout: **25 ms**
 - RPM: $\text{RPM} = 60{,}000{,}000 \div \Delta t_{\mu s}$
 - Timeout: 3 seconds of no pulse → cadence = 0
-- Hardware debounce: 100 nF capacitor between D2 and GND
+- Hardware debounce: 100 nF capacitor (C1) between D2 and GND
+- Pull-up: 10kΩ (R3) from 3.3V rail to cadence signal — provides the pull-up
+  voltage for the reed switch. Works in parallel with the console's own pull-up
+  when connected, and provides standalone power when the console is disconnected.
 
 ### 5.2 Resistance Position Sensor
 
@@ -1972,6 +1983,10 @@ here since overlay requests are lightweight.
 Echenon/
 ├── .gitmodules
 ├── platformio.ini
+├── docs/
+│   ├── ex3_specification.md              EX-3 stock hardware reference
+│   ├── hardware_specification.md         Intercept board circuit design
+│   └── echelon-teardown/                 Raw teardown photos + notes
 ├── lib/
 │   └── esp32-app-foundation/        (git submodule)
 ├── hardware/
