@@ -202,8 +202,9 @@ regardless of whether the others are active, connected, or configured.
 │  │    │  GND ◄── GND     A-OB ──► Motor- (Black)             │   │  │ │  │
 │  └────┼───────────────────────────────────────────────────────┘   │  │ │  │
 │       │                                                           │  │ │  │
-│  ┌────┼── 9V→5V Buck ──► ESP32 VBUS ──► onboard reg ──► 3.3V SoC │  │ │  │
-│  │    │         └──► AMS1117-3.3 ──► L9110S VCC + pull-ups        │  │ │  │
+│  ┌────┼── 9V→3.3V Buck (MP1584EN) ──┬──► ESP32 3V3 pin (direct)  │  │ │  │
+│  │    │                              ├──► L9110S VCC              │  │ │  │
+│  │    │                              └──► Sensor power rail       │  │ │  │
 │  └────┼───────────────────────────────────────────────────────────┘  │ │  │
 │       │                                                              │ │  │
 │  ═════╪═══════ 9-pin JST-SM (console side) ══════════════════════════╧═╧═╡  │
@@ -426,7 +427,7 @@ See §9.4 and §10.4 for the pipeline design.
 | **Tablet** | Lenovo Tab P12 (12.7" 3K screen, Android) |
 | **Floating window** | Android's freeform/split-screen PiP mode — Chrome can be resized to a small overlay window on top of full-screen apps |
 | **Bike placement** | Tablet on the bike's handlebar tablet holder |
-| **ESP32 placement** | On the intercept board inside the bike's console housing, powered by 9V rail via onboard buck converter |
+| **ESP32 placement** | On the intercept board inside the bike's console housing, powered by 9V rail via MP1584EN buck converter (9V→3.3V) |
 
 The Lenovo P12 runs both the Echelon class app (full-screen) and Chrome
 showing `echenon.local` (floating window) simultaneously. This is a native
@@ -445,7 +446,7 @@ Android capability — no root or special app required.
 | Console motor+ sense | D7 | GPIO 10 | Input | Digital (10kΩ pull-down) | Reads console's motor drive signal |
 | Console motor− sense | D8 | GPIO 11 | Input | Digital (10kΩ pull-down) | Reads console's motor drive signal |
 | Common ground | GND | — | — | Power | Left header pin 4 |
-| Power input | VBUS | Pin 27 | — | 5V from buck converter | Onboard regulator → 3.3V |
+| Power input | 3V3 | Pin 2 | — | 3.3V from buck converter | Direct to SoC, bypasses onboard LDO |
 
 **Why these pins:**
 - A0 is on **ADC1** — ADC2 produces invalid readings when WiFi or BLE is active
@@ -515,19 +516,21 @@ console. No factory wires are cut — connectors plug in and out to restore stoc
 ```
 9V DC (White wire from J1 pin 8)
     │
-    └──► [Mini buck converter module: 9V → 5V]
+    └──► [GTIWUNG MP1584EN buck converter: 9V → 3.3V]
               │
-              ├──► ESP32 VBUS (pin 27) → onboard regulator → 3.3V SoC
-              │
-              └──► [AMS1117-3.3 LDO: 5V → 3.3V]
-                        │
-                        ├──► L9110S VCC (motor power supply)
-                        └──► 10kΩ pull-down reference rail
+              ├──► ESP32 3V3 pin (pin 2) — direct to SoC, bypasses onboard LDO
+              ├──► L9110S VCC (motor power supply)
+              └──► Sensor power rail (pull-downs, pull-ups)
 ```
 
-> **Note:** When programming/debugging via USB-C, disconnect the VBUS wire
-> from the buck converter to avoid backfeeding. The USB-C port provides its
-> own 5V.
+Single regulated 3.3V rail powers everything. No intermediate 5V stage needed.
+The MP1584EN handles up to 3A — well above the ~1.3A peak combined load
+(ESP32 ~500 mA peak + L9110S motor ~800 mA intermittent). At 9V→3.3V with
+~90% switching efficiency, heat dissipation is <0.5W.
+
+> **Note:** When programming/debugging via USB-C, disconnect the buck
+> converter's 3.3V output to avoid contention with the USB-supplied 5V → 
+> onboard LDO → 3.3V path. The USB-C port provides its own power.
 
 ### 4.6 Voltage Safety
 
@@ -548,8 +551,7 @@ GPIO pin.
 |---|---|---|---|
 | Waveshare ESP32-S3-Nano | 1 | Owned | — |
 | L9110S Dual-Channel H-Bridge Motor Driver Module | 1 | Owned (5-pack, Amazon order #206-0379283-8022750, Dec 2024) | — |
-| Mini buck converter module (9V→5V, e.g. MP1584EN) | 1 | To purchase | £2 |
-| AMS1117-3.3 LDO regulator (SOT-223 or TO-220) | 1 | To purchase | £0.50 |
+| GTIWUNG MP1584EN adjustable buck converter module (9V→3.3V) | 1 | Owned (10-pack) | — |
 | JST-SM 9-pin socket + plug pair | 1 | To purchase | £3 |
 | JST 3-pin socket + plug pair | 1 | To purchase | £1 |
 | Perfboard / protoboard (70×50mm) | 1 | To purchase | £2 |
