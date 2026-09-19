@@ -9,8 +9,8 @@
 ### 1.1 Purpose
 
 Echenon transforms an Echelon EX-3 Smart Connect indoor bike into a
-self-contained, open training computer by reading the bike's physical sensors
-via a non-invasive wire splice and providing:
+self-contained, open training computer by intercepting the bike's electrical
+signals via a **Man-in-the-Middle (MITM) intercept board** and providing:
 
 - A **session overlay** — a floating training computer UI showing live power,
   cadence, heart rate, charts, and session controls
@@ -20,26 +20,45 @@ via a non-invasive wire splice and providing:
   Peloton Digital, and any FTMS-aware fitness app
 - **Heart rate monitor relay** — connects to an HR strap and re-broadcasts to
   the Echelon tablet, the FTMS stream, and the session recording simultaneously
+- **Automatic resistance control (ERG mode)** — FTMS Control Point support
+  enables apps like Zwift and Xert to set resistance directly, with the ESP32
+  driving the bike's resistance motor via closed-loop position control
 
-The Echelon app, tablet, and instructor-led classes continue to function
-normally. Echenon runs silently alongside, capturing the data that the Echelon
-ecosystem refuses to export.
+Echenon operates in two modes:
+
+- **Intercept Mode** — The Echelon console is connected. All signals pass
+  through; the ESP32 reads them transparently and relays motor commands. The
+  Echelon app runs unchanged. Echenon operates silently alongside.
+- **Override Mode** — The Echelon console is disconnected. The ESP32 directly
+  controls the resistance motor, reads the rotary encoder for manual input,
+  and provides full ERG mode via FTMS Control Point. FTMS is the sole
+  training interface.
+
+For complete hardware documentation of the EX-3's internal sensors, wiring
+looms, connectors, and actuators, see
+[`docs/ex3_specification.md`](docs/ex3_specification.md).
 
 ### 1.2 Design Principles
 
-1. **Non-invasive** — No factory wires are cut. Posi-Tap connectors can be
-   removed to restore the bike to stock.
-2. **Coexist with Echelon** — Wire-splice reads signals in parallel with the
-   factory PCB. The Echelon app runs unchanged.
+1. **Non-destructive** — No factory wires are cut. The intercept board plugs
+   into the existing JST connectors between the bike frame and console. Unplug
+   to restore the bike to stock.
+2. **Two operating modes** — **Intercept Mode** passes all signals through to
+   the Echelon console (coexist). **Override Mode** operates standalone without
+   the console (full control).
 3. **Hands-free daily use** — Recording starts when you pedal and uploads when
    you stop. No buttons, no apps to open.
 4. **Three independent outputs** — The session overlay, BLE FTMS broadcast, and
    cloud upload are completely decoupled. Each works independently of the others.
 5. **Open ecosystem** — FTMS is always broadcasting. Data uploads to your choice
    of platforms. Nothing is locked down.
-6. **Future-proof** — Raw electrical signals are read before the Echelon PCB
-   processes them. No firmware update can lock this out.
-7. **Original implementation** — Written from first principles, public
+6. **Full signal control** — The intercept board sits between all sensors and
+   the console. Every signal passes through the ESP32, which can read, relay,
+   or override any of them.
+7. **Better than stock** — Closed-loop motor positioning with potentiometer
+   feedback provides faster, more precise resistance changes than the factory
+   board. Override Mode supports up to 100 resistance levels (vs Echelon's 32).
+8. **Original implementation** — Written from first principles, public
    specifications, and permissively licensed references.
 
 ### 1.3 Built On
@@ -52,10 +71,9 @@ infrastructure module.
 
 ### 1.4 Out of Scope (v1)
 
-- Automated resistance control (ERG mode / motorised knob)
-- FTMS Control Point write handling
 - On-device physical display
-- Echelon BLE protocol interception (bypassed via wire splice)
+- Custom PCB manufacture (v1 uses perfboard or protoboard)
+- Automatic mode switching (Intercept ↔ Override is a software configuration)
 
 ---
 
@@ -129,58 +147,108 @@ regardless of whether the others are active, connected, or configured.
 ### 3.2 High-Level Block Diagram
 
 ```
-┌────────────────────────────── ECHELON EX-3 ──────────────────────────────┐
-│                                                                          │
-│  [Reed Switch]                  [10kΩ Pot]              [Bike USB Port]  │
-│   GND ── Signal                 VCC ── Wiper ── GND        5V out       │
-│      │      │                    │       │       │            │          │
-│      │      ├── T-Tap ─┐        │       ├─ T-Tap ─┐         │          │
-│      │      ▼          │        │       ▼         │         │          │
-│  [Echelon PCB]         │   [Echelon PCB]         │         │          │
-│  (unchanged)           │   (unchanged)           │         │          │
-│                        │                         │         │          │
-│         ┌──────────────┴─────────────────────────┴─────────┴────┐     │
-│         │              WAVESHARE ESP32-S3-NANO                   │     │
-│         │                                                        │     │
-│         │  D2 (GPIO 5) ◄── Cadence pulse                        │     │
-│         │  A0 (GPIO 1) ◄── Resistance voltage                   │     │
-│         │  GND         ◄── Common ground                        │     │
-│         │  USB-C       ◄── 5V power                             │     │
-│         │                                                        │     │
-│         │  ┌────────────────────────────────────────────────┐   │     │
-│         │  │              ECHENON FIRMWARE                   │   │     │
-│         │  │                                                 │   │     │
-│         │  │  CadenceSensor ──┐                              │   │     │
-│         │  │                  ├─► PowerEngine ──► SessionMgr │   │     │
-│         │  │  ResistanceADC ──┘                     │  │  │  │   │     │
-│         │  │                                        │  │  │  │   │     │
-│         │  │  HRMClient ──► HRMRepeater ────────────┘  │  │  │   │     │
-│         │  │                                           │  │  │   │     │
-│         │  │          ┌────────────────────────────────┘  │  │   │     │
-│         │  │          │              ┌───────────────────┘  │   │     │
-│         │  │          ▼              ▼                      ▼   │     │
-│         │  │    📊 Overlay    📡 FTMSServer          ☁️ Upload  │     │
-│         │  │    (WebSocket)   (BLE Peripheral)    (HTTP POST)  │     │
-│         │  └─────────────────────────────────────────────────┘   │     │
-│         └────────────────────────────────────────────────────────┘     │
+┌────────────────────────── ECHELON EX-3 BIKE FRAME ──────────────────────────┐
+│                                                                              │
+│  [Reed Switch]    [Potentiometer]    [DC Motor]          [Rotary Encoder]    │
+│  (cadence)        (position)         (resistance)        (red knob)         │
+│  Orange + Grey    Yellow/Blue/Green  Red + Black         Red/Brown/Orange   │
+│       │                │                 │                    │              │
+│  via 9-pin JST-SM                   via 9-pin JST-SM    via 3-pin JST      │
+└───────┼────────────────┼─────────────────┼────────────────────┼─────────────┘
+        │                │                 │                    │
+┌───────┼────────────────┼─────────────────┼────────────────────┼─────────────┐
+│       │         ECHENON INTERCEPT BOARD  │                    │              │
+│       │                │                 │                    │              │
+│       │  ┌─────────────┼─────────────────┼────────────────────┼───────┐     │
+│       │  │             │      ESP32-S3-NANO                   │       │     │
+│       │  │             │                 │                    │       │     │
+│       │  │  D2 (GPIO 5) ◄── Cadence ────┼─ PASS-THROUGH ──────────────┐    │
+│       │  │  A0 (GPIO 1) ◄── Pot wiper ──┼─ PASS-THROUGH ──────────┐  │    │
+│       │  │  D5 (GPIO 8) ◄── Encoder A ──┼─────────────────────┘   │  │    │
+│       │  │  D6 (GPIO 9) ◄── Encoder B ──┼─────────────────────    │  │    │
+│       │  │                               │                    │   │  │    │
+│       │  │  D7 (GPIO 10) ◄── Console Motor+ sense ────────── │ ──│──│─┐  │
+│       │  │  D8 (GPIO 11) ◄── Console Motor- sense ────────── │ ──│──│─┤  │
+│       │  │       │                                            │   │  │ │  │
+│       │  │  [Software: Intercept=relay, Override=ignore]      │   │  │ │  │
+│       │  │       │                                            │   │  │ │  │
+│       │  │  D3 (GPIO 6) ──► L9110S A-IA ──┐                  │   │  │ │  │
+│       │  │  D4 (GPIO 7) ──► L9110S A-IB ──┤                  │   │  │ │  │
+│       │  │                                │                   │   │  │ │  │
+│       │  │  ┌──────────────────────────┐  │                   │   │  │ │  │
+│       │  │  │     ECHENON FIRMWARE     │  │                   │   │  │ │  │
+│       │  │  │                          │  │                   │   │  │ │  │
+│       │  │  │  CadenceSensor ─────┐    │  │                   │   │  │ │  │
+│       │  │  │  ResistanceADC ─────┤    │  │                   │   │  │ │  │
+│       │  │  │  ResistanceEncoder ─┤    │  │                   │   │  │ │  │
+│       │  │  │         ┌───────────┘    │  │                   │   │  │ │  │
+│       │  │  │         ▼                │  │                   │   │  │ │  │
+│       │  │  │  PowerEngine ──► SessionMgr │                   │   │  │ │  │
+│       │  │  │         │          │  │  │  │                   │   │  │ │  │
+│       │  │  │  HRMClient ► HRMRepeater │  │                   │   │  │ │  │
+│       │  │  │                    │  │  │  │                   │   │  │ │  │
+│       │  │  │  InterceptCtrl ────┤  │  │  │                   │   │  │ │  │
+│       │  │  │  ERGController ────┤  │  │  │                   │   │  │ │  │
+│       │  │  │  ResistanceMotor ──┘  │  │  │                   │   │  │ │  │
+│       │  │  │         ┌─────────────┘  │  │                   │   │  │ │  │
+│       │  │  │         ▼     ▼     ▼    │  │                   │   │  │ │  │
+│       │  │  │  📊 Overlay  📡 FTMS  ☁️ Upload                │   │  │ │  │
+│       │  │  └──────────────────────────┘  │                   │   │  │ │  │
+│       │  └────────────────────────────────┘                   │   │  │ │  │
+│       │                                                       │   │  │ │  │
+│  ┌────┼───────────────────────────────────────────────────────┤   │  │ │  │
+│  │    │            L9110S H-BRIDGE                             │   │  │ │  │
+│  │    │  VCC ◄── 3.3V    A-OA ──► Motor+ (Red)               │   │  │ │  │
+│  │    │  GND ◄── GND     A-OB ──► Motor- (Black)             │   │  │ │  │
+│  └────┼───────────────────────────────────────────────────────┘   │  │ │  │
+│       │                                                           │  │ │  │
+│  ┌────┼── 9V→5V Buck ──► ESP32 VBUS ──► onboard reg ──► 3.3V SoC │  │ │  │
+│  │    │         └──► AMS1117-3.3 ──► L9110S VCC + pull-ups        │  │ │  │
+│  └────┼───────────────────────────────────────────────────────────┘  │ │  │
+│       │                                                              │ │  │
+│  ═════╪═══════ 9-pin JST-SM (console side) ══════════════════════════╧═╧═╡  │
+│       │         7 wires pass through (power + cadence + pot)          │  │
+│       │         2 wires to console motor sense GPIO inputs            │  │
+│  ═════╪═══════ 3-pin JST (console side) ═════════════════════════════════╡  │
+│                 3 wires pass through (encoder)                           │
 └──────────────────────────────────────────────────────────────────────────┘
          │              │                │
     WiFi (HTTP)    BLE FTMS        WiFi (HTTPS)
          │         (0x1826)              │
          ▼         + HR (0x180D)         ▼
-   [Floating         │             [Strava API]
-    Dashboard]       ▼             [Garmin API]
-                [Zwift / TR /      [TrainingPeaks]
-                 Echelon app
-                 for HR]
+   [Floating       + Control Point  [Strava API]
+    Dashboard]     (0x2AD9)         [Garmin API]
+                       │            [TrainingPeaks]
+                       ▼
+                  [Zwift / TR /
+                   Xert EBC]
 ```
+
+**Signal routing summary:**
+
+| 9-Pin Wire | Colour | Bike → ESP32 | Bike → Console | Motor Path |
+|---|---|---|---|---|
+| Power +9V | White | Via buck converter | Pass-through | — |
+| GND | Brown | Common | Pass-through | — |
+| Cadence | Orange | GPIO 5 (tap) | Pass-through | — |
+| Cadence | Grey | GND reference | Pass-through | — |
+| Pot outer | Yellow | — | Pass-through | — |
+| Pot wiper | Blue | GPIO 1 ADC (tap) | Pass-through | — |
+| Pot outer | Green | — | Pass-through | — |
+| **Motor+** | **Red** | **L9110S A-OA → motor** | **GPIO 10 (sense input)** | Split |
+| **Motor−** | **Black** | **L9110S A-OB → motor** | **GPIO 11 (sense input)** | Split |
+
+Seven wires pass straight through to the console. The two motor wires are
+**split** — the bike-side motor connects to the L9110S outputs; the
+console-side motor signals route to ESP32 GPIO inputs (with 10kΩ pull-downs).
 
 ### 3.3 Data Flow
 
 1. **Every pedal revolution**: Reed switch triggers a hardware interrupt on
    GPIO 5. The ISR records the timestamp for cadence calculation.
-2. **Every 50 ms**: ADC samples the resistance potentiometer on GPIO 1, applies
-   an EMA filter, and maps the voltage to resistance level 1–32.
+2. **Every 50 ms**: ADC samples the resistance potentiometer wiper on GPIO 1,
+   applies an EMA filter, and maps the voltage to resistance level (1–32 in
+   Intercept Mode, 1–100 in Override Mode).
 3. **Continuously**: BLE Central client receives HR notifications from the
    paired armband. The HR value is:
    - Re-broadcast via BLE HR Service for the Echelon tablet app
@@ -191,7 +259,24 @@ regardless of whether the others are active, connected, or configured.
    - FTMS server sends a BLE notification (consumed by Zwift, or nobody)
    - Session manager appends a data point to the ride buffer
    - Web overlay receives a WebSocket update with live metrics
-5. **On session end**: Upload manager generates a TCX file and pushes it to
+5. **Motor control loop** (20 Hz, every 50 ms):
+   - **Intercept Mode**: Read console motor sense pins (GPIO 10/11), mirror
+     state to L9110S outputs (GPIO 6/7). Console drives motor via ESP32 relay.
+   - **Override Mode**: `InterceptController` selects the active command
+     source — encoder click (manual), ERG target (FTMS Control Point), or
+     web overlay command. Position controller drives motor toward target
+     potentiometer value, stops when within dead zone.
+6. **On encoder click** (interrupt-driven):
+   - Quadrature decoder on GPIO 8/9 determines direction and increment.
+   - In Override Mode: adjusts target resistance level, triggers motor.
+   - In Intercept Mode: encoder signals pass through to console; ESP32
+     reads them for telemetry but does not act on them.
+7. **On FTMS Control Point write** (Override Mode only):
+   - ERG controller receives target watts from Zwift/Xert/TrainerRoad.
+   - Looks up required resistance level from the power table given current
+     cadence.
+   - Sets new motor target position, continuously adjusts as cadence changes.
+8. **On session end**: Upload manager generates a TCX file and pushes it to
    each configured cloud service.
 
 ### 3.4 Module Decomposition
@@ -202,9 +287,13 @@ regardless of whether the others are active, connected, or configured.
 |---|---|---|
 | `EchenonModule` | Composition root — owns all sub-components | `ITickable`, `IConfigurable`, `IWebContributor`, `IDataSource` |
 | `CadenceSensor` | Interrupt-driven reed switch, RPM calculation | — |
-| `ResistanceADC` | ADC sampling, EMA filter, level mapping | — |
+| `ResistanceADC` | ADC sampling of actuator potentiometer, EMA filter, level mapping | — |
+| `ResistanceEncoder` | Quadrature decode of the red resistance knob (3-pin JST) | — |
+| `ResistanceMotor` | L9110S H-bridge driver, direction/PWM control, position feedback loop | — |
+| `InterceptController` | Mode manager (Intercept ↔ Override), console motor relay, signal routing | — |
+| `ERGController` | FTMS Control Point handler, target watts → resistance level closed-loop | — |
 | `PowerEngine` | Watts calculation, calibration coefficients | — |
-| `FTMSServer` | FTMS GATT service, Indoor Bike Data notifications | `IBLEServiceProvider` |
+| `FTMSServer` | FTMS GATT service, Indoor Bike Data + Control Point | `IBLEServiceProvider` |
 | `HRMClient` | BLE Central → connect to HR strap | `IBLEClientProvider` |
 | `HRMRepeater` | Re-broadcast HR as BLE HR Service | `IBLEServiceProvider` |
 | `SessionManager` | Auto/manual start-stop, ride data buffering | — |
@@ -337,7 +426,7 @@ See §9.4 and §10.4 for the pipeline design.
 | **Tablet** | Lenovo Tab P12 (12.7" 3K screen, Android) |
 | **Floating window** | Android's freeform/split-screen PiP mode — Chrome can be resized to a small overlay window on top of full-screen apps |
 | **Bike placement** | Tablet on the bike's handlebar tablet holder |
-| **ESP32 placement** | Mounted inside the bike's console housing, powered by internal 5V rail |
+| **ESP32 placement** | On the intercept board inside the bike's console housing, powered by 9V rail via onboard buck converter |
 
 The Lenovo P12 runs both the Echelon class app (full-screen) and Chrome
 showing `echenon.local` (floating window) simultaneously. This is a native
@@ -345,75 +434,130 @@ Android capability — no root or special app required.
 
 ### 4.3 Pin Assignments
 
-| Function | Header | GPIO | Type | Notes |
-|---|---|---|---|---|
-| Cadence input | D2 | GPIO 5 | Digital interrupt (FALLING) | ADC1_CH4, no strapping conflicts |
-| Resistance input | A0 | GPIO 1 | ADC1 Channel 0, 12-bit | Safe with BLE + WiFi active |
-| Common ground | GND | — | Power | Left header pin 4 |
-| Power input | USB-C | — | 5V from bike USB | Onboard regulator → 3.3V |
+| Function | Header | GPIO | Direction | Type | Notes |
+|---|---|---|---|---|---|
+| Cadence input | D2 | GPIO 5 | Input | Digital interrupt (FALLING) | ADC1_CH4, no strapping conflicts |
+| Pot wiper (resistance position) | A0 | GPIO 1 | Input | ADC1 Channel 0, 12-bit | Safe with BLE + WiFi active |
+| L9110S A-IA (motor forward) | D3 | GPIO 6 | Output | PWM | Motor direction control |
+| L9110S A-IB (motor reverse) | D4 | GPIO 7 | Output | PWM | Motor direction control |
+| Encoder Channel A | D5 | GPIO 8 | Input | Digital interrupt (CHANGE) | Quadrature decode |
+| Encoder Channel B | D6 | GPIO 9 | Input | Digital interrupt (CHANGE) | Quadrature decode |
+| Console motor+ sense | D7 | GPIO 10 | Input | Digital (10kΩ pull-down) | Reads console's motor drive signal |
+| Console motor− sense | D8 | GPIO 11 | Input | Digital (10kΩ pull-down) | Reads console's motor drive signal |
+| Common ground | GND | — | — | Power | Left header pin 4 |
+| Power input | VBUS | Pin 27 | — | 5V from buck converter | Onboard regulator → 3.3V |
 
 **Why these pins:**
 - A0 is on **ADC1** — ADC2 produces invalid readings when WiFi or BLE is active
-- D2 supports hardware interrupts on all edge types
-- Both pins free of strapping-pin conflicts
+- D2, D5, D6 support hardware interrupts on all edge types
+- D3, D4 support LEDC PWM output for motor speed control
+- D7, D8 are general GPIO inputs with external 10kΩ pull-downs to ensure
+  clean LOW state when the Echelon console is disconnected
+- All pins free of strapping-pin conflicts
 
-### 4.4 Echelon EX-3 Internal Sensors
+### 4.4 Echelon EX-3 Internal Hardware
 
-**Cadence sensor** — 2-wire magnetic reed switch at the pedal crank. One pulse
-per revolution. Factory PCB provides pull-up voltage.
+For complete hardware documentation of the EX-3's internal sensors, wiring
+looms, connectors, actuators, and PCB details, see
+[`docs/ex3_specification.md`](docs/ex3_specification.md).
 
-**Resistance sensor** — 3-wire 10kΩ linear rotary potentiometer on the red
-resistance knob (VCC, wiper, GND).
+**Key facts for firmware design:**
 
-### 4.5 Wiring Plan
+| Component | EX-3 Spec Detail |
+|---|---|
+| **Cadence sensor** | 2-wire magnetic reed switch at pedal crank. One pulse per revolution. 3.3V logic (Orange + Grey on 9-pin loom) |
+| **Resistance potentiometer** | Rotary pot inside the lower actuator hub — **not** on the red knob. ~5.4 kΩ per 180° sweep. Measured 1.16–1.7V across terminals (Yellow/Blue/Green on 9-pin loom) |
+| **Resistance motor** | 3.3V DC motor inside the actuator hub. Drives the magnetic brake carriage. Works at up to 9V but nominal is 3.3V (Red + Black on 9-pin loom) |
+| **Resistance knob** | Incremental quadrature rotary encoder on the handlebars. 3.3V logic, two channels (Red/Brown/Orange on separate 3-pin JST) |
+| **Main wiring loom** | 9-pin JST-SM connector carrying all signals between frame and console |
+| **Encoder loom** | Separate 3-pin JST connector from the red knob to the console |
 
-All connections use **Posi-Tap** screw-on connectors (22–24 AWG). No wires cut.
+### 4.5 Intercept Board Wiring Plan
 
-| Step | Connection | From | To |
+The intercept board sits between the bike's two JST connectors and the Echelon
+console. No factory wires are cut — connectors plug in and out to restore stock.
+
+**Connectors on the intercept board:**
+
+| Connector | Type | Side | Purpose |
 |---|---|---|---|
-| 1 | Common ground | Pot GND wire (T-Tap) | ESP32 **GND** pin |
-| 2 | Cadence signal | Reed switch signal wire (T-Tap) | ESP32 **D2** pin |
-| 3 | Resistance signal | Pot wiper wire (T-Tap) | ESP32 **A0** pin |
-| 4 | 5V power | Internal 5V rail (T-Tap) | ESP32 **VBUS** pin (pin 27) |
+| J1 | JST-SM 9-pin socket | Bike (input) | Receives the main wiring loom from the frame |
+| J2 | JST-SM 9-pin plug | Console (output) | Passes signals through to the Echelon console |
+| J3 | JST 3-pin socket | Knob (input) | Receives the rotary encoder from the red knob |
+| J4 | JST 3-pin plug | Console (output) | Passes encoder signals through to the Echelon console |
+| J5 | Pin header (30-pin) | — | Waveshare ESP32-S3-Nano carrier socket |
+| J6 | Screw terminals | Motor output | L9110S motor A output → bike motor (Red + Black) |
 
-**Power options:**
+**Internal wiring (J1 → J2 pass-through + ESP32 taps):**
 
-| Method | How | Pros | Cons |
-|---|---|---|---|
-| **Direct tap (recommended)** | T-Tap the internal 5V power rail that feeds the bike's USB port. Wire to VBUS (pin 27) + GND. | Cleanest install, frees USB port for tablet charging, no cable clutter | One extra T-Tap |
-| USB cable (fallback) | Short USB-A→C cable from the bike's USB port to the ESP32's USB-C connector | Simplest — just plug in | Occupies the USB port, cable clutter inside console |
+| J1 Pin | Wire | → J2 (Console) | → ESP32 | → L9110S | Notes |
+|---|---|---|---|---|---|
+| 1 | Red (Motor+) | GPIO 10 (sense) | — | A-OA (output) | **Split path** — motor wires from bike go to L9110S; console's motor signals go to ESP32 input |
+| 2 | Black (Motor−) | GPIO 11 (sense) | — | A-OB (output) | **Split path** |
+| 3 | Yellow (Pot outer) | Pass-through | — | — | |
+| 4 | Blue (Pot wiper) | Pass-through | GPIO 1 (ADC tap) | — | High-Z tap, no load on signal |
+| 5 | Green (Pot outer) | Pass-through | — | — | |
+| 6 | Orange (Cadence) | Pass-through | GPIO 5 (interrupt tap) | — | High-Z tap |
+| 7 | Grey (Cadence) | Pass-through | — | — | |
+| 8 | White (+9V) | Pass-through | Via buck converter | — | Power source for intercept board |
+| 9 | Brown (GND) | Pass-through | Common GND | GND | |
 
-The 5V internal rail is the same supply that powers the bike's USB-A charging
-port. Tapping upstream of the port means the ESP32 draws directly from the
-bike's power supply (~150 mA with WiFi + BLE active) while leaving the USB
-port free for charging the Lenovo tablet during rides.
+**Internal wiring (J3 → J4 encoder pass-through + ESP32 taps):**
 
-The ESP32-S3-Nano's onboard regulator converts the 5V input on VBUS to the
-3.3V required by the SoC.
+| J3 Pin | Wire | → J4 (Console) | → ESP32 | Notes |
+|---|---|---|---|---|
+| 1 | Red (Common 3.3V) | Pass-through | — | Reference voltage |
+| 2 | Brown (Channel A) | Pass-through | GPIO 8 (interrupt) | |
+| 3 | Orange (Channel B) | Pass-through | GPIO 9 (interrupt) | |
 
-> **Note:** When using the direct power tap, the USB-C port remains available
-> for programming/debugging. Disconnect the 5V T-Tap before connecting USB-C
-> to a computer to avoid backfeeding.
+**Power regulation (on the intercept board):**
 
-### 4.6 Voltage Safety Check (Mandatory)
+```
+9V DC (White wire from J1 pin 8)
+    │
+    └──► [Mini buck converter module: 9V → 5V]
+              │
+              ├──► ESP32 VBUS (pin 27) → onboard regulator → 3.3V SoC
+              │
+              └──► [AMS1117-3.3 LDO: 5V → 3.3V]
+                        │
+                        ├──► L9110S VCC (motor power supply)
+                        └──► 10kΩ pull-down reference rail
+```
+
+> **Note:** When programming/debugging via USB-C, disconnect the VBUS wire
+> from the buck converter to avoid backfeeding. The USB-C port provides its
+> own 5V.
+
+### 4.6 Voltage Safety
 
 > **ESP32-S3 ADC pins accept max 3.3V. Exceeding this causes permanent damage.**
 
-1. Wake the bike (pedal). Multimeter on pot VCC and GND wires.
-2. **~3.3V**: Wire wiper directly to A0.
-3. **~5V**: Install 2:1 voltage divider (two 10kΩ resistors) between wiper
-   and A0.
-4. Repeat for cadence signal pull-up — if 5V, add divider or level-shifter.
+All EX-3 sensor signals operate at 3.3V logic (see
+[`docs/ex3_specification.md` §10](docs/ex3_specification.md#10-voltage-summary)).
+The potentiometer wiper was measured at 1.16–1.7V — well within the ESP32's
+3.3V ADC range. No voltage dividers or level shifters are required.
+
+The only voltage above 3.3V in the system is the 9V DC power rail, which is
+handled by the buck converter on the intercept board and never touches any
+GPIO pin.
 
 ### 4.7 Parts List
 
-| Item | Qty | Cost |
-|---|---|---|
-| Waveshare ESP32-S3-Nano | 1 (owned) | — |
-| Posi-Tap connectors (Red, 20–22 AWG) | 4 | £6 |
-| Jumper wires (male-to-female, 20cm) | 5 | £2 |
-| 100 nF ceramic capacitors | 2 | £0.20 |
-| 10kΩ resistors (if divider needed) | 2 | £0.20 |
+| Item | Qty | Status | Cost |
+|---|---|---|---|
+| Waveshare ESP32-S3-Nano | 1 | Owned | — |
+| L9110S Dual-Channel H-Bridge Motor Driver Module | 1 | Owned (5-pack, Amazon order #206-0379283-8022750, Dec 2024) | — |
+| Mini buck converter module (9V→5V, e.g. MP1584EN) | 1 | To purchase | £2 |
+| AMS1117-3.3 LDO regulator (SOT-223 or TO-220) | 1 | To purchase | £0.50 |
+| JST-SM 9-pin socket + plug pair | 1 | To purchase | £3 |
+| JST 3-pin socket + plug pair | 1 | To purchase | £1 |
+| Perfboard / protoboard (70×50mm) | 1 | To purchase | £2 |
+| 10kΩ resistors (pull-downs for console motor sense) | 2 | To purchase | £0.20 |
+| 100 nF ceramic capacitors (debounce) | 2 | To purchase | £0.20 |
+| 30-pin female header strips (ESP32 carrier) | 2 | To purchase | £1 |
+| Screw terminal blocks (2-pin, motor output) | 1 | To purchase | £0.50 |
+| Hookup wire (22 AWG, assorted colours) | — | To purchase | £3 |
 
 ---
 
@@ -429,22 +573,212 @@ One active-low pulse per pedal revolution. Cadence from inter-pulse interval.
 - Timeout: 3 seconds of no pulse → cadence = 0
 - Hardware debounce: 100 nF capacitor between D2 and GND
 
-### 5.2 Resistance Sensor
+### 5.2 Resistance Position Sensor
 
-Potentiometer wiper voltage proportional to knob position.
+Potentiometer wiper voltage inside the actuator hub, proportional to the
+magnetic brake carriage position.
 
 - GPIO 1 (A0): ADC1 Channel 0, 12-bit, 11 dB attenuation
 - Sample rate: 20 Hz (every 50 ms)
 - Each sample: average of 16 consecutive `analogReadMilliVolts()` calls
 - EMA filter: $\text{filtered} = 0.15 \times \text{sample} + 0.85 \times \text{filtered}$
 - Hardware filter: 100 nF capacitor between A0 and GND
-- Dead zone handling: <80 mV → min, >2850 mV → max
+- Measured range: ~1160 mV (min resistance) – ~1700 mV (max resistance)
+- Dead zone handling: <1100 mV → min, >1750 mV → max
 
 ### 5.3 Resistance Level Mapping
 
-Two-point calibration (NVS):
+Two-point calibration (NVS). The maximum level is mode-dependent:
+
+**Intercept Mode (32 levels, Echelon-compatible):**
 $$\text{level} = 1 + 31 \times \frac{mV - mV_{\min}}{mV_{\max} - mV_{\min}}$$
 $$\text{level} = \text{clamp}(\text{round}(\text{level}),\ 1,\ 32)$$
+
+**Override Mode (100 levels, Peloton-scale):**
+$$\text{level} = 1 + 99 \times \frac{mV - mV_{\min}}{mV_{\max} - mV_{\min}}$$
+$$\text{level} = \text{clamp}(\text{round}(\text{level}),\ 1,\ 100)$$
+
+The 540 mV pot range across 100 levels gives ~5.4 mV per level. With 16×
+multisampled 12-bit ADC (~0.16 mV effective resolution), this provides ~34
+effective counts per level — comfortable for precise positioning.
+
+### 5.4 Resistance Encoder
+
+The red resistance knob is an incremental quadrature rotary encoder (3-pin
+JST, separate from the main 9-pin loom).
+
+- GPIO 8 (D5): Channel A — interrupt on `CHANGE`
+- GPIO 9 (D6): Channel B — interrupt on `CHANGE`
+- Both channels read in ISR, direction determined by phase relationship
+- Click counting: increment/decrement a signed counter per detent
+- The ISR is minimal — store delta and timestamp only; processing in tick()
+
+```cpp
+// ISR — minimal, stores delta only
+void IRAM_ATTR ResistanceEncoder::onEncoderChange() {
+    bool a = digitalRead(PIN_ENCODER_A);
+    bool b = digitalRead(PIN_ENCODER_B);
+    int8_t dir = (a ^ _lastB) ? 1 : -1;
+    _delta += dir;
+    _lastA = a;
+    _lastB = b;
+}
+
+// Called from tick() — consumes accumulated delta
+int ResistanceEncoder::consumeDelta() {
+    noInterrupts();
+    int d = _delta;
+    _delta = 0;
+    interrupts();
+    return d;
+}
+```
+
+**In Intercept Mode**: Encoder signals pass through to the console via the
+3-pin JST. The ESP32 reads them for telemetry (tracking user intent) but
+does not act on them — the console drives the motor.
+
+**In Override Mode**: The ESP32 reads encoder clicks and translates them to
+target resistance level changes, then drives the motor via the position
+controller (§5.5).
+
+### 5.5 Resistance Motor Control
+
+The L9110S H-bridge motor driver module controls the resistance DC motor
+via two GPIO outputs. The motor runs at 3.3V (operates safely up to 9V).
+
+**L9110S Module Specifications:**
+
+| Parameter | Value |
+|---|---|
+| **Model** | L9110S Dual-Channel H-Bridge |
+| **Supply voltage** | 2.5–12V (connected to 3.3V regulated rail) |
+| **Continuous current** | 800 mA per channel |
+| **Peak current** | 1.5–2.0A per channel |
+| **Logic compatibility** | 2.5–12V (directly compatible with ESP32 3.3V GPIO) |
+| **Quiescent current** | ≤ 2 µA |
+| **Protection** | Internal flyback clamp diodes per output |
+
+**Control truth table:**
+
+| GPIO 6 (A-IA) | GPIO 7 (A-IB) | Motor Action |
+|---|---|---|
+| HIGH | LOW | Forward (increase resistance) |
+| LOW | HIGH | Reverse (decrease resistance) |
+| LOW | LOW | Stop / brake |
+
+**Closed-loop position controller:**
+
+The motor is driven toward a target potentiometer value. The potentiometer
+provides continuous position feedback at 20 Hz (§5.2), enabling precise
+positioning without step counting or timed motor pulses.
+
+```cpp
+void ResistanceMotor::update(uint16_t currentMv, uint16_t targetMv) {
+    int16_t error = (int16_t)targetMv - (int16_t)currentMv;
+
+    if (abs(error) <= _deadZoneMv) {
+        // At target — stop motor
+        stop();
+        return;
+    }
+
+    // Bang-bang control — full speed toward target
+    if (error > 0) {
+        forward();   // GPIO 6 HIGH, GPIO 7 LOW
+    } else {
+        reverse();   // GPIO 6 LOW, GPIO 7 HIGH
+    }
+}
+```
+
+The dead zone is set to approximately half the mV spacing between adjacent
+resistance levels (~2.7 mV for 100 levels, ~8.4 mV for 32 levels) to prevent
+oscillation while ensuring the motor stops within one level of the target.
+
+**Why bang-bang, not PID:** The EX-3 resistance motor runs full-speed to
+position (observed in teardown — no PWM from the Echelon console). The
+potentiometer's 20 Hz feedback loop is fast enough to stop precisely. A PID
+controller would add complexity for a motor that naturally decelerates via
+friction when the drive signal drops.
+
+### 5.6 Operating Modes
+
+The `InterceptController` manages the operating mode — a software
+configuration stored in NVS, not a physical switch.
+
+#### Intercept Mode (Echelon Console Connected)
+
+All signals pass through to the console. The ESP32 reads them transparently.
+
+| Signal | ESP32 Action | Console | Motor Path |
+|---|---|---|---|
+| Cadence | Tap and read (GPIO 5) | Receives signal normally | — |
+| Potentiometer | Tap and read (GPIO 1 ADC) | Receives signal normally | — |
+| Encoder | Tap and read (GPIO 8/9) | Receives signal normally | — |
+| Motor | **Read console sense (GPIO 10/11), relay to L9110S (GPIO 6/7)** | Sends motor commands (to GPIO 10/11 as inputs) | Console → ESP32 relay → L9110S → Motor |
+
+```cpp
+// Intercept Mode — transparent motor relay
+void InterceptController::tickIntercept() {
+    bool consoleFwd = digitalRead(PIN_CONSOLE_MOTOR_POS);
+    bool consoleRev = digitalRead(PIN_CONSOLE_MOTOR_NEG);
+    digitalWrite(PIN_L9110S_IA, consoleFwd);
+    digitalWrite(PIN_L9110S_IB, consoleRev);
+}
+```
+
+The console's motor drive signals (Red/Black on the 9-pin loom, console side)
+are 3.3V digital signals. The ESP32 reads them on GPIO 10/11 (with 10kΩ
+pull-downs for clean LOW when console is disconnected) and mirrors the state
+to the L9110S inputs. Latency is <1 ms — imperceptible.
+
+#### Override Mode (Echelon Console Disconnected or Ignored)
+
+The ESP32 directly controls resistance. Console motor sense inputs read LOW
+(pull-downs) and are ignored.
+
+| Signal | ESP32 Action | Motor Path |
+|---|---|---|
+| Cadence | Read directly (GPIO 5) | — |
+| Potentiometer | Read directly (GPIO 1 ADC) — position feedback | — |
+| Encoder | Read directly (GPIO 8/9) — manual resistance input | Encoder → target level → position controller → L9110S → Motor |
+| ERG target | FTMS Control Point → target watts → power table lookup → target level | Target level → position controller → L9110S → Motor |
+
+**Resistance level resolution:** 1–100 (vs Echelon's 1–32). Each level maps
+to a calibrated potentiometer mV target.
+
+**Command priority (highest first):**
+1. **Manual encoder click** — immediately adjusts resistance; cancels active
+   ERG target. The rider always has physical override.
+2. **FTMS Control Point** — ERG target from Zwift/Xert/TrainerRoad. Active
+   until the rider turns the knob or a new FTMS command arrives.
+3. **Web overlay command** — resistance set via the session dashboard.
+
+**ERG mode closed-loop:**
+
+```
+FTMS Control Point → target_watts
+                          │
+                          ├── current_rpm (from CadenceSensor)
+                          ▼
+                   Power Table Lookup (§6)
+                   target_watts + current_rpm → target_level
+                          │
+                          ▼
+                   Level → target_pot_mV (calibration table)
+                          │
+                          ▼
+                   ResistanceMotor::update(current_mV, target_mV)
+                          │
+                          ▼
+                   L9110S → Motor → Potentiometer feedback → loop
+```
+
+The ERG controller continuously adjusts the target resistance level as cadence
+changes, maintaining the requested power output. If cadence drops, resistance
+increases to compensate (and vice versa), within the physical limits of the
+brake.
 
 ---
 
@@ -568,13 +902,16 @@ This is triggered via the web portal Calibration page:
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `cal_mv_min` | uint16 | 100 | ADC mV at minimum resistance |
-| `cal_mv_max` | uint16 | 2800 | ADC mV at maximum resistance |
+| `cal_mv_min` | uint16 | 1160 | ADC mV at minimum resistance |
+| `cal_mv_max` | uint16 | 1700 | ADC mV at maximum resistance |
 | `cal_pot_done` | bool | false | Potentiometer calibration completed |
 | `cal_power_tier` | uint8 | 1 | Active power tier (1=physics, 2=matrix, 3=reference) |
 | `cal_a0` – `cal_b1` | float × 5 | see §6.2 | Polynomial coefficients (tiers 1 & 3) |
 | `cal_matrix_id` | string | `""` | Selected pre-built matrix ID (tier 2) |
 | `cal_matrix_custom` | blob | — | Custom CSV matrix uploaded via portal (tier 2) |
+| `op_mode` | uint8 | 0 | Operating mode (0=Intercept, 1=Override) |
+| `op_max_levels` | uint8 | 32 | Max resistance levels (32 in Intercept, 100 in Override) |
+| `motor_dead_zone` | uint16 | 5 | Motor position dead zone in mV |
 
 ---
 
@@ -652,7 +989,46 @@ FTMSServer handles:
 |---|---|---|
 | Fitness Machine Feature | `0x2ACC` | Read |
 | Indoor Bike Data | `0x2AD2` | Notify @ 2 Hz |
+| Fitness Machine Control Point | `0x2AD9` | Write, Indicate |
 | Fitness Machine Status | `0x2ADA` | Notify |
+
+**Fitness Machine Feature flags (`0x2ACC`):**
+
+| Feature | Bit | Set? | Notes |
+|---|---|---|---|
+| Cadence Supported | 1 | Yes | |
+| Resistance Level Supported | 7 | Yes | |
+| Power Measurement Supported | 14 | Yes | |
+| Heart Rate Measurement Supported | 10 | Yes | If HRM connected |
+| Target Resistance Level Config Supported (Target Settings) | 0 (byte 4) | Yes | Enables Set Target Resistance |
+| Target Power Config Supported (Target Settings) | 3 (byte 4) | Yes | Enables Set Target Power (ERG mode) |
+
+### 7.4 FTMS Control Point (`0x2AD9`)
+
+The Control Point characteristic enables FTMS clients (Zwift, Xert, TrainerRoad)
+to command resistance changes. Only processed in **Override Mode** — in
+Intercept Mode, Control Point writes are accepted but ignored (the console
+controls resistance).
+
+**Supported opcodes:**
+
+| Opcode | Name | Parameter | ESP32 Action |
+|---|---|---|---|
+| `0x00` | Request Control | — | Grant control to the client |
+| `0x04` | Set Target Resistance Level | uint8 (0.1 resolution) | Map to level 1–100, set motor target |
+| `0x05` | Set Target Power | sint16 (watts) | ERG mode: look up required resistance for current cadence, set motor target |
+| `0x01` | Reset | — | Clear ERG target, return to manual mode |
+| `0x07` | Start/Resume | — | Accepted (no-op — recording is auto-managed) |
+| `0x08` | Stop/Pause | — | Accepted (no-op) |
+
+**Response format (Indicate):**
+
+```
+[0x80] [request_opcode] [result_code]
+```
+
+Result codes: `0x01` = Success, `0x02` = Not Supported, `0x03` = Invalid
+Parameter, `0x05` = Control Not Permitted (Intercept Mode).
 
 **Device Information Service (`0x180A`):**
 
@@ -662,7 +1038,7 @@ FTMSServer handles:
 | Model Number | `0x2A24` | `"EX3-v1"` |
 | Firmware Revision | `0x2A26` | Build version |
 
-### 7.4 Indoor Bike Data Packet (`0x2AD2`)
+### 7.5 Indoor Bike Data Packet (`0x2AD2`)
 
 Little-endian, notified at 2 Hz:
 
@@ -679,7 +1055,7 @@ Offset  Size     Field                  Flags Bit  Resolution
 Speed derived from cadence: `speed = rpm × 10` (0.01 km/h units). This is a
 synthetic value — the bike is stationary. Strava uses it for estimated distance.
 
-### 7.5 Notification Rate & Safety
+### 7.6 Notification Rate & Safety
 
 FTMS notifications are sent at **2 Hz** (every 500 ms). This rate must NOT
 exceed **4 Hz** — higher rates increase BLE connection event density and radio
@@ -688,7 +1064,7 @@ only notifies when at least one subscriber exists (`onSubscriptionChanged()`).
 
 HR re-broadcast notifications follow the strap's native rate (typically 1 Hz).
 
-### 7.6 FTMS-Compatible Apps
+### 7.7 FTMS-Compatible Apps
 
 The following apps are known to work with standard BLE FTMS indoor bike
 services. Any of these can connect to `"Echenon"` for live power and cadence:
@@ -706,7 +1082,7 @@ services. Any of these can connect to `"Echenon"` for live power and cadence:
 | **Garmin devices** | Edge / Forerunner / Fenix | Records as Indoor Cycling activity |
 | **Apple Watch** | watchOS | Live workout tracking |
 
-### 7.7 Multi-Client BLE Connections
+### 7.8 Multi-Client BLE Connections
 
 The BLE module is configured for up to **3 simultaneous Peripheral
 connections** (`CONFIG_BT_NIMBLE_MAX_CONNECTIONS=4`, with 1 reserved for
@@ -1214,7 +1590,7 @@ only a genuine dismount triggers session completion.
 struct RideDataPoint {
     uint32_t timestamp_ms;   // millis() since session start
     uint16_t cadence_rpm;    // 0.5 RPM resolution
-    uint8_t  resistance;     // Level 1–32
+    uint8_t  resistance;     // Level 1–100 (Override) or 1–32 (Intercept)
     int16_t  power_watts;    // Instantaneous power
     uint8_t  heart_rate;     // BPM (0 if unavailable)
 };  // 10 bytes per point
@@ -1463,7 +1839,7 @@ Updated in real-time via WebSocket:
 │  ● REC  00:32:15             [■ Stop]       │
 │                                              │
 │  ⚡ 187W        🔄 82 rpm        ❤️ 145 bpm │
-│  ◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼░░░░░░░░░░░░ 18/32     │
+│  ◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼◼░░░░░░░░░░░░ 56/100    │
 │                                              │
 │  ┌────────────────────────────────────────┐  │
 │  │  Power (last 5 min)                   │  │
@@ -1482,7 +1858,8 @@ Updated in real-time via WebSocket:
 - Session state (● REC / ○ Idle) with elapsed time
 - Start / Stop button (manual override of auto-start/stop)
 - Live power, cadence, heart rate — large, glanceable
-- Resistance level bar (1–32)
+- Resistance level bar (1–32 in Intercept, 1–100 in Override)
+- ERG target indicator (when FTMS Control Point active)
 - Rolling 5-minute power chart
 - HR zone indicator (Z1–Z5, colour-coded)
 - Running averages and peaks
@@ -1605,6 +1982,10 @@ Echenon/
 │       ├── EchenonModule.h / .cpp
 │       ├── CadenceSensor.h / .cpp
 │       ├── ResistanceADC.h / .cpp
+│       ├── ResistanceEncoder.h / .cpp
+│       ├── ResistanceMotor.h / .cpp
+│       ├── InterceptController.h / .cpp
+│       ├── ERGController.h / .cpp
 │       ├── PowerEngine.h / .cpp
 │       ├── FTMSServer.h / .cpp
 │       ├── HRMClient.h / .cpp
@@ -1672,11 +2053,26 @@ adding BLE support.
 #define PIN_CADENCE_SENSOR    5    // D2 — GPIO 5, interrupt-capable
 #define PIN_RESISTANCE_ADC    1    // A0 — GPIO 1, ADC1_CH0
 
+// --- Motor Driver Pins (L9110S H-Bridge) ---
+#define PIN_L9110S_IA         6    // D3 — GPIO 6, motor forward (PWM)
+#define PIN_L9110S_IB         7    // D4 — GPIO 7, motor reverse (PWM)
+
+// --- Rotary Encoder Pins (Resistance Knob) ---
+#define PIN_ENCODER_A         8    // D5 — GPIO 8, quadrature channel A
+#define PIN_ENCODER_B         9    // D6 — GPIO 9, quadrature channel B
+
+// --- Console Motor Sense Pins (MITM Intercept) ---
+#define PIN_CONSOLE_MOTOR_POS 10   // D7 — GPIO 10, console motor+ sense (10kΩ pull-down)
+#define PIN_CONSOLE_MOTOR_NEG 11   // D8 — GPIO 11, console motor− sense (10kΩ pull-down)
+
 // --- Feature Flags ---
 #define WITH_BLE                    // Foundation BLEManager
-#define WITH_BLE_FTMS               // FTMS server
+#define WITH_BLE_FTMS               // FTMS server + Control Point
 #define WITH_BLE_HRM_RELAY          // HRM Central + re-broadcast
 #define WITH_STRAVA                 // Strava API integration
+#define WITH_MOTOR_CONTROL          // L9110S motor driver + position loop
+#define WITH_ENCODER                // Quadrature rotary encoder input
+#define WITH_ERG_MODE               // FTMS Control Point → ERG controller
 // #define WITH_DISPLAY_U8G2        // No physical display
 // #define WITH_HOMEASSISTANT       // Not used
 ```
@@ -1694,35 +2090,70 @@ adding BLE support.
 4. Open **nRF Connect** → verify `"Echenon"` advertising FTMS (`0x1826`)
    and HR (`0x180D`).
 5. Connect → verify 2 Hz notifications on `0x2AD2` with zeroed data.
-6. Simulate cadence (short D2 to GND) → observe changes in overlay and
+6. Verify FTMS Control Point (`0x2AD9`) is present and writable.
+7. Simulate cadence (short D2 to GND) → observe changes in overlay and
    BLE notifications.
 
-### 13.2 Phase 2 — Sensor Integration (Console Open)
+### 13.2 Phase 2 — Intercept Mode (Console Connected)
 
-1. Complete wire splice with console cover removed.
-2. Web overlay: cadence matches manual count, resistance tracks knob 1–32.
-3. Run potentiometer calibration via portal Calibration page.
-4. Pair HR strap via portal BLE page → verify HR in overlay and FTMS data.
+1. Assemble intercept board, connect between bike frame and console.
+2. **Pass-through verification:** Console and Echelon app work normally —
+   cadence, resistance, and all bike functions unchanged.
+3. Web overlay: cadence matches manual count, resistance tracks knob 1–32.
+4. **Motor relay:** Turn red knob → verify console motor sense GPIO reads
+   match L9110S output state → motor moves resistance correctly.
+5. Run potentiometer calibration via portal Calibration page.
+6. Pair HR strap via portal BLE page → verify HR in overlay and FTMS data.
 
-### 13.3 Phase 3 — End-to-End
+### 13.3 Phase 3 — Override Mode (Standalone)
 
-1. **Echelon coexistence:** Run Echelon class. Pair `"Echenon"` as HR device
-   in Echelon app. Verify HR on tablet + ESP32 not interfering with bike.
-2. **Auto-session:** Pedal → overlay shows "REC". Stop 3 minutes → session
+1. Disconnect console-side 9-pin and 3-pin JST connectors (or set mode
+   to Override in portal).
+2. **Encoder control:** Turn red knob → ESP32 reads quadrature clicks →
+   drives motor via L9110S → potentiometer feedback confirms new position.
+3. Verify resistance changes are faster and more precise than stock console.
+4. Verify 100 resistance levels across the full pot range.
+5. Web overlay shows resistance level 1–100.
+6. All sensors read correctly: cadence, resistance, HR.
+
+### 13.4 Phase 4 — ERG Mode
+
+1. Set Override Mode. Connect Zwift or Xert EBC via FTMS.
+2. **Set Target Power:** App commands 200W → ESP32 looks up required
+   resistance for current cadence → motor drives to target → power
+   stabilises at ~200W.
+3. **Cadence change response:** Increase cadence → resistance should
+   decrease to maintain target watts. Decrease cadence → resistance increases.
+4. **Manual override:** Turn red knob during ERG → ERG target cancels →
+   manual mode resumes.
+5. **Boundary test:** Target power at very low cadence (high resistance
+   required) → verify motor stops at mechanical limit, no stalling.
+
+### 13.5 Phase 5 — End-to-End
+
+1. **Intercept Mode coexistence:** Run Echelon class. Pair `"Echenon"` as
+   HR device in Echelon app. Verify HR on tablet + ESP32 not interfering.
+2. **Override Mode standalone:** Full ride with FTMS only — no Echelon
+   console connected. Verify auto-session, upload, overlay.
+3. **Auto-session:** Pedal → overlay shows "REC". Stop 3 minutes → session
    ends, upload triggered.
-3. **Strava:** Connect via portal. Ride. Verify activity in Strava with power,
+4. **Strava:** Connect via portal. Ride. Verify activity in Strava with power,
    cadence, HR.
-4. **FTMS consumer:** Zwift → pair `"Echenon"` → verify live power/cadence.
-5. **Floating window:** Chrome on Lenovo P12 → overlay as PiP over Echelon
-   class.
+5. **FTMS consumer:** Zwift → pair `"Echenon"` → verify live power/cadence.
+6. **ERG ride:** Complete a structured workout in Xert EBC or TrainerRoad
+   with automatic resistance changes via FTMS Control Point.
+7. **Floating window:** Chrome on Lenovo P12 → overlay as PiP over app.
 
-### 13.4 Known Limitations
+### 13.6 Known Limitations
 
 - Power estimated, not measured. Accuracy improves with reference power meter
   calibration.
 - Speed synthetic (from cadence). Strava distance approximate.
-- No FTMS Control Point (ERG mode). Zwift treats as power source only.
-- Echelon app may show slightly different cadence/resistance values.
+- ERG mode requires Override Mode — not available when Echelon console is
+  controlling resistance in Intercept Mode.
+- Motor positioning precision depends on potentiometer calibration quality.
+- Echelon app may show slightly different cadence/resistance values in
+  Intercept Mode (it reads the same sensors independently).
 
 ---
 
@@ -1774,47 +2205,72 @@ adding BLE support.
 
 ---
 
-### Journey 4 — Structured Training (TrainerRoad / SYSTM)
+### Journey 4 — Structured Training with ERG Mode (TrainerRoad / SYSTM)
 
-> Power-based workout with fixed-wattage targets.
+> Power-based workout with automatic resistance control.
 
-1. Pedal → ESP32 boots.
-2. **Tablet:** Open training app → pair `"Echenon"` (FTMS).
-3. App shows: **"Target: 180W — Current: 165W — INCREASE"**
-4. Manually turn red knob until power matches.
-5. Complete workout → app uploads to Strava.
+1. Set Echenon to **Override Mode** (via portal or NVS config).
+2. Pedal → ESP32 boots.
+3. **Tablet:** Open training app → pair `"Echenon"` (FTMS).
+4. App sends target power via FTMS Control Point → ESP32 automatically
+   adjusts resistance motor to match target watts.
+5. **"Target: 180W — Current: 178W"** — the bike adjusts itself.
+6. Complete workout → app uploads to Strava.
+
+**No knob turning required.** The motor moves the resistance for you.
 
 ---
 
-### Journey 4b — Xert SMART Workout (Advanced Training)
+### Journey 4b — Xert SMART Workout with ERG (Advanced Training)
 
 > Dynamic workout with real-time physiological tracking. Xert's SMART
 > intervals adapt to your current fatigue — no FTP test required.
 
-1. Pedal → ESP32 boots.
-2. **Tablet:** Open **Xert EBC app** → pair `"Echenon"` (FTMS).
-3. Select a SMART workout from the Xert library.
-4. EBC shows live **MPA gauge** (your maximum available power right now)
+1. Set Echenon to **Override Mode**.
+2. Pedal → ESP32 boots.
+3. **Tablet:** Open **Xert EBC app** → pair `"Echenon"` (FTMS).
+4. Select a SMART workout from the Xert library.
+5. EBC shows live **MPA gauge** (your maximum available power right now)
    and dynamic targets: **"Ride at 250W until MPA drops to 320W, then
    recover until MPA reaches 95%"**
-5. Manually adjust the red knob to match power targets.
-6. If you push hard enough to exceed your predicted MPA → **Breakthrough
+6. Xert sends target power via FTMS Control Point → **resistance changes
+   automatically** as targets shift.
+7. If you push hard enough to exceed your predicted MPA → **Breakthrough
    detected** → Xert auto-raises your fitness signature (no FTP test!).
-7. End ride → activity syncs to Xert via Strava (automatic).
+8. End ride → activity syncs to Xert via Strava (automatic).
 
 **Why Xert is different:** TrainerRoad prescribes "4×5 min at 280W" — the
 same for a fresh day and a tired day. Xert's intervals dynamically shorten
 or lengthen based on your real-time fatigue, ensuring the intended
 physiological strain is achieved regardless of how you're feeling.
 
-**Note:** Since we don't implement FTMS Control Point (ERG mode), Xert EBC
-runs in **Open mode** — it coaches with dynamic targets, you adjust the knob.
-If ERG mode is added in a future version, Xert EBC can send automatic
-resistance commands via the FTMS Control Point characteristic.
+**Manual fallback:** If you prefer manual control, turn the red knob at any
+time — the encoder click cancels ERG mode and returns to manual resistance.
+Turn the knob again to resume manual control, or stop pedalling to let ERG
+re-engage on the next FTMS target command.
 
 **Dual-app setup** (optional): Run Xert EBC for coaching + Zwift for visuals
 simultaneously. Both connect to `"Echenon"` via BLE (the BLE module supports
 multiple simultaneous Central connections).
+
+---
+
+### Journey 4c — Standalone Ride (No Echelon Console)
+
+> The Echelon console is disconnected. The bike is a pure FTMS smart trainer.
+
+1. Echenon set to **Override Mode** permanently (console removed).
+2. Put on HR armband. Pedal → ESP32 boots.
+3. Red knob controls resistance directly (100 levels) — faster and more
+   precise than the stock Echelon console.
+4. Optionally connect Zwift, Xert, or any FTMS app for virtual riding.
+5. ERG mode available via any connected app's FTMS Control Point.
+6. Open `echenon.local` overlay for live power/HR/cadence.
+7. Pedal → auto-session recording starts.
+8. Stop → session uploads to Strava.
+
+**This transforms the EX-3 into a fully open smart trainer.** No Echelon
+subscription, no Echelon app, no Echelon ecosystem dependency.
 
 ---
 
