@@ -342,9 +342,9 @@ the system is the 9V DC power rail from the external supply.
 | **Logic / BLE** | 3.3V | Second-stage regulator on motherboard | Bluetooth SoC, MCU, all sensor/actuator signals |
 
 > [!IMPORTANT]
-> **All sensor signals and the resistance motor run at 3.3V.** This is
-> significant for the Echenon project — an ESP32-S3 operates natively at 3.3V
-> and can read these signals directly without level shifters.
+> **All sensor signals and the resistance motor run at 3.3V.** No signals in
+> the sensor or actuator circuits exceed 3.3V. The only higher voltage is the
+> 9V DC power rail from the external supply.
 
 ---
 
