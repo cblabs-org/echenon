@@ -64,6 +64,11 @@ validated operating scenarios and acceptance criteria, see
    board. Override Mode supports up to 100 resistance levels (vs Echelon's 32).
 8. **Original implementation** — Written from first principles, public
    specifications, and permissively licensed references.
+9. **Hardware-portable** — The firmware abstracts hardware across two dimensions:
+   the **board** (which ESP32-S3 module — pin layout, ADC channels, USB config)
+   and the **bike** (which spin bike is being MITM'd — loom pinout, pot range,
+   motor specs, resistance levels, power curve). Changing either dimension is
+   a build-time configuration change, not a code change.
 
 ### 1.3 Built On
 
@@ -439,7 +444,86 @@ The Lenovo P12 runs both the Echelon class app (full-screen) and Chrome
 showing `echenon.local` (floating window) simultaneously. This is a native
 Android capability — no root or special app required.
 
-### 4.3 Pin Assignments
+### 4.3 Hardware Configuration Architecture
+
+The firmware's hardware layer is configured across two independent dimensions,
+both resolved at **build time** via PlatformIO environments and header files:
+
+```
+┌─────────────────────────────────┐
+│        platformio.ini           │
+│  [env:ex3-waveshare-nano]       │
+│    board config ──► boards/     │  Dimension 1: Which ESP32 board?
+│    bike profile ──► bikes/      │  Dimension 2: Which spin bike?
+└─────────────────────────────────┘
+         │                │
+         ▼                ▼
+┌─────────────┐  ┌─────────────────┐
+│  Board      │  │  Bike Profile   │
+│  Config     │  │                 │
+│             │  │                 │
+│ GPIO map    │  │ Signal names    │
+│ ADC caps    │  │ Loom pinout     │
+│ USB config  │  │ Pot range (mV)  │
+│ Pin count   │  │ Motor voltage   │
+│ Power input │  │ Encoder type    │
+│ LED pin     │  │ Resistance lvls │
+│             │  │ Power curve     │
+└─────────────┘  └─────────────────┘
+         │                │
+         ▼                ▼
+┌─────────────────────────────────┐
+│   Pin Assignment = Board × Bike │
+│                                 │
+│   PIN_CADENCE    = GPIO 5       │  Board says "D2 = GPIO 5"
+│   PIN_POT_WIPER  = GPIO 1      │  Bike says "cadence uses D2"
+│   PIN_MOTOR_FWD  = GPIO 6      │
+│   ...                           │
+└─────────────────────────────────┘
+```
+
+**Dimension 1 — Board config** (`hardware/boards/<board-name>.h`):
+
+Defines the physical capabilities of the ESP32 module: GPIO numbering for
+each header position (D0–D13, A0–A7), which ADC channels are on ADC1 vs ADC2,
+USB configuration, power input pin, LED pin, and any strapping-pin constraints.
+
+| Board | Status | Notes |
+|---|---|---|
+| Waveshare ESP32-S3-Nano | ✅ Primary | 16 GPIO, USB-C, 8MB PSRAM |
+| (future boards) | — | Must be ESP32-S3 with ADC1 + sufficient GPIO |
+
+**Dimension 2 — Bike profile** (`hardware/bikes/<bike-name>.h`):
+
+Defines the bike's characteristics: which board header positions each bike
+signal maps to, sensor specifications (pot range, cadence magnet count,
+encoder pulses per detent), motor specifications (voltage, direction logic,
+drive pattern), resistance level count, and default power curve.
+
+| Bike | Status | Notes |
+|---|---|---|
+| Echelon EX-3 | ✅ Primary | 9-pin + 3-pin JST loom, 32 stock levels, 3.3V motor |
+| (future bikes) | — | Any bike with accessible sensor/motor wiring |
+
+**PlatformIO environment** (`platformio.ini`):
+
+```ini
+[env:ex3-waveshare-nano]
+board = esp32-s3-devkitc-1
+build_flags =
+    -DBIKE_ECHELON_EX3
+    -DBOARD_WAVESHARE_S3_NANO
+    -include hardware/boards/waveshare-s3-nano.h
+    -include hardware/bikes/echelon-ex3.h
+```
+
+Adding a new board or bike is a new header file + a new PlatformIO environment.
+No source code changes required — all hardware-specific values flow through
+`#define` constants.
+
+### 4.4 Pin Assignments (Echelon EX-3 × Waveshare ESP32-S3-Nano)
+
+The following table is the cross-product of the current board and bike configs:
 
 | Function | Header | GPIO | Direction | Type | Notes |
 |---|---|---|---|---|---|
@@ -449,8 +533,8 @@ Android capability — no root or special app required.
 | L9110S A-IB (motor reverse) | D4 | GPIO 7 | Output | PWM | Motor direction control |
 | Encoder Channel A | D5 | GPIO 8 | Input | Digital interrupt (CHANGE) | Quadrature decode |
 | Encoder Channel B | D6 | GPIO 9 | Input | Digital interrupt (CHANGE) | Quadrature decode |
-| Console motor+ sense | D7 | GPIO 10 | Input | Digital (10kΩ pull-down) | Reads console's motor drive signal |
-| Console motor− sense | D8 | GPIO 11 | Input | Digital (10kΩ pull-down) | Reads console's motor drive signal |
+| Console motor+ sense | D7 | GPIO 10 | Input | Digital (30kΩ/10kΩ divider) | Reads console's motor drive signal |
+| Console motor− sense | D8 | GPIO 11 | Input | Digital (30kΩ/10kΩ divider) | Reads console's motor drive signal |
 | Common ground | GND | — | — | Power | Left header pin 4 |
 | Power input | 3V3 | Pin 2 | — | 3.3V from buck converter | Direct to SoC, bypasses onboard LDO |
 
@@ -458,11 +542,11 @@ Android capability — no root or special app required.
 - A0 is on **ADC1** — ADC2 produces invalid readings when WiFi or BLE is active
 - D2, D5, D6 support hardware interrupts on all edge types
 - D3, D4 support LEDC PWM output for motor speed control
-- D7, D8 are general GPIO inputs with external 10kΩ pull-downs to ensure
-  clean LOW state when the Echelon console is disconnected
+- D7, D8 are general GPIO inputs with external voltage dividers (30kΩ/10kΩ)
+  for bidirectional motor sense protection
 - All pins free of strapping-pin conflicts
 
-### 4.4 Echelon EX-3 Internal Hardware
+### 4.5 Echelon EX-3 Internal Hardware
 
 For complete hardware documentation of the EX-3's internal sensors, wiring
 looms, connectors, actuators, and PCB details, see
@@ -479,7 +563,7 @@ looms, connectors, actuators, and PCB details, see
 | **Main wiring loom** | 9-pin JST-SM connector carrying all signals between frame and console |
 | **Encoder loom** | Separate 3-pin JST connector from the red knob to the console |
 
-### 4.5 Intercept Board Wiring Plan
+### 4.6 Intercept Board Wiring Plan
 
 The intercept board sits between the bike's two JST connectors and the Echelon
 console. No factory wires are cut — connectors plug in and out to restore stock.
@@ -538,7 +622,7 @@ The MP1584EN handles up to 3A — well above the ~1.3A peak combined load
 > converter's 3.3V output to avoid contention with the USB-supplied 5V → 
 > onboard LDO → 3.3V path. The USB-C port provides its own power.
 
-### 4.6 Voltage Safety
+### 4.7 Voltage Safety
 
 > **ESP32-S3 ADC pins accept max 3.3V. Exceeding this causes permanent damage.**
 
@@ -551,7 +635,7 @@ The only voltage above 3.3V in the system is the 9V DC power rail, which is
 handled by the buck converter on the intercept board and never touches any
 GPIO pin.
 
-### 4.7 Parts List
+### 4.8 Parts List
 
 | Item | Qty | Status | Cost |
 |---|---|---|---|
@@ -2019,19 +2103,23 @@ Echenon/
 ├── docs/
 │   ├── ex3_specification.md              EX-3 stock hardware reference
 │   ├── hardware_specification.md         Intercept board circuit design
+│   ├── implementation-strategy.md        Iterative dev roadmap (phases 0–6)
+│   ├── use_case_analysis.md              6 validated use cases
 │   └── echelon-teardown/                 Raw teardown photos + notes
 ├── lib/
 │   └── esp32-app-foundation/        (git submodule)
 ├── hardware/
-│   └── echenon/
-│       ├── board.h
-│       └── partitions.csv
+│   ├── boards/
+│   │   └── waveshare-s3-nano.h          Board GPIO map, ADC, USB config
+│   └── bikes/
+│       └── echelon-ex3.h                Bike loom pinout, pot range, motor,
+│                                         encoder, power curve, resistance levels
 ├── src/
 │   ├── main.cpp
 │   └── echenon/
 │       ├── EchenonModule.h / .cpp
 │       ├── CadenceSensor.h / .cpp
-│       ├── ResistanceADC.h / .cpp
+│       ├── ResistanceSensor.h / .cpp
 │       ├── ResistanceEncoder.h / .cpp
 │       ├── ResistanceMotor.h / .cpp
 │       ├── InterceptController.h / .cpp

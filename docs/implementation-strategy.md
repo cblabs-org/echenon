@@ -128,6 +128,18 @@ invisible — high-impedance taps only.
 | `DataExport` | Download captured sessions as CSV via the portal |
 
 **No BLE, no FTMS, no session manager, no power calculation yet.** Pure
+
+**Hardware configuration (established in Phase 0):** The firmware uses a
+two-dimensional hardware abstraction (see SPEC §4.3):
+
+- `hardware/boards/waveshare-s3-nano.h` — board GPIO map (D0–D13 → GPIO numbers)
+- `hardware/bikes/echelon-ex3.h` — bike signal-to-header mappings, pot range,
+  motor specs, encoder type, default resistance levels
+
+All pin assignments are `#define` constants resolved at build time via a
+PlatformIO environment (`[env:ex3-waveshare-nano]`). Adding support for a
+different ESP32 board or a different bike is a new header file + environment,
+not a code change.
 observability.
 
 ### What We Learn

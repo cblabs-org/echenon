@@ -95,17 +95,19 @@ verification must confirm 3.3V DC (not 9V PWM). See
 [`docs/implementation-strategy.md`](../../../../docs/implementation-strategy.md)
 Phase 0 Pre-Gate.
 
-**Spec sections:** §3.5, §4.3–4.7, §12.1–12.3
+**Spec sections:** §3.5, §4.3–4.8, §12.1–12.3
 
 **Files created:**
-- `platformio.ini`, `hardware/echenon/board.h`, `partitions.csv`, `sdkconfig.defaults`
+- `platformio.ini` (with `[env:ex3-waveshare-nano]`), `partitions.csv`, `sdkconfig.defaults`
+- `hardware/boards/waveshare-s3-nano.h` (GPIO map, ADC channels, USB config)
+- `hardware/bikes/echelon-ex3.h` (loom pinout, pot range, motor specs, encoder, levels)
 - `src/main.cpp`, `src/echenon/Config.h`
 - `src/echenon/EchenonModule.h/.cpp` (skeleton)
 - `src/echenon/SignalLogger.h/.cpp`
 - `web/dashboard.html`, `web/dashboard.js` (raw signal display)
 - `README.md`
 
-**Verification:** `pio run -e echenon` compiles clean. Serial output logs all
+**Verification:** `pio run -e ex3-waveshare-nano` compiles clean. Serial output logs all
 signals. Browser dashboard shows live data. CSV export of a full ride works.
 Cadence matches manual pedal count ±1 RPM. Pot voltage range documented.
 Motor drive behaviour documented (timing, polarity, duration, voltage confirmed
@@ -144,7 +146,7 @@ accuracy.
 **Files modified:**
 - `src/echenon/EchenonModule.h/.cpp` (add sensor + power modules, wire tick)
 
-**Verification:** `pio run -e echenon` compiles clean. Cadence matches Echelon
+**Verification:** `pio run -e ex3-waveshare-nano` compiles clean. Cadence matches Echelon
 app ±1 RPM. Resistance levels match Echelon app's 1–32 display. Power within
 ±15% of Echelon's displayed power. Calibration survives power cycle.
 
@@ -182,7 +184,7 @@ feature with zero bike risk.
 - `src/echenon/EchenonModule.h/.cpp` (register BLE providers)
 - `src/main.cpp` (`#ifdef WITH_BLE` registration block)
 
-**Verification:** `pio run -e echenon` compiles clean. HR armband pairs.
+**Verification:** `pio run -e ex3-waveshare-nano` compiles clean. HR armband pairs.
 Echelon app shows HR. BLE + WiFi coexist. Armband auto-reconnects after
 power cycle. No interference with factory Echelon PCB BLE.
 
@@ -254,7 +256,7 @@ Control Point present but rejects writes with `0x05` in Intercept Mode.
 **Files modified:**
 - `src/echenon/EchenonModule.h/.cpp` (register FTMS provider)
 
-**Verification:** `pio run -e echenon` compiles clean. Zwift displays live
+**Verification:** `pio run -e ex3-waveshare-nano` compiles clean. Zwift displays live
 power/cadence. Three simultaneous BLE connections (Echelon tablet HR + fitness
 app FTMS + armband Central). GATT structure matches FTMS v1.0.
 
