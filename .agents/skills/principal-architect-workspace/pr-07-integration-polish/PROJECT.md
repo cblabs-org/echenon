@@ -1,45 +1,39 @@
-# PR-07: Integration & Polish
+# PR-07: Integration, Portal & Polish (Phase 6 — Use Case Validation)
 
 > **Programme:** Echenon Firmware
-> **PR target base:** PR-05 + PR-06 (merge both before starting)
-> **Spec sections:** §3.4 (coupling audit), §3.5 (Foundation integration), §13
+> **PR target base:** PR-06 (`erg-strava` branch tip)
+> **Dev Phase:** Phase 6 — Polish
+> **Spec sections:** §11.1–11.4, §13, Appendix A
+> **Strategy:** [`docs/implementation-strategy.md`](../../../../docs/implementation-strategy.md) Phase 6
+> **Use cases:** [`docs/use_case_analysis.md`](../../../../docs/use_case_analysis.md)
 
 ## Mandate
 
-Final integration pass — no new features. This PR:
+Final integration, portal polish, OTA, and full use case validation.
 
-1. **Wire all 11 sub-components** in `EchenonModule` with correct initialization
-   order and tick sequence.
-2. **Coupling audit** against the Service Module Pattern table (§3.4).
-3. **ADR compliance verification:** ADR-16 (static scope), ADR-17 (tick budget
-   <10ms), ADR-39 (transient service locator — no stored `Application*`).
-4. **Secret registration:** verify all OAuth tokens use `Redactor::instance()`.
-5. **Build validation:** zero errors, zero warnings, flash fits 16MB partition,
-   free DRAM >40KB for WiFi+BLE stack.
-6. **Radio coexistence test (SPEC §8.5) — max configuration:**
-   - **3 Peripheral connections** (FTMS notifying 2 Hz on ≥1, plus tablet + nRF
-     Connect)
-   - **1 Central connection** (HR strap relaying ~1 Hz)
-   - Portal `/overlay` WebSocket streaming at 2 Hz
-   - HTTP upload (Strava or simulated)
-   - **5 minutes continuous**
-   - Pass criteria:
-     - FTMS gaps <600ms
-     - HR steady-state gaps <2.5s
-     - HR dropout recovery <35s
-     - WebSocket survives
-     - Upload completes in 15s
-   - HR relay latency: p99 <50ms (measured via `BLENotification.receivedAtMs`)
-7. **README.md:** comprehensive build/flash/setup instructions, wiring reference,
-   architecture overview, license badge.
-8. **Known limitations:** document per §13.4 (power accuracy, synthetic speed,
-   no ERG mode, single HR device).
+1. **`SessionOverlay`** — Standalone `/overlay` page with WebSocket 2 Hz push.
+2. **`Calibration`** portal tab — pot wizard, power tier, community matrix.
+3. **Session History** portal tab.
+4. **OTA firmware update** via portal.
+5. **Final `EchenonModule` wiring** — all sub-components composed.
+6. **Coupling audit** + ADR compliance (ADR-16, ADR-17, ADR-39).
+7. **Use Case Validation** — all 6 use cases (UC1–UC6) pass end-to-end.
+8. **Standalone test** — console disconnected, verify R3/R4/R5 sensor power.
+9. **README.md** — comprehensive build/flash/setup instructions.
 
-After this PR merges, the firmware is release-candidate quality.
+**Hardware:** Same intercept board. Also test standalone mode (console
+disconnected) for UC6.
+
+After this PR merges, the firmware is release-candidate quality with all 6 use
+cases validated.
 
 ## Prior Art
 
+- [wo7-overlay/WORKORDER.md](../archive-pa-decomposition/wo7-overlay/WORKORDER.md)
+- [wo9-calibration-portal/WORKORDER.md](../archive-pa-decomposition/wo9-calibration-portal/WORKORDER.md)
 - [wo10-integration/WORKORDER.md](../archive-pa-decomposition/wo10-integration/WORKORDER.md)
+- [Old PR-05 scope](../archive-pr-v1/pr-05-web-portal/PROJECT.md)
+- [Old PR-07 scope](../archive-pr-v1/pr-07-integration-polish/PROJECT.md)
 
 ## Work Order Ledger
 <!-- PA fills this in during planning -->
