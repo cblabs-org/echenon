@@ -76,6 +76,8 @@ infrastructure module.
 - On-device physical display
 - Custom PCB manufacture (v1 uses perfboard or protoboard)
 - Automatic mode switching (Intercept ↔ Override is a software configuration)
+- Portal-native HR-zone auto-resistance (v2 — for v1, external apps provide
+  HR-zone-based ERG via FTMS Control Point)
 
 ---
 
@@ -757,6 +759,21 @@ The ESP32 directly controls resistance. Console motor sense inputs read LOW
 | Potentiometer | Read directly (GPIO 1 ADC) — position feedback | — |
 | Encoder | Read directly (GPIO 8/9) — manual resistance input | Encoder → target level → position controller → L9110S → Motor |
 | ERG target | FTMS Control Point → target watts → power table lookup → target level | Target level → position controller → L9110S → Motor |
+
+**Console-connected Override (console present but not in use):**
+
+The encoder and pot signals still pass through to the console via J2/J4 (no
+hardware switching). If the console is powered, it will see encoder clicks and
+attempt to drive the motor — but its motor output signals reach only GPIO 10/11
+(sense inputs with pull-downs), not the actual motor. The motor is driven
+exclusively by the L9110S under ESP32 control. The console's motor effort goes
+nowhere. No hardware change is needed to "block" the console — the MITM split
+achieves this by design.
+
+The Echelon app reads the pot (pass-through) for its resistance display but
+never commands a specific resistance level — resistance is always set
+physically via the knob. There is no software conflict between the Echelon app
+and Override Mode.
 
 **Resistance level resolution:** 1–100 (vs Echelon's 1–32). Each level maps
 to a calibrated potentiometer mV target.
