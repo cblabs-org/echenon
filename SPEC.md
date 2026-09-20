@@ -38,7 +38,9 @@ For complete hardware documentation of the EX-3's internal sensors, wiring
 looms, connectors, and actuators, see
 [`docs/ex3_specification.md`](docs/ex3_specification.md). For the intercept
 board circuit design (schematic, net list, assembly), see
-[`docs/hardware_specification.md`](docs/hardware_specification.md).
+[`docs/hardware_specification.md`](docs/hardware_specification.md). For
+validated operating scenarios and acceptance criteria, see
+[`docs/use_case_analysis.md`](docs/use_case_analysis.md).
 
 ### 1.2 Design Principles
 
@@ -733,6 +735,18 @@ All signals pass through to the console. The ESP32 reads them transparently.
 | Encoder | Tap and read (GPIO 8/9) | Receives signal normally | — |
 | Motor | **Read console sense (GPIO 10/11), relay to L9110S (GPIO 6/7)** | Sends motor commands (to GPIO 10/11 as inputs) | Console → ESP32 relay → L9110S → Motor |
 
+**FTMS in Intercept Mode:** FTMS telemetry (Indoor Bike Data) is broadcast
+normally — external fitness apps can connect and receive live power, cadence,
+resistance, and HR data for recording and charting. However, FTMS Control
+Point writes are rejected with `0x05` (Control Not Permitted) because the
+console controls resistance in this mode.
+
+**Multi-client BLE:** Up to 3 simultaneous Peripheral connections (§7.8).
+Typical Intercept Mode setup:
+- **Connection 1:** Echelon tablet → factory Echelon PCB (bike metrics for Echelon app)
+- **Connection 2:** Echelon tablet → ESP32 HRMRepeater (`0x180D`) (HR relay)
+- **Connection 3:** Fitness app → ESP32 FTMSServer (`0x1826`) (read-only telemetry)
+
 ```cpp
 // Intercept Mode — transparent motor relay
 void InterceptController::tickIntercept() {
@@ -1037,8 +1051,10 @@ FTMSServer handles:
 
 The Control Point characteristic enables FTMS clients (Zwift, Xert, TrainerRoad)
 to command resistance changes. Only processed in **Override Mode** — in
-Intercept Mode, Control Point writes are accepted but ignored (the console
-controls resistance).
+Intercept Mode, the console controls resistance, so Control Point writes
+respond with result code `0x05` (Control Not Permitted) and no motor action
+occurs. The FTMS client should treat Echenon as a read-only data source in
+Intercept Mode.
 
 **Supported opcodes:**
 
@@ -2115,70 +2131,113 @@ adding BLE support.
 
 ## 13. Testing & Verification
 
-### 13.1 Phase 1 — Desk Test (No Bike)
+Test phases map to the validated use cases in
+[`docs/use_case_analysis.md`](docs/use_case_analysis.md).
 
-1. Flash firmware via USB-C.
-2. Connect to `Echenon-Setup` WiFi AP → configure home WiFi.
-3. Open `http://echenon.local` → verify portal with overlay, BLE, and
-   upload settings tabs.
-4. Open **nRF Connect** → verify `"Echenon"` advertising FTMS (`0x1826`)
-   and HR (`0x180D`).
-5. Connect → verify 2 Hz notifications on `0x2AD2` with zeroed data.
-6. Verify FTMS Control Point (`0x2AD9`) is present and writable.
-7. Simulate cadence (short D2 to GND) → observe changes in overlay and
-   BLE notifications.
+### 13.1 Phase 0 — Desk Test (No Bike)
 
-### 13.2 Phase 2 — Intercept Mode (Console Connected)
+Pre-integration hardware and firmware validation.
 
-1. Assemble intercept board, connect between bike frame and console.
-2. **Pass-through verification:** Console and Echelon app work normally —
-   cadence, resistance, and all bike functions unchanged.
-3. Web overlay: cadence matches manual count, resistance tracks knob 1–32.
-4. **Motor relay:** Turn red knob → verify console motor sense GPIO reads
-   match L9110S output state → motor moves resistance correctly.
-5. Run potentiometer calibration via portal Calibration page.
-6. Pair HR strap via portal BLE page → verify HR in overlay and FTMS data.
+| # | Test | Expected Result |
+|---|---|---|
+| 0.1 | Flash firmware via USB-C. | Boot to `Echenon-Setup` WiFi AP. |
+| 0.2 | Connect to AP → configure home WiFi. | Portal accessible at `echenon.local`. |
+| 0.3 | Open `echenon.local`. | Overlay, BLE, upload settings tabs visible. |
+| 0.4 | nRF Connect: verify advertising. | `"Echenon"` advertising FTMS (`0x1826`) and HR (`0x180D`). |
+| 0.5 | Connect → subscribe to Indoor Bike Data. | 2 Hz notifications on `0x2AD2` with zeroed data. |
+| 0.6 | Verify Control Point characteristic. | `0x2AD9` present and writable. |
+| 0.7 | Simulate cadence (short D2 to GND). | Overlay and BLE notifications show cadence change. |
+| 0.8 | Write Control Point Set Target Power (Override Mode). | Response `0x01` (Success). |
+| 0.9 | Write Control Point Set Target Power (Intercept Mode). | Response `0x05` (Control Not Permitted). |
 
-### 13.3 Phase 3 — Override Mode (Standalone)
+### 13.2 Phase 1 — UC1: Pure Pass-Through (Intercept Mode)
 
-1. Disconnect console-side 9-pin and 3-pin JST connectors (or set mode
-   to Override in portal).
-2. **Encoder control:** Turn red knob → ESP32 reads quadrature clicks →
-   drives motor via L9110S → potentiometer feedback confirms new position.
-3. Verify resistance changes are faster and more precise than stock console.
-4. Verify 100 resistance levels across the full pot range.
-5. Web overlay shows resistance level 1–100.
-6. All sensors read correctly: cadence, resistance, HR.
+> Echelon class running, HR relay, all signals pass through.
 
-### 13.4 Phase 4 — ERG Mode
+| # | Test | Expected Result |
+|---|---|---|
+| 1.1 | Assemble intercept board. Connect between bike frame and console. | Console powers on normally. |
+| 1.2 | Open Echelon app. Start a class. | Class loads normally on tablet. |
+| 1.3 | Set resistance to 19 via red knob. | Echelon app shows 19/32. Motor moves. Pot ADC reads corresponding mV. |
+| 1.4 | Pedal at ~80 RPM. | Echelon app shows cadence. Overlay shows cadence ~80. |
+| 1.5 | Pair HR armband with ESP32. | Portal shows HR. |
+| 1.6 | In Echelon app: pair `"Echenon"` as HR device. | Echelon app shows HR from ESP32 re-broadcast. |
+| 1.7 | Change resistance during class. | Motor responds via relay (GPIO 10/11 → L9110S). Overlay tracks resistance. |
+| 1.8 | Verify motor relay latency. | No perceptible delay between knob turn and motor response (<1 ms). |
 
-1. Set Override Mode. Connect Zwift or Xert EBC via FTMS.
-2. **Set Target Power:** App commands 200W → ESP32 looks up required
-   resistance for current cadence → motor drives to target → power
-   stabilises at ~200W.
-3. **Cadence change response:** Increase cadence → resistance should
-   decrease to maintain target watts. Decrease cadence → resistance increases.
-4. **Manual override:** Turn red knob during ERG → ERG target cancels →
-   manual mode resumes.
-5. **Boundary test:** Target power at very low cadence (high resistance
-   required) → verify motor stops at mechanical limit, no stalling.
+### 13.3 Phase 2 — UC2 & UC3: Recording + FTMS Telemetry
 
-### 13.5 Phase 5 — End-to-End
+> Same as UC1 plus Strava recording and external fitness app.
 
-1. **Intercept Mode coexistence:** Run Echelon class. Pair `"Echenon"` as
-   HR device in Echelon app. Verify HR on tablet + ESP32 not interfering.
-2. **Override Mode standalone:** Full ride with FTMS only — no Echelon
-   console connected. Verify auto-session, upload, overlay.
-3. **Auto-session:** Pedal → overlay shows "REC". Stop 3 minutes → session
-   ends, upload triggered.
-4. **Strava:** Connect via portal. Ride. Verify activity in Strava with power,
-   cadence, HR.
-5. **FTMS consumer:** Zwift → pair `"Echenon"` → verify live power/cadence.
-6. **ERG ride:** Complete a structured workout in Xert EBC or TrainerRoad
-   with automatic resistance changes via FTMS Control Point.
-7. **Floating window:** Chrome on Lenovo P12 → overlay as PiP over app.
+| # | Test | Expected Result |
+|---|---|---|
+| 2.1 | Run UC1 setup. Verify overlay shows "● REC". | Auto-start triggered by first cadence pulse. |
+| 2.2 | Ride 5+ minutes. Stop pedalling. Wait 3 minutes. | Session ends. Overlay shows post-ride summary. |
+| 2.3 | Check Strava. | Activity appears with power, cadence, HR, duration. |
+| 2.4 | Open fitness app (e.g. Xert EBC). Pair `"Echenon"` as FTMS device. | App connects and shows live power, cadence, HR (UC3). |
+| 2.5 | Verify BLE multi-client: Echelon tablet (HR) + fitness app (FTMS) simultaneously. | Both connections coexist. Data flows to both. |
+| 2.6 | Fitness app sends FTMS Control Point (Set Target Power). | Response `0x05` (Control Not Permitted). Resistance unchanged. |
+| 2.7 | Ride at 80 RPM, resistance 19. | Fitness app charts real-time data matching overlay values. |
 
-### 13.6 Known Limitations
+### 13.4 Phase 3 — UC4: Override Mode (Console Connected, ERG)
+
+> External FTMS app drives resistance. Console powered but not in use.
+
+| # | Test | Expected Result |
+|---|---|---|
+| 3.1 | Set Override Mode via portal. Console connected. | Portal shows mode = Override, 100 levels. |
+| 3.2 | Open FTMS fitness app. Pair `"Echenon"`. | App connects, shows FTMS features including Control Point. |
+| 3.3 | App sends Set Target Power: 200W. | Motor moves. Pot ADC settles at target. Overlay shows ~200W. |
+| 3.4 | Vary cadence 60–100 RPM. | Resistance adjusts automatically to maintain 200W (ERG closed-loop). |
+| 3.5 | Turn red knob mid-ERG. | ERG cancels. Motor moves to encoder-commanded position. |
+| 3.6 | App sends new target. | ERG re-engages. Motor moves to new computed level. |
+| 3.7 | Verify console motor sense pins (GPIO 10/11). | May show activity if console is trying to drive motor — ignored. |
+| 3.8 | Verify 100 resistance levels across full pot range. | Levels are finer-grained and more precise than stock 1–32. |
+
+### 13.5 Phase 4 — UC5: Echelon Class + External Auto-Resistance
+
+> Echelon class running on tablet, external app controls resistance via FTMS.
+
+| # | Test | Expected Result |
+|---|---|---|
+| 4.1 | Set Override Mode. Load Echelon class. | Class content shows on tablet. Portal shows mode = Override. |
+| 4.2 | Open HR-zone training app. Pair `"Echenon"` as FTMS. | App connects, receives HR from FTMS packet. |
+| 4.3 | App sends Set Target Resistance based on HR zone. | Motor moves. Resistance changes. |
+| 4.4 | HR drifts up → app adjusts resistance. | Motor responds to new target. |
+| 4.5 | Echelon app still shows class video and instructor. | Class content unchanged. Resistance bar shows actual (motor-driven) position. |
+| 4.6 | Rider turns knob. | ERG/zone control cancels. Manual mode. |
+
+### 13.6 Phase 5 — UC6: Standalone (Console Disconnected)
+
+> Console completely disconnected. Bike as a pure FTMS smart trainer.
+
+| # | Test | Expected Result |
+|---|---|---|
+| 5.1 | Disconnect console (J2 and J4 unplugged). Set Override Mode. | ESP32 boots normally. GPIO 10/11 read LOW (pull-downs). |
+| 5.2 | **Standalone cadence:** pedal slowly. | Reed switch pulses on GPIO 5 (pull-up from R3 on intercept board). |
+| 5.3 | **Standalone pot:** read ADC on GPIO 1. | Pot wiper reads within calibrated range (reference from R4 → 3.3V rail). |
+| 5.4 | **Standalone encoder:** turn red knob. | Quadrature clicks register on GPIO 8/9 (encoder powered via R5 → 3.3V rail). |
+| 5.5 | Encoder resistance control: turn knob → motor moves. | L9110S drives motor. Pot feedback confirms position. 100 levels. |
+| 5.6 | Connect FTMS app. Start ERG workout. | Motor responds. Resistance tracks target. Power matches. |
+| 5.7 | Complete a full ride. Stop pedalling. | Auto-session records. Upload to Strava. |
+| 5.8 | Reconnect console (J2 and J4). Switch to Intercept Mode. | All pass-through functions restored. No contention issues. |
+
+### 13.7 Phase 6 — End-to-End Integration
+
+> Full cross-cutting tests across modes and features.
+
+| # | Test | Expected Result |
+|---|---|---|
+| 6.1 | **Mode switching:** Intercept → Override → Intercept via portal. | Seamless transition. Motor control passes correctly. |
+| 6.2 | **Floating window:** Chrome on Lenovo P12 → overlay as PiP over Echelon app. | Overlay shows live data without interfering with class. |
+| 6.3 | **Dual-app:** Xert EBC (ERG) + Zwift (visuals) both connected via FTMS. | Both receive data. ERG commands from EBC drive resistance. |
+| 6.4 | **Strava duplicate avoidance:** Ride in Zwift (which uploads to Strava). | Echenon's auto-upload disabled or Strava deduplicates. |
+| 6.5 | **Pot calibration:** Run calibration wizard. Verify across full range. | Calibration persists in NVS. Levels map accurately. |
+| 6.6 | **Motor boundary:** ERG demands high resistance at low cadence. | Motor stops at mechanical limit. No stalling or oscillation. |
+| 6.7 | **Power-cycle resilience:** Kill power mid-ride. Power back on. | ESP32 reboots. Mode restored from NVS. No corruption. |
+| 6.8 | **OTA update:** Trigger firmware update via portal. | Update applies. ESP32 reboots. New version running. |
+
+### 13.8 Known Limitations
 
 - Power estimated, not measured. Accuracy improves with reference power meter
   calibration.
@@ -2188,6 +2247,9 @@ adding BLE support.
 - Motor positioning precision depends on potentiometer calibration quality.
 - Echelon app may show slightly different cadence/resistance values in
   Intercept Mode (it reads the same sensors independently).
+- Pot calibration values differ between Intercept Mode (console provides pot
+  reference) and standalone Override Mode (intercept board provides reference
+  via R4). Recalibrate when changing console connection state.
 
 ---
 
@@ -2292,19 +2354,50 @@ multiple simultaneous Central connections).
 ### Journey 4c — Standalone Ride (No Echelon Console)
 
 > The Echelon console is disconnected. The bike is a pure FTMS smart trainer.
+> *(See UC6 in [`docs/use_case_analysis.md`](docs/use_case_analysis.md))*
 
 1. Echenon set to **Override Mode** permanently (console removed).
 2. Put on HR armband. Pedal → ESP32 boots.
-3. Red knob controls resistance directly (100 levels) — faster and more
+3. All sensors work without the console — the intercept board's 3.3V rail
+   provides standalone power to the cadence pull-up (R3), pot reference
+   (R4), and encoder (R5).
+4. Red knob controls resistance directly (100 levels) — faster and more
    precise than the stock Echelon console.
-4. Optionally connect Zwift, Xert, or any FTMS app for virtual riding.
-5. ERG mode available via any connected app's FTMS Control Point.
-6. Open `echenon.local` overlay for live power/HR/cadence.
-7. Pedal → auto-session recording starts.
-8. Stop → session uploads to Strava.
+5. Optionally connect Zwift, Xert, or any FTMS app for virtual riding.
+6. ERG mode available via any connected app's FTMS Control Point.
+7. Open `echenon.local` overlay for live power/HR/cadence.
+8. Pedal → auto-session recording starts.
+9. Stop → session uploads to Strava.
 
 **This transforms the EX-3 into a fully open smart trainer.** No Echelon
 subscription, no Echelon app, no Echelon ecosystem dependency.
+
+---
+
+### Journey 4d — Echelon Class with External Auto-Resistance (HR Zones)
+
+> Follow an Echelon instructor class while an external app automatically
+> controls resistance based on heart rate zones.
+> *(See UC5 in [`docs/use_case_analysis.md`](docs/use_case_analysis.md))*
+
+1. Set Echenon to **Override Mode**.
+2. Put on HR armband. Pedal → ESP32 boots.
+3. **Tablet:** Open Echelon app → select a free-ride or endurance class.
+4. Open HR-zone training app (e.g. Wahoo SYSTM, Xert EBC) → pair
+   `"Echenon"` as FTMS device.
+5. App receives live HR from FTMS Indoor Bike Data.
+6. App calculates target resistance based on HR zones → sends FTMS
+   Set Target Resistance commands → motor adjusts automatically.
+7. Ride the Echelon class — instructor provides coaching, music, and
+   motivation. Resistance follows your heart rate, not the instructor's
+   callouts.
+8. The Echelon app's resistance bar shows the actual position (it reads
+   the pot), not what the instructor called out. This is expected.
+9. Turn the red knob at any time to cancel auto-resistance and go manual.
+10. End class → session uploads to Strava.
+
+**The Echelon app never commands resistance** — it only reads the pot. There
+is no conflict between the Echelon app and Override Mode.
 
 ---
 
