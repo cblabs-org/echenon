@@ -64,11 +64,12 @@ validated operating scenarios and acceptance criteria, see
    board. Override Mode supports up to 100 resistance levels (vs Echelon's 32).
 8. **Original implementation** — Written from first principles, public
    specifications, and permissively licensed references.
-9. **Hardware-portable** — The firmware abstracts hardware across two dimensions:
-   the **board** (which ESP32-S3 module — pin layout, ADC channels, USB config)
-   and the **bike** (which spin bike is being MITM'd — loom pinout, pot range,
-   motor specs, resistance levels, power curve). Changing either dimension is
-   a build-time configuration change, not a code change.
+9. **Hardware-portable** — All hardware-specific configuration (pin map, sensor
+   characteristics, partition table, SDK settings) lives in a single target
+   directory under `hardware/`. Supporting a different ESP32 board or a
+   different bike is a new target directory + PlatformIO environment, not a
+   code change. Firmware modules use `#if HAS_*` guards so only applicable
+   modules compile for each target.
 
 ### 1.3 Built On
 
@@ -446,80 +447,97 @@ Android capability — no root or special app required.
 
 ### 4.3 Hardware Configuration Architecture
 
-The firmware's hardware layer is configured across two independent dimensions,
-both resolved at **build time** via PlatformIO environments and header files:
+The firmware's hardware layer is configured per **target** — a specific
+board × bike combination. Each target is a directory under `hardware/`
+containing everything that varies between physical setups:
 
 ```
-┌─────────────────────────────────┐
-│        platformio.ini           │
-│  [env:ex3-waveshare-nano]       │
-│    board config ──► boards/     │  Dimension 1: Which ESP32 board?
-│    bike profile ──► bikes/      │  Dimension 2: Which spin bike?
-└─────────────────────────────────┘
-         │                │
-         ▼                ▼
-┌─────────────┐  ┌─────────────────┐
-│  Board      │  │  Bike Profile   │
-│  Config     │  │                 │
-│             │  │                 │
-│ GPIO map    │  │ Signal names    │
-│ ADC caps    │  │ Loom pinout     │
-│ USB config  │  │ Pot range (mV)  │
-│ Pin count   │  │ Motor voltage   │
-│ Power input │  │ Encoder type    │
-│ LED pin     │  │ Resistance lvls │
-│             │  │ Power curve     │
-└─────────────┘  └─────────────────┘
-         │                │
-         ▼                ▼
-┌─────────────────────────────────┐
-│   Pin Assignment = Board × Bike │
-│                                 │
-│   PIN_CADENCE    = GPIO 5       │  Board says "D2 = GPIO 5"
-│   PIN_POT_WIPER  = GPIO 1      │  Bike says "cadence uses D2"
-│   PIN_MOTOR_FWD  = GPIO 6      │
-│   ...                           │
-└─────────────────────────────────┘
+hardware/
+└── ex3-waveshare-nano/              ← one directory per physical setup
+    ├── config.h                     pin map, bike characteristics, module flags
+    ├── partitions.csv               flash partition table for this board
+    └── sdkconfig.defaults           SDK overrides (PSRAM, USB, coex flags)
 ```
 
-**Dimension 1 — Board config** (`hardware/boards/<board-name>.h`):
+**Why a single combined config (not separate board + bike files)?**
 
-Defines the physical capabilities of the ESP32 module: GPIO numbering for
-each header position (D0–D13, A0–A7), which ADC channels are on ADC1 vs ADC2,
-USB configuration, power input pin, LED pin, and any strapping-pin constraints.
+Board and bike are coupled — a different bike may have entirely different
+signals (no motor, I2C sensors, a brake input), which changes what pin
+capabilities it needs, which changes what boards are even compatible. The
+signal set, the pin mapping, and the board capabilities are one decision,
+not two independent ones.
 
-| Board | Status | Notes |
-|---|---|---|
-| Waveshare ESP32-S3-Nano | ✅ Primary | 16 GPIO, USB-C, 8MB PSRAM |
-| (future boards) | — | Must be ESP32-S3 with ADC1 + sufficient GPIO |
+**What `config.h` contains:**
 
-**Dimension 2 — Bike profile** (`hardware/bikes/<bike-name>.h`):
+```c
+// hardware/ex3-waveshare-nano/config.h
 
-Defines the bike's characteristics: which board header positions each bike
-signal maps to, sensor specifications (pot range, cadence magnet count,
-encoder pulses per detent), motor specifications (voltage, direction logic,
-drive pattern), resistance level count, and default power curve.
+// ── Identity ──
+#define TARGET_NAME             "EX-3 on Waveshare ESP32-S3-Nano"
+#define BIKE_NAME               "Echelon EX-3"
+#define BOARD_NAME              "Waveshare ESP32-S3-Nano"
 
-| Bike | Status | Notes |
-|---|---|---|
-| Echelon EX-3 | ✅ Primary | 9-pin + 3-pin JST loom, 32 stock levels, 3.3V motor |
-| (future bikes) | — | Any bike with accessible sensor/motor wiring |
+// ── Signal map (what signals exist + which GPIO) ──
+#define HAS_CADENCE             1
+#define PIN_CADENCE             5         // D2, reed switch
+#define BIKE_CADENCE_MAGNETS    1
 
-**PlatformIO environment** (`platformio.ini`):
+#define HAS_RESISTANCE_POT     1
+#define PIN_POT_WIPER           1         // A0, ADC1_CH0
+#define BIKE_POT_MV_MIN         1160
+#define BIKE_POT_MV_MAX         1700
+
+#define HAS_MOTOR_CONTROL       1
+#define PIN_MOTOR_FWD           6         // D3, PWM capable
+#define PIN_MOTOR_REV           7         // D4, PWM capable
+#define BIKE_MOTOR_VOLTAGE      3.3f
+
+#define HAS_MOTOR_SENSE         1
+#define PIN_MOTOR_SENSE_P       10        // D7, via 30kΩ/10kΩ divider
+#define PIN_MOTOR_SENSE_N       11        // D8, via 30kΩ/10kΩ divider
+
+#define HAS_ENCODER             1
+#define PIN_ENCODER_A           8         // D5, interrupt
+#define PIN_ENCODER_B           9         // D6, interrupt
+
+// ── Module flags (which firmware modules compile) ──
+#define MODULE_INTERCEPT        HAS_MOTOR_SENSE
+#define MODULE_MOTOR_CONTROL    HAS_MOTOR_CONTROL
+// ...
+```
+
+**Firmware uses `HAS_*` guards** — modules only compile for setups that
+have the signals they need:
+
+```cpp
+void EchenonModule::begin() {
+    #if HAS_CADENCE
+        cadenceSensor.begin();
+    #endif
+    #if HAS_MOTOR_SENSE
+        interceptController.begin();
+    #endif
+}
+```
+
+**PlatformIO wiring:**
 
 ```ini
 [env:ex3-waveshare-nano]
 board = esp32-s3-devkitc-1
+board_build.partitions = hardware/ex3-waveshare-nano/partitions.csv
 build_flags =
-    -DBIKE_ECHELON_EX3
-    -DBOARD_WAVESHARE_S3_NANO
-    -include hardware/boards/waveshare-s3-nano.h
-    -include hardware/bikes/echelon-ex3.h
+    -include hardware/ex3-waveshare-nano/config.h
 ```
 
-Adding a new board or bike is a new header file + a new PlatformIO environment.
-No source code changes required — all hardware-specific values flow through
-`#define` constants.
+**Adding a new setup** = create a new directory under `hardware/` with its
+own `config.h`, `partitions.csv`, and `sdkconfig.defaults`, plus a new
+`[env:]` in `platformio.ini`. No source code changes required.
+
+| Target | Status | Notes |
+|---|---|---|
+| `ex3-waveshare-nano` | ✅ Primary | Echelon EX-3 on Waveshare ESP32-S3-Nano |
+| (future targets) | — | New directory + new env per setup |
 
 ### 4.4 Pin Assignments (Echelon EX-3 × Waveshare ESP32-S3-Nano)
 
@@ -2109,11 +2127,10 @@ Echenon/
 ├── lib/
 │   └── esp32-app-foundation/        (git submodule)
 ├── hardware/
-│   ├── boards/
-│   │   └── waveshare-s3-nano.h          Board GPIO map, ADC, USB config
-│   └── bikes/
-│       └── echelon-ex3.h                Bike loom pinout, pot range, motor,
-│                                         encoder, power curve, resistance levels
+│   └── ex3-waveshare-nano/              Target: EX-3 on Waveshare S3-Nano
+│       ├── config.h                     Pin map, bike characteristics, module flags
+│       ├── partitions.csv               Flash partition table
+│       └── sdkconfig.defaults           SDK config overrides
 ├── src/
 │   ├── main.cpp
 │   └── echenon/

@@ -98,9 +98,10 @@ Phase 0 Pre-Gate.
 **Spec sections:** §3.5, §4.3–4.8, §12.1–12.3
 
 **Files created:**
-- `platformio.ini` (with `[env:ex3-waveshare-nano]`), `partitions.csv`, `sdkconfig.defaults`
-- `hardware/boards/waveshare-s3-nano.h` (GPIO map, ADC channels, USB config)
-- `hardware/bikes/echelon-ex3.h` (loom pinout, pot range, motor specs, encoder, levels)
+- `platformio.ini` (with `[env:ex3-waveshare-nano]`), `sdkconfig.defaults`
+- `hardware/ex3-waveshare-nano/config.h` (pin map, bike characteristics, module flags)
+- `hardware/ex3-waveshare-nano/partitions.csv` (flash partition table)
+- `hardware/ex3-waveshare-nano/sdkconfig.defaults` (SDK config overrides)
 - `src/main.cpp`, `src/echenon/Config.h`
 - `src/echenon/EchenonModule.h/.cpp` (skeleton)
 - `src/echenon/SignalLogger.h/.cpp`

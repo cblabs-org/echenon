@@ -130,15 +130,16 @@ invisible — high-impedance taps only.
 **No BLE, no FTMS, no session manager, no power calculation yet.** Pure
 
 **Hardware configuration (established in Phase 0):** The firmware uses a
-two-dimensional hardware abstraction (see SPEC §4.3):
+per-target hardware config directory (see SPEC §4.3):
 
-- `hardware/boards/waveshare-s3-nano.h` — board GPIO map (D0–D13 → GPIO numbers)
-- `hardware/bikes/echelon-ex3.h` — bike signal-to-header mappings, pot range,
-  motor specs, encoder type, default resistance levels
+- `hardware/ex3-waveshare-nano/config.h` — pin map, bike characteristics,
+  `HAS_*` signal flags, `MODULE_*` compile flags
+- `hardware/ex3-waveshare-nano/partitions.csv` — flash partition table
+- `hardware/ex3-waveshare-nano/sdkconfig.defaults` — SDK overrides
 
-All pin assignments are `#define` constants resolved at build time via a
-PlatformIO environment (`[env:ex3-waveshare-nano]`). Adding support for a
-different ESP32 board or a different bike is a new header file + environment,
+All pin assignments and bike characteristics are `#define` constants resolved
+at build time via the PlatformIO environment (`[env:ex3-waveshare-nano]`).
+Supporting a different board or bike is a new target directory + environment,
 not a code change.
 observability.
 
