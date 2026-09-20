@@ -3,7 +3,7 @@
 > **Programme:** Echenon Firmware
 > **PR target base:** PR-02 (`calibration-power` branch tip)
 > **Dev Phase:** Phase 3 — Motor Interception
-> **Spec sections:** §4.5–4.7, §5.3–5.6
+> **Spec sections:** §4.6–4.8, §5.3–5.6
 > **Strategy:** [`docs/implementation-strategy.md`](../../../../docs/implementation-strategy.md) Phase 3
 > **Hardware spec:** [`docs/hardware_specification.md`](../../../../docs/hardware_specification.md)
 

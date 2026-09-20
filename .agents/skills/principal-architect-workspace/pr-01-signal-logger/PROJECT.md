@@ -3,15 +3,17 @@
 > **Programme:** Echenon Firmware
 > **PR target base:** `main`
 > **Dev Phase:** Phase 0 — Observe
-> **Spec sections:** §3.5, §4.3–4.7, §12.1–12.3
+> **Spec sections:** §3.5, §4.3–4.8, §12.1–12.3
 > **Strategy:** [`docs/implementation-strategy.md`](../../../../docs/implementation-strategy.md) Phase 0
 
 ## Mandate
 
-Set up the PlatformIO project, board configuration, and `EchenonModule` skeleton.
-Implement `SignalLogger` that reads ALL 12 wires from the bike's looms (9-pin +
-3-pin) at high frequency with microsecond timestamps. Build a live web dashboard
-and CSV data export.
+Set up the PlatformIO project, target hardware config directory
+(`hardware/ex3-waveshare-nano/` with `config.h`, `partitions.csv`, and
+`sdkconfig.defaults`), and `EchenonModule` skeleton. Implement `SignalLogger`
+that reads ALL 12 wires from the bike's looms (9-pin + 3-pin) at high
+frequency with microsecond timestamps. Build a live web dashboard and CSV
+data export.
 
 **Hardware:** Fly wires only — alligator clips to the existing loom. No wires cut,
 no intercept board built. Motor sense pins via 30kΩ/10kΩ voltage dividers for

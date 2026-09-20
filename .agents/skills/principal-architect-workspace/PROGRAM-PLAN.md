@@ -218,7 +218,7 @@ Split the motor wires (the MITM). Install between bike frame and console.
 Mode: 100-level resistance control via encoder knob, faster and more precise
 than stock console.
 
-**Spec sections:** §4.5–4.7, §5.3–5.6
+**Spec sections:** §4.6–4.8, §5.3–5.6
 
 **Files created:**
 - `src/echenon/InterceptController.h/.cpp`
