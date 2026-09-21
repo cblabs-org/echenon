@@ -36,9 +36,11 @@ Echenon operates in two modes:
 
 For complete hardware documentation of the EX-3's internal sensors, wiring
 looms, connectors, and actuators, see
-[`docs/ex3_specification.md`](docs/ex3_specification.md). For the intercept
-board circuit design (schematic, net list, assembly), see
-[`docs/hardware_specification.md`](docs/hardware_specification.md). For
+[`docs/ex3_specification.md`](docs/ex3_specification.md). For the phase-by-phase
+circuit build guide (breadboard schematics, intercept board, net list, assembly),
+see [`docs/hardware_specification.md`](docs/hardware_specification.md). For the
+iterative development roadmap and phase gates, see
+[`docs/implementation-strategy.md`](docs/implementation-strategy.md). For
 validated operating scenarios and acceptance criteria, see
 [`docs/use_case_analysis.md`](docs/use_case_analysis.md).
 

@@ -30,93 +30,35 @@ Observe  → Calibrate → HR Relay → Intercept  → FTMS      → ERG+Strava 
 > to connect immediately.
 
 A digital multimeter measured **3.3V** on the motor wires, which rules out
-9V bang-bang. However, a multimeter shows the *average* voltage — it cannot
-distinguish 3.3V DC from 9V PWM at ~37% duty cycle (both average ~3.3V).
-The capacitor across the motor terminals is consistent with either scenario
-(brush noise suppression or PWM smoothing).
+9V bang-bang. However, a DMM shows the *average* voltage — it cannot
+distinguish 3.3V DC from 9V PWM at ~37% duty cycle. An oscilloscope
+measurement is needed to confirm.
 
-**Oscilloscope measurement** (30 seconds, one-time):
+> **Step-by-step oscilloscope instructions:** See
+> [`hardware_specification.md`](hardware_specification.md) **§5.2 — Pre-Gate
+> Oscilloscope Verification.**
 
-1. Power the bike normally.
-2. Set scope: **DC coupling**, **5V/div** vertical, **10 ms/div** horizontal.
-3. Connect scope **ground clip** to any GND wire (Brown on 9-pin loom).
-4. Touch probe to **Red wire** (motor+, pin 1).
-5. Turn the resistance knob one click up. Observe:
-
-```
-If 3.3V bang-bang (expected):   If 9V PWM (must redesign):
-    ┌────┐                          ┌┐ ┌┐ ┌┐ ┌┐
-3.3V│    │                      9V  ││ ││ ││ ││
-    │    │                          ││ ││ ││ ││
-  0V┘    └───                   0V  ┘└─┘└─┘└─┘└──
-    DMM reads 3.3V ✓                DMM reads ~3.3V ✓
-    Scope confirms flat              Scope reveals pulses
-```
-
-6. If 3.3V flat DC → **proceed to full Phase 0 wiring**.
-7. If 9V PWM → **stop**. Redesign motor sense circuit with voltage
-   divider (30kΩ + 10kΩ: 9V → 2.25V) and update L9110S to run from 9V
-   rail. Update SPEC.md §4.5 and hardware_specification.md before
-   proceeding.
+- If 3.3V flat DC → **proceed to full Phase 0 wiring**.
+- If 9V PWM → **stop**. The voltage dividers still protect the ESP32, but
+  the firmware may need PWM decoding. Document frequency and duty cycle
+  before proceeding.
 
 ### Hardware — Full Passive Tap
 
 No intercept board yet. Fly-wire the ESP32 to the *existing* loom using
-alligator clips or solder taps — **no wires cut, no connectors split.**
-Tap **all** wires for maximum observability.
+alligator clips — **no wires cut, no connectors split.** Tap **all 12 wires**
+(9-pin + 3-pin looms) for maximum observability.
 
-```
-Existing 9-pin loom (undisturbed) — tap every wire
-    │
-    ├── Pin 1  Red    (motor+)     ── 30kΩ ──┬── GPIO 10     ← motor sense
-    │                                        10kΩ             (voltage divider:
-    │                                         │                ÷4 for both
-    │                                        GND               polarities)
-    │
-    ├── Pin 2  Black  (motor−)     ── 30kΩ ──┬── GPIO 11     ← motor sense
-    │                                        10kΩ             (same divider)
-    │                                         │
-    │                                        GND
-    │
-    ├── Pin 3  Yellow (pot outer)  ──────────── GPIO 2 (ADC)   ← reference V
-    ├── Pin 4  Blue   (pot wiper)  ──────────── GPIO 1 (ADC)   ← position
-    ├── Pin 5  Green  (pot outer)  ──────────── GPIO 3 (ADC)   ← reference V
-    ├── Pin 6  Orange (cadence)    ──────────── GPIO 5          ← reed switch
-    ├── Pin 7  Grey   (cadence)    ──────────── GPIO 4          ← return line
-    ├── Pin 8  White  (9V)         ──► MP1584EN IN+ ──► ESP32 3V3 pin
-    └── Pin 9  Brown  (GND)        ──► MP1584EN IN− ──► ESP32 GND
-                                        (common ground)
-
-Existing 3-pin loom (undisturbed) — tap all 3 wires
-    ├── Pin 1  Red    (Enc VCC)    ──────────── GPIO 12 (ADC)   ← supply voltage
-    ├── Pin 2  Brown  (Enc Ch A)   ──────────── GPIO 8          ← quadrature
-    └── Pin 3  Orange (Enc Ch B)   ──────────── GPIO 9          ← quadrature
-```
-
-**Protection on motor sense pins — voltage divider (not zener):**
-
-The motor is driven bidirectionally by the console's H-bridge — Red goes HIGH
-while Black goes LOW (forward), then the reverse for backward. Back-EMF when
-the motor stops can also push wires below ground. A simple zener-to-GND would
-only clamp positive overvoltage and let negative transients through.
-
-The 30kΩ + 10kΩ voltage divider handles all scenarios:
-
-| Motor wire voltage | GPIO sees | Safe? |
-|---|---|---|
-| 3.3V (expected HIGH) | 0.825V | ✅ Above logic threshold (~0.4V) |
-| 0V (expected LOW) | 0V | ✅ Clean LOW |
-| 9V (if PWM — unlikely) | 2.25V | ✅ Below 3.3V max |
-| −5V (back-EMF spike) | −1.25V | ✅ Current via 30kΩ = 0.17 mA — safe for ESP32 internal ESD diodes |
-
-The 30kΩ series resistance limits current to <0.3 mA under any plausible
-condition. Cost: 4 resistors, ~£0.10.
-
-**All other signals** are safe to connect directly — cadence, pot, and
-encoder are all 0–3.3V logic or analog signals from passive components.
+Motor sense pins use 30kΩ/10kΩ voltage dividers for bidirectional protection.
+All other signals (cadence, pot, encoder) connect directly — they're all
+0–3.3V from passive components.
 
 The console stays fully connected and controls everything as stock. We are
 invisible — high-impedance taps only.
+
+> **Full schematic, parts list, build checklist, and voltage divider analysis:**
+> See [`hardware_specification.md`](hardware_specification.md) **§5 — Phase 0/1
+> Passive Observation Breadboard.**
 
 ### Firmware
 
@@ -141,7 +83,6 @@ All pin assignments and bike characteristics are `#define` constants resolved
 at build time via the PlatformIO environment (`[env:ex3-waveshare-nano]`).
 Supporting a different board or bike is a new target directory + environment,
 not a code change.
-observability.
 
 ### What We Learn
 
