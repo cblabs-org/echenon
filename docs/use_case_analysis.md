@@ -262,10 +262,10 @@ When the console is disconnected, the sensors lose their power source:
 
 ### Required Fix: Intercept Board Standalone Power Supply
 
-The intercept board already has 3.3V from the AMS1117-3.3 LDO. It needs to supply this to the sensors when the console is absent:
+The intercept board already has 3.3V from the MP1584EN buck converter. It needs to supply this to the sensors when the console is absent:
 
 ```
-AMS1117-3.3 output (3.3V)
+MP1584EN output (3.3V)
     │
     ├──► L9110S VCC (existing)
     │

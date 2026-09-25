@@ -291,7 +291,7 @@ This is where we build the intercept board from
 
 **Build in two sub-phases:**
 
-#### Phase 2a — Intercept (Transparent Relay)
+#### Phase 3a — Intercept (Transparent Relay)
 
 Wire the intercept board with the motor split. Firmware reads console
 motor sense (GPIO 10/11) and relays to L9110S (GPIO 6/7). The user
@@ -300,7 +300,7 @@ should not notice any difference from stock.
 **Key test:** Ride a full class with the intercept board. Does the motor
 respond identically? Any lag? Any missed commands?
 
-#### Phase 2b — Override (Direct Control)
+#### Phase 3b — Override (Direct Control)
 
 Switch to Override Mode. ESP32 reads the encoder and drives the motor
 directly using the bang-bang position controller with pot feedback.
@@ -338,8 +338,8 @@ than the stock console?
 
 ### Go/No-Go Criteria
 
-- [ ] Phase 2a: Full Echelon class with intercept board — no user-perceptible difference
-- [ ] Phase 2b: Encoder-to-motor closed loop works across full range
+- [ ] Phase 3a: Full Echelon class with intercept board — no user-perceptible difference
+- [ ] Phase 3b: Encoder-to-motor closed loop works across full range
 - [ ] 100 discrete resistance levels achievable (or determine actual max)
 - [ ] Motor dead zone tuned — no oscillation, reliable settling
 - [ ] Board fits in console housing

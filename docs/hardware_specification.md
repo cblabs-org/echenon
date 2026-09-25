@@ -219,7 +219,7 @@ power — we just observe.
 ### 5.2 Pre-Gate — Oscilloscope Motor Voltage Verification
 
 > [!CAUTION]
-> **Complete this measurement BEFORE connecting motor fly wires to GPIO 10/11.**
+> **Complete this measurement BEFORE connecting motor fly wires to GPIO 6/7.**
 > All other signals (cadence, pot, encoder) are safe to connect immediately.
 
 A digital multimeter measured **3.3V** on the motor wires, but a DMM shows
@@ -243,7 +243,7 @@ If 3.3V bang-bang (expected):       If 9V PWM (must investigate):
 ────┘    └──────────── 0V          ─────┘└─┘└─┘└─┘└──── 0V
 ```
 
-**If 3.3V DC:** Proceed as planned. Voltage dividers will read 0.825V (clear digital HIGH).
+**If 3.3V DC:** Proceed as planned. Voltage dividers will read 0.825 V, which is at the ESP32-S3's V_IL maximum — NOT a valid logic HIGH. Sample as analog on ADC1.
 
 **If 9V PWM:** Voltage dividers still protect the ESP32 (9V ÷ 4 = 2.25V, safe).
 But the firmware may need PWM decoding instead of simple digital reads.
@@ -270,13 +270,13 @@ U3 MP1584EN GND ─────────────────────�
 MOTOR SENSE (tap from 9-pin loom — AFTER oscilloscope gate passes)
 ──────────────────────────────────────────────────────────────────
 
-Red wire (pin 1, motor+) ── fly wire ──► R1a (30kΩ) ──┬──► U1 GPIO 10 (D7)
+Red wire (pin 1, motor+) ── fly wire ──► R1a (30kΩ) ──┬──► U1 GPIO 6 (D3)
                                                        │
                                                    R1b (10kΩ)
                                                        │
                                                       GND
 
-Black wire (pin 2, motor−) ── fly wire ──► R2a (30kΩ) ──┬──► U1 GPIO 11 (D8)
+Black wire (pin 2, motor−) ── fly wire ──► R2a (30kΩ) ──┬──► U1 GPIO 7 (D4)
                                                          │
                                                      R2b (10kΩ)
                                                          │
@@ -298,7 +298,7 @@ Grey wire   (pin 7, cadence return) ── fly wire ──► U1 GPIO 4  (A3, AD
 ENCODER TAPS (direct fly wires from 3-pin loom — all 0–3.3V, safe)
 ──────────────────────────────────────────────────────────────────
 
-Enc Red wire    (pin 1, VCC)  ── fly wire ──► U1 GPIO 12 (D9, ADC)
+Enc Red wire    (pin 1, VCC)  ── fly wire ──► U1 GPIO 18 (D9, ADC)
 Enc Brown wire  (pin 2, Ch A) ── fly wire ──► U1 GPIO 8  (D5, interrupt)
 Enc Orange wire (pin 3, Ch B) ── fly wire ──► U1 GPIO 9  (D6, interrupt)
 
@@ -325,13 +325,16 @@ Division ratio: 10k / (30k + 10k) = 1/4
 
 | Motor wire voltage | GPIO sees | Current through divider | Safe? |
 |---|---|---|---|
-| 3.3V (expected drive) | 0.825V | 0.08 mA | ✅ Above ~0.4V logic threshold |
+| 3.3V (expected drive) | 0.825V | 0.08 mA | ⚠️ At V_IL max. Read as analog. |
 | 0V (idle) | 0V | 0 mA | ✅ Clean LOW |
 | 9V (if PWM — unlikely) | 2.25V | 0.23 mA | ✅ Below 3.3V max |
 | −5V (back-EMF spike) | −1.25V | 0.17 mA | ✅ Safe for ESP32 internal ESD diodes |
 
 The 30kΩ series resistance limits current to <0.3 mA under any plausible
 condition. Cost: 4 resistors, ~£0.10.
+
+> [!NOTE]
+> For Phase 0, sample at ≥1 kHz on ADC1. For Phase 3, size after scope gate.
 
 > [!NOTE]
 > **Why not a simple pull-down?** A 10kΩ pull-down would work for unidirectional
@@ -349,7 +352,7 @@ the bike's signals. They don't appear on the final intercept board.
 | GPIO 2 (A1) | Yellow — pot outer HI | Console's pot reference voltage | ~3.3V |
 | GPIO 3 (A2) | Green — pot outer LO | Console's pot ground reference | ~0V |
 | GPIO 4 (A3) | Grey — cadence return | Reed switch circuit return path | GND or floating |
-| GPIO 12 (D9) | Encoder VCC (Red, 3-pin) | Console's encoder supply voltage | ~3.3V |
+| GPIO 18 (D9) | Encoder VCC (Red, 3-pin) | Console's encoder supply voltage | ~3.3V |
 
 Once we understand these signals (Phase 0 deliverable), we can design the
 standalone power circuits (R3, R4, R5) for Phase 3 with confidence.
@@ -372,13 +375,13 @@ standalone power circuits (R3, R4, R5) for Phase 3 with confidence.
 | Signal | GPIO | Expected Reading |
 |---|---|---|
 | Motor+ sense | GPIO 10 | 0V idle, ~0.825V when console drives motor forward |
-| Motor− sense | GPIO 11 | 0V idle, ~0.825V when console drives motor reverse |
+| Motor− sense | GPIO 17 | 0V idle, ~0.825V when console drives motor reverse |
 | Pot wiper | GPIO 1 | ~1160–1700 mV (varies with resistance position) |
 | Pot outer HI | GPIO 2 | ~3300 mV (console reference) |
 | Pot outer LO | GPIO 3 | ~0 mV (console ground) |
 | Cadence | GPIO 5 | 3.3V idle, 0V on magnet pulse |
 | Cadence return | GPIO 4 | TBD (Phase 0 will determine) |
-| Encoder VCC | GPIO 12 | ~3300 mV (console supply) |
+| Encoder VCC | GPIO 18 | ~3300 mV (console supply) |
 | Encoder Ch A | GPIO 8 | Quadrature pulses on knob turn |
 | Encoder Ch B | GPIO 9 | Quadrature pulses on knob turn (90° offset) |
 
@@ -483,7 +486,7 @@ STOCK BIKE (no intercept board):
 
 
 WITH INTERCEPT BOARD:
-    Console motor output ──► R1a/R2a (30kΩ) ──┬──► ESP32 GPIO 10/11 (sense)
+    Console motor output ──► R1a/R2a (30kΩ) ──┬──► ESP32 GPIO 6/7 (ADC1 sense)
                                               │
                                           R1b/R2b (10kΩ)
                                               │
@@ -510,7 +513,7 @@ of the 9-pin loom. The intercept board breaks this connection:
 - **Bike side** (J1 pins 1–2): Motor wires connect to **L9110S outputs**
   (A-OA, A-OB), not to J2.
 - **Console side** (J2 pins 1–2): Console's motor drive signals connect to
-  **ESP32 GPIO inputs** (GPIO 10/11) via **voltage dividers** (R1a/R1b,
+  **ESP32 GPIO inputs** (GPIO 6/7) via **voltage dividers** (R1a/R1b,
   R2a/R2b).
 
 The console *thinks* it's driving the motor. Actually, its motor signals are
@@ -529,10 +532,13 @@ in Phase 0 (fly wires) and Phase 3 (intercept board).
 Two additional benefits on the intercept board:
 
 1. **Defined idle state**: Even without pull-downs, the divider's R1b/R2b
-   (10kΩ to GND) ensures GPIO 10/11 read LOW when the console is not driving.
+   (10kΩ to GND) ensures GPIO 6/7 read LOW when the console is not driving.
 
 2. **Clean disconnect**: In Override Mode or standalone (UC6), the console
-   JST is unplugged. R1b/R2b pull GPIO 10/11 to GND — no floating inputs.
+   JST is unplugged. R1b/R2b pull GPIO 6/7 to GND — no floating inputs.
+
+> [!WARNING]
+> **Fail-safe requirement:** In Intercept Mode, if the ESP32 crashes, the motor is orphaned. A fail-safe mechanism (e.g. NC relay or analog switch bypass) is recommended. Strategy deferred to `[DR-1: decision H-05]`.
 
 #### 7.3.4 L9110S Truth Table
 
@@ -569,6 +575,9 @@ the console is disconnected (UC6 — standalone operation).
 When the console IS connected, both the console's pull-up and R3 are in
 parallel. Two pull-ups to the same 3.3V rail is safe — the combined resistance
 is lower (~5kΩ), producing a slightly stronger pull-up. No contention.
+
+> [!IMPORTANT]
+> **Switchable Supplies:** R3, R4, R5, and the Green-to-GND connection must be **switchable** (jumpers minimum, high-side switch preferred). Values not final until `[DR-1: decision H-02]`.
 
 **C1 (100 nF)** provides hardware debounce, filtering contact bounce from the
 reed switch. Combined with the 25 ms software lockout, this eliminates all
@@ -639,6 +648,9 @@ J3 Pin 3 (Orange) ───────┼──── J4 Pin 3 (pass-through to
 between the intercept board's 3.3V and the console's 3.3V when both are
 connected. At 10Ω with <10 mA, the voltage drop is <100 mV — negligible.
 
+> [!NOTE]
+> ESP32 internal or external pull-downs are needed on ENC_A and ENC_B for standalone mode.
+
 ### 7.5 Standalone Operation (Console Disconnected)
 
 When the Echelon console is disconnected (UC6), all sensors must continue
@@ -650,8 +662,7 @@ to function. The intercept board provides replacement power:
 | Pot reference | Console 3.3V | R4: 100Ω from 3V3 to POT_REF_HI; GND to POT_REF_LO | Always connected |
 | Encoder | Console 3.3V | R5: 10Ω from 3V3 to ENC_VCC | Always connected |
 
-All three standalone power paths are **always connected** — they coexist
-safely with the console's own power when it is present (see §7.4).
+All three standalone power paths must be **switchable** (jumpers or high-side switches). When the console is connected, they can be safely left connected, but making them switchable allows testing isolation until `[DR-1]`.
 
 ### 7.6 Complete Schematic
 
@@ -663,22 +674,22 @@ safely with the console's own power when it is present (see §7.4).
 J1 (9-PIN JST-SM, BIKE SIDE)                 J2 (9-PIN JST-SM, CONSOLE SIDE)
 ┌──────────────────────────┐                 ┌──────────────────────────┐
 │ 1  Red    MOTOR_POS ─────┼──► U2 A-OA     │ 1  Red  ──► R1a (30k) ──┤
-│   (to L9110S output)     │                 │           ──┬── GPIO 10 │
+│   (to L9110S output)     │                 │           ──┬── GPIO 6 │
 │                          │                 │           R1b (10k)     │
 │                          │                 │             └── GND     │
 │ 2  Black  MOTOR_NEG ─────┼──► U2 A-OB     │ 2  Black ──► R2a (30k) ──┤
-│   (to L9110S output)     │                 │           ──┬── GPIO 11 │
+│   (to L9110S output)     │                 │           ──┬── GPIO 7 │
 │                          │                 │           R2b (10k)     │
 │                          │                 │             └── GND     │
 │ 3  Yellow POT_REF_HI ────┼── pass-thru ───┼── 3                     │
-│     └── R4 (100Ω) ◄─ 3V3│                 │                         │
+│     └── R4 (100Ω) ◄─[SW]─ 3V3│                 │                         │
 │ 4  Blue   POT_WIPER ─────┼── pass-thru ───┼── 4                     │
 │     ├── C2 (100nF) ── GND│                 │                         │
 │     └── GPIO 1 (ADC)     │                 │                         │
 │ 5  Green  POT_REF_LO ────┼── pass-thru ───┼── 5                     │
-│     └── GND              │                 │                         │
+│     └── [SW] ── GND      │                 │                         │
 │ 6  Orange CADENCE ────────┼── pass-thru ───┼── 6                     │
-│     ├── R3 (10k) ◄── 3V3 │                 │                         │
+│     ├── R3 (10k) ◄─[SW]─ 3V3 │                 │                         │
 │     ├── C1 (100nF) ── GND│                 │                         │
 │     └── GPIO 5 (INT)     │                 │                         │
 │ 7  Grey   CADENCE_RTN ───┼── pass-thru ───┼── 7                     │
@@ -692,7 +703,7 @@ J1 (9-PIN JST-SM, BIKE SIDE)                 J2 (9-PIN JST-SM, CONSOLE SIDE)
 J3 (3-PIN JST, ENCODER)                     J4 (3-PIN JST, CONSOLE)
 ┌──────────────────────────┐                 ┌──────────────────────────┐
 │ 1  Red    ENC_VCC ────────┼── pass-thru ───┼── 1                     │
-│     └── R5 (10Ω) ◄── 3V3 │                 │                         │
+│     └── R5 (10Ω) ◄─[SW]─ 3V3 │                 │                         │
 │ 2  Brown  ENC_CHA ────────┼── pass-thru ───┼── 2                     │
 │     └── GPIO 8 (INT)     │                 │                         │
 │ 3  Orange ENC_CHB ────────┼── pass-thru ───┼── 3                     │
@@ -712,8 +723,8 @@ U1 — WAVESHARE ESP32-S3-NANO                U2 — L9110S H-BRIDGE MODULE
 │  GPIO 7  (D4) ──► L9110S_IB │            │  A-OA ──► MOTOR_POS  │
 │  GPIO 8  (D5) ◄── ENC_CHA   │            │  A-OB ──► MOTOR_NEG  │
 │  GPIO 9  (D6) ◄── ENC_CHB   │            │                       │
-│  GPIO 10 (D7) ◄── CONS_M+   │            └───────────────────────┘
-│  GPIO 11 (D8) ◄── CONS_M−   │
+│  GPIO 6 (D3) ◄── CONS_M+   │            └───────────────────────┘
+│  GPIO 7 (D4) ◄── CONS_M−   │
 │                              │            U3 — MP1584EN BUCK CONVERTER
 │  USB-C (programming only)    │            ┌───────────────────────┐
 │                              │            │  VIN ◄── V9_SUPPLY    │
@@ -742,10 +753,10 @@ Every electrical connection on the intercept board, grouped by function.
 |---|---|---|---|
 | **MOTOR_POS** | J1 pin 1 (Red, bike) | U2 A-OA (output) | Bike's motor + wire → L9110S output, NOT to console |
 | **MOTOR_NEG** | J1 pin 2 (Black, bike) | U2 A-OB (output) | Bike's motor − wire → L9110S output, NOT to console |
-| **CONSOLE_MTR_POS** | J2 pin 1 (Red, console) | R1a (30kΩ) → R1b (10kΩ) to GND, tap to U1 GPIO 10 | Console motor + → ESP32 via voltage divider |
-| **CONSOLE_MTR_NEG** | J2 pin 2 (Black, console) | R2a (30kΩ) → R2b (10kΩ) to GND, tap to U1 GPIO 11 | Console motor − → ESP32 via voltage divider |
-| **L9110S_IA** | U1 GPIO 6 | U2 A-IA (input) | ESP32 controls motor forward |
-| **L9110S_IB** | U1 GPIO 7 | U2 A-IB (input) | ESP32 controls motor reverse |
+| **CONSOLE_MTR_POS** | J2 pin 1 (Red, console) | R1a (30kΩ) → R1b (10kΩ) to GND, tap to U1 GPIO 6 | Console motor + → ESP32 via voltage divider |
+| **CONSOLE_MTR_NEG** | J2 pin 2 (Black, console) | R2a (30kΩ) → R2b (10kΩ) to GND, tap to U1 GPIO 7 | Console motor − → ESP32 via voltage divider |
+| **L9110S_IA** | U1 GPIO 10 | U2 A-IA (input) | ESP32 controls motor forward |
+| **L9110S_IB** | U1 GPIO 17 | U2 A-IB (input) | ESP32 controls motor reverse |
 
 #### Sensor Nets (Tap + Pass-Through)
 
@@ -773,12 +784,12 @@ Every electrical connection on the intercept board, grouped by function.
 | Left | GND | — | Power | GND | Common ground |
 | Left | A0 | GPIO 1 | Input (ADC) | POT_WIPER | Resistance position (12-bit ADC) |
 | Left | D2 | GPIO 5 | Input (INT) | CADENCE | Reed switch pulse (FALLING edge) |
-| Left | D3 | GPIO 6 | Output | L9110S_IA | Motor forward drive |
-| Left | D4 | GPIO 7 | Output | L9110S_IB | Motor reverse drive |
+| Left | D3 | GPIO 6 | Input (ADC1) | CONSOLE_MTR_POS | Console motor sense + (analog) |
+| Left | D4 | GPIO 7 | Input (ADC1) | CONSOLE_MTR_NEG | Console motor sense − (analog) |
 | Left | D5 | GPIO 8 | Input (INT) | ENC_CHA | Encoder channel A (CHANGE) |
 | Left | D6 | GPIO 9 | Input (INT) | ENC_CHB | Encoder channel B (CHANGE) |
-| Right | D7 | GPIO 10 | Input | CONSOLE_MTR_POS | Console motor sense + (via divider) |
-| Right | D8 | GPIO 11 | Input | CONSOLE_MTR_NEG | Console motor sense − (via divider) |
+| Right | D7 | GPIO 10 | Output | L9110S_IA | Motor forward drive |
+| Right | D8 | GPIO 17 | Output | L9110S_IB | Motor reverse drive |
 
 ### 7.9 Wire Routing Summary
 
@@ -798,8 +809,8 @@ Every electrical connection on the intercept board, grouped by function.
 
 | J1 Pin | Colour | Bike Side (J1) Goes To | Console Side (J2) Goes To |
 |---|---|---|---|
-| 1 | Red | L9110S A-OA (motor output) | ESP32 GPIO 10 via R1a (30kΩ) / R1b (10kΩ) divider |
-| 2 | Black | L9110S A-OB (motor output) | ESP32 GPIO 11 via R2a (30kΩ) / R2b (10kΩ) divider |
+| 1 | Red | L9110S A-OA (motor output) | ESP32 GPIO 6 via R1a (30kΩ) / R1b (10kΩ) divider |
+| 2 | Black | L9110S A-OB (motor output) | ESP32 GPIO 7 via R2a (30kΩ) / R2b (10kΩ) divider |
 
 #### 7.9.3 Encoder Loom (All 3 wires pass through)
 
@@ -833,9 +844,9 @@ Every electrical connection on the intercept board, grouped by function.
 6. **Solder passive components:** R1a/R1b, R2a/R2b, R3, R4, R5, C1, C2.
 
 7. **Build the voltage dividers** for motor sense:
-   - J2 pin 1 → R1a (30kΩ) → junction → GPIO 10
+   - J2 pin 1 → R1a (30kΩ) → junction → GPIO 6
    - Junction → R1b (10kΩ) → GND
-   - J2 pin 2 → R2a (30kΩ) → junction → GPIO 11
+   - J2 pin 2 → R2a (30kΩ) → junction → GPIO 7
    - Junction → R2b (10kΩ) → GND
 
 8. **Wire the JST connectors.** Use colour-matched hookup wire. The 7
@@ -869,8 +880,8 @@ Solder short pin headers at these locations for easy multimeter access:
 | TP2 | V9_SUPPLY | 8.5–9.5V (from PSU) |
 | TP3 | POT_WIPER | ~1160–1700 mV (varies with position) |
 | TP4 | CADENCE | 3.3V idle, 0V on pulse |
-| TP5 | CONSOLE_MTR_POS (at GPIO 10) | 0V idle, ~0.825V when console drives forward |
-| TP6 | CONSOLE_MTR_NEG (at GPIO 11) | 0V idle, ~0.825V when console drives reverse |
+| TP5 | CONSOLE_MTR_POS (at GPIO 6) | 0V idle, ~0.825V when console drives forward (read as analog) |
+| TP6 | CONSOLE_MTR_NEG (at GPIO 7) | 0V idle, ~0.825V when console drives reverse (read as analog) |
 
 ### 8.3 Physical Dimensions
 

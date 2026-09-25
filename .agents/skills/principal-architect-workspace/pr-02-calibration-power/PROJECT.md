@@ -15,7 +15,9 @@ Convert raw signals from Phase 0 into meaningful metrics:
 2. **`ResistanceSensor`** — ADC → resistance level mapping with NVS calibration.
 3. **`PowerEngine`** — Three-tier: physics polynomial, community matrix with
    bilinear interpolation, reference power meter coefficients.
-4. **`CalibrationWizard`** — Portal page: guided min/max pot calibration.
+4. **`CalibrationWizard`** — Portal page: guided min/max pot calibration (owned by this PR, not PR-09).
+5. **Live WS feed** — Add a live WebSocket feed to the dashboard for testing.
+6. **Power data acquisition** — Include a WO to capture known power data across cadence/resistance.
 
 **Hardware:** Same fly wires as PR-01. No changes.
 
@@ -23,7 +25,7 @@ Convert raw signals from Phase 0 into meaningful metrics:
 Resistance levels match 1–32 display. Power within ±15%.
 
 After this PR merges, the firmware shows calibrated cadence, resistance, and
-estimated power. The numbers should match the Echelon app.
+estimated power via the live WS feed. The numbers should match the Echelon app.
 
 ## Prior Art
 

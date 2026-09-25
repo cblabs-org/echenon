@@ -7,38 +7,42 @@
 > graph. Each PR is delegated to a Tier 2 Principal Architect who decomposes it
 > into Work Orders.
 >
-> **Specification:** [`SPEC.md`](../../SPEC.md)
-> **Implementation Strategy:** [`docs/implementation-strategy.md`](../../docs/implementation-strategy.md)
-> **Use Case Analysis:** [`docs/use_case_analysis.md`](../../docs/use_case_analysis.md)
-> **Hardware Specification:** [`docs/hardware_specification.md`](../../docs/hardware_specification.md)
-> **Upstream RFC:** [BLEManager — issue #225](https://github.com/matthewmcneill/esp32-app-foundation/issues/225)
+> **Specification:** [`SPEC.md`](../../../SPEC.md)
+> **Implementation Strategy:** [`docs/implementation-strategy.md`](../../../docs/implementation-strategy.md)
+> **Use Case Analysis:** [`docs/use_case_analysis.md`](../../../docs/use_case_analysis.md)
+> **Hardware Specification:** [`docs/hardware_specification.md`](../../../docs/hardware_specification.md)
+> **Upstream RFC:** BLEManager (framework PR #235, tag `v0.0.12-dev.82` or later)
 
 ---
 
 ## Programme Status
 
-| # | PR | Phase | Status | PA | Depends On |
-|---|---|---|---|---|---|
-| 1 | [pr-01-signal-logger](pr-01-signal-logger/PROJECT.md) | Phase 0: Observe | ⬜ Not started | — | `main` |
-| 2 | [pr-02-calibration-power](pr-02-calibration-power/PROJECT.md) | Phase 1: Calibrate | ⬜ Not started | — | PR-01 |
-| 3 | [pr-03-hr-relay](pr-03-hr-relay/PROJECT.md) | Phase 2: HR Relay | ⬜ Not started | — | PR-01 |
-| 4 | [pr-04-intercept-board](pr-04-intercept-board/PROJECT.md) | Phase 3: MITM | ⬜ Not started | — | PR-02 |
-| 5 | [pr-05-ftms-broadcast](pr-05-ftms-broadcast/PROJECT.md) | Phase 4: FTMS | ⬜ Not started | — | PR-03, PR-04 |
-| 6 | [pr-06-erg-strava](pr-06-erg-strava/PROJECT.md) | Phase 5: ERG+Cloud | ⬜ Not started | — | PR-05 |
-| 7 | [pr-07-integration-polish](pr-07-integration-polish/PROJECT.md) | Phase 6: Polish | ⬜ Not started | — | PR-06 |
+| PR | Phase | Title | Dependencies | Status |
+|---|---|---|---|---|
+| PR-01 | 0 | Signal Logger (amended) | `main` | ⬜ Not started |
+| DR-1 | — | Design Freeze Review | PR-01 evidence | ⬜ Not started |
+| PR-02 | 1 | Calibration + Power (+ live WS feed) | PR-01 | ⬜ Not started |
+| PR-03 | 2 | BLE Foundation + HR Relay | PR-01, framework ≥ v0.0.12-dev.82 | ⬜ Not started |
+| PR-04a | — | Passive Tap Board | PR-02, DR-1 | ⬜ Not started |
+| PR-05 | 3 | FTMS Telemetry | PR-02, PR-03 | ⬜ Not started |
+| PR-06 | 4 | Session + TCX + Strava | PR-02 | ⬜ Not started |
+| PR-07 | 5 | MITM Board + Motor Control + Safety | PR-02, DR-1 | ⬜ Not started |
+| PR-08 | 6 | ERG + Control Point | PR-05, PR-07 | ⬜ Not started |
+| PR-09 | 7 | Integration, Portal, UC1–UC6 | PR-06, PR-08 | ⬜ Not started |
 
 ### Hardware Gates
 
 | Gate | Required Before | Verification |
 |---|---|---|
-| Oscilloscope: motor voltage = 3.3V DC (not 9V PWM) | PR-01 motor wire taps | Visual confirmation on scope |
-| Intercept board assembled and installed | PR-04 | Console powers on normally |
-| Standalone sensor power (R3/R4/R5) | PR-07 UC6 test | Sensors work without console |
+| Oscilloscope: motor voltage | PR-01 motor wire taps | Visual confirmation on scope |
+| **DR-1: Design Freeze** | **PR-04a and PR-07 (No Soldering)** | **Chief Architect approves Phase 0 data** |
+| R3/R4/R5 Standalone Power | DR-1 (moved from PR-07) | Resolved as part of fail-safe strategy |
+| Echelon-app HR spike | PR-03 entry | Tablet displays mock HR via nRF Connect |
 
 ### Parallelism
 
-PR-02 and PR-03 can run **in parallel** after PR-01 merges. All other PRs are
-serial.
+PR-02 and PR-03 can run **in parallel** after PR-01 merges.
+PR-04a, PR-05, and PR-06 can run **in parallel** after their respective dependencies.
 
 ---
 
@@ -70,3 +74,12 @@ serial.
 - PRs restructured: old pr-01 through pr-06 renamed and rescoped to match phases
 - Old PROJECT.md files archived (old scope recorded in prior art references)
 - Dependency graph simplified: PR-02 ∥ PR-03, everything else serial
+
+### 2026-09-25 — Programme Restructured per Chief Architect Design Audit
+- Restructured from 7 PRs to 9 PRs + DR-1 hard gate.
+- Framework BLE module (PR #235, tag `v0.0.12-dev.82`) merged and confirmed as PR-03 prereq.
+- Key decisions documented and enacted:
+  - D2: Adopted the passive-first 9-PR restructure.
+  - D3: Motor driver on its own rail (specifics deferred to DR-1).
+  - D4: Zwift SIM mode (0x11) slated for v1.1, space left in FTMS design.
+  - D5: BYOA (Bring-your-own-app) model adopted for Strava API credentials.

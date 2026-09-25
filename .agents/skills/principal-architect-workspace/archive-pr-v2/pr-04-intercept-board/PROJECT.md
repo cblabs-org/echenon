@@ -1,3 +1,5 @@
+> ⚠️ **SUPERSEDED.** This PR was part of the v2 (7-PR) programme plan. The programme was restructured to 9 PRs + DR-1 on 2026-09-25 per the Chief Architect Design Audit. See `../PROGRAM.md`.
+
 # PR-04: Intercept Board + Motor Control (Phase 3 — MITM)
 
 > **Programme:** Echenon Firmware

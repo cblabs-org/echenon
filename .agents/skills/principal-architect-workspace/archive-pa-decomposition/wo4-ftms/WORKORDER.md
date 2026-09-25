@@ -1,3 +1,5 @@
+> ⚠️ **SUPERSEDED.** This work order was part of the v1/initial programme plan. The programme was restructured on 2026-09-25 per the Chief Architect Design Audit. See the current programme at `../PROGRAM.md` and `../PROGRAM-PLAN.md`.
+
 ---
 name: echenon-firmware-wo4
 description: Handoff instructions for Work Order 4 — BLE FTMS Server
