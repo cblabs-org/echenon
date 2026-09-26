@@ -9,7 +9,7 @@
 ## Active Projects
 | Project | Status | Modules | Context |
 |---|---|---|---|
-| PR-01 Signal Logger (Phase 0) | WO0 done — WO1/6 | Build System / Hardware, Sensor Acquisition, Web Portal | [PROJECT.md](../pr-01-signal-logger/PROJECT.md) |
+| PR-01 Signal Logger (Phase 0) | WO1 done — WO2/6 | Build System / Hardware, Sensor Acquisition, Web Portal | [PROJECT.md](../pr-01-signal-logger/PROJECT.md) |
 
 ## Recently Completed (last 5)
 | Project | Completed | Modules | Key Outcome |
