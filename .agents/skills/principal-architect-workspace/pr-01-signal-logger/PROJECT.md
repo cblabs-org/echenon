@@ -151,10 +151,36 @@ superseded `[env:echenon]` environment, `hardware/echenon/board.h` and
 - [Old PR-01 scope](../archive-pr-v1/pr-01-scaffold-sensors/PROJECT.md)
 
 ## Work Order Ledger
-<!-- PA fills this in during planning. WO0 is the capture spike. WO1 is the scaffold + framework bump to v0.0.12-dev.82 (BLE off). -->
+
+| | WO | Branch | Complexity | Deps | Register rows | Status |
+|---|---|---|---|---|---|---|
+| **[ ] [wo0-adc-spike](wo0-adc-spike/WORKORDER.md):** | ADC-continuous spike: throughput with WiFi, ADC+ISR pad sharing, encoder Ch B analog capture | `signal-logger/wo0-adc-spike` | `standard` | — | #8 (partial) | ⬜ Not started |
+| **[ ] [wo1-scaffold](wo1-scaffold/WORKORDER.md):** | Project scaffold + framework bump to `v0.0.12-dev.82` (BLE off) | `signal-logger/wo1-scaffold` | `standard` | WO0 (base) | — | ⬜ Not started |
+| **[ ] [wo2-capture-engine](wo2-capture-engine/WORKORDER.md):** | SignalLogger: ride log (decimated + events) and burst capture (triggered kHz) | `signal-logger/wo2-capture-engine` | `architect` | WO0 report, WO1 | — | ⬜ Not started |
+| **[ ] [wo3-dashboard](wo3-dashboard/WORKORDER.md):** | Live dashboard, CSV export, mDNS / `echenon.local` | `signal-logger/wo3-dashboard` | `standard` | WO2 | — | ⬜ Not started |
+| **[ ] [wo4-scope-gate](wo4-scope-gate/WORKORDER.md):** | Bench setup + scope characterisation gate | `signal-logger/wo4-scope-gate` | `interactive` | WO3, bench-ready | #1, #2, #11 | ⬜ Not started |
+| **[ ] [wo5-register-campaign](wo5-register-campaign/WORKORDER.md):** | Register campaign: ride, burst, remaining rows #3–#10, #12–#13 | `signal-logger/wo5-register-campaign` | `interactive` | WO4 | #3–#10, #12–#13 | ⬜ Not started |
+| **[ ] [wo6-native-tests](wo6-native-tests/WORKORDER.md):** | Native unit tests (decimation, CSV writer) | `signal-logger/wo6-native-tests` | `standard` | WO2 (code), WO5 (base) | — | ⬜ Not started |
+
+**File overlaps:** All WOs are linearly stacked; no parallel conflicts. `EchenonModule.*`
+touched by WO1→WO2→WO3 (additive). `SignalLogger.*` by WO2→WO3 (additive).
+Evidence files under `docs/measurements/phase0/` by WO0→WO4→WO5 (new files only).
 
 ## Session Log
-<!-- PA enriches this progressively -->
+
+### 2026-09-26 — Decomposition approved
+
+- **PA assigned:** Tier 2, PR-01 Signal Logger (Phase 0: Observe).
+- **Pre-flight:** `main` at `5c04505`, clean working tree, no stash.
+  Operating model rule identical to skill asset.
+- **Decomposition:** 7 WOs (WO0–WO6). 4 autonomous (`standard`/`architect`),
+  2 interactive (bench + bike), 1 autonomous (native tests). Linear stack,
+  no parallel conflicts.
+- **Chief Architect approval:** Approved the decomposition on 2026-09-26
+  via artifact feedback (proceed). Recorded here as the provenance anchor
+  per `.agents/rules/00-operating-model.md`.
+- **Next:** Create `signal-logger/wo0-adc-spike` branch, write WO0
+  WORKORDER, spawn worker.
 
 ## Status
-**Plan Status:** NOT STARTED
+**Plan Status:** APPROVED — WO0 next

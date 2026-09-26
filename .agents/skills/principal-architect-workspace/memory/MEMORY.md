@@ -1,15 +1,15 @@
 # Principal Architect Memory
-<!-- Last updated: 2026-09-25T22:28:45+01:00 -->
+<!-- Last updated: 2026-09-26T13:37:00+01:00 -->
 
 ## Active Programs
 | Program | Plan | Status |
 |---|---|---|
-| Echenon Firmware | [PROGRAM-PLAN.md](../PROGRAM-PLAN.md) · [PROGRAM.md](../PROGRAM.md) | 9 PRs + DR-1. None started. **Next: PR-01** (GO after the 2026-09-25 G0 remediation is reviewed and committed) |
+| Echenon Firmware | [PROGRAM-PLAN.md](../PROGRAM-PLAN.md) · [PROGRAM.md](../PROGRAM.md) | 9 PRs + DR-1. **PR-01 approved, WO0 next.** |
 
 ## Active Projects
 | Project | Status | Modules | Context |
 |---|---|---|---|
-| PR-01 Signal Logger (Phase 0) | NOT STARTED — next | Build System / Hardware, Sensor Acquisition, Web Portal | [PROJECT.md](../pr-01-signal-logger/PROJECT.md) |
+| PR-01 Signal Logger (Phase 0) | APPROVED — WO0/6 | Build System / Hardware, Sensor Acquisition, Web Portal | [PROJECT.md](../pr-01-signal-logger/PROJECT.md) |
 
 ## Recently Completed (last 5)
 | Project | Completed | Modules | Key Outcome |
