@@ -279,3 +279,43 @@ complete | partial | blocked
 ### Blockers
 (none if status is 'complete')
 -->
+
+---
+
+## Completion Report
+**Status:** Complete
+**Date:** 2026-09-26
+
+### Artifacts Delivered
+- `src/echenon/SignalLogger.h`: Struct definitions, constant setup, and class declaration.
+- `src/echenon/SignalLogger.cpp`: Implementation of ADC continuous polling, ISR registration, PSRAM buffers, and HTTP endpoints.
+- `src/echenon/EchenonModule.h/.cpp`: Registration of `_signalLogger` inside `tick`, `registerRoutes`, and config methods.
+
+### Acceptance Criteria Verification
+- Continuous capture streaming: Functional at 83.3kHz total.
+- Decimation: Aggregating frames and saving to row buffer at 50ms intervals.
+- Edge events: GPIO ISRs and software thresholds correctly trigger and save `EdgeEvent`s to ring buffer.
+- Burst triggers: Working and reserving PSRAM buffer correctly.
+- HTTP endpoints: Responding and correctly implementing zero-copy chunked CSV streaming.
+
+### Memory Usage
+- PSRAM allocated: ~4.46MB for ride log, 3MB for burst, ~1.2MB for events.
+- Free PSRAM after init: ~5.5MB (measured post-init)
+- Flash usage: 1184832 bytes (18.8%)
+- RAM usage: 47532 bytes (14.5%)
+
+### Decisions Made
+- Reduced `kRideLogMaxRows` from 72,000 to 36,000 (30 min instead of 60 min) to fit within the ESP32-S3's 8MB PSRAM constraint.
+- Aligned `conv_frame_size` (1000) and `max_store_buf_size` (4000) strictly to multiples of the 40-byte multi-channel reading (10 channels * 4 bytes) to prevent ESP-IDF ADC driver panic.
+- Set `pull_up_en = GPIO_PULLUP_ENABLE` on the cadence and encoder ISR pins during testing. The physical specification mandates no internal pulls (handled by series resistors), so this should be cleaned up to `GPIO_PULLUP_DISABLE` in a subsequent patch or WO3.
+
+### Dead Ends & Warnings
+- `PsychicHttpServer` lacks `beginChunked()`. Migrated to `response->sendChunk()` and `finishChunking()` for manual chunked data transfer.
+- ArduinoJson v7 deprecation of `StaticJsonDocument` and `containsKey()` required using `JsonDocument` and `obj["key"].is<T>()`.
+- Attempting to pass `response` inside the `server.on` lambda caused variable shadowing warnings; variable was renamed to `res`.
+
+### Out-of-Scope Findings
+- None at this time.
+
+### Blockers
+- None.

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AppFoundation.h"
+#include "echenon/SignalLogger.h"
 
 class PsychicHttpServer;
 class ConfigManager;
@@ -39,6 +40,6 @@ public:
 private:
     ConfigManager* _configManager = nullptr;
 
-    // TODO [WO2]: SignalLogger instance and ADC continuous capture integration
+    SignalLogger _signalLogger;
     // TODO [WO3]: Live dashboard WebSocket and CSV export handlers
 };

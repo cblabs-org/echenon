@@ -8,7 +8,8 @@
 
 void EchenonModule::tick(uint32_t currentMillis) {
     (void)currentMillis;
-    // TODO [WO2]: SignalLogger periodic buffer processing / ride log decimation
+    _signalLogger.begin();
+    _signalLogger.tick(currentMillis);
 }
 
 // =============================================================================
@@ -25,16 +26,16 @@ int EchenonModule::getSchemaVersion() const {
 
 void EchenonModule::applyConfig(const JsonObject& config) {
     (void)config;
-    // TODO [WO2]: Apply SignalLogger configuration
+    _signalLogger.applyConfig(config);
 }
 
 void EchenonModule::serializeConfig(JsonObject& config) const {
     (void)config;
-    // TODO [WO2]: Serialize SignalLogger configuration
+    _signalLogger.serializeConfig(config);
 }
 
 void EchenonModule::resetConfig() {
-    // TODO [WO2]: Reset SignalLogger configuration to defaults
+    _signalLogger.resetConfig();
 }
 
 // =============================================================================
@@ -43,7 +44,7 @@ void EchenonModule::resetConfig() {
 
 void EchenonModule::registerRoutes(PsychicHttpServer& server) {
     (void)server;
-    // TODO [WO2]: Register capture trigger and export endpoints
+    _signalLogger.registerRoutes(server);
     // TODO [WO3]: Register live status and WebSocket endpoints
 }
 
