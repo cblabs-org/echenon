@@ -157,7 +157,7 @@ superseded `[env:echenon]` environment, `hardware/echenon/board.h` and
 | **[x] [wo0-adc-spike](wo0-adc-spike/WORKORDER.md):** | ADC-continuous spike: throughput with WiFi, ADC+ISR pad sharing, encoder Ch B analog capture | `signal-logger/wo0-adc-spike` | `standard` | — | #8 (partial) | ✅ Complete |
 | **[x] [wo1-scaffold](wo1-scaffold/WORKORDER.md):** | Project scaffold + framework bump to `v0.0.12-dev.82` (BLE off) | `signal-logger/wo1-scaffold` | `standard` | WO0 (base) | — | ✅ Complete |
 | **[x] [wo2-capture-engine](wo2-capture-engine/WORKORDER.md):** | SignalLogger: ride log (decimated + events) and burst capture (triggered kHz) | `signal-logger/wo2-capture-engine` | `architect` | WO0 report, WO1 | — | ✅ Complete |
-| **[ ] [wo3-dashboard](wo3-dashboard/WORKORDER.md):** | Live dashboard, CSV export, mDNS / `echenon.local` | `signal-logger/wo3-dashboard` | `standard` | WO2 | — | ⬜ Not started |
+| **[x] [wo3-dashboard](wo3-dashboard/WORKORDER.md):** | Live dashboard, CSV export, mDNS / `echenon.local` | `signal-logger/wo3-dashboard` | `standard` | WO2 | — | ✅ Complete |
 | **[ ] [wo4-scope-gate](wo4-scope-gate/WORKORDER.md):** | Bench setup + scope characterisation gate | `signal-logger/wo4-scope-gate` | `interactive` | WO3, bench-ready | #1, #2, #11 | ⬜ Not started |
 | **[ ] [wo5-register-campaign](wo5-register-campaign/WORKORDER.md):** | Register campaign: ride, burst, remaining rows #3–#10, #12–#13 | `signal-logger/wo5-register-campaign` | `interactive` | WO4 | #3–#10, #12–#13 | ⬜ Not started |
 | **[ ] [wo6-native-tests](wo6-native-tests/WORKORDER.md):** | Native unit tests (decimation, CSV writer) | `signal-logger/wo6-native-tests` | `standard` | WO2 (code), WO5 (base) | — | ⬜ Not started |
@@ -241,5 +241,19 @@ Evidence files under `docs/measurements/phase0/` by WO0→WO4→WO5 (new files o
   observation mode. Tracked for cleanup.
 - **Next:** WO3 dashboard.
 
+### 2026-09-26 — WO3 complete (dashboard + mDNS)
+
+- **Branch:** `signal-logger/wo3-dashboard` at `406c5eb`.
+- Dashboard JS (14 KB): live channel display, burst trigger, CSV downloads,
+  status bar. Registered as portal tab at order 50.
+- Live telemetry endpoint `/api/echenon/live` for per-channel stats.
+- mDNS responder: `echenon.local` via `MDNS.begin("echenon")`. Framework
+  doesn't provide mDNS natively (tracked upstream as issue #232).
+- Build: 0 errors. Flash 19.5%, RAM 15.3%.
+- **All autonomous firmware WOs complete (WO0–WO3).** Firmware is
+  feature-complete for Phase 0: scaffold, ADC capture engine, dashboard,
+  CSV export, mDNS.
+- **Next:** WO4 + WO5 are interactive (bench + bike). WO6 is autonomous.
+
 ## Status
-**Plan Status:** WO2 complete — WO3 next
+**Plan Status:** WO3 complete — WO4 (interactive) awaiting user at bench
