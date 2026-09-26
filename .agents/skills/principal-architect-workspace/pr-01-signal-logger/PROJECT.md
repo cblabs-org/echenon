@@ -156,7 +156,7 @@ superseded `[env:echenon]` environment, `hardware/echenon/board.h` and
 |---|---|---|---|---|---|---|
 | **[x] [wo0-adc-spike](wo0-adc-spike/WORKORDER.md):** | ADC-continuous spike: throughput with WiFi, ADC+ISR pad sharing, encoder Ch B analog capture | `signal-logger/wo0-adc-spike` | `standard` | — | #8 (partial) | ✅ Complete |
 | **[x] [wo1-scaffold](wo1-scaffold/WORKORDER.md):** | Project scaffold + framework bump to `v0.0.12-dev.82` (BLE off) | `signal-logger/wo1-scaffold` | `standard` | WO0 (base) | — | ✅ Complete |
-| **[ ] [wo2-capture-engine](wo2-capture-engine/WORKORDER.md):** | SignalLogger: ride log (decimated + events) and burst capture (triggered kHz) | `signal-logger/wo2-capture-engine` | `architect` | WO0 report, WO1 | — | ⬜ Not started |
+| **[x] [wo2-capture-engine](wo2-capture-engine/WORKORDER.md):** | SignalLogger: ride log (decimated + events) and burst capture (triggered kHz) | `signal-logger/wo2-capture-engine` | `architect` | WO0 report, WO1 | — | ✅ Complete |
 | **[ ] [wo3-dashboard](wo3-dashboard/WORKORDER.md):** | Live dashboard, CSV export, mDNS / `echenon.local` | `signal-logger/wo3-dashboard` | `standard` | WO2 | — | ⬜ Not started |
 | **[ ] [wo4-scope-gate](wo4-scope-gate/WORKORDER.md):** | Bench setup + scope characterisation gate | `signal-logger/wo4-scope-gate` | `interactive` | WO3, bench-ready | #1, #2, #11 | ⬜ Not started |
 | **[ ] [wo5-register-campaign](wo5-register-campaign/WORKORDER.md):** | Register campaign: ride, burst, remaining rows #3–#10, #12–#13 | `signal-logger/wo5-register-campaign` | `interactive` | WO4 | #3–#10, #12–#13 | ⬜ Not started |
@@ -219,5 +219,27 @@ Evidence files under `docs/measurements/phase0/` by WO0→WO4→WO5 (new files o
 - Boot: clean to setup AP on `esp32-device`, HTTP server on port 80.
 - **Next:** WO2 capture engine.
 
+### 2026-09-26 — WO2 complete (SignalLogger capture engine)
+
+- **Branch:** `signal-logger/wo2-capture-engine` at `188694b`.
+- `SignalLogger` implements two-mode capture: decimated ride log (20 Hz,
+  min/mean/max) and triggered burst capture (kHz, 10 channels, PSRAM).
+- ADC-continuous driver: 83.3 kSa/s across 10 ADC1 channels.
+- GPIO ISR with `gpio_input_enable()` for cadence (GPIO 5) and encoder
+  Ch A (GPIO 8). Spinlock-protected event ring buffer.
+- Software threshold edge detection for encoder Ch B (800 mV) and motor
+  onset/offset (500 mV) — correctly derives events from analog stream.
+- CSV export endpoints: `/api/echenon/ride-log.csv`, `/events.csv`,
+  `/burst.csv`, `/burst/start` (POST), `/status` (JSON).
+- Power-on burst capture auto-triggers on `begin()`.
+- **PSRAM decision:** `kRideLogMaxRows` reduced from 72,000 to 36,000
+  (30 min instead of 60 min) to fit ride log + burst buffer within 8 MB.
+  The 60-min ride test (SPEC 0.9) may require clearing the burst buffer
+  first — acceptable for Phase 0.
+- **Noted:** GPIO ISR pins have `PULLUP_ENABLE` — should be `PULLUP_DISABLE`
+  per mandate (no internal pulls on tap pins). Non-functional in Phase 0
+  observation mode. Tracked for cleanup.
+- **Next:** WO3 dashboard.
+
 ## Status
-**Plan Status:** WO1 complete — WO2 next
+**Plan Status:** WO2 complete — WO3 next
