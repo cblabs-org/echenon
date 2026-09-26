@@ -1,0 +1,21 @@
+# ESP32 App Foundation — target sdkconfig.defaults
+# Target: Waveshare ESP32-S3-Nano (um_nanos3)
+# S3 with 16MB Flash, 8MB Octal PSRAM
+
+# S3 main task stack — larger due to PSRAM availability
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384
+
+# Octal PSRAM settings
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_MEMTEST=y
+
+# 16MB Flash
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+
+# S3 has more RAM — larger TLS output buffer than base (4096)
+CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN=8192
+
+# USB Console for ESP32-S3 (USB-JTAG)
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y

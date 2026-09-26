@@ -234,28 +234,34 @@ Principal Architect will triage and file them under the correct author identity.
 
 ## Completion Report (written by the worker at task completion)
 
-<!-- Append the completion report here when done. Use this template: -->
-
-<!--
 ### Status
-complete | partial | blocked
+complete
 
 ### Changes Made
-- `path/to/file` — what changed and why
+- `framework` — Bumped submodule to `v0.0.12-dev.82` (commit `61f7f754`).
+- `platformio.ini` — Replaced spike configuration with canonical SPEC §12.2 configuration; commented out BLE mix-in references (`${ble.build_flags}`, `${ble.lib_deps}`, `sdkconfig.ble.defaults`) and app feature flags (`WITH_OTA`, `WITH_HR_RELAY`, `WITH_FTMS`, `WITH_SESSION`, `WITH_STRAVA`) for Phase 0; retained `[ble]` declaration and `[env:native]`.
+- `hardware/ex3-waveshare-nano/board.h` — Created target hardware header matching SPEC §12.3: Phase 0/1 pin definitions (GPIO 1–10), `HAS_PSRAM = true`, `HAS_MOTOR_CONTROL 0`, display and button flags prohibited.
+- `hardware/ex3-waveshare-nano/partitions.csv` — Created 16 MB partition table with dual 6 MB OTA slots, 1 MB `config` partition, 2.75 MB LittleFS `storage` partition matching framework `Application::begin()` mount contract, and 64 KB `coredump`.
+- `hardware/ex3-waveshare-nano/sdkconfig.defaults` — Created target SDK defaults: 16 KB main stack, Octal PSRAM at 80 MHz, 16 MB flash, 8 KB TLS output buffer, and USB-JTAG serial console.
+- `sdkconfig.defaults` — Updated project-root defaults to base framework configuration.
+- `src/main.cpp` — Replaced spike code with clean App Foundation consumer entry point wiring `EchenonModule` into `Application`.
+- `src/echenon/EchenonModule.h` & `src/echenon/EchenonModule.cpp` — Created service module skeleton implementing `ITickable`, `IConfigurable` (namespace `"echenon"`, schema version 1), and `IWebContributor` (`getApiPrefix() = "/api/echenon"`, max POST body 4096).
+- `CMakeLists.txt` — Updated project name from `adc-spike` to `echenon`.
+- `.gitignore` — Added `sdkconfig.ex3-waveshare-nano` to ignore generated build configs.
 
 ### Build Output
-- `pio run -e ex3-waveshare-nano`: PASS/FAIL (errors/warnings)
-- Boot test: PASS/FAIL (description)
+- `pio run -e ex3-waveshare-nano`: PASS (0 errors, 0 warnings in application code; RAM: 47,148 bytes [14.4%], Flash: 1,164,363 bytes [18.5%]).
+- Boot test: PASS (firmware flashed via PlatformIO MCP `upload_firmware` to `/dev/cu.usbmodem101`; device booted successfully, mounted LittleFS storage, initialized SoftAP `esp32-device` at `192.168.4.1`, started PsychicHttp web server on port 80, and entered the main loop).
 
 ### Decisions Made
-(list any non-obvious decisions)
+- Partition table: Used partition name `storage` for LittleFS (2.75 MB) and `config` (1 MB) to match `framework/modules/Application/Application.cpp:143` (`LittleFS.begin(true, "/littlefs", 10, "storage")`).
+- `platformio.ini` native target: Set `-DBOARD_HEADER=\"hardware/native/board.h\"` per SPEC §12.2 to resolve native board headers cleanly.
 
 ### Dead Ends & Warnings
-(things that didn't work)
+- None.
 
 ### Out-of-Scope Findings
-(defects or concerns outside the boundary box)
+- None.
 
 ### Blockers
-(none if status is 'complete')
--->
+None.
