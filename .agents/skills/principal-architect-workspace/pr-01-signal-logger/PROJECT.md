@@ -154,7 +154,7 @@ superseded `[env:echenon]` environment, `hardware/echenon/board.h` and
 
 | | WO | Branch | Complexity | Deps | Register rows | Status |
 |---|---|---|---|---|---|---|
-| **[ ] [wo0-adc-spike](wo0-adc-spike/WORKORDER.md):** | ADC-continuous spike: throughput with WiFi, ADC+ISR pad sharing, encoder Ch B analog capture | `signal-logger/wo0-adc-spike` | `standard` | — | #8 (partial) | ⬜ Not started |
+| **[x] [wo0-adc-spike](wo0-adc-spike/WORKORDER.md):** | ADC-continuous spike: throughput with WiFi, ADC+ISR pad sharing, encoder Ch B analog capture | `signal-logger/wo0-adc-spike` | `standard` | — | #8 (partial) | ✅ Complete |
 | **[ ] [wo1-scaffold](wo1-scaffold/WORKORDER.md):** | Project scaffold + framework bump to `v0.0.12-dev.82` (BLE off) | `signal-logger/wo1-scaffold` | `standard` | WO0 (base) | — | ⬜ Not started |
 | **[ ] [wo2-capture-engine](wo2-capture-engine/WORKORDER.md):** | SignalLogger: ride log (decimated + events) and burst capture (triggered kHz) | `signal-logger/wo2-capture-engine` | `architect` | WO0 report, WO1 | — | ⬜ Not started |
 | **[ ] [wo3-dashboard](wo3-dashboard/WORKORDER.md):** | Live dashboard, CSV export, mDNS / `echenon.local` | `signal-logger/wo3-dashboard` | `standard` | WO2 | — | ⬜ Not started |
@@ -179,8 +179,30 @@ Evidence files under `docs/measurements/phase0/` by WO0→WO4→WO5 (new files o
 - **Chief Architect approval:** Approved the decomposition on 2026-09-26
   via artifact feedback (proceed). Recorded here as the provenance anchor
   per `.agents/rules/00-operating-model.md`.
-- **Next:** Create `signal-logger/wo0-adc-spike` branch, write WO0
+- **Next:** Create `signal-logger/wo1-scaffold` branch, write WO1
   WORKORDER, spawn worker.
 
+### 2026-09-26 — WO0 complete (ADC-continuous spike)
+
+- **Branch:** `signal-logger/wo0-adc-spike` at `a492755`.
+- **Experiment 1 — ADC-continuous throughput with WiFi on:**
+  8,333 Sa/s per channel (83.3 kSa/s total) sustained for 60+ seconds.
+  Burst capture at 1–5 kHz on all 10 channels is feasible (exceeds 5 kHz
+  target by 1.66×).
+- **Experiment 2 — ADC + GPIO ISR coexistence:**
+  **YES.** `adc_continuous` disables the digital input buffer via
+  `gpio_config_as_analog()`. Calling `gpio_input_enable()` re-enables it,
+  allowing both edge ISR and continuous ADC conversions on the exact same
+  pad. 100/100 edges detected on GPIO 5, 8 and 9. **WO2 design decision:
+  cadence and encoder Ch A use GPIO ISR for edge events alongside ADC
+  sampling.**
+- **Experiment 3 — Encoder Ch B analog capture:**
+  Peak 1,449–1,452 mV, typical ~1,444 mV. Well below V_IH (2,475 mV).
+  Digital ISR triggered 0/100 edges at sub-threshold. **WO2 design decision:
+  Ch B edges must be derived from the analog stream via software threshold,
+  not digital ISR or PCNT.** Evidence: `A08-20260926-chb-adc-spike.csv`.
+- **GPIO 3 strapping check:** PASS — clean boot with Green tap connected.
+- **Next:** WO1 scaffold + framework bump.
+
 ## Status
-**Plan Status:** APPROVED — WO0 next
+**Plan Status:** WO0 complete — WO1 next
