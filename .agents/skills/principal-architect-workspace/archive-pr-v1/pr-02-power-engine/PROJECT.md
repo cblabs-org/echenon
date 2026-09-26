@@ -1,4 +1,4 @@
-> ⚠️ **SUPERSEDED.** This work order was part of the v1/initial programme plan. The programme was restructured on 2026-09-25 per the Chief Architect Design Audit. See the current programme at `../PROGRAM.md` and `../PROGRAM-PLAN.md`.
+> ⚠️ **SUPERSEDED — prior art only.** This was part of the v1 / initial programme plan, restructured on 2026-09-25 to 9 PRs + DR-1 (design audit and readiness review). **Current owner:** [PR-02](../../pr-02-calibration-power/PROJECT.md). **Superseded by:** SPEC §6.1–§6.4 in the current [SPEC](../../../../../SPEC.md). See [PROGRAM.md](../../PROGRAM.md) and [PROGRAM-PLAN.md](../../PROGRAM-PLAN.md).
 
 # PR-02: Power Calculation Engine
 
@@ -22,7 +22,7 @@ inputs using configurable calibration.
 
 ## Prior Art
 
-- [wo3-power/WORKORDER.md](../archive-pa-decomposition/wo3-power/WORKORDER.md)
+- [wo3-power/WORKORDER.md](../../archive-pa-decomposition/wo3-power/WORKORDER.md)
 
 ## Work Order Ledger
 <!-- PA fills this in during planning -->

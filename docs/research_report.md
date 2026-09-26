@@ -272,7 +272,7 @@ The ESP32-S3 with NimBLE can run as **both Central and Peripheral simultaneously
 
 When you're ready to build, the path is:
 
-1. **Set up PlatformIO project** in `/Users/mcneillm/Documents/Projects/Echelon` with the config above
+1. **Set up PlatformIO project** in the project root with the config above
 2. **Implement core firmware**: ADC reading (potentiometer), interrupt counting (reed switch), NimBLE FTMS server
 3. **Flash & bench-test** on your desk — verify FTMS advertisement shows up in a BLE scanner app (nRF Connect)
 4. **Open the bike console** — measure factory voltages with a multimeter

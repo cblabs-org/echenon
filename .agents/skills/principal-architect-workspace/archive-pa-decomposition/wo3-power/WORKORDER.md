@@ -1,10 +1,10 @@
-> ⚠️ **SUPERSEDED.** This work order was part of the v1/initial programme plan. The programme was restructured on 2026-09-25 per the Chief Architect Design Audit. See the current programme at `../PROGRAM.md` and `../PROGRAM-PLAN.md`.
-
 ---
 name: echenon-firmware-wo3
 description: Handoff instructions for Work Order 3 — Power Calculation Engine
 complexity: standard
 ---
+
+> ⚠️ **SUPERSEDED — prior art only.** This was part of the v1 / initial programme plan, restructured on 2026-09-25 to 9 PRs + DR-1 (design audit and readiness review). **Current owner:** [PR-02](../../pr-02-calibration-power/PROJECT.md). **Superseded by:** SPEC §6.1–§6.4 (angle-indexed power model, as revised at DR-1) in the current [SPEC](../../../../../SPEC.md). See [PROGRAM.md](../../PROGRAM.md) and [PROGRAM-PLAN.md](../../PROGRAM-PLAN.md).
 
 # WO3 — Power Calculation Engine
 

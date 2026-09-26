@@ -1,4 +1,4 @@
-> ⚠️ **SUPERSEDED.** This work order was part of the v1/initial programme plan. The programme was restructured on 2026-09-25 per the Chief Architect Design Audit. See the current programme at `../PROGRAM.md` and `../PROGRAM-PLAN.md`.
+> ⚠️ **SUPERSEDED — prior art only.** This was part of the v1 / initial programme plan, restructured on 2026-09-25 to 9 PRs + DR-1 (design audit and readiness review). **Current owner:** [PR-01](../../pr-01-signal-logger/PROJECT.md) and [PR-02](../../pr-02-calibration-power/PROJECT.md). **Superseded by:** SPEC §4.3–§4.4, §5.1–§5.3, §12.1–§12.3 in the current [SPEC](../../../../../SPEC.md). See [PROGRAM.md](../../PROGRAM.md) and [PROGRAM-PLAN.md](../../PROGRAM-PLAN.md).
 
 # PR-01: Project Scaffold + Sensor Acquisition
 
@@ -19,8 +19,8 @@ logs clean RPM + resistance level values to serial.
 
 The Chief Architect's initial decomposition contains detailed line-item
 instructions for this scope:
-- [wo1-scaffold/WORKORDER.md](../archive-pa-decomposition/wo1-scaffold/WORKORDER.md)
-- [wo2-sensors/WORKORDER.md](../archive-pa-decomposition/wo2-sensors/WORKORDER.md)
+- [wo1-scaffold/WORKORDER.md](../../archive-pa-decomposition/wo1-scaffold/WORKORDER.md)
+- [wo2-sensors/WORKORDER.md](../../archive-pa-decomposition/wo2-sensors/WORKORDER.md)
 
 These are reference material — the PA should use them as input when creating
 their own WO decomposition.

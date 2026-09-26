@@ -1,4 +1,4 @@
-> ⚠️ **SUPERSEDED.** This work order was part of the v1/initial programme plan. The programme was restructured on 2026-09-25 per the Chief Architect Design Audit. See the current programme at `../PROGRAM.md` and `../PROGRAM-PLAN.md`.
+> ⚠️ **SUPERSEDED — prior art only.** This was part of the v1 / initial programme plan, restructured on 2026-09-25 to 9 PRs + DR-1 (design audit and readiness review). **Current owner:** [PR-09](../../pr-09-integration/PROJECT.md). **Superseded by:** SPEC §3.4–§3.5, §13, Appendix J: User Journeys in the current [SPEC](../../../../../SPEC.md). See [PROGRAM.md](../../PROGRAM.md) and [PROGRAM-PLAN.md](../../PROGRAM-PLAN.md).
 
 # PR-07: Integration & Polish
 
@@ -41,7 +41,7 @@ After this PR merges, the firmware is release-candidate quality.
 
 ## Prior Art
 
-- [wo10-integration/WORKORDER.md](../archive-pa-decomposition/wo10-integration/WORKORDER.md)
+- [wo10-integration/WORKORDER.md](../../archive-pa-decomposition/wo10-integration/WORKORDER.md)
 
 ## Work Order Ledger
 <!-- PA fills this in during planning -->

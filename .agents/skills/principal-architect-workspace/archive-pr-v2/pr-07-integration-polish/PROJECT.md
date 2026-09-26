@@ -1,4 +1,4 @@
-> ⚠️ **SUPERSEDED.** This PR was part of the v2 (7-PR) programme plan. The programme was restructured to 9 PRs + DR-1 on 2026-09-25 per the Chief Architect Design Audit. See `../PROGRAM.md`.
+> ⚠️ **SUPERSEDED — prior art only.** This was part of the v2 (7-PR) programme plan, restructured on 2026-09-25 to 9 PRs + DR-1 (design audit and readiness review). **Current owner:** [PR-09](../../pr-09-integration/PROJECT.md). **Superseded by:** SPEC §11, §13, Appendix J: User Journeys in the current [SPEC](../../../../../SPEC.md). See [PROGRAM.md](../../PROGRAM.md) and [PROGRAM-PLAN.md](../../PROGRAM-PLAN.md).
 
 # PR-07: Integration, Portal & Polish (Phase 6 — Use Case Validation)
 
@@ -6,8 +6,8 @@
 > **PR target base:** PR-06 (`erg-strava` branch tip)
 > **Dev Phase:** Phase 6 — Polish
 > **Spec sections:** §11.1–11.4, §13, Appendix A
-> **Strategy:** [`docs/implementation-strategy.md`](../../../../docs/implementation-strategy.md) Phase 6
-> **Use cases:** [`docs/use_case_analysis.md`](../../../../docs/use_case_analysis.md)
+> **Strategy:** [`docs/implementation-strategy.md`](../../../../../docs/implementation-strategy.md) Phase 6
+> **Use cases:** [`docs/use_case_analysis.md`](../../../../../docs/use_case_analysis.md)
 
 ## Mandate
 
@@ -31,11 +31,11 @@ cases validated.
 
 ## Prior Art
 
-- [wo7-overlay/WORKORDER.md](../archive-pa-decomposition/wo7-overlay/WORKORDER.md)
-- [wo9-calibration-portal/WORKORDER.md](../archive-pa-decomposition/wo9-calibration-portal/WORKORDER.md)
-- [wo10-integration/WORKORDER.md](../archive-pa-decomposition/wo10-integration/WORKORDER.md)
-- [Old PR-05 scope](../archive-pr-v1/pr-05-web-portal/PROJECT.md)
-- [Old PR-07 scope](../archive-pr-v1/pr-07-integration-polish/PROJECT.md)
+- [wo7-overlay/WORKORDER.md](../../archive-pa-decomposition/wo7-overlay/WORKORDER.md)
+- [wo9-calibration-portal/WORKORDER.md](../../archive-pa-decomposition/wo9-calibration-portal/WORKORDER.md)
+- [wo10-integration/WORKORDER.md](../../archive-pa-decomposition/wo10-integration/WORKORDER.md)
+- [Old PR-05 scope](../../archive-pr-v1/pr-05-web-portal/PROJECT.md)
+- [Old PR-07 scope](../../archive-pr-v1/pr-07-integration-polish/PROJECT.md)
 
 ## Work Order Ledger
 <!-- PA fills this in during planning -->

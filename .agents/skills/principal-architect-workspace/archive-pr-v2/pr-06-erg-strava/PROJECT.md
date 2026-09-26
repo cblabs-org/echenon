@@ -1,4 +1,4 @@
-> ⚠️ **SUPERSEDED.** This PR was part of the v2 (7-PR) programme plan. The programme was restructured to 9 PRs + DR-1 on 2026-09-25 per the Chief Architect Design Audit. See `../PROGRAM.md`.
+> ⚠️ **SUPERSEDED — prior art only.** This was part of the v2 (7-PR) programme plan, restructured on 2026-09-25 to 9 PRs + DR-1 (design audit and readiness review). **Current owner:** [PR-08](../../pr-08-erg-control/PROJECT.md) (ERG) and [PR-06](../../pr-06-session-upload/PROJECT.md) (Strava). **Superseded by:** SPEC §5.6, §7.4, §9, §10 in the current [SPEC](../../../../../SPEC.md). See [PROGRAM.md](../../PROGRAM.md) and [PROGRAM-PLAN.md](../../PROGRAM-PLAN.md).
 
 # PR-06: ERG Mode + Cloud Upload (Phase 5 — Close the Loop)
 
@@ -6,7 +6,7 @@
 > **PR target base:** PR-05 (`ftms-broadcast` branch tip)
 > **Dev Phase:** Phase 5 — ERG + Strava
 > **Spec sections:** §5.6 (ERG), §7.4 (Control Point), §9.1–9.6, §10.1–10.6
-> **Strategy:** [`docs/implementation-strategy.md`](../../../../docs/implementation-strategy.md) Phase 5
+> **Strategy:** [`docs/implementation-strategy.md`](../../../../../docs/implementation-strategy.md) Phase 5
 
 ## Mandate
 
@@ -28,10 +28,10 @@ After this PR merges, ERG mode works and rides upload to Strava automatically.
 
 ## Prior Art
 
-- [wo6-session/WORKORDER.md](../archive-pa-decomposition/wo6-session/WORKORDER.md)
-- [wo8-strava/WORKORDER.md](../archive-pa-decomposition/wo8-strava/WORKORDER.md)
-- [Old PR-04 scope](../archive-pr-v1/pr-04-session-recording/PROJECT.md)
-- [Old PR-06 scope](../archive-pr-v1/pr-06-cloud-upload/PROJECT.md)
+- [wo6-session/WORKORDER.md](../../archive-pa-decomposition/wo6-session/WORKORDER.md)
+- [wo8-strava/WORKORDER.md](../../archive-pa-decomposition/wo8-strava/WORKORDER.md)
+- [Old PR-04 scope](../../archive-pr-v1/pr-04-session-recording/PROJECT.md)
+- [Old PR-06 scope](../../archive-pr-v1/pr-06-cloud-upload/PROJECT.md)
 
 ## Work Order Ledger
 <!-- PA fills this in during planning -->

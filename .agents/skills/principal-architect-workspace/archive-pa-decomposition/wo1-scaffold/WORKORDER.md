@@ -1,10 +1,12 @@
-> ⚠️ **SUPERSEDED.** This work order was part of the v1/initial programme plan. The programme was restructured on 2026-09-25 per the Chief Architect Design Audit. See the current programme at `../PROGRAM.md` and `../PROGRAM-PLAN.md`.
-
 ---
 name: echenon-firmware-wo1
 description: Handoff instructions for Work Order 1 — Project Scaffold
 complexity: mechanical
 ---
+
+> ⚠️ **SUPERSEDED — prior art only.** This was part of the v1 / initial programme plan, restructured on 2026-09-25 to 9 PRs + DR-1 (design audit and readiness review). **Current owner:** [PR-01](../../pr-01-signal-logger/PROJECT.md). **Superseded by:** SPEC §4.3, §4.4.1 (Phase 0/1 pin map), §12.1–§12.3 in the current [SPEC](../../../../../SPEC.md). See [PROGRAM.md](../../PROGRAM.md) and [PROGRAM-PLAN.md](../../PROGRAM-PLAN.md).
+>
+> 🚫 **Do not follow this layout.** This WO prescribes `[env:echenon]` extending `env:esp32s3nano`, `hardware/echenon/board.h` and `src/echenon/Config.h`. The current layout is env `ex3-waveshare-nano`, an Echenon-declared base env following `framework/template-app/platformio.ini`, and one target directory `hardware/ex3-waveshare-nano/` (`board.h` built from `board_contract.h` and `_TEMPLATE`, `partitions.csv`, `sdkconfig.defaults`) with no `config.h`, no `WITH_DISPLAY_U8G2` and no `WITH_BUTTONS`. See PR-01 §3 and SPEC §12.
 
 # WO1 — Project Scaffold & Clean Build
 
@@ -29,7 +31,7 @@ Set up the PlatformIO project structure, board configuration, partition table, a
 ### Line-Item Instructions
 
 - [ ] Copy `SPEC.md` from the Antigravity artifacts directory to `Echenon/SPEC.md`
-  - Source: `/Users/mcneillm/.gemini/antigravity/brain/c73eec9a-9856-41f9-bd09-f97217b4c7f2/SPEC.md`
+  - Source: [`SPEC.md`](../../../../../SPEC.md) (originally drafted outside the repo)
 - [ ] Create `platformio.ini` per §12.2 of the spec:
   - `[env:echenon]` extending `env:esp32s3nano`
   - Board partitions, sdkconfig, build flags as specified

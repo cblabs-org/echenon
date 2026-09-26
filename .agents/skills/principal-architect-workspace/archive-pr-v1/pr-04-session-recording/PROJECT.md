@@ -1,4 +1,4 @@
-> ⚠️ **SUPERSEDED.** This work order was part of the v1/initial programme plan. The programme was restructured on 2026-09-25 per the Chief Architect Design Audit. See the current programme at `../PROGRAM.md` and `../PROGRAM-PLAN.md`.
+> ⚠️ **SUPERSEDED — prior art only.** This was part of the v1 / initial programme plan, restructured on 2026-09-25 to 9 PRs + DR-1 (design audit and readiness review). **Current owner:** [PR-06](../../pr-06-session-upload/PROJECT.md). **Superseded by:** SPEC §9.1–§9.6 in the current [SPEC](../../../../../SPEC.md). See [PROGRAM.md](../../PROGRAM.md) and [PROGRAM-PLAN.md](../../PROGRAM-PLAN.md).
 
 # PR-04: Session Recording
 
@@ -25,7 +25,7 @@ are written to flash on session end, ready for upload.
 
 ## Prior Art
 
-- [wo6-session/WORKORDER.md](../archive-pa-decomposition/wo6-session/WORKORDER.md)
+- [wo6-session/WORKORDER.md](../../archive-pa-decomposition/wo6-session/WORKORDER.md)
 
 ## Work Order Ledger
 <!-- PA fills this in during planning -->

@@ -284,8 +284,8 @@ nine slots are populated.
 
 | Pin | Wire Colour | Component / Function | Electrical Notes |
 |---|---|---|---|
-| 1 | **Red** | Resistance motor (+) | Actuator control; operates at 3.3V |
-| 2 | **Black** | Resistance motor (−) | Actuator control; operates at 3.3V |
+| 1 | **Red** | Resistance motor (+) | Actuator control; 3.3V on a DMM (waveform unconfirmed, Phase 0 register row 1) |
+| 2 | **Black** | Resistance motor (−) | Actuator control; 3.3V on a DMM (waveform unconfirmed, Phase 0 register row 1) |
 | 3 | **Yellow** | Potentiometer (outer terminal) | Resistance measurement reference |
 | 4 | **Blue** | Potentiometer (wiper) | Variable signal; sweeps 0–5.4 kΩ per 180° rotation |
 | 5 | **Green** | Potentiometer (outer terminal) | Resistance measurement reference. 1.16–1.7V across Yellow↔Green |
@@ -342,9 +342,11 @@ the system is the 9V DC power rail from the external supply.
 | **Logic / BLE** | 3.3V | Second-stage regulator on motherboard | Bluetooth SoC, MCU, all sensor/actuator signals |
 
 > [!IMPORTANT]
-> **All sensor signals and the resistance motor run at 3.3V.** No signals in
-> the sensor or actuator circuits exceed 3.3V. The only higher voltage is the
-> 9V DC power rail from the external supply.
+> **All sensor signals run at 3.3V, and the resistance motor measured 3.3V on
+> a DMM.** A DMM reads the average, so the motor drive waveform (3.3V DC or
+> higher-voltage PWM) is unconfirmed; it is characterised by oscilloscope in
+> Phase 0 (register row 1, [`measurements/phase0/README.md`](measurements/phase0/README.md)).
+> The only confirmed higher voltage is the 9V DC power rail from the external supply.
 
 ---
 

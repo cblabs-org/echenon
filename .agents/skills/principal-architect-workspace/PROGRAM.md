@@ -12,37 +12,47 @@
 > **Use Case Analysis:** [`docs/use_case_analysis.md`](../../../docs/use_case_analysis.md)
 > **Hardware Specification:** [`docs/hardware_specification.md`](../../../docs/hardware_specification.md)
 > **Upstream RFC:** BLEManager (framework PR #235, tag `v0.0.12-dev.82` or later)
+> **Latest review:** [2026-09-25 readiness review](reviews/2026-09-25-readiness-review.md)
 
 ---
 
 ## Programme Status
 
+Phase and PR numbering in this table is canonical; other documents follow it.
+
 | PR | Phase | Title | Dependencies | Status |
 |---|---|---|---|---|
-| PR-01 | 0 | Signal Logger (amended) | `main` | ⬜ Not started |
-| DR-1 | — | Design Freeze Review | PR-01 evidence | ⬜ Not started |
-| PR-02 | 1 | Calibration + Power (+ live WS feed) | PR-01 | ⬜ Not started |
-| PR-03 | 2 | BLE Foundation + HR Relay | PR-01, framework ≥ v0.0.12-dev.82 | ⬜ Not started |
-| PR-04a | — | Passive Tap Board | PR-02, DR-1 | ⬜ Not started |
-| PR-05 | 3 | FTMS Telemetry | PR-02, PR-03 | ⬜ Not started |
+| PR-01 | 0 | Signal Logger (Observe) | `main` | ⬜ Not started — **next** |
+| DR-1 | — | Design Freeze Review ([record](reviews/DR-1-design-freeze.md)) | PR-01 evidence (Phase 0 register complete) | ⬜ Not started |
+| PR-02 | 1 | Calibration + Power (+ live WS feed) | PR-01, **DR-1** | ⬜ Not started |
+| PR-03 | 2 | BLE Foundation + HR Relay | PR-01; entry gates below (central acceptance **OPEN**) | ⬜ Not started |
+| PR-04a | 3 | Passive Tap Board (+ manual OTA) | PR-02, DR-1 | ⬜ Not started |
+| PR-05 | 3 | FTMS Telemetry (+ Control Point access layer) | PR-02, PR-03 | ⬜ Not started |
 | PR-06 | 4 | Session + TCX + Strava | PR-02 | ⬜ Not started |
 | PR-07 | 5 | MITM Board + Motor Control + Safety | PR-02, DR-1 | ⬜ Not started |
-| PR-08 | 6 | ERG + Control Point | PR-05, PR-07 | ⬜ Not started |
-| PR-09 | 7 | Integration, Portal, UC1–UC6 | PR-06, PR-08 | ⬜ Not started |
+| PR-08 | 6 | ERG + Control Point targets | PR-05, PR-07 | ⬜ Not started |
+| PR-09 | 7 | Integration / RC, Portal, UC1–UC6 | PR-06, PR-08 | ⬜ Not started |
 
-### Hardware Gates
+### Gates
 
-| Gate | Required Before | Verification |
-|---|---|---|
-| Oscilloscope: motor voltage | PR-01 motor wire taps | Visual confirmation on scope |
-| **DR-1: Design Freeze** | **PR-04a and PR-07 (No Soldering)** | **Chief Architect approves Phase 0 data** |
-| R3/R4/R5 Standalone Power | DR-1 (moved from PR-07) | Resolved as part of fail-safe strategy |
-| Echelon-app HR spike | PR-03 entry | Tablet displays mock HR via nRF Connect |
+| Gate | Required Before | Verification | Status |
+|---|---|---|---|
+| **Bench ready**: ≥ 2-channel scope with single-shot trigger; motor-current measurement (shunt + scope or DC clamp); JST-SM 9-pin and JST 3-pin Y / back-probe harness; series tap resistors | PR-01's first WO that connects to the bike | Owner confirms kit on hand; recorded in PR-01 Session Log | OPEN |
+| **Scope characterisation** of both motor wires (both directions, at rest; 10 ms/div and µs/div) | Connecting PR-01 motor-sense taps (GPIO 6/7) | Captures committed as Phase 0 register row #1 evidence. Either result lets logging proceed (÷4 divider safe to ~13 V); result feeds DR-1 | OPEN |
+| **Phase 0 register complete** ([`docs/measurements/phase0/README.md`](../../../docs/measurements/phase0/README.md)) | PR-01 exit / DR-1 start | Every row has an Evidence file and a Result | OPEN |
+| **DR-1: Design Freeze** | **PR-02, PR-04a, PR-07** (no soldering or permanent install before approval) | Chief Architect approves the [DR-1 record](reviews/DR-1-design-freeze.md) | OPEN |
+| R3/R4/R5 standalone supplies | DR-1 | Decided as part of the switchable-supply and fail-safe strategy | OPEN |
+| Echelon-app HR spike | PR-03 entry | nRF Connect `Echenon-TEST` (0x180D) listed and shows HR in the Echelon app | OPEN |
+| **Framework central-role acceptance evidence** | PR-03 entry | RFC §17.2 items 4–9 against a real 0x180D peripheral on a framework tag containing the WO-8 use-after-free fix | **OPEN** |
+| Framework #226 (OTA check-on-boot deferral) | Removing Echenon's `autoCheck=false` enforcement | Upstream issue closed; until then PR-04a forces `autoCheck=false` after config load and factory reset | OPEN (upstream) |
 
 ### Parallelism
 
-PR-02 and PR-03 can run **in parallel** after PR-01 merges.
-PR-04a, PR-05, and PR-06 can run **in parallel** after their respective dependencies.
+- PR-03 can start once PR-01 merges and its entry gates close; it runs **in
+  parallel** with DR-1 and PR-02.
+- PR-02 and PR-03 share `EchenonModule.*`, `platformio.ini` and `main.cpp`. The PR
+  that merges second rebases onto `main` and resolves the conflict.
+- PR-04a, PR-05 and PR-06 can run **in parallel** once their own dependencies merge.
 
 ---
 
@@ -77,9 +87,54 @@ PR-04a, PR-05, and PR-06 can run **in parallel** after their respective dependen
 
 ### 2026-09-25 — Programme Restructured per Chief Architect Design Audit
 - Restructured from 7 PRs to 9 PRs + DR-1 hard gate.
-- Framework BLE module (PR #235, tag `v0.0.12-dev.82`) merged and confirmed as PR-03 prereq.
+- Framework BLE module (PR #235, tag `v0.0.12-dev.82`) merged and confirmed as PR-03 prereq. *(Overstated: corrected in the 2026-09-25 remediation entry below.)*
 - Key decisions documented and enacted:
   - D2: Adopted the passive-first 9-PR restructure.
   - D3: Motor driver on its own rail (specifics deferred to DR-1).
   - D4: Zwift SIM mode (0x11) slated for v1.1, space left in FTMS design.
   - D5: BYOA (Bring-your-own-app) model adopted for Strava API credentials.
+
+### 2026-09-25 — Readiness Review and G0 Remediation
+- A Chief Architect [readiness review](reviews/2026-09-25-readiness-review.md)
+  found that commit `2992155` applied the design audit partly as directives rather
+  than specification. The owner approved docs-only remediation in chat on
+  2026-09-25 (review §7). One set of shared decisions (phase and PR numbering,
+  Phase 0/1 and Phase 3+ pin maps, build configuration, Phase 0 capture design,
+  Phase 0 gates, naming, calibration split, dependencies, BLE, upload pipeline,
+  ERG state machine and passive-first framing) was applied across SPEC, `docs/`
+  and this workspace.
+- **Correction to the entry above: the BLEManager gate is not met.** Of the three
+  P-01 r4 conditions:
+  - PR #235 is merged with its 🔴 items 1–9 fixed — met;
+  - #236 (WifiManager fallback to an open AP) is fixed — met;
+  - **central-role hardware acceptance is not evidenced.** The framework's
+    `ACCEPTANCE.md` at `v0.0.12-dev.82` marks "Central Scan — N/A (by design)", and
+    the only acceptance run was at `dev.67`, before the WO-8 use-after-free fix.
+  Framework #226 (OTA check-on-boot) is still open. PR-03's entry now carries an
+  explicit **OPEN** central-acceptance gate.
+- Programme changes:
+  - PR-02 is gated on **DR-1** as well as PR-01; calibration is passive (console
+    levels as the resistance proxy); motor-driven calibration moves to PR-07.
+  - PR-05 needs no new hardware; its dependency on the passive tap board is removed.
+  - PR-06 has no PR-03 edge; its `ScanInhibit` use is compiled under `WITH_BLE`.
+  - PR-02 / PR-03 overlap stated consistently (`EchenonModule.*`, `platformio.ini`,
+    `main.cpp`; second to merge rebases).
+  - Control Point split: PR-05 exposes 0x2AD9 and handles Request Control; PR-08
+    implements target opcodes and Fitness Machine Status.
+  - Manual OTA and `autoCheck=false` enforcement move into PR-04a, before the board
+    is sealed.
+- PR-01 mandate rewritten: SPEC §4.4.1 pin map (10 tap signals, all ADC1), series-
+  resistor taps with no internal pulls, USB-C power, two-mode ADC-continuous capture
+  with a WO0 spike, framework bump to `v0.0.12-dev.82` with BLE off in WO1, no
+  `WITH_DISPLAY_U8G2` / `WITH_BUTTONS`, bench-ready and scope-characterisation gates,
+  exit on the Phase 0 register, interactive hardware WOs.
+- DR-1 decision-record skeleton created: [DR-1-design-freeze.md](reviews/DR-1-design-freeze.md).
+- Cross-document consistency pass: SPEC verified against the framework headers at
+  `v0.0.12-dev.82`; section references updated for the renumbered hardware
+  specification (§2.1 bench equipment, §5.5 series resistors, §5.6–§5.8, §6.2
+  passive tap board); pin-map references point at SPEC §4.4.1 / §4.4.2; the
+  BLE connection budget is 4 connections / 6 activity slots (SPEC §7.8);
+  Fitness Machine Status uses 0x08 Target Power Changed (SPEC §5.6);
+  `SessionOverlay` is split between PR-06 (session API, download, history tab)
+  and PR-09 (`/overlay` page, WebSocket).
+- Next: after the Chief Architect reviews and commits the remediation, **PR-01 is GO**.

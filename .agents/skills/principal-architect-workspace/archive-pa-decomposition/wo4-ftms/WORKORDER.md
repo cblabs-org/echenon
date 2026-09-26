@@ -1,10 +1,10 @@
-> ⚠️ **SUPERSEDED.** This work order was part of the v1/initial programme plan. The programme was restructured on 2026-09-25 per the Chief Architect Design Audit. See the current programme at `../PROGRAM.md` and `../PROGRAM-PLAN.md`.
-
 ---
 name: echenon-firmware-wo4
 description: Handoff instructions for Work Order 4 — BLE FTMS Server
 complexity: standard
 ---
+
+> ⚠️ **SUPERSEDED — prior art only.** This was part of the v1 / initial programme plan, restructured on 2026-09-25 to 9 PRs + DR-1 (design audit and readiness review). **Current owner:** [PR-05](../../pr-05-ftms-broadcast/PROJECT.md) (FTMS, Control Point access) and [PR-08](../../pr-08-erg-control/PROJECT.md) (Control Point targets). **Superseded by:** SPEC §7.1–§7.8 in the current [SPEC](../../../../../SPEC.md). See [PROGRAM.md](../../PROGRAM.md) and [PROGRAM-PLAN.md](../../PROGRAM-PLAN.md).
 
 # WO4 — BLE FTMS Server
 

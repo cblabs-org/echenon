@@ -1,4 +1,4 @@
-> ⚠️ **SUPERSEDED.** This work order was part of the v1/initial programme plan. The programme was restructured on 2026-09-25 per the Chief Architect Design Audit. See the current programme at `../PROGRAM.md` and `../PROGRAM-PLAN.md`.
+> ⚠️ **SUPERSEDED — prior art only.** This was part of the v1 / initial programme plan, restructured on 2026-09-25 to 9 PRs + DR-1 (design audit and readiness review). **Current owner:** [PR-03](../../pr-03-hr-relay/PROJECT.md) (HR relay) and [PR-05](../../pr-05-ftms-broadcast/PROJECT.md) (FTMS). **Superseded by:** SPEC §3.5, §7, §8 in the current [SPEC](../../../../../SPEC.md). See [PROGRAM.md](../../PROGRAM.md) and [PROGRAM-PLAN.md](../../PROGRAM-PLAN.md).
 
 # PR-03: BLE Stack (FTMS Server + HRM Relay)
 
@@ -57,8 +57,8 @@ This PR must implement:
 
 ## Prior Art
 
-- [wo4-ftms/WORKORDER.md](../archive-pa-decomposition/wo4-ftms/WORKORDER.md)
-- [wo5-hrm/WORKORDER.md](../archive-pa-decomposition/wo5-hrm/WORKORDER.md)
+- [wo4-ftms/WORKORDER.md](../../archive-pa-decomposition/wo4-ftms/WORKORDER.md)
+- [wo5-hrm/WORKORDER.md](../../archive-pa-decomposition/wo5-hrm/WORKORDER.md)
 
 ## Work Order Ledger
 <!-- PA fills this in during planning -->

@@ -1,4 +1,14 @@
-# Use Case Analysis — MITM Intercept Board Design Validation
+# Use Case Analysis — Passive Tap and Intercept Board Design Validation
+
+Echenon is passive-first. **UC1–UC3** are delivered by the **passive tap board** (PR-04a):
+all wires pass through, there is no motor split, and the console drives the motor exactly as
+stock. The optional **intercept board** (PR-07, provisional until DR-1) splits the motor wires
+and adds Override and ERG for **UC4–UC6**; it also supports UC1–UC3 in Intercept mode, which is
+what the motor-relay steps in the UC1 trace below describe. See
+[`hardware_specification.md`](hardware_specification.md) §1 for the hardware configurations.
+
+Pin references below use the provisional Phase 3+ map (hardware spec §7.8, `[DR-1]`):
+console motor sense on GPIO 6/7 (ADC1, sense only) and motor driver inputs on GPIO 10/17.
 
 ## Use Case Summary
 
@@ -27,8 +37,10 @@ Rider pedals at 80 RPM
 Rider sets resistance to 19/32 via red knob
     → Encoder sends quadrature clicks → pass-through to console
     → Console decodes clicks, sends motor HIGH on Red/Black wires (console side)
-    → ESP32 reads GPIO 10/11 (console motor sense) → mirrors to GPIO 6/7 (L9110S)
-    → L9110S drives motor → motor moves brake carriage
+    → Passive tap board: the console drives the motor directly; ESP32 senses GPIO 6/7
+    → Intercept board: ESP32 reads GPIO 6/7 (console motor sense) → relays via GPIO 10/17 (L9110S)
+      → L9110S drives motor
+    → Motor moves brake carriage
     → Pot wiper voltage changes → GPIO 1 ADC reads new position
     → Console also reads pot (pass-through) → displays "19" in Echelon app
 
@@ -40,7 +52,7 @@ HR armband → ESP32 BLE Central (HRMClient)
 
 ### Verdict: ✅ WORKS
 
-All signals pass through transparently. The ESP32 reads them for telemetry but doesn't interfere. The motor relay (console → GPIO 10/11 → L9110S) introduces <1ms latency — imperceptible. The Echelon app works exactly as stock.
+All signals pass through transparently. The ESP32 reads them for telemetry but doesn't interfere. On the passive tap board there is no relay at all. On the intercept board, the motor relay (console → GPIO 6/7 sense → GPIO 10/17 → L9110S) adds a small latency that PR-07 must show is imperceptible. The Echelon app works exactly as stock.
 
 ### Test Case
 
@@ -69,10 +81,11 @@ Cadence first detected → SessionManager auto-starts recording
     → Each point: {timestamp, cadence, resistance, power, hr}
 
 Rider stops pedalling → 3 min timeout → SessionManager ends session
-    → TCX generated (1 Hz trackpoints streamed to LittleFS)
-    → StravaUploader picks up pending session via DataManager
+    → Session handed off to the upload queue
+    → UploadQueue (IDataSource) runs the split upload pipeline on the DataManager task,
+      using StravaUploader to build requests (SPEC §9.4, §10.2)
     → ScanInhibit token acquired (suppresses BLE scans during upload)
-    → HTTPS multipart POST → Strava API
+    → generate tcx.gz (1 Hz trackpoints, LittleFS) → refresh token → POST /uploads → poll GET /uploads/{id}, one stage per fetch
     → TCX file cleanup
 ```
 
@@ -142,8 +155,8 @@ Console board is connected and powered (9V → buck → 3.3V)
     → Console's BLE is advertising, but nobody connects to it
     → Console provides reference voltages to pot and encoder (via pass-through)
     → Console may attempt to drive motor when user turns knob
-       → BUT: Console's motor output goes to GPIO 10/11 (sense inputs) only
-       → In Override Mode: GPIO 10/11 are READ but IGNORED
+       → BUT: Console's motor output goes to GPIO 6/7 (sense inputs) only
+       → In Override Mode: GPIO 6/7 are READ but IGNORED
        → Motor is driven ONLY by L9110S under ESP32 control
 
 Fitness app connects via FTMS
@@ -175,7 +188,7 @@ The key insight: the motor is **always** driven by the L9110S, never directly by
 | 4 | Vary cadence 60–100 RPM. | Resistance adjusts automatically to maintain 200W. |
 | 5 | Turn red knob mid-ERG. | ERG cancels. Motor moves to encoder-commanded position. |
 | 6 | App sends new target. | ERG re-engages. Motor moves to new computed level. |
-| 7 | Verify console motor sense pins (GPIO 10/11). | May show activity if console is trying to drive motor — but these are ignored. |
+| 7 | Verify console motor sense pins (GPIO 6/7). | May show activity if console is trying to drive motor — but these are ignored. |
 
 ---
 
@@ -202,7 +215,7 @@ Simultaneously:
 **Console-connected Override is fully handled by the MITM design:**
 
 The encoder and pot signals pass through to the console, but the console's
-motor output signals reach only GPIO 10/11 (ignored in Override Mode). The
+motor output signals reach only GPIO 6/7 (ignored in Override Mode). The
 motor is driven exclusively by the L9110S under ESP32 control. The console
 wastes effort trying to drive the motor, but nothing happens.
 
@@ -241,7 +254,7 @@ ESP32/motor), which may not match instructor callouts. This is expected.
 
 ```
 Console disconnected → J2 (9-pin) and J4 (3-pin) unplugged
-    → GPIO 10/11 read LOW (10kΩ pull-downs) — correct, ignored in Override Mode
+    → GPIO 6/7 read LOW (10kΩ lower leg of the ÷4 sense dividers) — correct, ignored in Override Mode
 
 BUT: Where do the sensors get their reference voltages?
 ```
@@ -270,8 +283,8 @@ MP1584EN output (3.3V)
     ├──► L9110S VCC (existing)
     │
     ├──► Cadence pull-up: 10kΩ resistor from 3.3V → J1 pin 6 (Orange)
-    │    (Always connected — console's pull-up and our pull-up in parallel
-    │     is safe; both are 3.3V. Combined pull-up is ~5kΩ, still fine.)
+    │    (Behind switch SW1, open by default and closed only in
+    │     standalone mode — see hardware spec §7.4, [DR-1: H-02])
     │
     ├──► Pot reference: 3.3V → J1 pin 3 (Yellow outer terminal)
     │    GND → J1 pin 5 (Green outer terminal)
@@ -287,7 +300,7 @@ MP1584EN output (3.3V)
 
 | Signal | Dual-drive risk | Mitigation |
 |---|---|---|
-| **Cadence pull-up** | LOW — both are 3.3V to same rail via resistors. Parallel pull-ups reduce impedance. Safe. | None needed — always connect via 10kΩ. |
+| **Cadence pull-up** | LOW — both are 3.3V to same rail via resistors. Parallel pull-ups reduce impedance. Safe. | 10kΩ via switch SW1, closed only in standalone mode (coexistence with the console's pull-up is register row 7, `[DR-1]`). |
 | **Pot outer terminals** | MEDIUM — if console drives Yellow/Green to specific voltages (not just 3.3V rail), our supply could conflict. But the measured range (1.16–1.7V across Yellow↔Green) suggests the console applies a voltage divider or current-limited reference. | **Schottky diode** (e.g. BAT54) from our 3.3V to Yellow, with reverse-blocking. OR: use a **100Ω series resistor** so our supply yields gracefully when the console is driving. |
 | **Encoder power** | LOW — both are 3.3V supplies. A 10Ω series resistor prevents bus-fight if voltages differ slightly. | **10Ω series resistor** from our 3.3V to J3 pin 1. |
 
@@ -301,7 +314,7 @@ In the stock bike, the console provides this. With the console disconnected, we 
 
 | Step | Action | Expected Result |
 |---|---|---|
-| 1 | Disconnect console (J2 and J4 unplugged). Set Override Mode. | GPIO 10/11 read LOW. ESP32 boots normally. |
+| 1 | Disconnect console (J2 and J4 unplugged). Set Override Mode. Close the standalone-supply switches (SW1–SW4). | GPIO 6/7 read LOW. ESP32 boots normally. |
 | 2 | Verify cadence: pedal slowly. | Reed switch pulses on GPIO 5 (pull-up from intercept board LDO). |
 | 3 | Verify pot: read ADC on GPIO 1. | Pot wiper reads within calibrated range (reference from intercept board 3.3V). |
 | 4 | Verify encoder: turn red knob. | Quadrature clicks register on GPIO 8/9 (encoder powered from intercept board 3.3V). |
@@ -314,11 +327,12 @@ In the stock bike, the console provides this. With the console disconnected, we 
 
 ### Gap 1: Standalone Sensor Power ✅ RESOLVED
 
-Added to [`hardware_specification.md`](file:///Users/mcneillm/Documents/Projects/Echenon/docs/hardware_specification.md) §7–8 and SPEC.md §4.7, §5.1:
+Added to [`hardware_specification.md`](hardware_specification.md) §7–8 (provisional until DR-1) and SPEC.md:
 - R3 (10kΩ pull-up) for cadence reed switch
 - R4 (100Ω series) for pot reference contention protection
 - R5 (10Ω series) for encoder power contention protection
-- All always-connected — safe with console present or absent
+- Each supply, and the Green–GND link, sits behind a switch (SW1–SW4) that is open by default and
+  closed only in standalone Override; values and switch type are `[DR-1: H-02]`
 
 ### Gap 2: HR-Zone Auto-Resistance ✅ DECIDED
 
@@ -327,13 +341,13 @@ HR-zone controller deferred to v2 and listed in SPEC.md §1.4 Out of Scope.
 
 ### Gap 3: Cadence Pull-Up Source ✅ RESOLVED
 
-Documented in SPEC.md §5.1 and hardware_specification.md §7.1. R3 (10kΩ)
-from 3.3V rail provides standalone pull-up.
+Documented in SPEC.md §5.1 and hardware_specification.md §7.4.1. R3 (10kΩ)
+from 3.3V rail, switched by SW1, provides the standalone pull-up.
 
 ### Gap 4: Console-Connected Override Mode UX ✅ RESOLVED
 
 Documented in SPEC.md §5.6 "Console-connected Override" subsection:
-- Console's motor commands reach GPIO 10/11 only (ignored in Override Mode)
+- Console's motor commands reach GPIO 6/7 only (ignored in Override Mode)
 - Echelon app **never commands resistance** — it only reads the pot
 - Echelon app's resistance bar shows actual motor-driven position
 - No software conflict between Echelon app and Override Mode
