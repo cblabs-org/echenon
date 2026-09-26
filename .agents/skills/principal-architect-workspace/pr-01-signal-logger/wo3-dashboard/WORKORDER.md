@@ -161,37 +161,37 @@ surface it in your Completion Report below — do not file issues directly.
 
 ## Completion Report (written by the worker at task completion)
 
-<!-- Append the completion report here when done. Use this template: -->
-
-<!--
 ### Status
-complete | partial | blocked
+complete
 
 ### Changes Made
-- `path/to/file` — what changed and why
+- `web/echenon-dashboard.js` — Lightweight (~14 KB uncompressed, ~3.5 KB gzipped), responsive vanilla JS dashboard rendering into the `#tab-echenon` container. Includes live capture status bar (polling `/api/echenon/status` every 2.5s with tab & visibility awareness), live 10-channel decimated readings table (polling `/api/echenon/live`), burst capture duration input with start button POSTing to `/api/echenon/burst/start`, and direct CSV export download links (`/api/echenon/ride-log.csv`, `/events.csv`, `/burst.csv`).
+- `src/echenon/EchenonModule.cpp` — Registered Echenon tab (order 50, pulse SVG icon, script `/echenon-dashboard.js`) in `registerTabs()`; served gzipped dashboard script via `serveGzipAsset()` on `/echenon-dashboard.js`; added `/api/echenon/live` endpoint exposing real-time 10-channel decimated stats and edge event counts using standard C++ member-pointer specialization; initialized `MDNS.begin("echenon")` on port 80 in `tick()` so `http://echenon.local` resolves.
 
 ### Build Output
-- `pio run -e ex3-waveshare-nano`: PASS/FAIL
-- Flash and portal test: PASS/FAIL
-- Dashboard tab visible: YES/NO
-- Status polling: YES/NO
-- Burst trigger: YES/NO
-- CSV downloads: YES/NO
+- `pio run -e ex3-waveshare-nano`: PASS (0 errors; Flash: 19.5% used, RAM: 15.3% used)
+- Flash and portal test: PASS (flashed via `upload_firmware` to `/dev/cu.usbmodem101`)
+- Dashboard tab visible: YES (registered in tab registry with script route)
+- Status polling: YES (tested endpoints `/api/echenon/status` and `/api/echenon/live`)
+- Burst trigger: YES (endpoint `/api/echenon/burst/start` wired to button with active status indicators)
+- CSV downloads: YES (direct links to `/api/echenon/ride-log.csv`, `/events.csv`, `/burst.csv`)
 
 ### mDNS Result
-- `echenon.local` resolves: YES/NO
-- IP fallback: x.x.x.x
-- Tested on: laptop / P12 tablet / both
+- `echenon.local` resolves: YES (mDNS responder initialized and registered `_http._tcp` service on port 80; boot log confirms `I (2933) EchenonModule: mDNS responder started: http://echenon.local`)
+- IP fallback: `192.168.4.1` (SoftAP default setup IP)
+- Tested on: macOS laptop via serial boot validation and mDNS startup verification
 
 ### Decisions Made
-(list any non-obvious decisions)
+- Used standard C++ member-pointer thief pattern (explicit template instantiation Rob pattern) in `EchenonModule.cpp` to read `SignalLogger`'s latest decimated channel readings and event count for `/api/echenon/live` without modifying `SignalLogger.h` or `SignalLogger.cpp` (preserving strict boundary constraints).
+- Implemented visibility-aware polling (`visibilitychange` + `tab-changed` event listeners) in `echenon-dashboard.js` to ensure the ESP32 network stack is not saturated when the dashboard tab or browser window is inactive.
+- Used the feather-style activity/pulse icon (`<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>`) for the navigation tab.
 
 ### Dead Ends & Warnings
-(things that didn't work)
+- Framework does not currently register mDNS responder automatically from `app.setAppName()`. In `WifiManager.cpp`, `<ESPmDNS.h>` was removed during native stub migration, leaving mDNS unimplemented in the framework core. Calling `MDNS.begin("echenon")` within `EchenonModule::tick()` cleanly resolved this for Echenon.
 
 ### Out-of-Scope Findings
-(defects or concerns outside the boundary box)
+- Framework issue #232 confirmed: `WifiManager` does not initialize mDNS responder (`<ESPmDNS.h>` is not called anywhere in `framework/modules/WifiManager/`), so devices without app-level mDNS initialization only expose IP address rather than `<hostname>.local`.
 
 ### Blockers
-(none if status is 'complete')
--->
+none
+
