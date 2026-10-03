@@ -452,8 +452,16 @@ resistors, ~£0.10.
 
 ### 5.5 Direct-Tap Series Resistors (RS1–RS8) and the No-Pulls Rule
 
-The eight direct taps (every tap except GPIO 6/7) each have a **22 kΩ series
-resistor** (10–47 kΩ acceptable), placed at the harness end of the tail.
+The eight direct taps (every tap except GPIO 6/7) each have a **4.7 kΩ series
+resistor**, placed at the harness end of the tail.
+
+> [!IMPORTANT]
+> **Bench-tested 2026-10-03:** The original 22 kΩ value exceeded the ESP32-S3
+> ADC continuous-mode source-impedance limit (Espressif recommends < 10 kΩ).
+> At 83 kHz aggregate sample rate the S/H capacitor could not settle through
+> 22 kΩ during brief reed-switch closures (~50 ms). Replaced with 4.7 kΩ +
+> 100 nF ceramic cap on the ESP32 side. Cadence detection confirmed at
+> 74–120 RPM.
 
 **Why — back-powering.** Each ESP32 pad has ESD clamp diodes to its 3.3V
 supply. If the ESP32 is unpowered (USB unplugged, or during boot/brown-out)
@@ -461,20 +469,18 @@ while the console is on, the console's 3.3V lines — pot reference (Yellow),
 wiper (Blue), encoder VCC and channels, cadence — would drive current
 through those diodes into the ESP32's rail and try to power it. That loads
 the pot reference and the encoder supply, which are exactly what register
-rows 4, 6, 8 and 10 measure, and can disturb the console. 22 kΩ limits any
-such current to about 0.1 mA, so the console's lines are not measurably
-loaded.
+rows 4, 6, 8 and 10 measure, and can disturb the console. 4.7 kΩ limits any
+such current to about 0.7 mA, which is still low enough to avoid measurably
+loading the console's lines.
 
 **No pulls.** Every tap pin is configured with **no internal pull-up or
 pull-down**. An internal pull (~45 kΩ) on a cadence or encoder pin would bias
 the console's own line and change what is being measured.
 
-**Side effects to check (WO0 spike):** the series resistance slows ADC
-sampling-capacitor settling at kHz sample rates and adds a small RC to
-digital edges. The WO0 spike confirms ADC-continuous accuracy through 22 kΩ
-and whether one pad can be ADC-sampled while serving a GPIO interrupt
-(GPIO 5, 8, 9). If C2 is fitted, it goes on the ESP32 side of RS1 so it
-never loads the console's wiper line.
+**Decoupling capacitor (C1).** A 100 nF ceramic capacitor is placed between
+each ADC signal pin and GND on the ESP32 side of the series resistor. This
+provides a low-impedance charge reservoir for the ADC's sample-and-hold
+capacitor, ensuring accurate readings even with the 4.7 kΩ source impedance.
 
 ### 5.6 Phase 0 Observation-Only Taps
 
