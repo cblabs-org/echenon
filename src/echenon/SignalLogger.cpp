@@ -226,6 +226,24 @@ void SignalLogger::processAdcFrame(uint8_t* buf, uint32_t length) {
         }
         ESP_LOGW(TAG, "  Invalid channel: %lu samples", s_diagSamples[10]);
         ESP_LOGW(TAG, "  CH4 raw range: min=%u max=%u", s_ch4Min, s_ch4Max);
+        
+        // Dump raw DMA struct for each channel to check unit/channel tagging
+        ESP_LOGW(TAG, "  === Last raw sample per channel (unit.chan.data) ===");
+    }
+
+    // Log first sample of each channel once
+    static uint16_t s_chanSeen = 0;
+    if (s_chanSeen != 0x3FF) {
+        for (uint32_t i = 0; i < length; i += sizeof(adc_digi_output_data_t)) {
+            adc_digi_output_data_t* p = (adc_digi_output_data_t*)&buf[i];
+            uint8_t ch = p->type2.channel;
+            uint8_t unit = p->type2.unit;
+            uint16_t d = p->type2.data;
+            if (ch < 10 && !(s_chanSeen & (1 << ch))) {
+                s_chanSeen |= (1 << ch);
+                ESP_LOGW(TAG, "  RAW CH%u: unit=%u data=%u", ch, unit, d);
+            }
+        }
     }
 }
 
