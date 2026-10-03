@@ -71,7 +71,7 @@ void SignalLogger::begin() {
         .format = ADC_DIGI_OUTPUT_FORMAT_TYPE2,
     };
     
-    adc_digi_pattern_config_t adc_pattern[10];
+    adc_digi_pattern_config_t adc_pattern[10] = {};
     for (int i = 0; i < 10; i++) {
         adc_pattern[i].atten = ADC_ATTEN_DB_12;
         adc_pattern[i].channel = i; // assumes channels 0-9
@@ -177,13 +177,26 @@ void SignalLogger::tick(uint32_t now) {
 }
 
 void SignalLogger::processAdcFrame(uint8_t* buf, uint32_t length) {
+    static uint32_t s_diagSamples[12] = {};  // 0-9 valid channels, 10=invalid, 11=total
+    static uint16_t s_ch4Min = 0xFFFF, s_ch4Max = 0;
+    static bool s_diagDone = false;
+
     uint32_t ts_us = esp_timer_get_time();
     for (uint32_t i = 0; i < length; i += sizeof(adc_digi_output_data_t)) {
         adc_digi_output_data_t* p = (adc_digi_output_data_t*)&buf[i];
         uint8_t chan = p->type2.channel;
         uint16_t data = p->type2.data;
 
-        if (chan >= kNumChannels) continue;
+        s_diagSamples[11]++;
+        if (chan >= kNumChannels) {
+            s_diagSamples[10]++;
+            continue;
+        }
+        s_diagSamples[chan]++;
+        if (chan == 4) {
+            if (data < s_ch4Min) s_ch4Min = data;
+            if (data > s_ch4Max) s_ch4Max = data;
+        }
 
         // Accumulate min/mean/max
         if (data < _currentRow.channels[chan].min_val) _currentRow.channels[chan].min_val = data;
@@ -202,6 +215,17 @@ void SignalLogger::processAdcFrame(uint8_t* buf, uint32_t length) {
         }
 
         handleSoftwareThresholds(chan, mv, ts_us);
+    }
+
+    // One-shot diagnostic after 10 seconds
+    if (!s_diagDone && s_diagSamples[11] > 500000) {
+        s_diagDone = true;
+        ESP_LOGW(TAG, "=== ADC DIAGNOSTIC (after %lu total samples) ===", s_diagSamples[11]);
+        for (int c = 0; c < 10; c++) {
+            ESP_LOGW(TAG, "  CH%d: %lu samples", c, s_diagSamples[c]);
+        }
+        ESP_LOGW(TAG, "  Invalid channel: %lu samples", s_diagSamples[10]);
+        ESP_LOGW(TAG, "  CH4 raw range: min=%u max=%u", s_ch4Min, s_ch4Max);
     }
 }
 
