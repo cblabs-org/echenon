@@ -29,24 +29,6 @@ void SignalLogger::resetConfig() {
     _burstDurationMs = kBurstDurationDefaultMs;
 }
 
-void IRAM_ATTR SignalLogger::gpioIsrHandler(void* arg) {
-    if (!s_instance) return;
-    uint32_t pin = (uint32_t)arg;
-    uint32_t ts = esp_timer_get_time();
-    int val = gpio_get_level((gpio_num_t)pin);
-    
-    portENTER_CRITICAL_ISR(&eventLogSpinlock);
-    size_t idx = s_instance->_eventLogHead;
-    s_instance->_eventLogBuffer[idx].timestamp_us = ts;
-    s_instance->_eventLogBuffer[idx].type = (pin == 5) ? 0 : 1;
-    s_instance->_eventLogBuffer[idx].channel = pin;
-    s_instance->_eventLogBuffer[idx].value = val;
-    s_instance->_eventLogHead = (idx + 1) % kEventLogMaxEvents;
-    if (s_instance->_eventLogCount < kEventLogMaxEvents) {
-        s_instance->_eventLogCount++;
-    }
-    portEXIT_CRITICAL_ISR(&eventLogSpinlock);
-}
 
 void SignalLogger::begin() {
     if (_initialized) return;
@@ -127,23 +109,12 @@ void SignalLogger::begin() {
     _initialized = true;
 
     s_instance = this;
-    
-    gpio_install_isr_service(0);
-    
-    gpio_config_t io_conf = {};
-    io_conf.intr_type = GPIO_INTR_ANYEDGE;
-    io_conf.pin_bit_mask = (1ULL << 5) | (1ULL << 8);
-    io_conf.mode = GPIO_MODE_INPUT;
-    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
-    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    gpio_config(&io_conf);
-    
-    // ADC driver configured the pins, so we must enable input on them again
-    gpio_input_enable((gpio_num_t)5);
-    gpio_input_enable((gpio_num_t)8);
-    
-    gpio_isr_handler_add((gpio_num_t)5, gpioIsrHandler, (void*)5);
-    gpio_isr_handler_add((gpio_num_t)8, gpioIsrHandler, (void*)8);
+
+    // NOTE: Do NOT call gpio_config() on ADC pins (GPIO 5, 8).
+    // gpio_config(GPIO_MODE_INPUT) disconnects the pin from the ADC analog
+    // peripheral and reconnects it to the digital GPIO matrix, breaking
+    // ADC continuous readings. Cadence and encoder edges are detected via
+    // ADC software thresholds in handleSoftwareThresholds() instead.
 
     // Reset row accumulators
     memset(&_currentRow, 0, sizeof(_currentRow));
@@ -235,7 +206,25 @@ void SignalLogger::processAdcFrame(uint8_t* buf, uint32_t length) {
 }
 
 void SignalLogger::handleSoftwareThresholds(uint8_t channel, uint16_t mv, uint32_t ts_us) {
-    if (channel == 8) { // Ch B
+    if (channel == 4) { // Cadence (ADC1_CH4 = GPIO 5): HIGH idle, LOW on magnet
+        if (_cadenceHigh && mv < kCadenceThresholdMv - 200) {
+            _cadenceHigh = false;
+            portENTER_CRITICAL(&eventLogSpinlock);
+            size_t idx = _eventLogHead;
+            _eventLogBuffer[idx] = { ts_us, 0, channel, 0 }; // type=0: cadence falling
+            _eventLogHead = (idx + 1) % kEventLogMaxEvents;
+            if (_eventLogCount < kEventLogMaxEvents) _eventLogCount++;
+            portEXIT_CRITICAL(&eventLogSpinlock);
+        } else if (!_cadenceHigh && mv > kCadenceThresholdMv + 200) {
+            _cadenceHigh = true;
+            portENTER_CRITICAL(&eventLogSpinlock);
+            size_t idx = _eventLogHead;
+            _eventLogBuffer[idx] = { ts_us, 0, channel, 1 }; // type=0: cadence rising
+            _eventLogHead = (idx + 1) % kEventLogMaxEvents;
+            if (_eventLogCount < kEventLogMaxEvents) _eventLogCount++;
+            portEXIT_CRITICAL(&eventLogSpinlock);
+        }
+    } else if (channel == 8) { // Ch B
         if (!_chBHigh && mv > kChBThresholdMv + 50) {
             _chBHigh = true;
             portENTER_CRITICAL(&eventLogSpinlock);

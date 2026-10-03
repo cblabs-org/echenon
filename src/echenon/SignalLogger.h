@@ -49,6 +49,7 @@ private:
     static constexpr uint32_t kBurstDurationMaxMs = 30000;
     static constexpr uint32_t kChBThresholdMv = 800;
     static constexpr uint32_t kMotorOnsetThresholdMv = 500;
+    static constexpr uint32_t kCadenceThresholdMv = 1500; // Reed switch: HIGH idle (~3.3V), LOW on magnet pass
     static constexpr size_t kRideLogMaxRows = 36000;
     static constexpr size_t kEventLogMaxEvents = 4000;
 
@@ -81,10 +82,9 @@ private:
     // Ch B software threshold state
     bool _chBHigh = false;
     bool _motorOn = false;
+    bool _cadenceHigh = true; // Idle state is HIGH (console pull-up)
 
     // Helper functions
     void processAdcFrame(uint8_t* buf, uint32_t length);
     void handleSoftwareThresholds(uint8_t channel, uint16_t mv, uint32_t ts_us);
-    
-    static void IRAM_ATTR gpioIsrHandler(void* arg);
 };
