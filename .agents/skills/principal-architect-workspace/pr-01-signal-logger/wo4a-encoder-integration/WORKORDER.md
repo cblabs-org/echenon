@@ -170,22 +170,24 @@ The Principal Architect will triage and file them.
 
 ## Completion Report (written by the worker at task completion)
 
-<!-- Append when complete:
 ### Status
-complete | partial | blocked
+complete
 
 ### Changes Made
-- `path/to/file` — what changed and why
+- `platformio.ini` — Added `-DWITH_ENCODER` to `[env:ex3-waveshare-nano]` build flags to activate `EncoderModule`.
+- `hardware/ex3-waveshare-nano/board.h` — Added `#ifdef WITH_ENCODER` block declaring `BOARD_ENCODERS` (`"knob"`, GPIO 8/9, 4 steps per detent, acceleration disabled) and `BOARD_ENCODER_COUNT`. Included `"EncoderModule/EncoderConfig.h"` to adhere to the framework's module co-location include structure.
+- `src/echenon/SignalLogger.cpp` — Released GPIO 8 and 9 (ADC1 channels 7 and 8) from continuous ADC scanning, re-indexing the pattern to 8 channels ({0, 1, 2, 3, 4, 5, 6, 9}); updated `_currentRow` reset logic to clear only active scan channels; cleanly removed temporary diagnostic logging and DMA dump hooks (`s_diagSamples`, `s_ch4Min`/`s_ch4Max`, and `s_chanSeen`).
+- `src/main.cpp` — Conditionally included `"EncoderModule.hpp"` and `"board.h"`, defined `EncoderModule encoderModule`, populated configured encoders in `setup()`, called `begin(app)`, and registered the module with `app` before `app.begin(config)`.
 
 ### Decisions Made
-- Decision description and rationale
+- Used `#include "EncoderModule/EncoderConfig.h"` in `board.h` because `EncoderConfig.h` is located within `framework/modules/EncoderModule/` rather than the top-level include path.
+- In `SignalLogger.cpp`, defined `adc_channels` at file scope so both `begin()` (for DMA pattern setup) and `tick()` (for `_currentRow` reset) cleanly share the exact channel scan map.
 
 ### Dead Ends & Warnings
-- What was attempted, why it failed, and what to avoid
+- Initial build failed with missing `EncoderConfig.h` when including `#include "EncoderConfig.h"` verbatim from the work order instruction. Resolved by including `"EncoderModule/EncoderConfig.h"` consistent with CrowPanel and native board headers.
 
 ### Out-of-Scope Findings
-- Finding description and suggested action
+- (none)
 
 ### Blockers
 (none)
--->
