@@ -146,9 +146,11 @@ Tests #4 and #6 (pot or motor disconnected while seeking) need an explicit owner
 
 ### P-C. The cam model simplifies audit finding S-01
 - Within the console's working range, the pot is **linear in shaft angle** (R² = 0.9989, about 151° over 32 levels).
-- Displacement, and so resistance, follows `e·(1 − cos θ)`.
+- The cam turns that angle into magnet displacement `d(θ) = e·(1 − cos θ)`, with e ≈ 8 mm and θ = (level − 1) × 4.87°. Braking resistance is a further non-linear function of the magnet gap, `R = g(d(θ))`. So **level is a linear position index but not a linear resistance scale**: steps near level 1 barely change resistance, and steps around level 19 (θ ≈ 90°, the steepest part of the cosine) change it most.
+- The sweep stays below 180°, so `d(θ)` is monotonic over the console's range. Each level maps to exactly one resistance; there is no mirror ambiguity unless the motor is driven past the working range (the PR-07 case).
 - In console-driven modes (passive and encoder MITM), level comes straight from a linear wiper fit, so no full-revolution tracking is needed. Angle tracking, click-off detection and homing matter only when the ESP32 drives the motor (PR-07).
-- The power model can be indexed by level, using PR-02's empirical per-level table, rather than a polynomial in R.
+- **Power model:** `g` is unknown and changes with each bike's magnet set, so a curve-fit polynomial in level or angle is not good enough. Power must be indexed by level (or internal 256-level position) using PR-02's **empirical per-level table** (power against cadence at each level). That table captures `g∘d` directly.
+- **ERG and FTMS:** target power → level must go through that table, never a linear interpolation across levels. Resistance values reported to apps (0x2AD6 range, Indoor Bike Data) should be linearised from the same table, which is design-notes §6 option B or C and DR-1 §2.11.
 
 The stock console overshoots on 98% of mid/high moves (B03). That behaviour is the baseline any motor-control option must beat.
 

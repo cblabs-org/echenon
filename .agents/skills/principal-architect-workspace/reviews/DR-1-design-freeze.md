@@ -50,7 +50,7 @@ decisions in §2 can be prepared early.
 
 | Row | Finding | Source | Effect on decisions |
 |---|---|---|---|
-| #4 | Pot linear in shaft angle over levels 1–32 (R² = 0.9989), `wiper = 39.1 × level + 97` counts, about 151° of travel. Hysteresis < 15 counts. The console overshoots on 98% of mid/high moves | B03 | §2.5, §2.6 simplified (P-C); 22 kΩ tap offset unverified (E-02) |
+| #4 | Pot linear in shaft angle over levels 1–32 (R² = 0.9989), `wiper = 39.1 × level + 97` counts, about 151° of travel. The cam makes magnet displacement `e·(1 − cos θ)`, so resistance against level is non-linear (monotonic within the range); braking against gap is a further unknown `g`. Hysteresis < 15 counts. The console overshoots on 98% of mid/high moves | B03 | §2.5, §2.6 simplified (P-C); 22 kΩ tap offset unverified (E-02) |
 | #6 | **Yellow = 0 V, Green ≈ 1.67 V.** The pot is referenced to about 1.67 V on Green, the opposite of the SPEC naming | B01 | §2.2, §2.9: the standalone network must be redesigned (E-01) |
 | #7 | Cadence readable only through 4.7 kΩ + 100 nF; idle high, low on magnet | B01 | §2.7, §2.8; edge distortion to be confirmed (E-02) |
 | #8 | Wire colours Black = A, Red = B, Orange = VCC. PCNT gives 0% bounce, 100% detection, `stepsPerDetent = 4`. **The stock console misses 28% of clicks** | B02, B04 | §2.5 (no Ch B conditioning needed: A08 superseded, E-03); §2.10 |
@@ -78,7 +78,7 @@ are written `[DR-1: …]` in the specs until this record closes.
 | 2.3 | **Motor driver and rail** (decision D3): driver part, current limit, fault output, separate rail, bulk capacitance, trimpot replacement | H-03, D3 | #1, #2, #11 | `[DR-1]` | OPEN |
 | 2.4 | **Fail-safe strategy**: normally-closed bypass, passive-only, or encoder injection; boot-race handling | H-05 | #9, #13 | `[DR-1]` | OPEN |
 | 2.5 | **Cam-aware controller** (only needed where the ESP32 drives the motor; see 2.10): full-revolution angle tracking, working half and approach direction, angle-based level table, calibration by extremes, one-revolution run-time bound, loop rate and dead zone, reset-safe driver inputs. In console-driven modes, level comes from the linear wiper fit (B03). Decoder = `EncoderModule` (PCNT), already decided; no Ch B conditioning (A08 superseded) | S-01, M-02, M-01, H-06 | #3, #4, #5, #8, #13 | `[DR-1]` | OPEN |
-| 2.6 | **Power model**: re-indexed on cam angle within the working half-revolution; tolerance target | S-02 | #2, #4 | `[DR-1]` | OPEN |
+| 2.6 | **Power model**: empirical per-level table (level or 256-level internal position × cadence → watts), capturing the cam's `1 − cos θ` displacement and the gap-to-braking function together; no polynomial in level or angle; tolerance target | S-02 | #2, #4 | `[DR-1]` | OPEN |
 | 2.7 | **Phase 3 pin map**: confirm or revise the provisional map (sense GPIO 6/7; L9110S or successor IA/IB GPIO 10/17; wiper 1; cadence 5; encoder A/B 8/9; no encoder-VCC sense). GPIO 6/7 are never both driver outputs and sense inputs | H-04 | #7, #8 | `[DR-1]` | OPEN |
 | 2.8 | **Passive tap board design**: J1–J4 pass-through, tap network, buck and rail, housing fit | H-05 (option b), D2 | #6, #7, #10, #11 | `[DR-1]` | OPEN |
 | 2.9 | **R3 / R4 / R5**: keep, remove or make switchable, per board. Must reflect the measured pot polarity (Green ≈ 1.67 V reference, Yellow = 0 V) | H-02, E-01 | #6, #7, #10 | `[DR-1]` | OPEN |
