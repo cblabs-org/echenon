@@ -274,6 +274,11 @@ Evidence files under `docs/measurements/phase0/` by WO0→WO4→WO5 (new files o
   feedback (proceed). Recorded here as the provenance anchor per
   `.agents/rules/00-operating-model.md`.
 - **Next:** Spawn WO4a worker.
+- **WO4a complete:** `305e20c` on `fix/adc-gpio-conflict`. EncoderModule wired,
+  ADC reduced to 8 channels, diagnostics stripped, build clean (0 errors,
+  RAM 15.3%, Flash 19.6%). Worker completion report at
+  `wo4a-encoder-integration/WORKORDER.md`.
+- **Next:** WO4b (interactive bench test) — tag, flash, compare PCNT vs ADC baseline.
 
 ## Status
-**Plan Status:** WO4a spawning — encoder integration (fix/adc-gpio-conflict)
+**Plan Status:** WO4a complete — WO4b (interactive bench) ready to flash
