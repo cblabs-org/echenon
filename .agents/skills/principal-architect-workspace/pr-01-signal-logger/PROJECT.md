@@ -255,5 +255,25 @@ Evidence files under `docs/measurements/phase0/` by WO0→WO4→WO5 (new files o
   CSV export, mDNS.
 - **Next:** WO4 + WO5 are interactive (bench + bike). WO6 is autonomous.
 
+### 2026-10-04 — Encoder integration decomposition approved
+
+- **Context:** ADC-based encoder analysis complete (B02, B03 reports committed).
+  39% bounce, 10.7% skip, 28% console miss rate. Resistance calibration and
+  eccentric cam model documented. MITM design notes captured.
+- **Branch state:** `fix/adc-gpio-conflict` at `0f31c04`, 13 commits ahead of
+  `signal-logger/wo4-scope-gate`. Clean working tree. Tag `v0.1.0-dev.4`.
+- **Decomposition:** 3 sub-WOs for encoder integration:
+  - **WO4a** (`standard`, autonomous): Wire up EncoderModule — release GPIO 8/9
+    from ADC, add `BOARD_ENCODERS[]`, enable `WITH_ENCODER`, register module,
+    strip diagnostic instrumentation. Build-verify.
+  - **WO4b** (`interactive`, bench): Flash, compare PCNT vs ADC baseline,
+    determine `stepsPerDetent`, commit B04 comparison report.
+  - **WO4c** (`mechanical`, autonomous): Merge `fix/adc-gpio-conflict` into
+    `signal-logger/wo4-scope-gate`, delete fix branch.
+- **User approval:** Approved the decomposition on 2026-10-04 via artifact
+  feedback (proceed). Recorded here as the provenance anchor per
+  `.agents/rules/00-operating-model.md`.
+- **Next:** Spawn WO4a worker.
+
 ## Status
-**Plan Status:** WO3 complete — WO4 (interactive) awaiting user at bench
+**Plan Status:** WO4a spawning — encoder integration (fix/adc-gpio-conflict)
