@@ -22,7 +22,7 @@ Phase and PR numbering in this table is canonical; other documents follow it.
 
 | PR | Phase | Title | Dependencies | Status |
 |---|---|---|---|---|
-| PR-01 | 0 | Signal Logger (Observe) | `main` | ⬜ Not started — **next** |
+| PR-01 | 0 | Signal Logger (Observe) | `main` | 🟡 In progress: WO0–WO3, WO4a done; WO4 partial; WO4d logger fixes, WO5, WO6, WO7 to go ([review](reviews/2026-10-04-pr01-progress-review.md)) |
 | DR-1 | — | Design Freeze Review ([record](reviews/DR-1-design-freeze.md)) | PR-01 evidence (Phase 0 register complete) | ⬜ Not started |
 | PR-02 | 1 | Calibration + Power (+ live WS feed) | PR-01, **DR-1** | ⬜ Not started |
 | PR-03 | 2 | BLE Foundation + HR Relay | PR-01; entry gates below (central acceptance **OPEN**) | ⬜ Not started |
@@ -37,8 +37,8 @@ Phase and PR numbering in this table is canonical; other documents follow it.
 
 | Gate | Required Before | Verification | Status |
 |---|---|---|---|
-| **Bench ready**: ≥ 2-channel scope with single-shot trigger; motor-current measurement (shunt + scope or DC clamp); JST-SM 9-pin and JST 3-pin Y / back-probe harness; series tap resistors | PR-01's first WO that connects to the bike | Owner confirms kit on hand; recorded in PR-01 Session Log | OPEN |
-| **Scope characterisation** of both motor wires (both directions, at rest; 10 ms/div and µs/div) | Connecting PR-01 motor-sense taps (GPIO 6/7) | Captures committed as Phase 0 register row #1 evidence. Either result lets logging proceed (÷4 divider safe to ~13 V); result feeds DR-1 | OPEN |
+| **Bench ready**: ≥ 2-channel scope with single-shot trigger; motor-current measurement (shunt + scope or DC clamp); JST-SM 9-pin and JST 3-pin Y / back-probe harness; series tap resistors | PR-01's first WO that connects to the bike | Owner confirms kit on hand; recorded in PR-01 Session Log | PARTIAL: bench in use since 2026-10-03; scope and current measurement still to be confirmed (WO4 items C and D) |
+| **Scope characterisation** of both motor wires (both directions, at rest; 10 ms/div and µs/div) | Connecting PR-01 motor-sense taps (GPIO 6/7) | Captures committed as Phase 0 register row #1 evidence. Either result lets logging proceed (÷4 divider safe to ~13 V); result feeds DR-1 | OPEN: taps were connected before the captures (safe through the divider); captures still owed |
 | **Phase 0 register complete** ([`docs/measurements/phase0/README.md`](../../../docs/measurements/phase0/README.md)) | PR-01 exit / DR-1 start | Every row has an Evidence file and a Result | OPEN |
 | **DR-1: Design Freeze** | **PR-02, PR-04a, PR-07** (no soldering or permanent install before approval) | Chief Architect approves the [DR-1 record](reviews/DR-1-design-freeze.md) | OPEN |
 | R3/R4/R5 standalone supplies | DR-1 | Decided as part of the switchable-supply and fail-safe strategy | OPEN |
@@ -138,3 +138,34 @@ Phase and PR numbering in this table is canonical; other documents follow it.
   `SessionOverlay` is split between PR-06 (session API, download, history tab)
   and PR-09 (`/overlay` page, WebSocket).
 - Next: after the Chief Architect reviews and commits the remediation, **PR-01 is GO**.
+
+### 2026-10-04: PR-01 progress review (WO0–WO4a)
+- **Done:** WO0 (ADC spike), WO1 (scaffold; framework at `v0.0.12-dev.82`),
+  WO2 (capture engine), WO3 (dashboard, `echenon.local`), WO4a
+  (`EncoderModule` via PCNT). WO4 is partial: items B–E are outstanding (rows #1, #2, #11).
+  Work sits on the off-stack branch `fix/adc-gpio-conflict`; the PA resume
+  bridge renames it.
+- **Owner decisions recorded:** knob decoded by `EncoderModule` (PCNT);
+  cadence tap 4.7 kΩ + 100 nF; encoder colours Black = A, Red = B,
+  Orange = VCC; 256-level internal resistance scale. See the
+  [DR-1 record](reviews/DR-1-design-freeze.md) §1.2.
+- **Design-changing findings:**
+  - The pot is referenced to about 1.67 V on Green, with Yellow at 0 V. This
+    is the reverse of the SPEC, and the provisional standalone network must be
+    redesigned at DR-1.
+  - The stock console misses 28% of knob clicks; PCNT misses none.
+  - The pot is linear in angle across the console's range, which simplifies
+    S-01 for console-driven modes.
+- **New DR-1 decisions:** §2.10 interception architecture, including an
+  **encoder-only MITM** (the audit's H-05 option c), which could deliver ERG
+  without the motor split; §2.11 resistance-scale mappings. See PROGRAM-PLAN
+  "Candidate restructure".
+- **Logger defects:** the burst export mislabels channels, motor events
+  chatter, timestamps are per DMA read, encoder events are not logged, and
+  the ride log wraps at 30 minutes. **WO4d must fix these before WO5.**
+  SignalLogger moves behind `WITH_SIGNAL_LOGGER` after PR-01, because it
+  uses about 7.5 MB of PSRAM.
+- **Process:** interactive WOs may declare an exploration boundary;
+  findings go to the Chief Architect or DR-1 as proposals. The bench
+  wrap-up is to be committed into the PR-01 folder.
+- Review: [2026-10-04 PR-01 progress review](reviews/2026-10-04-pr01-progress-review.md).

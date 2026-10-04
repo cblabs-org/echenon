@@ -41,6 +41,28 @@ Additional PR-01 inputs: the WO0 spike report (ADC-continuous throughput with Wi
 on; ADC + GPIO interrupt on one pad; encoder Ch B capture) and the scope
 characterisation captures.
 
+### 1.1 Preliminary bench findings (2026-10-04, not yet register results)
+
+From the PR-01 bench reports B01–B04. Analysis is in the
+[2026-10-04 PR-01 progress review](2026-10-04-pr01-progress-review.md). The
+register stays the source of truth. These findings are carried here so the
+decisions in §2 can be prepared early.
+
+| Row | Finding | Source | Effect on decisions |
+|---|---|---|---|
+| #4 | Pot linear in shaft angle over levels 1–32 (R² = 0.9989), `wiper = 39.1 × level + 97` counts, about 151° of travel. Hysteresis < 15 counts. The console overshoots on 98% of mid/high moves | B03 | §2.5, §2.6 simplified (P-C); 22 kΩ tap offset unverified (E-02) |
+| #6 | **Yellow = 0 V, Green ≈ 1.67 V.** The pot is referenced to about 1.67 V on Green, the opposite of the SPEC naming | B01 | §2.2, §2.9: the standalone network must be redesigned (E-01) |
+| #7 | Cadence readable only through 4.7 kΩ + 100 nF; idle high, low on magnet | B01 | §2.7, §2.8; edge distortion to be confirmed (E-02) |
+| #8 | Wire colours Black = A, Red = B, Orange = VCC. PCNT gives 0% bounce, 100% detection, `stepsPerDetent = 4`. **The stock console misses 28% of clicks** | B02, B04 | §2.5 (no Ch B conditioning needed: A08 superseded, E-03); §2.10 |
+
+### 1.2 Owner decisions already taken (recorded, not re-opened)
+
+| Decision | Date | Record |
+|---|---|---|
+| Knob decoded by framework `EncoderModule` (PCNT) on GPIO 8/9 | 2026-10-04 | PR-01 WO4a |
+| Cadence tap = 4.7 kΩ in series + 100 nF | 2026-10-03 | B01 |
+| 256 internal resistance levels (`uint8_t`) as the canonical scale; external scales (Echelon 1–32, 1–100) are mappings | 2026-10-04 | `docs/mitm-encoder-design-notes.md` §2 |
+
 ---
 
 ## 2. Decisions to take
@@ -55,11 +77,13 @@ are written `[DR-1: …]` in the specs until this record closes.
 | 2.2 | **Switchable standalone supplies**: whether and how Yellow / Green / encoder supplies are switched rather than hard-wired | H-02 | #6, #10 | `[DR-1]` | OPEN |
 | 2.3 | **Motor driver and rail** (decision D3): driver part, current limit, fault output, separate rail, bulk capacitance, trimpot replacement | H-03, D3 | #1, #2, #11 | `[DR-1]` | OPEN |
 | 2.4 | **Fail-safe strategy**: normally-closed bypass, passive-only, or encoder injection; boot-race handling | H-05 | #9, #13 | `[DR-1]` | OPEN |
-| 2.5 | **Cam-aware controller**: full-revolution angle tracking, working half and approach direction, angle-based level table, calibration by extremes, one-revolution run-time bound, loop rate and dead zone, reset-safe driver inputs; decoder = `EncoderModule` (PCNT) with Ch B conditioning | S-01, M-02, M-01, H-06 | #3, #4, #5, #8, #13 | `[DR-1]` | OPEN |
+| 2.5 | **Cam-aware controller** (only needed where the ESP32 drives the motor; see 2.10): full-revolution angle tracking, working half and approach direction, angle-based level table, calibration by extremes, one-revolution run-time bound, loop rate and dead zone, reset-safe driver inputs. In console-driven modes, level comes from the linear wiper fit (B03). Decoder = `EncoderModule` (PCNT), already decided; no Ch B conditioning (A08 superseded) | S-01, M-02, M-01, H-06 | #3, #4, #5, #8, #13 | `[DR-1]` | OPEN |
 | 2.6 | **Power model**: re-indexed on cam angle within the working half-revolution; tolerance target | S-02 | #2, #4 | `[DR-1]` | OPEN |
 | 2.7 | **Phase 3 pin map**: confirm or revise the provisional map (sense GPIO 6/7; L9110S or successor IA/IB GPIO 10/17; wiper 1; cadence 5; encoder A/B 8/9; no encoder-VCC sense). GPIO 6/7 are never both driver outputs and sense inputs | H-04 | #7, #8 | `[DR-1]` | OPEN |
 | 2.8 | **Passive tap board design**: J1–J4 pass-through, tap network, buck and rail, housing fit | H-05 (option b), D2 | #6, #7, #10, #11 | `[DR-1]` | OPEN |
-| 2.9 | **R3 / R4 / R5**: keep, remove or make switchable, per board | H-02 | #6, #7, #10 | `[DR-1]` | OPEN |
+| 2.9 | **R3 / R4 / R5**: keep, remove or make switchable, per board. Must reflect the measured pot polarity (Green ≈ 1.67 V reference, Yellow = 0 V) | H-02, E-01 | #6, #7, #10 | `[DR-1]` | OPEN |
+| 2.10 | **Interception architecture**: choose from Monitor / **Encoder MITM** (PCNT ingest, clean quadrature resynthesised to the console, NC fail-safe bypass) / Full MITM (pot simulation) / Console bypass (ESP32 H-bridge with PID; console drive used as a hint). Includes whether ERG is first delivered by encoder injection (32 levels, console drives the motor) and the resulting programme restructure (PR-04a scope, a new encoder-relay PR, PR-07 / PR-08 order) | H-05 (c), P-B | #8, #9, #13; console fault-tolerance tests §12 #1, #2, #3, #7, #9 | `[DR-1]` | OPEN |
+| 2.11 | **Resistance scale mapping**: 256-level internal scale (owner decision); exact mappings and offsets to Echelon 1–32, FTMS Supported Resistance Level Range (0x2AD6) and 1–100 displays; linearisation option (design notes §6 A / B / C) | P-A, P-C | #4 | Scale decided; mappings `[DR-1]` | PARTLY DECIDED |
 
 ---
 

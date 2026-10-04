@@ -77,6 +77,31 @@ under `#ifdef WITH_BLE`. PR-05 has **no** PR-04a edge: the fly-wire rig is enoug
   (via PR-03 and its OPEN central-acceptance gate) joins at PR-08 and can become
   critical if the framework gate stays open.
 
+### Candidate Restructure (decided at DR-1 §2.10)
+
+PR-01 bench evidence makes an **encoder-only MITM** viable.
+- **What it is:** the board intercepts only the 3-pin knob loom (J3/J4). PCNT
+  decodes the knob, and the ESP32 resynthesises clean quadrature to the console.
+  A normally-closed bypass keeps the knob working if the ESP32 is unpowered.
+- **What it fixes:** the stock console misses 28% of clicks (B02).
+- **What else it enables:** the console can be driven by **injecting clicks**
+  (audit H-05 option c). That gives 32-level ERG without splitting the motor
+  wires.
+
+If DR-1 adopts it, the expected shape is:
+
+| Change | Detail |
+|---|---|
+| PR-04a | Passive tap board **+ J3/J4 encoder intercept with NC bypass** |
+| New PR (Phase 3) | **Encoder relay**: PCNT ingest, quadrature resynthesis, clean-click, intercept-mode switch, fail-safe tests |
+| PR-08 | ERG via encoder injection first (Intercept Mode, console drives the motor); FTMS target-power → level → click sequence |
+| PR-07 | Motor MITM / console-as-signal-source (ESP32 PID) becomes the high-fidelity or Override path: v1.1 or after PR-08 |
+
+**Not adopted until DR-1 approves it.** Prerequisites (PR-01 WO5):
+- the safe console fault-tolerance tests (design notes §12 #1, #2, #3, #7, #9);
+- the minimum quadrature pulse width the console accepts;
+- the console's behaviour when clicks arrive during a motor seek.
+
 ### Phase-to-PR Mapping
 
 | Dev Phase | PR | Hardware Required |
@@ -128,6 +153,13 @@ internal pulls, USB-C power with GND tied to Brown. Nothing cut.
 **Exit:** Every row of the Phase 0 register has an Evidence file and a Result.
 Hardware and bench WOs are `complexity: interactive`.
 **Mandate:** [pr-01-signal-logger/PROJECT.md](pr-01-signal-logger/PROJECT.md)
+**Update 2026-10-04** ([progress review](reviews/2026-10-04-pr01-progress-review.md)):
+- GPIO 8/9 now feed `EncoderModule` (PCNT), leaving 8 ADC channels (owner decision).
+- Cadence tap is 4.7 kΩ + 100 nF.
+- WO4d (logger fixes L-01 to L-05, L-07) must land before WO5.
+- WO5 adds the tap cross-check (E-02), the row #6 load test, and the safe console fault-tolerance tests.
+- WO7 doc-sync records the measured pot polarity (E-01) and marks A08 as superseded.
+- After PR-01, `SignalLogger` builds only under `WITH_SIGNAL_LOGGER` (diagnostic builds).
 
 ---
 
