@@ -162,14 +162,16 @@ superseded `[env:echenon]` environment, `hardware/echenon/board.h` and
 | **[x] [wo4a-encoder-integration](wo4a-encoder-integration/WORKORDER.md):** | Wire up EncoderModule on GPIO 8/9 via PCNT | `signal-logger/wo4a-encoder-integration` | `standard` | WO4 | — | ✅ Complete |
 | **[x] wo4c:** | Branch housekeeping: rename `fix/adc-gpio-conflict` → `signal-logger/wo4a-encoder-integration` | _(in-place rename)_ | `mechanical` | WO4a | — | ✅ Complete |
 | **[ ] [wo4b-bench-gate](wo4b-bench-gate/WORKORDER.md):** | Scope gate outstanding items: pin idle, motor scope captures, motor current, VIN tolerance | `signal-logger/wo4b-bench-gate` | `interactive` | WO4c, bench-ready | #1, #2, #11 | ⬜ Not started |
-| **[ ] [wo5-register-campaign](wo5-register-campaign/WORKORDER.md):** | Register campaign: ride, burst, remaining rows #3–#10, #12–#13 | `signal-logger/wo5-register-campaign` | `interactive` | WO4b | #3–#10, #12–#13 | ⬜ Not started |
+| **[ ] [wo4d-logger-fixes](wo4d-logger-fixes/WORKORDER.md):** | Logger fixes from CA review: L-01–L-05, L-07, L-08 + native tests for de-interleave, motor FSM, timestamps | `signal-logger/wo4d-logger-fixes` | `standard` | WO4b | — | ⬜ Not started |
+| **[ ] [wo5-register-campaign](wo5-register-campaign/WORKORDER.md):** | Register campaign: rows #3–#10, #12–#13 + E-02 tap cross-check, row #6 load test, console fault-tolerance tests (#1,#2,#3,#7,#9), min pulse width, mid-seek behaviour | `signal-logger/wo5-register-campaign` | `interactive` | WO4d | #3–#10, #12–#13 | ⬜ Not started |
 | **[ ] [wo6-native-tests](wo6-native-tests/WORKORDER.md):** | Native unit tests (decimation, event log, CSV writer, calibration) | `signal-logger/wo6-native-tests` | `standard` | WO5 (base), WO2 (code) | — | ⬜ Not started |
-| **[ ] [wo7-doc-sync](wo7-doc-sync/WORKORDER.md):** | Doc-sync: SPEC, hardware spec, ex3 spec updates + absolute path cleanup | `signal-logger/wo7-doc-sync` | `standard` | WO6 | — | ⬜ Not started |
+| **[ ] [wo7-doc-sync](wo7-doc-sync/WORKORDER.md):** | Doc-sync: SPEC, hardware spec, ex3 spec + E-01 pot polarity, E-03 A08 superseded, E-04 single formula, E-05 B-report→register mapping, bench wrap-up commit, absolute path cleanup | `signal-logger/wo7-doc-sync` | `standard` | WO6 | — | ⬜ Not started |
 
 **File overlaps:** All WOs are linearly stacked; no parallel conflicts. `EchenonModule.*`
-touched by WO1→WO2→WO3 (additive). `SignalLogger.*` by WO2→WO3 (additive).
+touched by WO1→WO2→WO3 (additive). `SignalLogger.*` by WO2→WO3→WO4d (additive).
 Evidence files under `docs/measurements/phase0/` by WO0→WO4→WO4b→WO5 (new files only).
-`docs/*.md` and `SPEC.md` by WO7 only. `test/native/` by WO6 only.
+`docs/*.md` and `SPEC.md` by WO7 only. `test/native/` by WO4d (new) and WO6 (new).
+`src/echenon/SignalLogger.*` and `board.h` by WO4d (fixes).
 
 ## Session Log
 

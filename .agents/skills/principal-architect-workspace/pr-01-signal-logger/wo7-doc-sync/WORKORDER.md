@@ -117,12 +117,75 @@ PR-01. Four categories of changes:
 - [ ] Replace absolute paths with relative paths within the repository
 - [ ] Verify all links still resolve correctly after the change
 
+### G. E-01 Pot Polarity (CA review addendum)
+
+B01 measured **Yellow ("POT_REF_HI") = 0 V** and **Green ("POT_REF_LO") ≈ 1.67 V**.
+This is the opposite of what the SPEC assumes.
+
+- [ ] Record the measured polarity as a **fact** in SPEC §4.4.1 (add a note):
+  - Green (GPIO 2): console pot reference, measured ≈ 1.67 V (≈ 2,084 ADC counts)
+  - Yellow (GPIO 3): pot reference, measured ≈ 0 V
+- [ ] Update signal names if they say "HI"/"LO" incorrectly
+- [ ] Add a note that the provisional Phase 3 standalone network is incorrect
+  and DR-1 §2.2/§2.9 must redesign
+- [ ] Do NOT redesign the circuit — leave that to DR-1
+
+### H. E-03 A08 Superseded (CA review addendum)
+
+WO0/A08 concluded encoder Ch B needed analog thresholding. After the wire-colour
+correction, PCNT decodes both channels with 0% bounce and 100% detection (B04).
+WO0 almost certainly probed the wrong wire.
+
+- [ ] Mark A08 as *superseded* in the register (`docs/measurements/phase0/README.md`),
+  with a note: "Superseded by B04 — wire-colour correction shows PCNT decodes
+  both channels cleanly"
+- [ ] Remove "Ch B conditioning" from SPEC §5.4 if present
+- [ ] Remove or annotate the "1.5–2 V Ch B pulse" claim from the teardown/design
+  notes if present
+
+### I. E-04 Single Level Formula (CA review addendum)
+
+B03 gives `wiper = 39.1 × level + 97`. Design notes §4 give
+`level = (wiper − 125) / 37.7 + 1`. These are two different fits.
+
+- [ ] Adopt B03's fit (`wiper = 39.1 × level + 97`) as the single reference
+- [ ] Update any references in design notes, SPEC §5.3, or ex3 spec to cite
+  B03 and use the single formula
+- [ ] Remove or annotate the design notes §4 formula
+
+### J. E-05 B-Report → Register Row Mapping (CA review addendum)
+
+The B-series bench reports use a different naming prefix from the register's
+`A<row>` convention. Keep the B-series as "bench reports" and have the register
+cite them per row:
+
+- [ ] Update `docs/measurements/phase0/README.md` register:
+  - B01 → rows #6, #7, #8 (partial)
+  - B02 and B04 → row #8
+  - B03 → row #4
+- [ ] Add a note at the top of the register explaining the dual prefix scheme:
+  `A<row>-…` for row-specific evidence, `B<session>-…` for bench session reports
+
+### K. Commit Bench Wrap-Up (CA review addendum — process item P-D)
+
+The bench session wrap-up report currently lives outside the repo. Commit it for
+provenance.
+
+- [ ] Copy the wrap-up from:
+  `/Users/mcneillm/.gemini/antigravity/brain/d327814e-863a-49b9-b7e7-96c160bf0725/session-wrapup.md`
+  into `.agents/skills/principal-architect-workspace/pr-01-signal-logger/session-wrapup.md`
+- [ ] Commit with message: `docs: commit bench session wrap-up for provenance`
+
 ## Verification
 
 - [ ] `grep -rn '/Users/\|file:///' docs/` returns no matches
 - [ ] All modified files are valid Markdown with no broken links
 - [ ] No changes to excluded files (PROGRAM.md, reviews/*, etc.)
 - [ ] Build still succeeds (`build_project` on `env:ex3-waveshare-nano`)
+- [ ] A08 is marked superseded in the register
+- [ ] Pot polarity is recorded as a measured fact
+- [ ] B03 fit is the single level formula reference
+- [ ] B-reports are cited in the register per E-05 mapping
 
 ---
 

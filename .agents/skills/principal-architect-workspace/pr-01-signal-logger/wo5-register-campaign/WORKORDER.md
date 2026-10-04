@@ -12,7 +12,7 @@ complexity: interactive
 > campaign that fills all remaining Phase 0 register rows.
 
 **Parent:** [PR-01 Signal Logger](../PROJECT.md)
-**Branch:** `signal-logger/wo5-register-campaign` (base: `signal-logger/wo4b-bench-gate`)
+**Branch:** `signal-logger/wo5-register-campaign` (base: `signal-logger/wo4d-logger-fixes`)
 
 ## Objective
 
@@ -24,6 +24,7 @@ Phase 0 register (SPEC test 0.13).
 ## Entry Conditions
 
 - [ ] WO4b bench gate closed — motor-sense taps characterised, register rows #1, #2, #11 done
+- [ ] WO4d logger fixes closed — burst de-interleave, motor FSM, timestamps, encoder events all working
 - [ ] Firmware on `signal-logger/wo5-register-campaign` branch at the tip
 - [ ] All taps connected (GPIO 1–10)
 - [ ] Dashboard accessible at `echenon.local` or IP
@@ -107,7 +108,70 @@ Phase 0 register (SPEC test 0.13).
   power-on burst. Also capture scope data if available.
   Evidence: `A13-YYYYMMDD-power-on.csv` and/or scope screenshots.
 
-### G. Commit all evidence
+### G. E-02 Tap Cross-Check (CA review addendum)
+
+The CA review found that absolute ADC readings through 22 kΩ are suspect
+(E-02). The SAR converter cannot settle its sample capacitor through 22 kΩ at
+83 kS/s.
+
+- [ ] **Option A:** Cross-check each ADC tap (GPIO 1–7, 10) against a DMM at
+  several known console levels. Record ADC reading vs DMM reading. Calculate
+  offset for each tap. If offsets are > 5%, flag for rework.
+- [ ] **Option B (if rework):** Move every remaining 22 kΩ series resistor to
+  4.7 kΩ plus a local 10–100 nF capacitor. After rework, re-measure to confirm.
+- [ ] Confirm that 4.7 kΩ + 100 nF (τ ≈ 0.47 ms) does not distort the console's
+  reed edge (cadence, row #7). Compare cadence pulse shape before/after rework.
+- [ ] Evidence: `A06-YYYYMMDD-tap-crosscheck.csv` (DMM vs ADC per tap per level)
+
+### H. Row #6 Source Impedance (Load Test)
+
+Row #6 needs a load test to determine the console's source impedance on the
+Green and Yellow reference lines.
+
+- [ ] With taps connected, measure ch1 (Yellow) and ch2 (Green) at rest (no load).
+- [ ] Apply a known load resistor (e.g., 10 kΩ from Green to GND) and re-measure.
+  Voltage drop gives source impedance: `Z_src = R_load × (V_noload - V_loaded) / V_loaded`
+- [ ] Repeat for Yellow.
+- [ ] Record in `A06-YYYYMMDD-reference-impedance.md`
+- [ ] If source impedance is low (< 1 kΩ), note implications for Phase 3 standalone.
+
+### I. Console Fault-Tolerance Tests (from `docs/mitm-encoder-design-notes.md` §12)
+
+These tests are prerequisites for DR-1 decision 2.10 (encoder-only MITM).
+**Only the safe subset.** Tests #4 and #6 need explicit owner go-ahead —
+park them as proposals if not authorised.
+
+- [ ] **Test #1:** Disconnect encoder loom at J2 while console powered. Does
+  the console fault, or does it continue operating with knob unresponsive?
+  Evidence: `A09-YYYYMMDD-encoder-disconnect.md`
+- [ ] **Test #2:** Reconnect encoder loom while console is powered. Does
+  the console resume normal operation, or does it require a power cycle?
+  Evidence: `A09-YYYYMMDD-encoder-reconnect.md`
+- [ ] **Test #3:** Apply a rapid series of encoder clicks (faster than human
+  can normally turn). Does the console track all of them, or does it cap
+  the rate? Evidence: `A09-YYYYMMDD-encoder-fast-clicks.md`
+- [ ] **Test #7:** With motor at rest (steady level), observe encoder VCC
+  voltage stability over 60 s. Any fluctuation? Evidence: `A09-YYYYMMDD-encoder-vcc-stability.md`
+- [ ] **Test #9:** Power cycle the console with the encoder disconnected,
+  then reconnect. Does the console home correctly? Evidence:
+  `A09-YYYYMMDD-encoder-powercycle.md`
+- [ ] **Tests #4 and #6 (BLOCKED unless owner approves):**
+  - #4: Disconnect pot while motor is seeking
+  - #6: Disconnect motor while seeking
+  Record as "Deferred — awaiting owner go-ahead" if not authorised.
+
+### J. Encoder Timing (minimum pulse width, mid-seek behaviour)
+
+- [ ] **Minimum quadrature pulse width:** Use the scope to measure the
+  narrowest encoder pulse the console generates (during fast knob turns).
+  Compare to PCNT minimum pulse width. Evidence:
+  `A08-YYYYMMDD-encoder-min-pulse.md`
+- [ ] **Mid-seek behaviour:** Start a motor seek (turn knob several clicks),
+  then turn the knob again before the seek completes. How does the console
+  respond? Does it queue, cancel, or stack the seeks? Evidence:
+  `A08-YYYYMMDD-console-midseek.md`
+
+### K. Commit all evidence
 
 - [ ] `git add docs/measurements/phase0/A03-* docs/measurements/phase0/A04-* ... A13-*`
 - [ ] `git commit -m "pr-01/wo5: register campaign — rows 3-10, 12-13, ride + burst evidence"`
