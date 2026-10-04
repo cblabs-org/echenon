@@ -143,3 +143,54 @@ when driven by an external app (e.g., ERG mode in Zwift).
 - [`docs/measurements/phase0/B02-*`](measurements/phase0/) — encoder characterisation data
 - [`docs/measurements/phase0/B03-*`](measurements/phase0/) — resistance calibration data
 - `framework/modules/EncoderModule/` — PCNT-based encoder module
+
+
+---
+
+## 10. Architecture Spectrum
+
+There are four levels of MITM integration, ranging from passive
+monitoring to full simulation. The decision depends on how much control
+we need vs. hardware complexity.
+
+```
+ Passive ◄────────────────────────────────────► Full Control
+   Tap        Encoder MITM     Full MITM      Console Bypass
+```
+
+| Level | Encoder | Pot | Motor | What it gives us |
+|---|---|---|---|---|
+| **Monitor** | Tap | Tap | Console | Read-only telemetry |
+| **Encoder MITM** | Intercept + resynth | Tap | Console | Clean input, console stays in control |
+| **Full MITM** | Intercept + resynth | **Simulate** | Console | Tell console any level we want |
+| **Console bypass** | Intercept | Read | **ESP32 H-bridge** | Total control, console is display-only |
+
+### Pot Simulation Considerations
+
+If we simulate the pot, we can decouple the reported level from the
+physical motor position. This enables:
+- Reporting arbitrary levels to the Echelon app
+- ERG mode (external app sets target, ESP32 drives to it)
+- Non-standard resistance curves (e.g., truly linear, exponential)
+
+**Hardware options for pot simulation:**
+- **DAC output** (e.g., MCP4725) — simplest, I²C, 12-bit
+- **Digital potentiometer** (e.g., MCP4131) — drop-in replacement for
+  the physical pot, SPI, maintains the console's expected impedance
+- **PWM + RC filter** — cheapest, but resolution and ripple may be issues
+
+**Risk:** If we simulate the pot, the console's motor control loop will
+try to goalseek to the position we're reporting. If the physical motor
+position doesn't match the simulated pot value, the motor will run
+continuously trying to reach an unreachable target. We would need to
+either:
+1. Also control the motor (full bypass), or
+2. Always keep the simulated pot value tracking the actual motor position,
+   only deviating transiently to "nudge" the console
+
+> [!NOTE]
+> This is a future design decision. The first step is Encoder MITM
+> (intercept + debounce + resynth) which requires no additional hardware
+> beyond the MITM board's existing GPIOs. Pot simulation and console
+> bypass are Phase 5+ options that depend on how much control the
+> connected apps (Peloton, Zwift) actually need.
