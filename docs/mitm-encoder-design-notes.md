@@ -194,3 +194,92 @@ either:
 > beyond the MITM board's existing GPIOs. Pot simulation and console
 > bypass are Phase 5+ options that depend on how much control the
 > connected apps (Peloton, Zwift) actually need.
+
+
+---
+
+## 11. Console as Signal Source (Motor Ownership Model)
+
+An alternative architecture: **own the motor** but use the console's
+motor drive outputs as a **hint signal** rather than discarding them.
+
+```
+Physical Encoder
+       │
+       ▼
+ ┌─────────────┐
+ │   ESP32      │
+ │   PCNT       │
+ └──────┬──────┘
+        │ clean encoder
+        ▼
+ ┌─────────────┐      ┌─────────────┐
+ │  Quadrature  │─────▶│  Echelon    │
+ │  Output      │      │  Console    │
+ └─────────────┘      └──────┬──────┘
+                              │ motor drive (FWD/REV voltage)
+                              ▼
+                       ┌─────────────┐
+                       │  ESP32 ADC   │  ← read as "hint"
+                       │  (sense)     │     (console wants to go FWD/REV)
+                       └──────┬──────┘
+                              │
+                              ▼
+                       ┌─────────────┐
+                       │  ESP32 PID   │  ← smooth motor control
+                       │  H-Bridge    │     using pot feedback
+                       └──────┬──────┘
+                              │
+                              ▼
+                         DC Motor
+```
+
+In this model:
+- The console **thinks** it's driving the motor (its H-bridge outputs
+  are connected to the ESP32's ADC, not the motor)
+- The ESP32 reads the console's drive direction (FWD/REV/OFF) as a
+  **hint** for what the console wants
+- The ESP32 drives the motor itself via its own H-bridge with a proper
+  **PID controller** using pot feedback
+- The pot can remain connected to the console for level display, OR be
+  simulated
+
+**Advantages:**
+- Smooth motor control (no bang-bang overshoot)
+- Console continues to report correct levels to the app
+- ESP32 can add soft-start, ramp-down, position hold
+- Motor seek time could drop from ~2 s to < 500 ms
+- Console's drive signal tells us the intended direction without
+  needing to decode its internal state
+
+**Risks:**
+- Requires H-bridge hardware on the MITM board
+- Console may detect motor current anomalies if it monitors back-EMF
+- Console may timeout if pot doesn't converge at expected rate
+
+## 12. Console Fault Tolerance — Tests Needed
+
+Before committing to any MITM architecture, we need to understand how
+the Echelon console handles non-conformant scenarios. These tests can
+be performed with the current hardware by manipulating signals:
+
+| # | Test | Method | What we learn |
+|---|---|---|---|
+| 1 | **Encoder disconnect** | Unplug encoder during operation | Does console timeout? Error display? |
+| 2 | **Encoder stall** | Hold encoder still, observe timeout | How long before console gives up? |
+| 3 | **Fast encoder burst** | Spin encoder rapidly (>10 clicks/sec) | Does console queue or drop pulses? |
+| 4 | **Pot disconnect** | Disconnect pot wiper during motor seek | Does motor run forever? Safety cutoff? |
+| 5 | **Pot clamp** | Hold pot at fixed value while encoder clicks | Does console detect non-convergence? |
+| 6 | **Motor disconnect** | Disconnect motor, send encoder clicks | Does console detect stall current? |
+| 7 | **Reverse encoder** | Swap A/B wires | Does console handle reverse gracefully? |
+| 8 | **Slow convergence** | Add resistance to motor circuit | Tolerance for slow pot response? |
+| 9 | **Mid-seek encoder** | Send encoder clicks while motor is seeking | Queue, ignore, or reset? |
+| 10 | **Power cycle during seek** | Power off/on while motor is moving | Does it home or resume? |
+
+> [!IMPORTANT]
+> Tests 4 and 6 should be done cautiously — a motor running without a
+> feedback signal or load could be a safety issue. Have a kill switch
+> (power strip) within reach.
+
+These tests will determine which MITM architecture is safe and which
+console assumptions we can violate without bricking the user experience.
