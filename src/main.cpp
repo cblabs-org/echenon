@@ -2,6 +2,12 @@
 #include <Arduino.h>
 #include "echenon/EchenonModule.h"
 
+#ifdef WITH_ENCODER
+#include "EncoderModule.hpp"
+#include "board.h"
+EncoderModule encoderModule;
+#endif
+
 Application app;
 EchenonModule echenonModule;
 
@@ -14,6 +20,14 @@ void setup() {
 
     // Register — compile-time introspection detects implemented interfaces
     app.registerModule(&echenonModule);
+
+#ifdef WITH_ENCODER
+    for (size_t i = 0; i < BOARD_ENCODER_COUNT; i++) {
+        encoderModule.addEncoder(BOARD_ENCODERS[i]);
+    }
+    encoderModule.begin(app);
+    app.registerModule(&encoderModule);
+#endif
 
     FrameworkConfig config;
     app.begin(config);

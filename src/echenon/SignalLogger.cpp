@@ -10,6 +10,11 @@ static const char* TAG = "SignalLogger";
 static SignalLogger* s_instance = nullptr;
 static portMUX_TYPE eventLogSpinlock = portMUX_INITIALIZER_UNLOCKED;
 
+// Channels to scan: 0-6 (pot, cadence, motor) + 9 (encoder VCC)
+// Channels 7,8 (encoder A,B) released for PCNT EncoderModule
+static const int adc_channels[] = {0, 1, 2, 3, 4, 5, 6, 9};
+static constexpr int kAdcChannelCount = sizeof(adc_channels) / sizeof(adc_channels[0]);
+
 void SignalLogger::applyConfig(const JsonObject& config) {
     if (config["decimation_window_ms"].is<uint32_t>()) {
         _decimationWindowMs = config["decimation_window_ms"].as<uint32_t>();
@@ -71,14 +76,14 @@ void SignalLogger::begin() {
         .format = ADC_DIGI_OUTPUT_FORMAT_TYPE2,
     };
     
-    adc_digi_pattern_config_t adc_pattern[10] = {};
-    for (int i = 0; i < 10; i++) {
+    adc_digi_pattern_config_t adc_pattern[kAdcChannelCount] = {};
+    for (int i = 0; i < kAdcChannelCount; i++) {
         adc_pattern[i].atten = ADC_ATTEN_DB_12;
-        adc_pattern[i].channel = i; // assumes channels 0-9
+        adc_pattern[i].channel = adc_channels[i];
         adc_pattern[i].unit = ADC_UNIT_1;
         adc_pattern[i].bit_width = ADC_BITWIDTH_12;
     }
-    dig_cfg.pattern_num = 10;
+    dig_cfg.pattern_num = kAdcChannelCount;
     dig_cfg.adc_pattern = adc_pattern;
 
     static bool _adc_configured = false;
@@ -118,8 +123,8 @@ void SignalLogger::begin() {
 
     // Reset row accumulators
     memset(&_currentRow, 0, sizeof(_currentRow));
-    for (int i = 0; i < 10; i++) {
-        _currentRow.channels[i].min_val = 0xFFFF;
+    for (int ch : adc_channels) {
+        _currentRow.channels[ch].min_val = 0xFFFF;
     }
 
     startBurst("power-on", kBurstDurationDefaultMs);
@@ -164,8 +169,8 @@ void SignalLogger::tick(uint32_t now) {
 
         // Reset accumulators
         memset(&_currentRow, 0, sizeof(_currentRow));
-        for (int i = 0; i < 10; i++) {
-            _currentRow.channels[i].min_val = 0xFFFF;
+        for (int ch : adc_channels) {
+            _currentRow.channels[ch].min_val = 0xFFFF;
         }
         _lastWindowMs = now;
     }
@@ -177,26 +182,13 @@ void SignalLogger::tick(uint32_t now) {
 }
 
 void SignalLogger::processAdcFrame(uint8_t* buf, uint32_t length) {
-    static uint32_t s_diagSamples[12] = {};  // 0-9 valid channels, 10=invalid, 11=total
-    static uint16_t s_ch4Min = 0xFFFF, s_ch4Max = 0;
-    static bool s_diagDone = false;
-
     uint32_t ts_us = esp_timer_get_time();
     for (uint32_t i = 0; i < length; i += sizeof(adc_digi_output_data_t)) {
         adc_digi_output_data_t* p = (adc_digi_output_data_t*)&buf[i];
         uint8_t chan = p->type2.channel;
         uint16_t data = p->type2.data;
 
-        s_diagSamples[11]++;
-        if (chan >= kNumChannels) {
-            s_diagSamples[10]++;
-            continue;
-        }
-        s_diagSamples[chan]++;
-        if (chan == 4) {
-            if (data < s_ch4Min) s_ch4Min = data;
-            if (data > s_ch4Max) s_ch4Max = data;
-        }
+        if (chan >= kNumChannels) continue;
 
         // Accumulate min/mean/max
         if (data < _currentRow.channels[chan].min_val) _currentRow.channels[chan].min_val = data;
@@ -215,35 +207,6 @@ void SignalLogger::processAdcFrame(uint8_t* buf, uint32_t length) {
         }
 
         handleSoftwareThresholds(chan, mv, ts_us);
-    }
-
-    // One-shot diagnostic after 10 seconds
-    if (!s_diagDone && s_diagSamples[11] > 500000) {
-        s_diagDone = true;
-        ESP_LOGW(TAG, "=== ADC DIAGNOSTIC (after %lu total samples) ===", s_diagSamples[11]);
-        for (int c = 0; c < 10; c++) {
-            ESP_LOGW(TAG, "  CH%d: %lu samples", c, s_diagSamples[c]);
-        }
-        ESP_LOGW(TAG, "  Invalid channel: %lu samples", s_diagSamples[10]);
-        ESP_LOGW(TAG, "  CH4 raw range: min=%u max=%u", s_ch4Min, s_ch4Max);
-        
-        // Dump raw DMA struct for each channel to check unit/channel tagging
-        ESP_LOGW(TAG, "  === Last raw sample per channel (unit.chan.data) ===");
-    }
-
-    // Log first sample of each channel once
-    static uint16_t s_chanSeen = 0;
-    if (s_chanSeen != 0x3FF) {
-        for (uint32_t i = 0; i < length; i += sizeof(adc_digi_output_data_t)) {
-            adc_digi_output_data_t* p = (adc_digi_output_data_t*)&buf[i];
-            uint8_t ch = p->type2.channel;
-            uint8_t unit = p->type2.unit;
-            uint16_t d = p->type2.data;
-            if (ch < 10 && !(s_chanSeen & (1 << ch))) {
-                s_chanSeen |= (1 << ch);
-                ESP_LOGW(TAG, "  RAW CH%u: unit=%u data=%u", ch, unit, d);
-            }
-        }
     }
 }
 

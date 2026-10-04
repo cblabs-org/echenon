@@ -27,6 +27,17 @@ constexpr int8_t PIN_KNOB_ENC_A       = 8;   // D5  Black,  ADC1 (J3 left pin)
 constexpr int8_t PIN_KNOB_ENC_B       = 9;   // D6  Red,    ADC1 (J3 right pin)
 constexpr int8_t PIN_KNOB_ENC_VCC     = 10;  // D7  Orange, ADC1 (J3 centre pin, Phase 0/1 only)
 
+#ifdef WITH_ENCODER
+#include "EncoderModule/EncoderConfig.h"
+constexpr BoardEncoder BOARD_ENCODERS[] = {
+    {.id = "knob", .pinA = PIN_KNOB_ENC_A, .pinB = PIN_KNOB_ENC_B,
+     .stepsPerDetent = 4, .reversed = false,
+     .accel = {.enabled = false}}
+};
+constexpr size_t BOARD_ENCODER_COUNT =
+    sizeof(BOARD_ENCODERS) / sizeof(BOARD_ENCODERS[0]);
+#endif
+
 #define HAS_MOTOR_CONTROL    0               // MITM board only (Phase 5+)
 
 // No display pin block and no button block: WITH_DISPLAY_U8G2 and
