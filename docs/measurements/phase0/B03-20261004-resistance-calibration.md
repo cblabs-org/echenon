@@ -186,3 +186,90 @@ These observations are consistent with the data:
 - 31 ascending plateaus detected (1 missed click)
 - 23 descending plateaus (faster turns, more missed clicks at 28% rate)
 - Motor overshoot at 98% of mid/high level changes
+
+
+---
+
+## 6. Cam Profile Analysis
+
+### 6.1 Is the Cam Linear or Sinusoidal?
+
+**The pot-to-level relationship is almost perfectly linear** (R² = 0.9989):
+
+```
+wiper = 39.1 × level + 97.0
+```
+
+A sinusoidal fit was tested and performed **worse** (R² = 0.9973). The linear
+model wins decisively.
+
+### 6.2 Motor Drive Consistency
+
+The motor drive time per level transition is remarkably constant across the
+range:
+
+| Level Range | FWD time | REV time | Overshoot? |
+|---|---|---|---|
+| 1–5 (low) | ~320 ms | 0 ms | No |
+| 6–31 (mid/high) | ~820 ms | ~600 ms | Yes (REV/FWD ≈ 0.71) |
+
+The constant motor drive time means the **angular displacement per level is
+constant** — the motor moves the same amount each step regardless of
+position.
+
+### 6.3 What This Tells Us About the Cam
+
+The console's control loop uses the pot as a position feedback sensor. Since:
+1. The pot measures motor shaft angle (directly coupled)
+2. The pot-to-level relationship is linear
+3. The motor angular displacement per level is constant
+
+The cam must use an **Archimedean spiral profile** (constant rise rate, also
+called a linear cam). This means the cam's radial displacement increases
+linearly with angle — producing equal displacement per degree of rotation.
+
+```
+displacement(θ) = k × θ
+
+where:
+  θ = cam angle (proportional to pot wiper position)
+  k = rise rate constant
+  displacement = brake magnet or pad distance
+```
+
+This is the simplest possible cam profile and is consistent with a
+low-cost exercise bike design.
+
+### 6.4 Subtle Non-Linearity
+
+The residuals from the linear fit show a very subtle S-curve:
+
+| Level Range | Residual Pattern | Magnitude |
+|---|---|---|
+| 1–6 | Above line | +5 to +26 counts |
+| 7–21 | Below line | −1 to −23 counts |
+| 22–31 | Above line | +4 to +21 counts |
+
+This ±20 count deviation on a 1,170-count range (±1.7%) could be caused by:
+1. **Pot non-linearity** — cheap carbon track pots often have ±2% linearity
+2. **Motor inertia effects** — overshoot correction may settle slightly
+   differently at different positions
+3. **Mechanical backlash** in the motor-to-pot coupling
+
+The deviation is too small to indicate a sinusoidal cam profile, which would
+produce deviations of ±15% or more.
+
+### 6.5 Conclusion
+
+The Echelon EX-3 uses a **simple linear cam** (Archimedean spiral) with a
+**cheap linear pot** for position feedback. The resistance force increases
+linearly with the resistance level setting. There is no evidence of
+sinusoidal compensation or complex cam profiling — the design is
+straightforward and low-cost.
+
+For a MITM solution, the resistance can be treated as a simple linear
+function of pot position:
+
+```
+resistance_level = round((wiper_adc - 125) / 37.7) + 1
+```
