@@ -158,14 +158,18 @@ superseded `[env:echenon]` environment, `hardware/echenon/board.h` and
 | **[x] [wo1-scaffold](wo1-scaffold/WORKORDER.md):** | Project scaffold + framework bump to `v0.0.12-dev.82` (BLE off) | `signal-logger/wo1-scaffold` | `standard` | WO0 (base) | — | ✅ Complete |
 | **[x] [wo2-capture-engine](wo2-capture-engine/WORKORDER.md):** | SignalLogger: ride log (decimated + events) and burst capture (triggered kHz) | `signal-logger/wo2-capture-engine` | `architect` | WO0 report, WO1 | — | ✅ Complete |
 | **[x] [wo3-dashboard](wo3-dashboard/WORKORDER.md):** | Live dashboard, CSV export, mDNS / `echenon.local` | `signal-logger/wo3-dashboard` | `standard` | WO2 | — | ✅ Complete |
-| **[ ] [wo4-scope-gate](wo4-scope-gate/WORKORDER.md):** | Bench setup + scope characterisation gate | `signal-logger/wo4-scope-gate` | `interactive` | WO3, bench-ready | #1, #2, #11 | ⏳ Partial (A,F,G done; B,C,D,E deferred) |
-| **[x] [wo4a-encoder-integration](wo4a-encoder-integration/WORKORDER.md):** | Wire up EncoderModule on GPIO 8/9 via PCNT | `fix/adc-gpio-conflict` | `standard` | WO4 | — | ✅ Complete |
-| **[ ] [wo5-register-campaign](wo5-register-campaign/WORKORDER.md):** | Register campaign: ride, burst, remaining rows #3–#10, #12–#13 | `signal-logger/wo5-register-campaign` | `interactive` | WO4 | #3–#10, #12–#13 | ⬜ Not started |
-| **[ ] [wo6-native-tests](wo6-native-tests/WORKORDER.md):** | Native unit tests (decimation, CSV writer) | `signal-logger/wo6-native-tests` | `standard` | WO2 (code), WO5 (base) | — | ⬜ Not started |
+| **[x] [wo4-scope-gate](wo4-scope-gate/WORKORDER.md):** | Bench setup + scope characterisation gate | `signal-logger/wo4-scope-gate` | `interactive` | WO3, bench-ready | #1, #2, #11 | ⏳ Partial (A,F,G done; B,C,D,E → WO4b) |
+| **[x] [wo4a-encoder-integration](wo4a-encoder-integration/WORKORDER.md):** | Wire up EncoderModule on GPIO 8/9 via PCNT | `signal-logger/wo4a-encoder-integration` | `standard` | WO4 | — | ✅ Complete |
+| **[x] wo4c:** | Branch housekeeping: rename `fix/adc-gpio-conflict` → `signal-logger/wo4a-encoder-integration` | _(in-place rename)_ | `mechanical` | WO4a | — | ✅ Complete |
+| **[ ] [wo4b-bench-gate](wo4b-bench-gate/WORKORDER.md):** | Scope gate outstanding items: pin idle, motor scope captures, motor current, VIN tolerance | `signal-logger/wo4b-bench-gate` | `interactive` | WO4c, bench-ready | #1, #2, #11 | ⬜ Not started |
+| **[ ] [wo5-register-campaign](wo5-register-campaign/WORKORDER.md):** | Register campaign: ride, burst, remaining rows #3–#10, #12–#13 | `signal-logger/wo5-register-campaign` | `interactive` | WO4b | #3–#10, #12–#13 | ⬜ Not started |
+| **[ ] [wo6-native-tests](wo6-native-tests/WORKORDER.md):** | Native unit tests (decimation, event log, CSV writer, calibration) | `signal-logger/wo6-native-tests` | `standard` | WO5 (base), WO2 (code) | — | ⬜ Not started |
+| **[ ] [wo7-doc-sync](wo7-doc-sync/WORKORDER.md):** | Doc-sync: SPEC, hardware spec, ex3 spec updates + absolute path cleanup | `signal-logger/wo7-doc-sync` | `standard` | WO6 | — | ⬜ Not started |
 
 **File overlaps:** All WOs are linearly stacked; no parallel conflicts. `EchenonModule.*`
 touched by WO1→WO2→WO3 (additive). `SignalLogger.*` by WO2→WO3 (additive).
-Evidence files under `docs/measurements/phase0/` by WO0→WO4→WO5 (new files only).
+Evidence files under `docs/measurements/phase0/` by WO0→WO4→WO4b→WO5 (new files only).
+`docs/*.md` and `SPEC.md` by WO7 only. `test/native/` by WO6 only.
 
 ## Session Log
 
@@ -306,5 +310,32 @@ Evidence files under `docs/measurements/phase0/` by WO0→WO4→WO5 (new files o
   GPIO 8/9 released from ADC, stepsPerDetent=4 confirmed.
 - **Handoff:** Session wrap-up report passed to Chief Architect.
 
+### 2026-10-04 — Resumption: ledger approved, WO4c complete
+
+- **PA resumed:** Tier 2, session context restored from MEMORY.md + PROJECT.md +
+  bench wrap-up report.
+- **Pre-flight:** `signal-logger/wo4a-encoder-integration` (renamed from
+  `fix/adc-gpio-conflict`) at `da5ffee`, clean working tree, no stash, 19 commits
+  ahead of `signal-logger/wo4-scope-gate`. Tags `v0.1.0-dev.1` through `v0.1.0-dev.5`.
+- **Owner decisions recorded (approved during bench sessions):**
+  1. Use framework EncoderModule (PCNT) for the knob. GPIO 8/9 off ADC, 8 ADC
+     channels remain. Encoder VCC stays on GPIO 10 as ADC monitor.
+  2. Cadence tap: 4.7 kΩ + 100 nF (not 22 kΩ). Bench-verified in B01.
+  3. Encoder wire colours: Black = Ch A, Red = Ch B, Orange = VCC (measured in B01).
+  4. 256 internal resistance levels and "console-as-signal-source" MITM direction
+     are design inputs for DR-1. Chief Architect folds them in. NOT implemented in PR-01.
+- **Decomposition:** 5 new WOs (WO4c, WO4b, WO5, WO6, WO7). 2 interactive
+  (bench + bike), 2 autonomous (tests + doc-sync), 1 mechanical (branch rename).
+  Linear stack, no parallel conflicts.
+- **User approval:** Approved the updated ledger on 2026-10-04 ("implement these
+  work orders autonomously … stage the PR for review"). Recorded here as the
+  provenance anchor per `.agents/rules/00-operating-model.md`.
+- **`diag:` commits** (`2a12820`, `fe60d76`): keeping in history. Code was stripped
+  in WO4a (`a8c7dd4`); net contribution is zero. Will note in PR description at
+  submission. No history rewrite.
+- **WO4c complete:** Branch renamed `fix/adc-gpio-conflict` →
+  `signal-logger/wo4a-encoder-integration`. Ledger updated.
+- **Next:** Write WO4b WORKORDER + bridge prompt (interactive).
+
 ## Status
-**Plan Status:** WO4 partial, WO4a complete — awaiting WO4c merge + remaining scope gate items
+**Plan Status:** WO4c complete — WO4b bench gate next (interactive)

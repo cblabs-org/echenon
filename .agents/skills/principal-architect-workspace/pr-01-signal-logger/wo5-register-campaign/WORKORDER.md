@@ -11,6 +11,9 @@ complexity: interactive
 > and bench. This is a human-in-the-loop session for the sustained measurement
 > campaign that fills all remaining Phase 0 register rows.
 
+**Parent:** [PR-01 Signal Logger](../PROJECT.md)
+**Branch:** `signal-logger/wo5-register-campaign` (base: `signal-logger/wo4b-bench-gate`)
+
 ## Objective
 
 Complete all remaining register rows (#3–#10, #12–#13), run the 60-minute
@@ -20,7 +23,7 @@ Phase 0 register (SPEC test 0.13).
 
 ## Entry Conditions
 
-- [ ] WO4 scope gate closed — motor-sense taps connected
+- [ ] WO4b bench gate closed — motor-sense taps characterised, register rows #1, #2, #11 done
 - [ ] Firmware on `signal-logger/wo5-register-campaign` branch at the tip
 - [ ] All taps connected (GPIO 1–10)
 - [ ] Dashboard accessible at `echenon.local` or IP
