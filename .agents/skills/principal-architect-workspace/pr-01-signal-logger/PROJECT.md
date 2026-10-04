@@ -158,7 +158,8 @@ superseded `[env:echenon]` environment, `hardware/echenon/board.h` and
 | **[x] [wo1-scaffold](wo1-scaffold/WORKORDER.md):** | Project scaffold + framework bump to `v0.0.12-dev.82` (BLE off) | `signal-logger/wo1-scaffold` | `standard` | WO0 (base) | — | ✅ Complete |
 | **[x] [wo2-capture-engine](wo2-capture-engine/WORKORDER.md):** | SignalLogger: ride log (decimated + events) and burst capture (triggered kHz) | `signal-logger/wo2-capture-engine` | `architect` | WO0 report, WO1 | — | ✅ Complete |
 | **[x] [wo3-dashboard](wo3-dashboard/WORKORDER.md):** | Live dashboard, CSV export, mDNS / `echenon.local` | `signal-logger/wo3-dashboard` | `standard` | WO2 | — | ✅ Complete |
-| **[ ] [wo4-scope-gate](wo4-scope-gate/WORKORDER.md):** | Bench setup + scope characterisation gate | `signal-logger/wo4-scope-gate` | `interactive` | WO3, bench-ready | #1, #2, #11 | ⬜ Not started |
+| **[ ] [wo4-scope-gate](wo4-scope-gate/WORKORDER.md):** | Bench setup + scope characterisation gate | `signal-logger/wo4-scope-gate` | `interactive` | WO3, bench-ready | #1, #2, #11 | ⏳ Partial (A,F,G done; B,C,D,E deferred) |
+| **[x] [wo4a-encoder-integration](wo4a-encoder-integration/WORKORDER.md):** | Wire up EncoderModule on GPIO 8/9 via PCNT | `fix/adc-gpio-conflict` | `standard` | WO4 | — | ✅ Complete |
 | **[ ] [wo5-register-campaign](wo5-register-campaign/WORKORDER.md):** | Register campaign: ride, burst, remaining rows #3–#10, #12–#13 | `signal-logger/wo5-register-campaign` | `interactive` | WO4 | #3–#10, #12–#13 | ⬜ Not started |
 | **[ ] [wo6-native-tests](wo6-native-tests/WORKORDER.md):** | Native unit tests (decimation, CSV writer) | `signal-logger/wo6-native-tests` | `standard` | WO2 (code), WO5 (base) | — | ⬜ Not started |
 
@@ -278,7 +279,32 @@ Evidence files under `docs/measurements/phase0/` by WO0→WO4→WO5 (new files o
   ADC reduced to 8 channels, diagnostics stripped, build clean (0 errors,
   RAM 15.3%, Flash 19.6%). Worker completion report at
   `wo4a-encoder-integration/WORKORDER.md`.
-- **Next:** WO4b (interactive bench test) — tag, flash, compare PCNT vs ADC baseline.
+- **WO4b complete:** B04 PCNT vs ADC comparison committed. PCNT eliminates
+  all encoder quality issues (0% bounce, 0% skip, 100% click detection).
+  `stepsPerDetent=4` confirmed. 5-minute soak test passed (stable heap, no crashes).
+
+### 2026-10-04 — WO4 session wrap-up
+
+- **WO4 status:** Partial. Checklist items A, F, G complete. Items B, C, D, E
+  (pin idle, scope captures, motor current, VIN) deferred — require dedicated
+  scope time. Recommend separate interactive WO.
+- **WO4a status:** Complete. EncoderModule on GPIO 8/9 via PCNT, validated.
+- **Branch:** `fix/adc-gpio-conflict` at `0297d50`, 18 commits ahead of
+  `signal-logger/wo4-scope-gate`. Tag `v0.1.0-dev.5`. Merge pending (WO4c).
+- **Evidence committed:** B01 (sensor bringup), B02 (encoder ADC baseline),
+  B03 (resistance calibration + cam model), B04 (PCNT comparison).
+  9 files total under `docs/measurements/phase0/`.
+- **Design documents committed:** `docs/encoder-resistance-analysis.md`
+  (consolidated analysis), `docs/mitm-encoder-design-notes.md` (architecture
+  options, 256-level model, console fault tolerance tests).
+- **Key findings for DR-1:**
+  - Encoder signal has 39% bounce / 28% console miss rate → PCNT solves completely
+  - Resistance mechanism is eccentric cam (8mm, 0–151°) → non-linear feel
+  - Console uses bang-bang motor control with 98% overshoot at mid/high levels
+  - 256 internal levels, Echelon app must stay functional, multiple MITM architectures viable
+- **Decisions:** Cadence resistors 4.7kΩ+100nF, encoder wiring corrected,
+  GPIO 8/9 released from ADC, stepsPerDetent=4 confirmed.
+- **Handoff:** Session wrap-up report passed to Chief Architect.
 
 ## Status
-**Plan Status:** WO4a complete — WO4b (interactive bench) ready to flash
+**Plan Status:** WO4 partial, WO4a complete — awaiting WO4c merge + remaining scope gate items

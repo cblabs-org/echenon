@@ -104,20 +104,75 @@ be connected.**
 
 ---
 
-## Completion Report (written by the worker at task completion)
+## Completion Report
 
-<!-- Append when complete:
 ### Status
-complete | partial | blocked
+**partial** — Session redirected to higher-priority encoder characterisation
+and MITM design analysis. Scope gate items (B, C, D, E) deferred.
+
+### Checklist Status
+
+| Section | Item | Status |
+|---|---|---|
+| A | Flash and boot | ✅ `v0.1.0-dev.1` → `v0.1.0-dev.5` |
+| A | WiFi connection | ✅ `<REDACTED_SSID>` at 192.168.1.100 |
+| A | Dashboard accessible | ✅ `echenon.local` and IP |
+| B | Pin idle check | ⬜ Not performed |
+| C | Motor-drive scope captures (6×) | ⬜ Not performed |
+| D | Motor current measurement | ⬜ Not performed |
+| E | VIN tolerance check | ⬜ Not performed |
+| F | Motor-sense taps connected | ✅ GPIO 6/7 reading on dashboard |
+| G | Evidence committed | ✅ B01–B04 reports + CSVs |
 
 ### Register Rows Updated
-- #1: (result summary)
-- #2: (result summary)
-- #11: (result summary)
+- #1: ⬜ Motor drive waveform — scope captures not yet taken
+- #2: ⬜ Motor current — not measured
+- #11: ⬜ VIN tolerance — not checked
 
 ### Scope Gate Result
-- ÷4 divider safe: YES/NO
-- Motor-sense taps connected: YES/NO
+- ÷4 divider safe: **NOT YET VERIFIED** (motor-sense taps connected based on
+  prior analysis, reads are within range, but no scope capture performed)
+- Motor-sense taps connected: **YES** — GPIO 6/7 showing motor voltage on dashboard
 
-### Decisions Made / Out-of-Scope Findings / Blockers
--->
+### Work Performed Beyond Original Scope
+
+The session pivoted to encoder and resistance characterisation after
+discovering encoder signal quality issues during sensor bring-up:
+
+**Evidence committed (B01–B04):**
+- B01: All 10 sensor channels confirmed working
+- B02: Encoder ADC baseline — 39% bounce, 10.7% skip, 28% miss rate
+- B03: 32-level resistance calibration (R²=0.999), motor seek analysis,
+  eccentric cam model (8mm offset, 0–151° sweep)
+- B04: PCNT EncoderModule comparison — 0% bounce, 0% skip, 100% detection
+
+**Code changes:**
+- `gpio_config()` fix for ADC analog path (GPIO 5/8)
+- Internal pull-ups disabled on tap pins
+- EncoderModule wired on GPIO 8/9 (PCNT), ADC reduced 10→8 channels
+- Diagnostic instrumentation added then stripped
+
+**Design documents:**
+- `docs/encoder-resistance-analysis.md` — consolidated signal analysis
+- `docs/mitm-encoder-design-notes.md` — MITM architecture options, 256-level
+  model, console fault tolerance test plan
+
+### Decisions Made
+- Cadence series resistors changed from 22kΩ to 4.7kΩ + 100nF (signal too weak)
+- Encoder wire colours corrected: Black=A, Red=B, Orange=VCC
+- GPIO 8/9 released from ADC scan for PCNT EncoderModule
+- `stepsPerDetent=4` confirmed correct for this encoder
+- 256 internal resistance levels adopted for MITM design
+
+### Out-of-Scope Findings
+- Eccentric cam produces 22× displacement variation across 32 levels — rider
+  experience is inherently non-linear. Linearisation is a Phase 5+ concern.
+- Console uses bang-bang motor control with 98% overshoot at mid/high levels.
+  PID control from ESP32 could reduce seek time from ~2s to <500ms.
+- Console fault tolerance must be tested before committing to MITM architecture
+  (10 tests identified in design notes §12).
+
+### Blockers
+- Scope gate items (B, C, D, E) require dedicated bench time with scope.
+  Recommend a separate interactive WO.
+
