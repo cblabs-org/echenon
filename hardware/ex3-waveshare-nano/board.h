@@ -23,9 +23,9 @@ constexpr int8_t PIN_MOTOR_SENSE_P    = 6;   // D3  Red,   ADC1 via ÷4 divider
 constexpr int8_t PIN_MOTOR_SENSE_N    = 7;   // D4  Black, ADC1 via ÷4 divider
 
 #define HAS_KNOB_ENCODER     1
-constexpr int8_t PIN_KNOB_ENC_A       = 8;   // D5  Brown,  ADC1
-constexpr int8_t PIN_KNOB_ENC_B       = 9;   // D6  Orange, ADC1
-constexpr int8_t PIN_KNOB_ENC_VCC     = 10;  // D7  Red,    ADC1 (Phase 0/1 only)
+constexpr int8_t PIN_KNOB_ENC_A       = 8;   // D5  Black,  ADC1 (J3 left pin)
+constexpr int8_t PIN_KNOB_ENC_B       = 9;   // D6  Red,    ADC1 (J3 right pin)
+constexpr int8_t PIN_KNOB_ENC_VCC     = 10;  // D7  Orange, ADC1 (J3 centre pin, Phase 0/1 only)
 
 #define HAS_MOTOR_CONTROL    0               // MITM board only (Phase 5+)
 

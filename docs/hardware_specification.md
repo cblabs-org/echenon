@@ -233,11 +233,17 @@ row 7 resolves it.
 
 ### 4.3 J3 — Encoder Loom (Knob Side, 3-Pin JST)
 
-| Pin | Wire Colour | Signal Name | Function |
-|---|---|---|---|
-| 1 | Red | ENC_VCC | Encoder common (3.3V reference) |
-| 2 | Brown | ENC_CHA | Encoder Channel A (quadrature) |
-| 3 | Orange | ENC_CHB | Encoder Channel B (quadrature) |
+| Pin | Position | Wire Colour | Signal Name | Function |
+|---|---|---|---|---|
+| 1 | Left | Black | ENC_CHA | Encoder Channel A (quadrature) |
+| 2 | Centre | Orange | ENC_VCC | Encoder common (3.3V reference) |
+| 3 | Right | Red | ENC_CHB | Encoder Channel B (quadrature) |
+
+> [!NOTE]
+> Wire colours corrected 2026-10-04 after bench verification. Original
+> mapping (Red=VCC, Brown=CHA, Orange=CHB) was based on visual inspection;
+> what appeared brown is actually black. Physical connector confirmed:
+> VCC on centre pin, signals on outer pins.
 
 ---
 

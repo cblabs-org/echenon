@@ -136,19 +136,33 @@ off when stable.
 
 | Parameter | Value |
 |---|---|
-| Enc A wire | Brown → GPIO 8 (D5, ADC1_CH7) |
-| Enc B wire | Orange → GPIO 9 (D6, ADC1_CH8) |
-| Enc VCC wire | Red → GPIO 10 (D7, ADC1_CH9) |
-| Series resistor | Not yet connected through resistors |
-| Current reading | Floating noise (0–860 range) |
+| Enc A wire | Black → GPIO 8 (D5, ADC1_CH7) — J3 left pin |
+| Enc B wire | Red → GPIO 9 (D6, ADC1_CH8) — J3 right pin |
+| Enc VCC wire | Orange → GPIO 10 (D7, ADC1_CH9) — J3 centre pin |
+| Series resistor | 4.7 kΩ + 100 nF cap |
+| VCC reading | Steady 4095 (3.3V supply) |
+| Enc A idle | 0 (LOW) |
+| Enc B idle | 0 (LOW) |
 
-Patch cables from the encoder loom were found to be unreliable during
-testing — the console's encoder knob was unresponsive. Cables need to be
-remade before encoder bring-up can proceed.
+All four quadrature states observed during knob rotation:
 
-**Status: ⏳ DEFERRED — cables need rework**
+| State | A | B | Confirmed |
+|---|---|---|---|
+| HH | 4095 | 4095 | ✅ |
+| HL | 4095 | 0 | ✅ |
+| LH | 0 | 4095 | ✅ |
+| LL | 0 | 0 | ✅ |
 
-## 5. Pin Map Summary (Confirmed)
+> [!NOTE]
+> Wire colours corrected from original mapping. What appeared to be Brown
+> is actually Black. Physical connector layout: VCC on centre pin (Orange),
+> signals on outer pins (Black=A left, Red=B right). Patch cables were
+> remade on 2026-10-04 after discovering unreliable connections in the
+> original encoder loom cables.
+
+**Status: ✅ CONFIRMED WORKING**
+
+## 5. Pin Map Summary (All Confirmed)
 
 | ADC CH | GPIO | Board Pin | Wire | Signal | Resistor | Reading | Status |
 |---|---|---|---|---|---|---|---|
@@ -159,25 +173,19 @@ remade before encoder bring-up can proceed.
 | 4 | 5 | D2 | Orange | Cadence | 4.7 kΩ + 100 nF | 217–4095 | ✅ |
 | 5 | 6 | D3 | Red | Motor sense + | ÷4 divider | 0–922 | ✅ |
 | 6 | 7 | D4 | Black | Motor sense − | ÷4 divider | 0–912 | ✅ |
-| 7 | 8 | D5 | Brown | Encoder A | TBD | Floating | ⏳ |
-| 8 | 9 | D6 | Orange | Encoder B | TBD | Floating | ⏳ |
-| 9 | 10 | D7 | Red | Encoder VCC | TBD | Floating | ⏳ |
+| 7 | 8 | D5 | Black | Encoder A | 4.7 kΩ + 100 nF | 0–4095 (quad) | ✅ |
+| 8 | 9 | D6 | Red | Encoder B | 4.7 kΩ + 100 nF | 0–4095 (quad) | ✅ |
+| 9 | 10 | D7 | Orange | Encoder VCC | 4.7 kΩ + 100 nF | 4095 (steady) | ✅ |
 
 ## 6. Remaining Work
 
-1. **Encoder cables** — Remake patch cables for encoder loom and verify
-   console encoder responsiveness before connecting to ESP32.
-2. **Encoder bring-up** — Connect through 4.7 kΩ + 100 nF and verify
-   quadrature signals on CH7/CH8 while turning knob.
-3. **Remove diagnostic instrumentation** — Strip the per-channel sample
+1. **Remove diagnostic instrumentation** — Strip the per-channel sample
    counter and CH4 range logging from `SignalLogger.cpp` before merging
    the `fix/adc-gpio-conflict` branch.
-4. **Merge branch** — Merge `fix/adc-gpio-conflict` back into
-   `signal-logger/wo4-scope-gate` after encoder is confirmed.
-5. **Event buffer saturation** — The floating motor pins (before connection)
-   and now the floating encoder pins generate spurious threshold events
-   that fill the 4000-event ring buffer. Consider adding a guard to skip
-   threshold processing on channels with floating-noise signatures.
-6. **Pot reference investigation** — Determine why Hi=0V and Lo=1.67V
+2. **Merge branch** — Merge `fix/adc-gpio-conflict` back into
+   `signal-logger/wo4-scope-gate`.
+3. **Event buffer saturation** — Floating-pin guard needed to suppress
+   spurious threshold events from channels without stable baselines.
+4. **Pot reference investigation** — Determine why Hi=0V and Lo=1.67V
    instead of the expected 3.3V and 0V. May require probing the console's
    pot circuit directly.
