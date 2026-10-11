@@ -9,6 +9,8 @@
 .pio/
 .pioenvs/
 .piolibdeps/
+.pio-mcp-*
+dependencies.lock
 
 # ── Build output ─────────────────────────────────
 include/portal_assets/
@@ -19,6 +21,8 @@ include/portal_assets/
 
 # ── ESP-IDF ──────────────────────────────────────
 sdkconfig.old
+sdkconfig.adc-spike
+sdkconfig.ex3-waveshare-nano
 managed_components/
 
 # ── IDE / Editor ─────────────────────────────────

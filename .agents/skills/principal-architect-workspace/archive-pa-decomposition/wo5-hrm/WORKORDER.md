@@ -1,10 +1,10 @@
-> ⚠️ **SUPERSEDED.** This work order was part of the v1/initial programme plan. The programme was restructured on 2026-09-25 per the Chief Architect Design Audit. See the current programme at `../PROGRAM.md` and `../PROGRAM-PLAN.md`.
-
 ---
 name: echenon-firmware-wo5
 description: Handoff instructions for Work Order 5 — HRM Client + Repeater
 complexity: standard
 ---
+
+> ⚠️ **SUPERSEDED — prior art only.** This was part of the v1 / initial programme plan, restructured on 2026-09-25 to 9 PRs + DR-1 (design audit and readiness review). **Current owner:** [PR-03](../../pr-03-hr-relay/PROJECT.md). **Superseded by:** SPEC §3.5, §8.1–§8.5 in the current [SPEC](../../../../../SPEC.md). See [PROGRAM.md](../../PROGRAM.md) and [PROGRAM-PLAN.md](../../PROGRAM-PLAN.md).
 
 # WO5 — Heart Rate Monitor Client + Repeater
 

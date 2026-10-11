@@ -1,4 +1,4 @@
-> ⚠️ **SUPERSEDED.** This work order was part of the v1/initial programme plan. The programme was restructured on 2026-09-25 per the Chief Architect Design Audit. See the current programme at `../PROGRAM.md` and `../PROGRAM-PLAN.md`.
+> ⚠️ **SUPERSEDED — prior art only.** This was part of the v1 / initial programme plan, restructured on 2026-09-25 to 9 PRs + DR-1 (design audit and readiness review). **Current owner:** the 9-PR programme, starting with [PR-01](../pr-01-signal-logger/PROJECT.md). **Superseded by:** the current [SPEC](../../../../SPEC.md) as a whole, with phase and PR structure in PROGRAM-PLAN. See [PROGRAM.md](../PROGRAM.md) and [PROGRAM-PLAN.md](../PROGRAM-PLAN.md).
 
 # Echenon Firmware — Project Plan
 
@@ -6,7 +6,7 @@
 > (currently in the Antigravity artifacts directory — to be copied into the project root).
 >
 > **PR target:** `main`
-> **Specification:** [SPEC.md (artifact)](file:///Users/mcneillm/.gemini/antigravity/brain/c73eec9a-9856-41f9-bd09-f97217b4c7f2/SPEC.md)
+> **Specification:** [SPEC.md](../../../../SPEC.md) (originally an Antigravity artifact)
 
 ---
 

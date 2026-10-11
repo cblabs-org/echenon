@@ -1,4 +1,4 @@
-> ⚠️ **SUPERSEDED.** This work order was part of the v1/initial programme plan. The programme was restructured on 2026-09-25 per the Chief Architect Design Audit. See the current programme at `../PROGRAM.md` and `../PROGRAM-PLAN.md`.
+> ⚠️ **SUPERSEDED — prior art only.** This was part of the v1 / initial programme plan, restructured on 2026-09-25 to 9 PRs + DR-1 (design audit and readiness review). **Current owner:** [PR-09](../../pr-09-integration/PROJECT.md) (overlay, portal) and [PR-02](../../pr-02-calibration-power/PROJECT.md) (calibration page). **Superseded by:** SPEC §6.3, §11.1–§11.5 in the current [SPEC](../../../../../SPEC.md). See [PROGRAM.md](../../PROGRAM.md) and [PROGRAM-PLAN.md](../../PROGRAM-PLAN.md).
 
 # PR-05: Web Portal (Overlay + Calibration + Session History)
 
@@ -29,8 +29,8 @@ review past sessions.
 
 ## Prior Art
 
-- [wo7-overlay/WORKORDER.md](../archive-pa-decomposition/wo7-overlay/WORKORDER.md)
-- [wo9-calibration-portal/WORKORDER.md](../archive-pa-decomposition/wo9-calibration-portal/WORKORDER.md)
+- [wo7-overlay/WORKORDER.md](../../archive-pa-decomposition/wo7-overlay/WORKORDER.md)
+- [wo9-calibration-portal/WORKORDER.md](../../archive-pa-decomposition/wo9-calibration-portal/WORKORDER.md)
 
 ## Work Order Ledger
 <!-- PA fills this in during planning -->

@@ -1,10 +1,10 @@
-> ⚠️ **SUPERSEDED.** This work order was part of the v1/initial programme plan. The programme was restructured on 2026-09-25 per the Chief Architect Design Audit. See the current programme at `../PROGRAM.md` and `../PROGRAM-PLAN.md`.
-
 ---
 name: echenon-firmware-wo7
 description: Handoff instructions for Work Order 7 — Session Overlay
 complexity: architect
 ---
+
+> ⚠️ **SUPERSEDED — prior art only.** This was part of the v1 / initial programme plan, restructured on 2026-09-25 to 9 PRs + DR-1 (design audit and readiness review). **Current owner:** [PR-09](../../pr-09-integration/PROJECT.md). **Superseded by:** SPEC §11.1–§11.5 in the current [SPEC](../../../../../SPEC.md). See [PROGRAM.md](../../PROGRAM.md) and [PROGRAM-PLAN.md](../../PROGRAM-PLAN.md).
 
 # WO7 — Session Overlay (Standalone Web Page)
 

@@ -1,4 +1,4 @@
-> ⚠️ **SUPERSEDED.** This work order was part of the v1/initial programme plan. The programme was restructured on 2026-09-25 per the Chief Architect Design Audit. See the current programme at `../PROGRAM.md` and `../PROGRAM-PLAN.md`.
+> ⚠️ **SUPERSEDED — prior art only.** This was part of the v1 / initial programme plan, restructured on 2026-09-25 to 9 PRs + DR-1 (design audit and readiness review). **Current owner:** [PR-06](../../pr-06-session-upload/PROJECT.md). **Superseded by:** SPEC §10.1–§10.6 in the current [SPEC](../../../../../SPEC.md). See [PROGRAM.md](../../PROGRAM.md) and [PROGRAM-PLAN.md](../../PROGRAM-PLAN.md).
 
 # PR-06: Cloud Upload (Strava)
 
@@ -37,7 +37,7 @@ retry automatically.
 
 ## Prior Art
 
-- [wo8-strava/WORKORDER.md](../archive-pa-decomposition/wo8-strava/WORKORDER.md)
+- [wo8-strava/WORKORDER.md](../../archive-pa-decomposition/wo8-strava/WORKORDER.md)
 
 ## Work Order Ledger
 <!-- PA fills this in during planning -->

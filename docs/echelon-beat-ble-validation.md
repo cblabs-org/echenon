@@ -211,7 +211,7 @@ void HRMClient::onNotification(const BLENotification& n) {
 
     _contactLost = false;
     _lastValidHrMs = n.receivedAtMs;
-    _hrmRepeater.publishHr(bpm);
+    publishHr(bpm);   // EventBus topic "echenon.hr"; HRMRepeater subscribes (SPEC §8.2)
 }
 
 // Three-state HR status:
