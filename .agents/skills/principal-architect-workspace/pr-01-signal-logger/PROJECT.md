@@ -163,9 +163,9 @@ superseded `[env:echenon]` environment, `hardware/echenon/board.h` and
 | **[x] wo4c:** | Branch housekeeping: rename `fix/adc-gpio-conflict` → `signal-logger/wo4a-encoder-integration` | _(in-place rename)_ | `mechanical` | WO4a | — | ✅ Complete |
 | **[x] [wo4b-bench-gate](wo4b-bench-gate/WORKORDER.md):** | Scope gate outstanding items: pin idle, motor scope captures, motor current, VIN tolerance | `signal-logger/wo4b-bench-gate` | `interactive` | WO4c, bench-ready | #1, #2, #11 | ✅ Complete |
 | **[x] [wo4d-logger-fixes](wo4d-logger-fixes/WORKORDER.md):** | Logger fixes from CA review: L-01–L-05, L-07, L-08 + native tests for de-interleave, motor FSM, timestamps | `signal-logger/wo4d-logger-fixes` | `standard` | WO4b | — | ✅ Complete |
-| **[ ] [wo5-register-campaign](wo5-register-campaign/WORKORDER.md):** | Register campaign: rows #3–#10, #12–#13 + E-02 tap cross-check, row #6 load test, console fault-tolerance tests (#1,#2,#3,#7,#9), min pulse width, mid-seek behaviour | `signal-logger/wo5-register-campaign` | `interactive` | WO4d | #3–#10, #12–#13 | ⬜ Not started |
-| **[ ] [wo6-native-tests](wo6-native-tests/WORKORDER.md):** | Native unit tests (decimation, event log, CSV writer, calibration) | `signal-logger/wo6-native-tests` | `standard` | WO5 (base), WO2 (code) | — | ⬜ Not started |
-| **[ ] [wo7-doc-sync](wo7-doc-sync/WORKORDER.md):** | Doc-sync: SPEC, hardware spec, ex3 spec + E-01 pot polarity, E-03 A08 superseded, E-04 single formula, E-05 B-report→register mapping, bench wrap-up commit, absolute path cleanup | `signal-logger/wo7-doc-sync` | `standard` | WO6 | — | ⬜ Not started |
+| **[x] [wo5-register-campaign](wo5-register-campaign/WORKORDER.md):** | Register campaign: rows #3–#10, #12–#13 + E-02 tap cross-check, row #6 load test, console fault-tolerance tests (#1,#2,#3,#7,#9), min pulse width, mid-seek behaviour | `signal-logger/wo5-register-campaign` | `interactive` | WO4d | #3–#10, #12–#13 | ⚠️ Complete with gaps (see 2026-10-11 log): CA-addendum tests carried to DR-1 prep |
+| **[x] [wo6-native-tests](wo6-native-tests/WORKORDER.md):** | Native unit tests (decimation, event log, CSV writer, calibration) | `signal-logger/wo6-native-tests` | `standard` | WO5 (base), WO2 (code) | — | ✅ Complete (`3888a83`) |
+| **[x] [wo7-doc-sync](wo7-doc-sync/WORKORDER.md):** | Doc-sync: SPEC, hardware spec, ex3 spec + E-01 pot polarity, E-03 A08 superseded, E-04 single formula, E-05 B-report→register mapping, bench wrap-up commit, absolute path cleanup | `signal-logger/wo7-doc-sync` | `standard` | WO6 | — | ✅ Complete (`149b5d1`) |
 
 **File overlaps:** All WOs are linearly stacked; no parallel conflicts. `EchenonModule.*`
 touched by WO1→WO2→WO3 (additive). `SignalLogger.*` by WO2→WO3→WO4d (additive).
@@ -385,5 +385,75 @@ Evidence files under `docs/measurements/phase0/` by WO0→WO4→WO4b→WO5 (new 
 - **Next:** Tag, build, flash corrected firmware. Then WO5 (interactive bench session
   with corrected firmware).
 
+### 2026-10-11 — WO5, WO6, WO7 complete; PR-01 merged (recorded by Chief Architect)
+
+No completion reports were written for WO5 or WO7. This entry is reconstructed
+from the commits, the Phase 0 register and the Chief Architect's review.
+
+- **WO5 register campaign** (interactive, `3c5b83c`, `36f8a14`):
+  - Rows #3, #5: full 360° pot profile (2 runs). Two symmetrical working ramps
+    (0–2120 counts), dead zones at 0° and 180°. Motor run about 16 s per half
+    revolution; coast < 15 counts.
+  - Row #4: 32 levels mapped; `wiper = 39.1 × level + 97`; 4 detents (16 encoder
+    steps) per level, 512 steps full range.
+  - Row #6: Green is a 1.66 V source with 2.4 kΩ impedance; Yellow is 0 V.
+  - Row #9: the console tolerates a disconnected motor (it hunts, does not fault,
+    and recovers when reconnected). Its bang-bang servo has no motor timeout.
+  - Row #13: the console powers on at level 1 with no calibration sweep; seeking
+    starts only when a class starts.
+  - Row #12: **INCONCLUSIVE.** Android could not see the nRF Connect mock. The
+    definitive test moves to **PR-03 WO0** (ESP32 HR peripheral). This corrects
+    the commit's "handoff to PR-02"; PR-02 has BLE off.
+  - Row #10: **Open.** Expected to be waived at DR-1, because E-01 removes
+    parallel supplies onto console rails.
+  - **Not done** (CA addendum, 2026-10-04): E-02 tap cross-check; console
+    fault-tolerance tests #1, #2, #3, #7, #9; minimum quadrature pulse width;
+    mid-seek click behaviour. These go to the **DR-1 prep bench session**
+    ([`pr-dr1-prep`](../pr-dr1-prep/PROJECT.md)).
+  - SPEC test 0.9 (60-minute ride log) has no committed evidence.
+- **WO6 native tests** (`3888a83`): pure logic extracted into `SignalLogic.h`;
+  googletest suites cover decimation, event ordering and CSV output.
+- **WO7 doc-sync** (`149b5d1`): SPEC, the hardware spec and the ex3 spec now
+  match the measurements (pot polarity, wire colours, cadence tap, ADC/PCNT split,
+  A08 superseded, B03 formula). Absolute paths removed from `docs/`.
+- **PR #1 merged** to `main` at `5897f6f` (merge commit, 46 commits) on
+  2026-10-11. **No review happened before the merge**, so the "review before
+  merge" checkpoint was skipped. The Chief Architect's evidence-level review found
+  nothing that should have blocked it. The WO4d and WO6 code has not been
+  code-reviewed.
+
+### 2026-10-11 — Project Wrap-Up
+
+- **Architectural outcome:**
+  - Phase 0 observation firmware: ADC-continuous capture on 8 ADC1 channels
+    (83.3 kS/s), a decimated ride log plus event log, triggered bursts, and CSV
+    export, all behind `WITH_SIGNAL_LOGGER`.
+  - Knob decoded by framework `EncoderModule` (PCNT).
+  - Target `hardware/ex3-waveshare-nano/` on framework `v0.0.12-dev.82`.
+- **Design-changing evidence for DR-1:**
+  - flat ±3.25 V DC motor drive with no PWM;
+  - motor current ≤ 175 mA;
+  - VIN tolerates 9 V;
+  - no power-on calibration sweep;
+  - the console tolerates a disconnected motor;
+  - pot linear in angle (one of two ramps per revolution used);
+  - reversed pot reference (Green is a 1.66 V / 2.4 kΩ source).
+- **Lessons:**
+  - Interactive bench sessions drift from their WO boundary. Declare
+    exploration up front, and require a completion report even for
+    interactive WOs.
+  - Re-check derived metrics when a new measurement changes the model. The B02
+    "28% missed clicks" figure is unreconciled with 4 detents per level.
+  - Keep WOs on stack branches; `fix/*` branches broke provenance until
+    WO4c fixed it.
+  - Hold the pre-merge review checkpoint.
+- **Unresolved, carried forward:**
+  - Row #10, to be waived at DR-1.
+  - Row #12, to PR-03 WO0.
+  - CA-addendum tests, to DR-1 prep.
+  - Row #1 sign convention: is any wire negative relative to GND? To DR-1 prep.
+  - L-06 export race, a design decision deferred.
+  - 21 MB of CSV evidence in git; gzip it or use LFS in future phases.
+
 ## Status
-**Plan Status:** WO4b + WO4d complete — WO5 register campaign next (interactive, needs firmware flash)
+**Plan Status:** ✅ COMPLETE — merged to `main` as PR #1 (`5897f6f`) on 2026-10-11

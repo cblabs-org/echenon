@@ -6,7 +6,7 @@ complexity: standard
 
 **Parent:** [PR-01 Signal Logger](../PROJECT.md)
 **Branch:** `signal-logger/wo4d-logger-fixes` (base: `signal-logger/wo4b-bench-gate`)
-**Source:** [2026-10-04 CA Progress Review](../reviews/2026-10-04-pr01-progress-review.md) §2
+**Source:** [2026-10-04 CA Progress Review](../../reviews/2026-10-04-pr01-progress-review.md) §2
 
 ## Role Definition
 > You are an expert senior software engineer and execution-focused worker agent.

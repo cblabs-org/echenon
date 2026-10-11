@@ -22,10 +22,10 @@ Phase and PR numbering in this table is canonical; other documents follow it.
 
 | PR | Phase | Title | Dependencies | Status |
 |---|---|---|---|---|
-| PR-01 | 0 | Signal Logger (Observe) | `main` | 🟡 In progress: WO0–WO3, WO4a done; WO4 partial; WO4d logger fixes, WO5, WO6, WO7 to go ([review](reviews/2026-10-04-pr01-progress-review.md)) |
-| DR-1 | — | Design Freeze Review ([record](reviews/DR-1-design-freeze.md)) | PR-01 evidence (Phase 0 register complete) | ⬜ Not started |
+| PR-01 | 0 | Signal Logger (Observe) | `main` | ✅ Merged 2026-10-11 (PR #1, `5897f6f`) |
+| DR-1 | — | Design Freeze Review ([record](reviews/DR-1-design-freeze.md)) | PR-01 evidence + [DR-1 prep bench](pr-dr1-prep/PROJECT.md) | ⬜ Prep bench session ready; DR-1 to run with the owner |
 | PR-02 | 1 | Calibration + Power (+ live WS feed) | PR-01, **DR-1** | ⬜ Not started |
-| PR-03 | 2 | BLE Foundation + HR Relay | PR-01; entry gates below (central acceptance **OPEN**) | ⬜ Not started |
+| PR-03 | 2 | BLE Foundation + HR Relay | PR-01 ✅; gates proposed as in-PR go/no-go (WO3, WO5) | 📝 Planned: [7 WOs](pr-03-hr-relay/PROJECT.md), awaiting approval |
 | PR-04a | 3 | Passive Tap Board (+ manual OTA) | PR-02, DR-1 | ⬜ Not started |
 | PR-05 | 3 | FTMS Telemetry (+ Control Point access layer) | PR-02, PR-03 | ⬜ Not started |
 | PR-06 | 4 | Session + TCX + Strava | PR-02 | ⬜ Not started |
@@ -42,9 +42,9 @@ Phase and PR numbering in this table is canonical; other documents follow it.
 | **Phase 0 register complete** ([`docs/measurements/phase0/README.md`](../../../docs/measurements/phase0/README.md)) | PR-01 exit / DR-1 start | Every row has an Evidence file and a Result | OPEN |
 | **DR-1: Design Freeze** | **PR-02, PR-04a, PR-07** (no soldering or permanent install before approval) | Chief Architect approves the [DR-1 record](reviews/DR-1-design-freeze.md) | OPEN |
 | R3/R4/R5 standalone supplies | DR-1 | Decided as part of the switchable-supply and fail-safe strategy | OPEN |
-| Echelon-app HR spike | PR-03 entry | nRF Connect `Echenon-TEST` (0x180D) listed and shows HR in the Echelon app | OPEN |
+| Echelon-app HR spike | PR-03 (proposed: WO3 go/no-go) | Row #12 INCONCLUSIVE with the nRF mock (Android could not discover it); retest with an ESP32 HR peripheral | OPEN |
 | **Framework central-role acceptance evidence** | PR-03 entry | RFC §17.2 items 4–9 against a real 0x180D peripheral on a framework tag containing the WO-8 use-after-free fix | **OPEN** |
-| Framework #226 (OTA check-on-boot deferral) | Removing Echenon's `autoCheck=false` enforcement | Upstream issue closed; until then PR-04a forces `autoCheck=false` after config load and factory reset | OPEN (upstream) |
+| Framework #226 (OTA check-on-boot deferral) | Removing Echenon's `autoCheck=false` enforcement | Upstream issue **closed**. PR-04a uses the framework option after the PR-03 WO1 bump (verify) | CLOSED upstream |
 
 ### Parallelism
 
@@ -169,3 +169,30 @@ Phase and PR numbering in this table is canonical; other documents follow it.
   findings go to the Chief Architect or DR-1 as proposals. The bench
   wrap-up is to be committed into the PR-01 folder.
 - Review: [2026-10-04 PR-01 progress review](reviews/2026-10-04-pr01-progress-review.md).
+
+### 2026-10-11: PR-01 merged; DR-1 prep and PR-03 planned
+- **PR-01 merged** as PR #1 (`5897f6f`, merge commit) with no review before the
+  merge; the pre-merge review checkpoint was skipped. A post-hoc
+  evidence-level review found nothing blocking. Branches are deleted and the
+  records closed in the [PR-01 wrap-up](pr-01-signal-logger/PROJECT.md).
+- **Register:** 11 of 13 rows PASS; #10 Open (expected DR-1 waiver); #12
+  INCONCLUSIVE (moves to PR-03). Key evidence:
+  - flat ±3.25 V DC motor drive, no PWM;
+  - motor current ≤ 175 mA;
+  - VIN tolerates 9 V;
+  - no power-on calibration sweep;
+  - the console tolerates a disconnected motor;
+  - two working pot ramps per revolution;
+  - Green is a 1.66 V / 2.4 kΩ reference;
+  - 4 detents per level.
+- **Open before DR-1:** "28% missed clicks" vs 4 detents per level is
+  unreconciled, and it underpins the encoder-MITM case (§2.10). Row #1's
+  single-ended sign is ambiguous. The tap cross-check and console
+  fault-tolerance tests are not done. All of these go to
+  [`pr-dr1-prep`](pr-dr1-prep/PROJECT.md) (one interactive bench session; owner
+  approved the prep).
+- **PR-03** decomposed into 7 WOs. Proposed change: both entry gates become
+  in-PR go/no-go WOs. Awaiting owner approval. Framework latest tag
+  `v0.0.12-dev.93` includes the WO-8 fix; #226 is closed.
+- **DR-1** to be run jointly with the owner after the prep session. PR-02 waits
+  on DR-1.
