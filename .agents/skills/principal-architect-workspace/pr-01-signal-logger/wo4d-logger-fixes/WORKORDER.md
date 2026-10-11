@@ -215,18 +215,42 @@ Write GoogleTest suites for the new pure logic. These run on `env:native`.
 
 ## Verification
 
-- [ ] `build_project` on `env:ex3-waveshare-nano` succeeds (with `WITH_SIGNAL_LOGGER`)
-- [ ] `build_project` on `env:ex3-waveshare-nano` succeeds without `WITH_SIGNAL_LOGGER`
+- [x] `build_project` on `env:ex3-waveshare-nano` succeeds (with `WITH_SIGNAL_LOGGER`)
+- [x] `build_project` on `env:ex3-waveshare-nano` succeeds without `WITH_SIGNAL_LOGGER`
   (remove the flag temporarily and rebuild, then add it back)
-- [ ] `run_tests` on `env:native` — all tests pass
-- [ ] No `printf` calls remain in SignalLogger
-- [ ] Burst CSV has named columns matching scanned channels
-- [ ] Ride log CSV has named columns, no `ch7`/`ch8` dead columns
-- [ ] Event log does not flood with motor events (verified by inspection)
-- [ ] `_overflowCount` is exported in status JSON
+- [x] `run_tests` on `env:native` — all tests pass
+- [x] No `printf` calls remain in SignalLogger
+- [x] Burst CSV has named columns matching scanned channels
+- [x] Ride log CSV has named columns, no `ch7`/`ch8` dead columns
+- [x] Event log does not flood with motor events (verified by inspection)
+- [x] `_overflowCount` is exported in status JSON
 
 ---
 
-## Completion Report
+## Completion Report (written by the worker at task completion)
 
-_(To be filled in by the worker at task completion)_
+### Status
+complete
+
+### Changes Made
+- `src/echenon/SignalLogic.h` — Created pure logic header providing bit-packed sample encoding (channel:4 | data:12 into uint16_t), stream burst de-interleaving with channel-0 frame alignment synchronization, MotorStateMachine with hysteresis (500 mV / 400 mV) and 5 ms debounce filtering, and sample timestamp arithmetic.
+- `src/echenon/SignalLogger.h` — Resized `DecimationRow` to 8 scanned channels (~100 bytes/row, saving ~860 KB PSRAM); defined `EdgeEventType` enums (including `EDGE_EVENT_MOTOR_DIRECTION=5` and `EDGE_EVENT_ENCODER=6`); added `incrementOverflowCount()`, `isRideLogWrapped()`, `setEventBus()`, `logEncoderEvent()`, and member `_adcConfigured`.
+- `src/echenon/SignalLogger.cpp` — Switched burst buffer to store packed channel+data samples; updated `/api/echenon/burst.csv` to de-interleave streams into named columns with sample rate, start time, and overflow count metadata; updated `processAdcFrame` to derive per-sample timestamps; registered `s_on_pool_ovf` callback with `adc_continuous_register_event_callbacks` for DMA pool overflows; removed dead channel 8 threshold code; subscribed to `"encoder.rotate"` EventBus topic; updated `/api/echenon/status` to export `overflow_count` and `ride_log_wrapped`; updated `/api/echenon/ride-log.csv` with named headers for 8 scanned channels; converted `_adc_configured` to member variable; removed `fail_count` no-op; removed all `printf` calls.
+- `src/echenon/EchenonModule.h` & `src/echenon/EchenonModule.cpp` — Wrapped all `SignalLogger` usage and robbery structures in `#ifdef WITH_SIGNAL_LOGGER`; updated `/api/echenon/live` endpoint to report 8 scanned channels with physical channel mapping; wired EventBus subscription.
+- `platformio.ini` — Added `-DWITH_SIGNAL_LOGGER` to `[env:ex3-waveshare-nano]` build flags; simplified `[env:native]` dependencies for pure host unit testing.
+- `test/test_native/test_signal_logic.cpp` — Created GoogleTest test suite with 14 test cases covering sample packing/unpacking, channel slot mapping, burst de-interleaving (ideal, partial leading frame, missing sample), motor state machine (idle, forward, reverse, brake, chatter rejection, hysteresis), and timestamp calculations.
+
+### Decisions Made
+- Pack `channel:4 | data:12` into existing `uint16_t` burst buffer rather than expanding buffer memory, preserving 1.5M sample capacity within ~3 MB PSRAM.
+- In `SignalLogic.h`, de-interleaving drops partial leading frames prior to the first channel 0 to ensure strict frame alignment from the very first CSV row.
+- Fallback wired in `EchenonModule::tick()` to connect `_signalLogger.setEventBus(&app.getEventBus())` if not injected beforehand, avoiding any changes to `src/main.cpp` and staying strictly inside the boundary box.
+
+### Dead Ends & Warnings
+- Initial native test build attempted to pull `Application` and entire `framework/modules` into `env:native`, causing compilation failures due to missing hardware display/network headers. Resolved by scoping `env:native` dependencies to `bblanchon/ArduinoJson` for pure logic testing.
+- Initial compilation showed deprecation warning on `volatile uint32_t++` under C++20; resolved by using explicit `_overflowCount = _overflowCount + 1`.
+
+### Out-of-Scope Findings
+- None.
+
+### Blockers
+- None.

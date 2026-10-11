@@ -9,6 +9,7 @@
 
 static const char* TAG = "EchenonModule";
 
+#ifdef WITH_SIGNAL_LOGGER
 // Standard C++ member-pointer thief to access SignalLogger capture buffers
 template <typename Tag, typename Tag::type M>
 struct Rob {
@@ -44,6 +45,7 @@ struct SignalLogger_eventLogCount {
     friend type get(SignalLogger_eventLogCount);
 };
 template struct Rob<SignalLogger_eventLogCount, &SignalLogger::_eventLogCount>;
+#endif
 
 // =============================================================================
 // ITickable
@@ -51,8 +53,16 @@ template struct Rob<SignalLogger_eventLogCount, &SignalLogger::_eventLogCount>;
 
 void EchenonModule::tick(uint32_t currentMillis) {
     (void)currentMillis;
+#ifdef WITH_SIGNAL_LOGGER
+    static bool s_eventBusWired = false;
+    if (!s_eventBusWired) {
+        extern Application app;
+        _signalLogger.setEventBus(&app.getEventBus());
+        s_eventBusWired = true;
+    }
     _signalLogger.begin();
     _signalLogger.tick(currentMillis);
+#endif
 
     // Initialize mDNS responder so echenon.local resolves
     static bool s_mdnsStarted = false;
@@ -79,16 +89,22 @@ int EchenonModule::getSchemaVersion() const {
 
 void EchenonModule::applyConfig(const JsonObject& config) {
     (void)config;
+#ifdef WITH_SIGNAL_LOGGER
     _signalLogger.applyConfig(config);
+#endif
 }
 
 void EchenonModule::serializeConfig(JsonObject& config) const {
     (void)config;
+#ifdef WITH_SIGNAL_LOGGER
     _signalLogger.serializeConfig(config);
+#endif
 }
 
 void EchenonModule::resetConfig() {
+#ifdef WITH_SIGNAL_LOGGER
     _signalLogger.resetConfig();
+#endif
 }
 
 // =============================================================================
@@ -96,7 +112,9 @@ void EchenonModule::resetConfig() {
 // =============================================================================
 
 void EchenonModule::registerRoutes(PsychicHttpServer& server) {
+#ifdef WITH_SIGNAL_LOGGER
     _signalLogger.registerRoutes(server);
+#endif
 
     // Serve dashboard JavaScript
     server.on("/echenon-dashboard.js", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
@@ -107,7 +125,8 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
                               "application/javascript");
     });
 
-    // Lightweight live endpoint for 10-channel decimated stats + event count
+#ifdef WITH_SIGNAL_LOGGER
+    // Lightweight live endpoint for 8-channel decimated stats + event count
     server.on("/api/echenon/live", HTTP_GET, [this](PsychicRequest* request, PsychicResponse* response) -> esp_err_t {
         DecimationRow* buf = _signalLogger.*get(SignalLogger_rideLogBuffer());
         size_t count = _signalLogger.*get(SignalLogger_rideLogCount());
@@ -127,19 +146,21 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
         doc["timestamp_ms"] = row.timestamp_ms;
         doc["event_count"] = events;
         JsonArray channels = doc["channels"].to<JsonArray>();
-        for (int c = 0; c < 10; c++) {
+        static const int live_adc_channels[] = {0, 1, 2, 3, 4, 5, 6, 9};
+        for (int s = 0; s < 8; s++) {
             JsonObject chObj = channels.add<JsonObject>();
-            chObj["ch"] = c;
-            chObj["min"] = (row.channels[c].min_val == 0xFFFF) ? 0 : row.channels[c].min_val;
-            uint32_t mean = (row.channels[c].count > 0) ? (row.channels[c].sum / row.channels[c].count) : 0;
+            chObj["ch"] = live_adc_channels[s];
+            chObj["min"] = (row.channels[s].min_val == 0xFFFF) ? 0 : row.channels[s].min_val;
+            uint32_t mean = (row.channels[s].count > 0) ? (row.channels[s].sum / row.channels[s].count) : 0;
             chObj["mean"] = mean;
-            chObj["max"] = row.channels[c].max_val;
+            chObj["max"] = row.channels[s].max_val;
         }
 
         String res;
         serializeJson(doc, res);
         return response->send(200, "application/json", res.c_str());
     });
+#endif
 }
 
 void EchenonModule::registerTabs(ITabRegistry& registry) {
@@ -151,4 +172,3 @@ void EchenonModule::registerTabs(ITabRegistry& registry) {
         "/echenon-dashboard.js"
     );
 }
-

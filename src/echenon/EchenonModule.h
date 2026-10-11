@@ -1,10 +1,15 @@
 #pragma once
 
 #include "AppFoundation.h"
+#ifdef WITH_SIGNAL_LOGGER
 #include "echenon/SignalLogger.h"
+#endif
 
 class PsychicHttpServer;
 class ConfigManager;
+#ifdef WITH_SIGNAL_LOGGER
+class EventBus;
+#endif
 
 /**
  * @brief Echenon primary application module following the Service Module Pattern.
@@ -36,10 +41,14 @@ public:
 
     // --- Dependency Injection ---
     void setConfigManager(ConfigManager* cm) { _configManager = cm; }
+#ifdef WITH_SIGNAL_LOGGER
+    void setEventBus(EventBus* eb) { _signalLogger.setEventBus(eb); }
+#endif
 
 private:
     ConfigManager* _configManager = nullptr;
 
+#ifdef WITH_SIGNAL_LOGGER
     SignalLogger _signalLogger;
-    // TODO [WO3]: Live dashboard WebSocket and CSV export handlers
+#endif
 };
