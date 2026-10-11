@@ -135,4 +135,46 @@ A<row>-<yyyymmdd>-<short-description>[-<n>].<ext>
 
 ## Completion Report
 
-_(To be filled in by the bench assistant after the interactive session)_
+### Status
+complete
+
+### Session
+**Date:** 2026-10-11, ~30 min bench session
+**Operator:** Owner at bench with Rigol DHO804 + DMM
+**PA:** Recording and interpreting remotely
+
+### Items Completed
+
+| Item | Method | Result |
+|---|---|---|
+| **B — Pin idle** | Done previously in B01 sensor bringup | N/A (already closed) |
+| **C — Motor scope captures** | Rigol DHO804, probe directly on motor wires | 3 captures: reverse drive end (10 ms/div), forward onset (20 ms/div), fast timebase (50 µs/div). ±3.25V flat DC, no PWM confirmed. |
+| **D — Motor current** | DMM in series with motor wire, no-load | Reverse: 175 mA inrush → 150 mA steady. Forward: 95 mA inrush → 50 mA steady. Motor drives eccentric cam; load is cam mechanism, independent of flywheel speed. |
+| **E — VIN tolerance** | Datasheet review (Waveshare ESP32-S3-Nano) | VIN 6–21V (MP2322GQH regulator). 9V safe. |
+
+### Register Rows Updated
+- **#1** (motor drive characterisation): PASS — ±3.25V flat DC, no PWM
+- **#2** (motor current): PASS — ≤175 mA peak, well under 800 mA
+- **#11** (VIN tolerance): PASS — 9V within 6–21V spec
+
+### Owner Observations (parked for DR-1)
+- Motor drive lines (±3.25V DC) may be used as signal inputs only, with
+  actual motor drive via a separate H-bridge. Power architecture deferred
+  to DR-1.
+- Motor current is independent of flywheel speed (cam mechanism is the load,
+  not the brake force).
+
+### Scope Capture Notes
+- Probes were directly on motor wires, not through the ÷4 divider.
+- Through the divider, the ESP32 sees +0.81V (forward) and 0V (reverse,
+  clamped by input protection). ADC only detects forward drive; direction
+  requires comparing both motor+ and motor− channels.
+- DHO804 minimum timebase was 40 µs/div (scope limit), but this was
+  sufficient to confirm no PWM at any reasonable motor drive frequency.
+
+### Limitations
+- DMM inrush readings are limited by response time. True peak inrush may
+  be slightly higher but is not expected to exceed 500 mA.
+- Only 3 of the 6 recommended scope captures were taken (no separate
+  at-rest, reverse drive onset, or drive-end braking captures). The 3
+  captures are sufficient to characterise the motor drive for register row #1.
