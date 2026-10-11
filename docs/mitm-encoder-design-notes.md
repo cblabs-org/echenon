@@ -67,7 +67,8 @@ does NOT control the motor — it only observes the pot to confirm what
 level the console actually reached.
 
 ```
-level_from_pot = constrain(round((wiper_adc - 125) / 37.7) + 1, 1, 32)
+// B03 single reference formula: wiper = 39.1 * level + 97
+level_from_pot = constrain(round((wiper_adc - 97.0) / 39.1), 1, 32)
 ```
 
 ## 5. Goalseek Risk

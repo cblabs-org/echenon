@@ -216,7 +216,7 @@ uses the separate authoritative map in §4.4.1.
 ┌──────────────────── ECHELON EX-3 BIKE FRAME ────────────────────
 │  Reed switch     Potentiometer        DC motor       Rotary encoder
 │  (cadence)       (cam position)       (resistance)   (red knob)
-│  Orange + Grey   Yellow/Blue/Green    Red + Black    Red/Brown/Orange
+│  Orange + Grey   Yellow/Blue/Green    Red + Black    Black/Red/Orange
 │  └──────────────── 9-pin JST-SM ────────────────┘    3-pin JST
 └──────────────────────────┬───────────────────────────────┬──────
                            │ J1                            │ J3
@@ -229,7 +229,7 @@ uses the separate authoritative map in §4.4.1.
 │  Taps into the ESP32-S3-Nano (series R, no internal pulls):
 │    Blue  (pot wiper)        → A0 / GPIO 1   ADC1
 │    Orange (cadence)         → D2 / GPIO 5   digital, interrupt
-│    Encoder Ch A / Ch B      → D5 / GPIO 8, D6 / GPIO 9
+│    Encoder Ch A / Ch B      → D5 / GPIO 8, D6 / GPIO 9   PCNT (Black=A, Red=B)
 │    Console motor + / −      → 30 kΩ/10 kΩ (÷4) → D3 / GPIO 6, D4 / GPIO 7
 │                               ADC1 analog sense inputs only
 │
@@ -263,11 +263,11 @@ uses the separate authoritative map in §4.4.1.
 |---|---|---|---|---|
 | Power +9 V | White | Pass-through | Buck converter input | — |
 | GND | Brown | Pass-through | Common ground | L9110S GND |
-| Cadence | Orange | Pass-through | GPIO 5 via series R | — |
+| Cadence | Orange | Pass-through | GPIO 5 via series R (4.7 kΩ) | — |
 | Cadence return | Grey | Pass-through | — | — |
-| Pot outer HI | Yellow | Pass-through | — | — |
+| Pot outer (0 V) | Yellow | Pass-through | — (measured 0 V, §4.4.1) | — |
 | Pot wiper | Blue | Pass-through | GPIO 1 via series R (ADC1) | — |
-| Pot outer LO | Green | Pass-through | — | — |
+| Pot outer ref (1.67 V) | Green | Pass-through | — (measured 1.67 V, §4.4.1) | — |
 | **Motor +** | **Red** | Passive: pass-through. MITM: console side terminates in the sense divider | **GPIO 6 via ÷4 divider (ADC1 sense)** | Bike side ← L9110S A-OA |
 | **Motor −** | **Black** | Passive: pass-through. MITM: console side terminates in the sense divider | **GPIO 7 via ÷4 divider (ADC1 sense)** | Bike side ← L9110S A-OB |
 
@@ -557,45 +557,51 @@ void EchenonModule::beginSensors() {
 
 This table is the single authoritative pin map for the Phase 0 logger (PR-01)
 and Phase 1 calibration (PR-02). Every other document refers to it rather than
-copying it. The ten tap signals map one-to-one onto GPIO 1–10, which are
-exactly the ten ADC1 channels, so every signal can be captured as analog
-while WiFi is on.
+copying it. The ten tap signals were originally allocated one-to-one to GPIO 1–10.
+Following WO4a/B04, GPIO 8 and 9 are dedicated to the ESP32 PCNT peripheral
+(`EncoderModule`), leaving 8 ADC1 channels for continuous DMA capture
+(CH0–CH6, CH9).
 
 | GPIO | Header | Signal | Tap network |
 |---|---|---|---|
 | 1 | A0 | Blue: pot wiper | 22 kΩ series |
-| 2 | A1 | Yellow: pot outer HI | 22 kΩ series |
-| 3 | A2 | Green: pot outer LO | 22 kΩ series |
-| 4 | A3 | Grey: cadence return | 22 kΩ series |
-| 5 | D2 | Orange: cadence | 22 kΩ series |
+| 2 | A1 | Yellow: pot outer reference | 22 kΩ series (measured 0 V) |
+| 3 | A2 | Green: pot outer reference | 22 kΩ series (measured ≈ 1.67 V) |
+| 4 | A3 | Grey: cadence return | 4.7 kΩ series + 100 nF |
+| 5 | D2 | Orange: cadence | 4.7 kΩ series + 100 nF |
 | 6 | D3 | Red: motor + | 30 kΩ / 10 kΩ divider (÷4) |
 | 7 | D4 | Black: motor − | 30 kΩ / 10 kΩ divider (÷4) |
-| 8 | D5 | Encoder Ch A (Brown) | 22 kΩ series |
-| 9 | D6 | Encoder Ch B (Orange) | 22 kΩ series |
-| 10 | D7 | Encoder VCC (Red) | 22 kΩ series |
+| 8 | D5 | Black: Encoder Ch A | PCNT input (4.7 kΩ series) |
+| 9 | D6 | Red: Encoder Ch B | PCNT input (4.7 kΩ series) |
+| 10 | D7 | Orange: Encoder VCC | 4.7 kΩ series + 100 nF (ADC1 CH9, steady 3.3 V) |
 | — | GND | Brown (bike GND) | Direct to ESP32 GND |
 
 Rules for Phase 0/1:
 
-- There are **ten tap signals**. White (+9 V) and Brown (GND) are power, not
-  taps; White is never connected to the logger.
-- Every **direct** tap (every pin except 6 and 7) has a **22 kΩ series
-  resistor** (acceptable range 10–47 kΩ). It limits the current the console's
-  3.3 V lines can inject through the ESP32's protection diodes when the logger
-  is unpowered, and keeps the tap invisible to the console.
+- There are **ten tap signals** across the two looms. White (+9 V) and Brown
+  (GND) are power, not taps; White is never connected to the logger.
+- **Series resistors and capacitors**:
+  - Potentiometer lines (GPIO 1, 2, 3) use **22 kΩ series resistors** (slow-moving DC signals).
+  - Cadence lines (GPIO 4, 5) use **4.7 kΩ series + 100 nF ceramic capacitors** to GND on the ESP32 side (bench-verified in B01; the original 22 kΩ value exceeded the ESP32-S3 ADC continuous-mode source impedance limit for brief reed transients).
+  - Encoder signals (GPIO 8, 9, 10) use wire colours **Black (Ch A)**, **Red (Ch B)**, and **Orange (VCC)** as measured in B01.
 - GPIO 6 and 7 read the motor wires only through the 30 kΩ / 10 kΩ ÷4 divider,
   which is safe up to about 13 V at the wire.
-- Every tap pin is configured with **no internal pull-up or pull-down**.
+- Every tap pin is configured with **no internal pull-up or pull-down** (hardware spec §5.5 no-pulls rule).
 - The logger is **powered from USB-C**, with ESP32 GND tied to Brown. Use a
   power bank or a laptop running on battery, so that the USB ground does not
   form a mains ground loop through the bike's GND (hardware spec §5.3, §9). The
   MP1584EN buck is not used before the PR-04a board.
-- Capture uses the ESP-IDF **ADC continuous (DMA)** driver on all ten
-  channels, not `analogRead()` polling. Whether GPIO 5, 8 and 9 can be sampled
-  by ADC-continuous and serve a GPIO interrupt at the same time is answered by
-  the PR-01 WO0 spike.
+- Capture uses the ESP-IDF **ADC continuous (DMA)** driver on 8 channels
+  (CH0–CH6, CH9). GPIO 8 and 9 are assigned exclusively to PCNT hardware
+  decoding (`EncoderModule`), achieving 0% bounce and 100% click detection (B04).
 - GPIO 3 is an ESP32-S3 strapping pin (JTAG signal source). The PR-01 WO0
   spike confirms that the Green tap does not change boot behaviour.
+- **Potentiometer Polarity (E-01 measured fact)**: B01 measured Yellow (GPIO 2)
+  = 0 V and Green (GPIO 3) ≈ 1.67 V (≈ 2,084 ADC counts). This is reversed from
+  the initial assumption that Yellow was HI (3.3 V) and Green was LO (0 V). Green
+  acts as an active voltage source with source impedance ≈ 2.4 kΩ. The provisional
+  Phase 3 standalone network (SW2/SW3, R4) is incorrect based on this measured
+  polarity; DR-1 §2.2/§2.9 must redesign the standalone pot reference circuit.
 
 #### 4.4.2 Phase 3+ Map — PROVISIONAL `[DR-1]`
 
@@ -608,8 +614,8 @@ Rules for Phase 0/1:
 | 5 | D2 | Cadence | Digital input, interrupt (series R) | Passive and MITM |
 | 6 | D3 | Console motor + sense | ADC1 input (÷4 divider) | Passive and MITM |
 | 7 | D4 | Console motor − sense | ADC1 input (÷4 divider) | Passive and MITM |
-| 8 | D5 | Encoder Ch A | Input, PCNT (series R) | Passive and MITM |
-| 9 | D6 | Encoder Ch B | Input, PCNT (series R) | Passive and MITM |
+| 8 | D5 | Encoder Ch A (Black) | Input, PCNT (series R) | Passive and MITM |
+| 9 | D6 | Encoder Ch B (Red) | Input, PCNT (series R) | Passive and MITM |
 | 10 | D7 | L9110S A-IA | Output (10 kΩ external pull-down) | MITM only |
 | 17 | D8 | L9110S A-IB | Output (10 kΩ external pull-down) | MITM only |
 | — | 3V3 | 3.3 V from buck converter | Power | Both |
@@ -625,9 +631,10 @@ Rules for Phase 0/1:
   `[DR-1]` (22 kΩ in Phase 0; hardware spec §6.2.2). The external 10 kΩ
   pull-downs (R6, R7) on A-IA and A-IB hold the driver off while the ESP32 is
   in reset (§5.5).
-- Encoder Ch B was reported at about 1.5–2 V, below the ESP32-S3 V<sub>IH</sub>
-  of 2.475 V. Whether it needs conditioning before PCNT is a DR-1 decision
-  from the PR-01 analog capture.
+- Encoder Ch B conditioning: Early teardown notes suggested an analog pulse of
+  ~1.5–2 V on Ch B (A08). Following wire-colour correction, B04 confirmed PCNT
+  decodes both channels cleanly with 0% bounce and 100% detection. A08 is
+  superseded by B04; no analog conditioning is required.
 
 ### 4.5 Echelon EX-3 Internal Hardware
 
@@ -669,11 +676,11 @@ stock. Pin numbers are from the **provisional** Phase 3+ map (§4.4.2).
 |---|---|---|---|---|---|
 | 1 | Red (Motor +) | Passive: pass-through. MITM: to sense divider only | GPIO 6 via ÷4 divider | Bike side ← A-OA | — |
 | 2 | Black (Motor −) | Passive: pass-through. MITM: to sense divider only | GPIO 7 via ÷4 divider | Bike side ← A-OB | — |
-| 3 | Yellow (Pot outer HI) | Pass-through | — | — | R4 from 3.3 V via SW2 |
-| 4 | Blue (Pot wiper) | Pass-through | GPIO 1 via series R | — | — |
-| 5 | Green (Pot outer LO) | Pass-through | — | — | Link to GND via SW3 |
-| 6 | Orange (Cadence) | Pass-through | GPIO 5 via series R | — | R3 pull-up from 3.3 V via SW1 |
-| 7 | Grey (Cadence return) | Pass-through | — | — | `[DR-1: ground or leave, register #7]` |
+| 3 | Yellow (Pot outer ref, 0 V) | Pass-through | — | — | Subject to DR-1 redesign (measured 0 V) |
+| 4 | Blue (Pot wiper) | Pass-through | GPIO 1 via series R (22 kΩ) | — | — |
+| 5 | Green (Pot outer ref, 1.67 V) | Pass-through | — | — | Subject to DR-1 redesign (measured 1.67 V) |
+| 6 | Orange (Cadence) | Pass-through | GPIO 5 via series R (4.7 kΩ) | — | R3 pull-up from 3.3 V via SW1 |
+| 7 | Grey (Cadence return) | Pass-through | GPIO 4 via series R (4.7 kΩ) | — | `[DR-1: ground or leave, register #7]` |
 | 8 | White (+9 V) | Pass-through | Buck converter input | — | — |
 | 9 | Brown (GND) | Pass-through | Common GND | GND | — |
 
@@ -681,9 +688,9 @@ stock. Pin numbers are from the **provisional** Phase 3+ map (§4.4.2).
 
 | J3 pin | Wire | → J4 (console) | → ESP32 | Standalone support (MITM, Override) |
 |---|---|---|---|---|
-| 1 | Red (common 3.3 V) | Pass-through | — | R5 from 3.3 V via SW4 |
-| 2 | Brown (Ch A) | Pass-through | GPIO 8 via series R | Pull direction `[DR-1: register #8]` |
-| 3 | Orange (Ch B) | Pass-through | GPIO 9 via series R | Pull direction `[DR-1: register #8]` |
+| 1 | Black (Ch A) | Pass-through | GPIO 8 via series R (4.7 kΩ, PCNT) | Pull direction `[DR-1: register #8]` |
+| 2 | Orange (VCC 3.3 V) | Pass-through | GPIO 10 via series R (4.7 kΩ, ADC1 CH9) | R5 from 3.3 V via SW4 |
+| 3 | Red (Ch B) | Pass-through | GPIO 9 via series R (4.7 kΩ, PCNT) | Pull direction `[DR-1: register #8]` |
 
 **Switchable standalone supports.** R3 (cadence pull-up), R4 (pot reference),
 R5 (encoder supply) and the Green–GND link exist only so that the sensors work
@@ -778,7 +785,7 @@ interval.
 - RPM: $\text{RPM} = 60{,}000{,}000 \div \Delta t_{\mu s}$
 - Timeout: 3 s with no pulse → cadence = 0
 - Hardware filter (Phase 3+ boards): 100 nF (C1) from GPIO 5 to GND on the
-  ESP32 side of the series resistor (with 22 kΩ, a ~2.2 ms RC low-pass) that
+  ESP32 side of the series resistor (with 4.7 kΩ, a ~0.47 ms RC low-pass) that
   the console's line does not see
 - Pull-up: the console provides it when connected. With the console
   disconnected (MITM board, Override), the switchable R3 provides it (§4.6).
@@ -824,22 +831,28 @@ half-revolution, from cam-min θ<sub>min</sub> to cam-max θ<sub>max</sub>.
 - **FTMS.** Indoor Bike Data reports the display level; Supported Resistance
   Level Range (`0x2AD6`) reports the active scale (§7.3).
 
-No linear millivolt-to-level formula is used anywhere in the firmware.
+No linear millivolt-to-level formula is used anywhere in the firmware. For
+reference analysis, the single empirical fit established in B03 is
+`wiper = 39.1 × level + 97` (ADC counts, R² = 0.9989).
 
 ### 5.4 Resistance Encoder
 
 The red resistance knob is an incremental quadrature encoder on a separate
-3-pin JST loom.
+3-pin JST loom (wire colours: Black = Ch A, Red = Ch B, Orange = VCC).
 
-- **Phase 0/1**: Ch A and Ch B are captured as analog on GPIO 8 and 9 by the
-  `SignalLogger`, together with encoder VCC on GPIO 10, to establish counts per
-  detent, pull direction and the real Ch B levels.
+- **Phase 0/1**: Ch A and Ch B were initially captured as analog on GPIO 8 and 9
+  by the `SignalLogger`, together with encoder VCC on GPIO 10. Following WO4a/B04,
+  GPIO 8 and 9 were released from ADC to the ESP-IDF PCNT hardware peripheral
+  (`EncoderModule`), achieving 0% bounce and 100% detection without analog
+  conditioning.
 - **Phase 5+ (MITM board)**: the framework `EncoderModule` (`WITH_ENCODER`)
   decodes the knob in the PCNT hardware peripheral with its glitch filter.
   `board.h` supplies a `BoardEncoder` descriptor `{ id, pinA, pinB,
-  stepsPerDetent, reversed, accel }` with pins 8 and 9, `stepsPerDetent =
-  [DR-1: register #8]` and `reversed = [DR-1]`. `EncoderModule` publishes
-  `EncoderEvent` payloads on the EventBus topic `encoder.rotate`.
+  stepsPerDetent, reversed, accel }` with pins 8 and 9, `stepsPerDetent = 4`
+  (confirmed in B04) and `reversed = false`. There are 4 detents per level
+  (16 encoder steps per level), giving 512 encoder steps full range (32 levels).
+  `EncoderModule` publishes `EncoderEvent` payloads on the EventBus topic
+  `encoder.rotate`.
 - PR-07 verifies that the PCNT pin configuration enables no internal pulls on
   GPIO 8 and 9.
 
@@ -2501,9 +2514,9 @@ constexpr int8_t PIN_MOTOR_SENSE_P    = 6;   // D3  Red,   ADC1 via ÷4 divider
 constexpr int8_t PIN_MOTOR_SENSE_N    = 7;   // D4  Black, ADC1 via ÷4 divider
 
 #define HAS_KNOB_ENCODER     1
-constexpr int8_t PIN_KNOB_ENC_A       = 8;   // D5  Brown,  ADC1
-constexpr int8_t PIN_KNOB_ENC_B       = 9;   // D6  Orange, ADC1
-constexpr int8_t PIN_KNOB_ENC_VCC     = 10;  // D7  Red,    ADC1 (Phase 0/1 only)
+constexpr int8_t PIN_KNOB_ENC_A       = 8;   // D5  Black,  ADC1 (J3 left pin)
+constexpr int8_t PIN_KNOB_ENC_B       = 9;   // D6  Red,    ADC1 (J3 right pin)
+constexpr int8_t PIN_KNOB_ENC_VCC     = 10;  // D7  Orange, ADC1 (J3 centre pin, Phase 0/1 only)
 
 #define HAS_MOTOR_CONTROL    0               // MITM board only (Phase 5+)
 
@@ -2521,9 +2534,9 @@ build sets `HAS_MOTOR_CONTROL 1` with `PIN_MOTOR_IA = 10` and
 #include "EncoderModule/EncoderConfig.h"
 constexpr BoardEncoder BOARD_ENCODERS[] = {
     { .id = "knob", .pinA = PIN_KNOB_ENC_A, .pinB = PIN_KNOB_ENC_B,
-      .stepsPerDetent = KNOB_STEPS_PER_DETENT,   // [DR-1: register #8]
-      .reversed = KNOB_REVERSED,                 // [DR-1]
-      .accel = {} },
+      .stepsPerDetent = 4,                       // Confirmed in B04
+      .reversed = false,
+      .accel = { .enabled = false } },
 };
 constexpr size_t BOARD_ENCODER_COUNT = sizeof(BOARD_ENCODERS) / sizeof(BOARD_ENCODERS[0]);
 #define BOARD_ENCODER_COUNT BOARD_ENCODER_COUNT
@@ -2552,7 +2565,7 @@ access sits behind thin interfaces, so the logic is testable without a board.
 
 | Module / logic | Minimum coverage | PR |
 |---|---|---|
-| `SignalLogger` decimation and CSV writer | min/mean/max per window, event ordering, CSV format | PR-01 |
+| `SignalLogger` & `SignalLogic` (24 tests) | `SignalLoggerDecimationTest` (3 tests: min/mean/max, window boundaries, sentinels), `SignalLoggerEventOrderingTest` (2 tests: chronological order, ring buffer wrap), `SignalLoggerCsvFormatTest` (5 tests: ride log header/row, burst header/row, events), and `SignalLogicTest` (14 tests: pack/unpack, channel/slot mapping, deinterleaving, motor state machine, timestamps) | PR-01 |
 | Cadence math | RPM from intervals, 25 ms lockout, 3 s timeout | PR-02 |
 | Cam-angle tracker (`ResistanceSensor`) | Click-off detection, half-revolution counting in both directions, display-level interpolation | PR-02 |
 | `PowerEngine` | Polynomial, clamping, bilinear matrix interpolation, CSV matrix parsing | PR-02 |
@@ -2583,11 +2596,11 @@ fitted.
 | 0.3 | Open `echenon.local` in Chrome on the Lenovo P12. | Portal loads; `echenon.local` resolves on the tablet. |
 | 0.4 | Build check. | `ex3-waveshare-nano` env builds against framework `v0.0.12-dev.82` with BLE off; no `WITH_DISPLAY_U8G2` or `WITH_BUTTONS`. |
 | 0.5 | Pin idle check with the logger connected and unpowered, then powered. | No tap pin drives or biases a console line; every tap pin reads as input with no internal pull. |
-| 0.6 | WO0 spike: ADC-continuous throughput on ten channels with WiFi on. | Sustained rate recorded; burst capture at 1–5 kHz on all ten channels is achievable. |
-| 0.7 | WO0 spike: ADC-continuous sampling and a GPIO interrupt on the same pad (GPIO 5, 8, 9). | Result recorded (works / does not work), with evidence. |
-| 0.8 | WO0 spike: analog capture of encoder Ch B. | Real Ch B levels recorded against V<sub>IH</sub>. |
-| 0.9 | Ride log: a full 60-minute ride. | Decimated min/mean/max at 10–20 Hz per channel plus the µs event log (cadence edges, encoder edges, motor-drive onset/offset) fit in PSRAM and export as CSV. |
-| 0.10 | Burst capture: manual trigger, motor-drive-onset trigger and power-on trigger. | 5–30 s windows at 1–5 kHz on all ten channels download as CSV. |
+| 0.6 | WO0 spike: ADC-continuous throughput on 8 channels with WiFi on. | Sustained rate recorded; burst capture at 1–5 kHz on 8 channels is achievable (GPIO 8/9 released for PCNT). |
+| 0.7 | WO0 spike: GPIO 8/9 dedicated to PCNT peripheral (`EncoderModule`). | Hardware PCNT decoding verified with 0% bounce, 100% detection. Cadence sampled on GPIO 5 via ADC software threshold. |
+| 0.8 | WO0 spike: encoder signal verification. | Correct wire colours (Black=A, Red=B, Orange=VCC) confirmed; PCNT decodes both channels cleanly (supersedes A08 analog conditioning spike). |
+| 0.9 | Ride log: a full 60-minute ride. | Decimated min/mean/max at 10–20 Hz per channel (8 channels) plus the µs event log fit in PSRAM and export as CSV. |
+| 0.10 | Burst capture: manual trigger, motor-drive-onset trigger and power-on trigger. | 5–30 s windows at 1–5 kHz on all 8 channels download as CSV. |
 | 0.11 | Scope gate: both motor wires, both directions and at rest, at 10 ms/div and at µs/div. | Waveform **characterised** (DC level or PWM frequency and duty) and filed as evidence. Either result allows logging to proceed. |
 | 0.12 | Power-on capture (register #13): logger on USB, then 9 V applied to the bike. | Console power-on behaviour captured in single-shot mode from several starting positions. |
 | 0.13 | Phase 0 register. | Every row of [`docs/measurements/phase0/README.md`](docs/measurements/phase0/README.md) has an Evidence file and a Result. |

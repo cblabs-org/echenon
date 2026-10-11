@@ -108,7 +108,7 @@ up to the console motherboard via the 9-pin loom (white and brown wires).
 | Connector | Type | Wires | Function |
 |---|---|---|---|
 | **9-pin black** | JST-SM (9-pin) | 9 wires (all slots populated) | Main loom — power, sensors, motor |
-| **3-pin white** | JST 3-pin | Red, brown, orange | Resistance control knob (rotary encoder) |
+| **3-pin white** | JST 3-pin | Black, orange, red | Resistance control knob (rotary encoder) |
 | **5-pin white** | JST 5-pin | Ribbon cable | Auxiliary switch board |
 | **6-pin header** | Pin header (unpopulated) | — | JTAG / programming debug port |
 
@@ -179,21 +179,28 @@ main 9-pin loom).
 
 | Pin | Wire Colour | Function |
 |---|---|---|
-| 1 (outer) | Red | Common (3.3V reference) |
-| 2 (middle) | Brown | Channel A — toggle signal |
-| 3 (outer) | Orange | Channel B — pulse signal |
+| 1 (left) | Black | Channel A — quadrature signal |
+| 2 (middle) | Orange | Common (3.3V reference VCC) |
+| 3 (right) | Red | Channel B — quadrature signal |
 
 ### 5.2 Measured Behaviour
 
 | Measurement | Observation |
 |---|---|
-| **Red ↔ Brown** (common to Ch A) | Alternating state: each click toggles between 0V and 3.3V |
-| **Red ↔ Orange** (common to Ch B) | Momentary pulse: each click produces a brief spike (~1.5–2V) then returns to 0V |
+| **Black ↔ Orange** (Ch A to VCC) | 0V / 3.3V quadrature signal |
+| **Red ↔ Orange** (Ch B to VCC) | 0V / 3.3V quadrature signal (90° phase shifted) |
 
 The two channels pulse 90° out of phase (standard quadrature encoding). The
 motherboard decodes both the **amount** and **direction** of rotation (CW =
 increase resistance, CCW = decrease). The console translates this digital input
 into motor drive commands sent down the 9-pin loom to the resistance actuator.
+
+> [!NOTE]
+> Wire colours corrected 2026-10-04 from bench measurements (B01). Earlier
+> teardown visual inspection reported Red/Brown/Orange and hypothesized an analog
+> pulse on Ch B. Bench verification (B01, B04) confirmed standard 3.3V quadrature on
+> Black (Ch A) and Red (Ch B) with Orange as 3.3V VCC. PCNT decodes both channels
+> cleanly with 0% bounce and 100% detection.
 
 ### 5.3 Photo
 
@@ -322,9 +329,9 @@ encoder directly to the console motherboard.
 
 | Pin | Wire Colour | Function |
 |---|---|---|
-| 1 | **Red** | Common (3.3V) |
-| 2 | **Brown** | Channel A (quadrature signal) |
-| 3 | **Orange** | Channel B (quadrature signal) |
+| 1 | **Black** | Channel A (quadrature signal) |
+| 2 | **Orange** | Common (3.3V reference VCC) |
+| 3 | **Red** | Channel B (quadrature signal) |
 
 Connector type: JST 3-pin (white housing).
 
@@ -388,18 +395,22 @@ All photos are stored in [`echelon-teardown/attachments/`](echelon-teardown/atta
 
 ### 12.1 ADC Pin Map (Confirmed)
 
+GPIO 8 and 9 were initially logged via ADC channels 7 and 8 in early testing, but
+were subsequently released from the continuous ADC scan to the ESP32 PCNT peripheral
+(`EncoderModule`), leaving 8 ADC1 channels for continuous logging (CH0–CH6, CH9).
+
 | ADC CH | GPIO | Wire | Signal | Tap Circuit | Idle ADC | Notes |
 |---|---|---|---|---|---|---|
 | 0 | 1 | Blue | Pot wiper | 22 kΩ series | 123–165 | Depends on level |
-| 1 | 2 | Yellow | Pot hi ref | 22 kΩ series | 0 | Always 0V — see §12.4 |
-| 2 | 3 | Green | Pot lo ref | 22 kΩ series | 2060 | ~1.66V — see §12.4 |
+| 1 | 2 | Yellow | Pot outer ref | 22 kΩ series | 0 | Always 0V — see §12.4 |
+| 2 | 3 | Green | Pot outer ref | 22 kΩ series | 2060 | ~1.66V active source — see §12.4 |
 | 3 | 4 | Grey | Cadence return | 4.7 kΩ + 100 nF | 0 | |
 | 4 | 5 | Orange | Cadence | 4.7 kΩ + 100 nF | 4095 | Pulls low on reed closure |
-| 5 | 6 | Red | Motor sense + | 30 kΩ / 10 kΩ ÷4 | 0 | Forward drive |
-| 6 | 7 | Black | Motor sense − | 30 kΩ / 10 kΩ ÷4 | 0 | Reverse drive |
-| 7 | 8 | Black | Encoder Ch A | 4.7 kΩ + 100 nF | 0/4095 | Quadrature |
-| 8 | 9 | Red | Encoder Ch B | 4.7 kΩ + 100 nF | 0/4095 | Quadrature |
-| 9 | 10 | Orange | Encoder VCC | 4.7 kΩ + 100 nF | 4095 | 3.3V steady |
+| 5 | D3 | Red | Motor sense + | 30 kΩ / 10 kΩ ÷4 | 0 | Forward drive |
+| 6 | D4 | Black | Motor sense − | 30 kΩ / 10 kΩ ÷4 | 0 | Reverse drive |
+| — | 8 | Black | Encoder Ch A | 4.7 kΩ series | 0/4095 | Released to PCNT (0% bounce) |
+| — | 9 | Red | Encoder Ch B | 4.7 kΩ series | 0/4095 | Released to PCNT (0% bounce) |
+| 9 | 10 | Orange | Encoder VCC | 4.7 kΩ + 100 nF | 4095 | 3.3V steady (ADC1 CH9) |
 
 ### 12.2 Resistance Motor Drive
 
@@ -523,6 +534,7 @@ specific pot wiper position. The mapping is highly linear with no hysteresis.
 | ADC range | 165–1327 |
 | Voltage range | 133–1069 mV (936 mV span) |
 | Mean step size | 37.5 ADC / 30.2 mV per level |
+| Single reference formula | `wiper_adc = 39.1 × level + 97.0` (B03 linear fit, R² = 0.9989) |
 | Hysteresis | None (up/down match within ±1 ADC) |
 | "Flat road" default | Level 19 (ADC 819, 660 mV) |
 

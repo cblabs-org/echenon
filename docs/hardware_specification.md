@@ -352,20 +352,20 @@ SPEC §4.4.1 wins and this section is corrected.
 | GPIO | Header | Signal | Tap network |
 |---|---|---|---|
 | 1 | A0 | Blue: pot wiper | RS1 22 kΩ series (+ optional C2 on the ESP32 side) |
-| 2 | A1 | Yellow: pot outer HI | RS2 22 kΩ series |
-| 3 | A2 | Green: pot outer LO | RS3 22 kΩ series |
-| 4 | A3 | Grey: cadence return | RS4 22 kΩ series |
-| 5 | D2 | Orange: cadence | RS5 22 kΩ series |
+| 2 | A1 | Yellow: pot outer reference | RS2 22 kΩ series (measured 0 V, §5.8) |
+| 3 | A2 | Green: pot outer reference | RS3 22 kΩ series (measured ≈ 1.67 V, §5.8) |
+| 4 | A3 | Grey: cadence return | RS4 4.7 kΩ series + 100 nF |
+| 5 | D2 | Orange: cadence | RS5 4.7 kΩ series + 100 nF |
 | 6 | D3 | Red: motor + | 30 kΩ / 10 kΩ ÷4 divider (R1a/R1b) |
 | 7 | D4 | Black: motor − | 30 kΩ / 10 kΩ ÷4 divider (R2a/R2b) |
-| 8 | D5 | Encoder Ch A (Brown) | RS6 22 kΩ series |
-| 9 | D6 | Encoder Ch B (Orange) | RS7 22 kΩ series |
-| 10 | D7 | Encoder VCC (Red) | RS8 22 kΩ series |
+| 8 | D5 | Black: Encoder Ch A | RS6 4.7 kΩ series (PCNT input) |
+| 9 | D6 | Red: Encoder Ch B | RS7 4.7 kΩ series (PCNT input) |
+| 10 | D7 | Orange: Encoder VCC | RS8 4.7 kΩ series + 100 nF (ADC1 CH9, steady 3.3 V) |
 
-These are all ten ADC1 channels (ADC2 is unreliable while WiFi is on).
-There are **10 tap signals**; White (+9V) and Brown (GND) are power, not
+These are the tap signals; White (+9V) and Brown (GND) are power, not
 taps. Every tap pin is configured with **no internal pull-up or
-pull-down**.
+pull-down**. Note that GPIO 8 and 9 were released from continuous ADC to PCNT
+hardware decoding (`EncoderModule`), leaving 8 ADC1 channels.
 
 ```
 ═══════════════════════════════════════════════════════════════════════════════
@@ -396,24 +396,27 @@ Black wire (pin 2, motor−) ── tail ──► R2a (30kΩ) ──┬──�
                                                     GND
 
 
-SENSOR TAPS (9-pin loom — 22kΩ series resistor on every direct tap)
-───────────────────────────────────────────────────────────────────
+SENSOR TAPS (9-pin loom — series resistor on every direct tap)
+──────────────────────────────────────────────────────────────
 
 Blue wire   (pin 4, pot wiper)      ── tail ── RS1 22k ──┬──► U1 GPIO 1 (A0, ADC1)
                                                          └── C2 (100nF) ── GND
                                                               (optional)
-Yellow wire (pin 3, pot outer HI)   ── tail ── RS2 22k ─────► U1 GPIO 2 (A1, ADC1)
-Green wire  (pin 5, pot outer LO)   ── tail ── RS3 22k ─────► U1 GPIO 3 (A2, ADC1)
-Grey wire   (pin 7, cadence return) ── tail ── RS4 22k ─────► U1 GPIO 4 (A3, ADC1)
-Orange wire (pin 6, cadence)        ── tail ── RS5 22k ─────► U1 GPIO 5 (D2, ADC1 / edge)
+Yellow wire (pin 3, pot outer ref)  ── tail ── RS2 22k ─────► U1 GPIO 2 (A1, ADC1, 0V)
+Green wire  (pin 5, pot outer ref)  ── tail ── RS3 22k ─────► U1 GPIO 3 (A2, ADC1, 1.67V)
+Grey wire   (pin 7, cadence return) ── tail ── RS4 4.7k ─┬──► U1 GPIO 4 (A3, ADC1)
+                                                         └── C1 (100nF) ── GND
+Orange wire (pin 6, cadence)        ── tail ── RS5 4.7k ─┬──► U1 GPIO 5 (D2, ADC1 / edge)
+                                                         └── C1 (100nF) ── GND
 
 
-ENCODER TAPS (3-pin loom — 22kΩ series resistor on every direct tap)
-────────────────────────────────────────────────────────────────────
+ENCODER TAPS (3-pin loom — 4.7kΩ series resistor on direct taps)
+────────────────────────────────────────────────────────────────
 
-Enc Brown wire  (pin 2, Ch A) ── tail ── RS6 22k ──► U1 GPIO 8  (D5, ADC1 / edge)
-Enc Orange wire (pin 3, Ch B) ── tail ── RS7 22k ──► U1 GPIO 9  (D6, ADC1 / edge)
-Enc Red wire    (pin 1, VCC)  ── tail ── RS8 22k ──► U1 GPIO 10 (D7, ADC1)
+Enc Black wire  (pin 1, Ch A) ── tail ── RS6 4.7k ──► U1 GPIO 8  (D5, PCNT)
+Enc Red wire    (pin 3, Ch B) ── tail ── RS7 4.7k ──► U1 GPIO 9  (D6, PCNT)
+Enc Orange wire (pin 2, VCC)  ── tail ── RS8 4.7k ─┬──► U1 GPIO 10 (D7, ADC1)
+                                                   └── 100nF ── GND
 
 All tap pins: no internal pull-up, no internal pull-down.
 ═══════════════════════════════════════════════════════════════════════════════
@@ -458,14 +461,16 @@ resistors, ~£0.10.
 
 ### 5.5 Direct-Tap Series Resistors (RS1–RS8) and the No-Pulls Rule
 
-The eight direct taps (every tap except GPIO 6/7) each have a **4.7 kΩ series
-resistor**, placed at the harness end of the tail.
+The direct taps use series resistors at the harness end of each tail:
+- **Potentiometer taps (RS1–RS3)**: 22 kΩ series resistors. The pot signals are slow-moving DC, so the ADC sample-and-hold settling is not an issue; readings are stable and linear.
+- **Cadence taps (RS4, RS5)**: 4.7 kΩ series resistors + 100 nF ceramic capacitors to GND on the ESP32 side.
+- **Encoder taps (RS6–RS8)**: 4.7 kΩ series resistors (+ 100 nF on VCC).
 
 > [!IMPORTANT]
-> **Bench-tested 2026-10-03:** The original 22 kΩ value exceeded the ESP32-S3
+> **Bench-tested 2026-10-03 (B01):** The original 22 kΩ value exceeded the ESP32-S3
 > ADC continuous-mode source-impedance limit (Espressif recommends < 10 kΩ).
 > At 83 kHz aggregate sample rate the S/H capacitor could not settle through
-> 22 kΩ during brief reed-switch closures (~50 ms). Replaced with 4.7 kΩ +
+> 22 kΩ during brief reed-switch closures (~20–50 ms). Replaced with 4.7 kΩ +
 > 100 nF ceramic cap on the ESP32 side. Cadence detection confirmed at
 > 74–120 RPM.
 
@@ -484,7 +489,7 @@ pull-down**. An internal pull (~45 kΩ) on a cadence or encoder pin would bias
 the console's own line and change what is being measured.
 
 **Decoupling capacitor (C1).** A 100 nF ceramic capacitor is placed between
-each ADC signal pin and GND on the ESP32 side of the series resistor. This
+each fast signal pin and GND on the ESP32 side of the series resistor. This
 provides a low-impedance charge reservoir for the ADC's sample-and-hold
 capacitor, ensuring accurate readings even with the 4.7 kΩ source impedance.
 
@@ -495,13 +500,15 @@ survives onto the Phase 3 boards is a DR-1 decision.
 
 | GPIO | Signal | What We're Measuring | Register row |
 |---|---|---|---|
-| GPIO 2 (A1) | Yellow — pot outer HI | Console's pot reference voltage and stiffness | #4, #6 |
-| GPIO 3 (A2) | Green — pot outer LO | Console's pot low reference (GND?) | #4, #6 |
-| GPIO 4 (A3) | Grey — cadence return | Reed switch circuit return path | #7 |
-| GPIO 10 (D7) | Encoder VCC (Red, 3-pin) | Console's encoder supply voltage | #8, #10 |
+| GPIO 2 (A1) | Yellow — pot outer ref | Console's pot reference voltage (measured 0 V) | #4, #6 |
+| GPIO 3 (A2) | Green — pot outer ref | Console's pot reference voltage (measured ≈ 1.67 V active source, ~2.4 kΩ Z_out) | #4, #6 |
+| GPIO 4 (A3) | Grey — cadence return | Reed switch circuit return path (measured 0 V) | #7 |
+| GPIO 10 (D7) | Orange — Encoder VCC (3-pin centre) | Console's encoder supply voltage (measured 3.3 V steady) | #8, #10 |
 
 These results let DR-1 design the standalone supplies (R3, R4, R5, the
-Green–GND link) with evidence instead of assumptions.
+Green–GND link) with evidence instead of assumptions. Note: the measured
+pot polarity (Yellow=0V, Green=1.67V) is opposite to original assumptions,
+requiring standalone circuit redesign at DR-1.
 
 ### 5.7 Build Checklist
 
@@ -512,32 +519,31 @@ Green–GND link) with evidence instead of assumptions.
 - [ ] Set up the breadboard with the ESP32-S3-Nano; power it from USB-C
       (power bank or laptop on battery)
 - [ ] Tie ESP32 GND to the Brown tail
-- [ ] Fit RS1–RS8 (22 kΩ) in series with every direct tap
+- [ ] Fit series resistors: RS1–RS3 (22 kΩ for pot), RS4–RS5 (4.7 kΩ + 100 nF for cadence), RS6–RS8 (4.7 kΩ for encoder)
 - [ ] Build the motor-sense dividers (R1a/R1b, R2a/R2b)
 - [ ] Flash Phase 0 firmware via USB-C; confirm every tap pin is configured
       with no internal pulls
 - [ ] **GATE: motor-drive characterisation** (§5.2) — all six captures saved
 - [ ] Connect the motor-sense tails (Red → R1a, Black → R2a)
 - [ ] Connect the sensor and encoder tails
-- [ ] Verify all **10 tap signals** reading on the web dashboard
+- [ ] Verify all tap signals reading on the web dashboard
 
 ### 5.8 Test Points
 
-Expected readings are the current assumptions; the Phase 0 register records
-what is actually measured.
+Expected readings reflect actual measurements from bench characterisation (B01, B03, B04).
 
-| Signal | GPIO | Expected Reading | Register row |
+| Signal | GPIO | Measured / Confirmed Reading | Register row |
 |---|---|---|---|
-| Pot wiper | GPIO 1 | ~1160–1700 mV (varies with resistance position) | #4 |
-| Pot outer HI | GPIO 2 | ~3300 mV (console reference) | #6 |
-| Pot outer LO | GPIO 3 | ~0 mV (console ground) | #6 |
-| Cadence return | GPIO 4 | TBD | #7 |
-| Cadence | GPIO 5 | 3.3V idle, 0V on magnet pulse | #7 |
-| Motor+ sense | GPIO 6 | 0V idle; ≈0.825V if 3.3V DC drive forward, PWM otherwise | #1 |
-| Motor− sense | GPIO 7 | 0V idle; ≈0.825V if 3.3V DC drive reverse, PWM otherwise | #1 |
-| Encoder Ch A | GPIO 8 | Toggles 0 ↔ 3.3V per click | #8 |
-| Encoder Ch B | GPIO 9 | Brief ~1.5–2V pulse per click (below V_IH; capture as analog) | #8 |
-| Encoder VCC | GPIO 10 | ~3300 mV (console supply) | #8, #10 |
+| Pot wiper | GPIO 1 | 159–1321 counts (~130–1070 mV, varies with level 1–32; B03 linear fit: 39.1 × level + 97) | #4 |
+| Pot outer ref (Yellow) | GPIO 2 | 0 V (always, unexpected console reference topology) | #6 |
+| Pot outer ref (Green) | GPIO 3 | ≈ 1.66–1.67 V (≈ 2060–2084 counts, active source) | #6 |
+| Cadence return | GPIO 4 | 0 V | #7 |
+| Cadence | GPIO 5 | 3.3V idle (4095 counts), ~0.17V (~217 counts) on reed closure | #7 |
+| Motor+ sense | GPIO 6 | 0V idle; ~0.74V (~922 counts) during forward drive (÷4 divider) | #1 |
+| Motor− sense | GPIO 7 | 0V idle; ~0.73V (~912 counts) during reverse drive (÷4 divider) | #1 |
+| Encoder Ch A (Black) | GPIO 8 | 0 ↔ 3.3V quadrature, decoded cleanly via PCNT (0% bounce, 100% detection) | #8 |
+| Encoder Ch B (Red) | GPIO 9 | 0 ↔ 3.3V quadrature, decoded cleanly via PCNT (0% bounce, 100% detection) | #8 |
+| Encoder VCC (Orange) | GPIO 10 | 3.3V steady (4095 counts) | #8, #10 |
 
 ---
 
@@ -1035,9 +1041,9 @@ There is no encoder-VCC sense in Phase 3+.
 
 | J3 Pin | Colour | Signal | ESP32 Tap | Standalone supply |
 |---|---|---|---|---|
-| 1 | Red | Encoder 3.3V | — | R5 via SW4 (open by default) |
-| 2 | Brown | Channel A | GPIO 8 | — |
-| 3 | Orange | Channel B | GPIO 9 | — |
+| 1 | Black | Channel A | GPIO 8 (PCNT) | — |
+| 2 | Orange | Encoder 3.3V | — | R5 via SW4 (open by default) |
+| 3 | Red | Channel B | GPIO 9 (PCNT) | — |
 
 ---
 

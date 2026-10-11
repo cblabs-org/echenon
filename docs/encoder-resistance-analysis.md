@@ -209,17 +209,22 @@ missed at the step between levels 21→22 (75-count jump ≈ 2× average).
 
 ### 5.2 Linearity (Pot-to-Level)
 
-The pot wiper is **almost perfectly linear** with resistance level:
+The pot wiper is **almost perfectly linear** with resistance level.
+The single reference formula adopted from B03 is:
 
 ```
 wiper_adc = 39.1 × level + 97.0       (R² = 0.9989)
 ```
 
-Or equivalently:
+Inverting for level detection:
 
 ```
-level = round((wiper_adc − 125) / 37.7) + 1
+level = round((wiper_adc − 97.0) / 39.1)
 ```
+
+> [!NOTE]
+> An earlier preliminary fit `level = round((wiper_adc − 125) / 37.7) + 1` is superseded
+> by the B03 single reference fit above.
 
 | Metric | Value |
 |---|---|
@@ -411,11 +416,11 @@ Instead of equal angular steps (4.87° each), this would produce:
 
 ### 8.3 Level Detection from Pot
 
-The ESP32 can determine the current resistance level in real time:
+The ESP32 can determine the current resistance level in real time using the B03 single reference formula:
 
 ```cpp
 int currentLevel = constrain(
-    round((wiperADC - 125) / 37.7) + 1,
+    round((wiperADC - 97.0f) / 39.1f),
     1, 32
 );
 ```
