@@ -373,3 +373,229 @@ All photos are stored in [`echelon-teardown/attachments/`](echelon-teardown/atta
 | `image_cb3327.jpg` | Potentiometer terminals — detail shot | §6 |
 | `image_cb3362.jpg` | Actuator hub — all wiring and motor leads visible | §6 |
 | `image_cb3763.jpg` | Wiring junction — 9-pin loom, cadence, and power splits | §6 |
+
+---
+
+## 12. Instrumented Characterisation (Phase 0)
+
+> All measurements in this section were taken with an ESP32-S3-Nano running the
+> Echelon signal logger firmware (`v0.1.0-dev.6`), connected to the console
+> harness via non-loading series-resistor taps. 8-channel ADC continuous mode at
+> 83.3 kSa/s, decimated to 10 Hz ride log and raw burst capture.
+> Oscilloscope: Rigol DHO804. DMM: standard bench multimeter.
+>
+> Evidence files: [`docs/measurements/phase0/`](measurements/phase0/)
+
+### 12.1 ADC Pin Map (Confirmed)
+
+| ADC CH | GPIO | Wire | Signal | Tap Circuit | Idle ADC | Notes |
+|---|---|---|---|---|---|---|
+| 0 | 1 | Blue | Pot wiper | 22 kΩ series | 123–165 | Depends on level |
+| 1 | 2 | Yellow | Pot hi ref | 22 kΩ series | 0 | Always 0V — see §12.4 |
+| 2 | 3 | Green | Pot lo ref | 22 kΩ series | 2060 | ~1.66V — see §12.4 |
+| 3 | 4 | Grey | Cadence return | 4.7 kΩ + 100 nF | 0 | |
+| 4 | 5 | Orange | Cadence | 4.7 kΩ + 100 nF | 4095 | Pulls low on reed closure |
+| 5 | 6 | Red | Motor sense + | 30 kΩ / 10 kΩ ÷4 | 0 | Forward drive |
+| 6 | 7 | Black | Motor sense − | 30 kΩ / 10 kΩ ÷4 | 0 | Reverse drive |
+| 7 | 8 | Black | Encoder Ch A | 4.7 kΩ + 100 nF | 0/4095 | Quadrature |
+| 8 | 9 | Red | Encoder Ch B | 4.7 kΩ + 100 nF | 0/4095 | Quadrature |
+| 9 | 10 | Orange | Encoder VCC | 4.7 kΩ + 100 nF | 4095 | 3.3V steady |
+
+### 12.2 Resistance Motor Drive
+
+The resistance motor is driven with **flat DC** (not PWM at any timescale from
+100 µs to 10 s). Drive is bidirectional — the console reverses polarity to
+change direction.
+
+| Parameter | Measured Value | Method |
+|---|---|---|
+| Forward drive voltage | +3.25V (direct on motor) | Oscilloscope |
+| Reverse drive voltage | −3.25V (direct on motor) | Oscilloscope |
+| Forward through ÷4 divider | +0.81V → ADC ≈ 921–925 | ADC logger |
+| Reverse through ÷4 divider | −0.81V (clamped to 0V) | ADC logger — see note |
+| Peak reverse current | 175 mA | DMM (inline) |
+| Steady reverse current | 150 mA | DMM (inline) |
+| Peak forward current | 95 mA | DMM (inline) |
+| Steady forward current | 50 mA | DMM (inline) |
+| PWM detected? | **No** — flat DC at all timescales | Oscilloscope |
+| Drive waveform | Square on/off, no ramp | Oscilloscope |
+
+> [!NOTE]
+> The ÷4 divider only detects forward drive polarity. Reverse drive produces a
+> negative voltage that is clamped to 0V by the ADC input protection. To detect
+> both directions, the motor sense is split across two ADC channels (ch5 for +,
+> ch6 for −), each with its own divider. In practice, motor+ reads ~921 during
+> forward and motor− reads ~922 during reverse.
+
+Evidence: [A01-motor-characterisation.md](measurements/phase0/A01-20261011-motor-characterisation.md),
+[A02-motor-current.md](measurements/phase0/A02-20261011-motor-current.md)
+
+### 12.3 Resistance Potentiometer — Full Profile
+
+The pot is cam-driven and makes a **continuous rotation** (no hard stop). The
+cam profile is not a simple linear sweep — it has two distinct non-working arcs,
+two dead zones, and a working range that occupies roughly half the rotation.
+
+#### 360° Cam Profile
+
+Measured by applying direct DC to the motor (bypassing the console) and
+recording the pot wiper ADC value during continuous rotation:
+
+```
+   ADC
+  4095 ┊
+       ┊
+  2850 ┊            ╱╲               ╱╲               ╱╲
+       ┊           ╱  ╲             ╱  ╲             ╱  ╲
+  2100 ┊ ·········╱····╲···········╱····╲···········╱····╲····  Saturation
+       ┊         ╱      ┊         ╱      ┊         ╱
+       ┊        ╱       ┊        ╱       ┊        ╱
+       ┊       ╱     Dead zone  ╱     Dead zone  ╱
+       ┊      ╱      ┊ ┊      ╱      ┊ ┊      ╱
+   698 ┊ ─────       ┊ ┊─────       ┊ ┊─────     Plateau 2
+   366 ┊──           ┊ ┊──          ┊ ┊──         Plateau 1
+   125 ┊─            ┊ ┊            ┊ ┊           Parked idle
+     0 ┊·············╳···············╳·················────────
+       └──────────────────────────────────────────────────── angle
+                   0°  gap        180°  gap       360°
+```
+
+| Feature | ADC Range | Voltage | Angular Extent |
+|---|---|---|---|
+| Plateau 1 (non-working) | 362–367 | 295 mV | ~45° |
+| Plateau 2 (non-working) | 697–703 | 566 mV | ~80° |
+| Working ramp | 0–2120 | 0–1.71V | ~80° per half |
+| Saturation plateau | 2100–2120 | 1.70V | Brief |
+| Dead zone 1 | 2850 → 0 | gap crossing | ~5° |
+| Dead zone 2 | 2870 → 0 | gap crossing | ~5° |
+| Working range total | 0–2120 | 0–1.71V | ~160° (two halves) |
+
+#### Key Properties
+
+| Property | Value |
+|---|---|
+| Rotation type | Continuous (no hard stop) |
+| Dead zones | 2, at approximately 0° and 180° |
+| Working ramp linearity | Highly linear (0→2120 over ~16s at test speed) |
+| Ramp symmetry | Mirror halves produce identical profiles |
+| ADC range utilised by console | 165–1327 (28% of 12-bit range) |
+| Pot voltage utilised by console | 133–1069 mV (936 mV of 3.3V range) |
+
+Evidence: [A03-pot-revolution.csv](measurements/phase0/A03-20261011-pot-revolution.csv),
+[A03-pot-revolution-run2.csv](measurements/phase0/A03-20261011-pot-revolution-run2.csv)
+
+### 12.4 Reference Voltages (Yellow and Green)
+
+The pot reference lines do **not** behave as expected for a simple 3-terminal
+pot. They appear to be part of a more complex sensing circuit inside the console.
+
+| Wire | Expected | Measured | Source Impedance |
+|---|---|---|---|
+| Yellow (ch1, "hi ref") | 3.3V | **0V** (always) | — |
+| Green (ch2, "lo ref") | 0V | **1.66V** (steady) | **2.4 kΩ** |
+
+Green is an **active voltage source** at 1.66V with low output impedance
+(2.4 kΩ), measured by loading with 10 kΩ to GND through the 22 kΩ series tap.
+It rises slightly with resistance level (2059 at level 1 → 2079 at level 32,
+a 20 ADC / 16 mV shift across the full range).
+
+Evidence: Load test performed 2026-10-11, see bench report.
+
+### 12.5 Resistance Levels
+
+The console provides **32 discrete resistance levels**, each corresponding to a
+specific pot wiper position. The mapping is highly linear with no hysteresis.
+
+| Level | ADC | mV | Level | ADC | mV | Level | ADC | mV | Level | ADC | mV |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 165 | 133 | 9 | 444 | 358 | 17 | 744 | 600 | 25 | 1044 | 841 |
+| 2 | 186 | 150 | 10 | 483 | 389 | 18 | 785 | 633 | 26 | 1085 | 874 |
+| 3 | 223 | 180 | 11 | 525 | 423 | 19 | 819 | 660 | 27 | 1126 | 907 |
+| 4 | 261 | 210 | 12 | 559 | 450 | 20 | 857 | 691 | 28 | 1162 | 936 |
+| 5 | 299 | 241 | 13 | 598 | 482 | 21 | 900 | 725 | 29 | 1198 | 965 |
+| 6 | 340 | 274 | 14 | 634 | 511 | 22 | 933 | 752 | 30 | 1237 | 997 |
+| 7 | 372 | 300 | 15 | 669 | 539 | 23 | 969 | 781 | 31 | 1274 | 1027 |
+| 8 | 408 | 329 | 16 | 713 | 575 | 24 | 1004 | 809 | 32 | 1327 | 1069 |
+
+| Parameter | Value |
+|---|---|
+| Number of levels | 32 |
+| ADC range | 165–1327 |
+| Voltage range | 133–1069 mV (936 mV span) |
+| Mean step size | 37.5 ADC / 30.2 mV per level |
+| Hysteresis | None (up/down match within ±1 ADC) |
+| "Flat road" default | Level 19 (ADC 819, 660 mV) |
+
+Evidence: [A04-levels-1-32.csv](measurements/phase0/A04-20261011-levels-1-32.csv)
+
+### 12.6 Encoder-to-Level Mapping
+
+| Parameter | Value |
+|---|---|
+| Encoder type | Incremental quadrature, 3.3V |
+| Steps per detent | 4 (confirmed by PCNT hardware counter) |
+| **Detents per level** | **4** (confirmed by operator at bench) |
+| **Steps per level** | **16** (4 detents × 4 steps) |
+| **Full range (32 levels)** | **512 encoder steps** (128 detents) |
+| Direction | CW = increase, CCW = decrease |
+
+Evidence: [B04-pcnt-encoder-comparison.md](measurements/phase0/B04-20261004-pcnt-encoder-comparison.md),
+[A04-levels-1-32-events.csv](measurements/phase0/A04-20261011-levels-1-32-events.csv),
+operator confirmation at bench 2026-10-11.
+
+### 12.7 Closed-Loop Control Behaviour
+
+The console implements a simple **bang-bang positional servo**. It compares the
+pot wiper voltage (actual position) to an internal target derived from the
+encoder count, and drives the motor at full voltage until they match.
+
+| Behaviour | Detail |
+|---|---|
+| Control type | Bang-bang (full drive or off, no proportional) |
+| Seek speed | ~8s from level 1 to level 19 |
+| Overshoot | None observed |
+| Direction reversal | Yes — hunts FWD/REV if target not reached |
+| Motor timeout | **None** — drives indefinitely |
+| Fault on stall | **None** — no fault state, no error indication |
+| Recovery from stall | **Immediate** — resumes seeking when motor reconnected |
+| Display during stall | Continues working — shows target level, responds to knob |
+
+Evidence: [A09-motor-disconnect.csv](measurements/phase0/A09-20261011-motor-disconnect.csv)
+
+### 12.8 Cadence Sensor
+
+| Parameter | Value |
+|---|---|
+| Type | Magnetic reed switch |
+| Circuit | 4.7 kΩ series + 100 nF filter cap |
+| Idle state | ADC 4095 (pulled high) |
+| Active state | ADC ~217 (reed closed) |
+| Closure duration | 20–50 ms at 50–120 RPM |
+| Confirmed RPM range | 45–50 RPM (displayed on console) |
+
+> [!NOTE]
+> The original 22 kΩ series resistors were too high for the ESP32-S3 ADC
+> continuous-mode source impedance requirement. Brief reed closures were missed
+> because the S/H capacitor could not charge in time. Replaced with 4.7 kΩ +
+> 100 nF, which passes the transient and provides ESD filtering.
+
+Evidence: [B01-sensor-bringup-report.md](measurements/phase0/B01-20261003-sensor-bringup-report.md)
+
+### 12.9 Power-On Sequence
+
+| Event | Time from Power-On | Detail |
+|---|---|---|
+| Rail ramp (0→full) | < 100 ms | All signals reach steady state |
+| Console idle | 0–∞ | Level 1, pot=165, motor off, awaiting class |
+| Class start | On app connect | Stays at level 1; no automatic seek |
+| User selects level | Manual | Motor drives to selected target (e.g., level 19 "flat road") |
+| Seek duration (1→19) | ~8 s | Full motor drive until pot matches target |
+
+**Power-off:** All signals drop to zero within one ADC sample (~12 µs). Residual
+leakage: pot=0, green=2, vcc=25–27 (sub-threshold ADC noise).
+
+**Power-on default:** The console always powers on to **level 1** (pot ≈ 165).
+It does not remember the previous level. Motor seek only begins when a class is
+started from the companion app.
+
+Evidence: [A13-power-on-capture.csv](measurements/phase0/A13-20261011-power-on-capture.csv)
