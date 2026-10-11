@@ -356,15 +356,7 @@ void SignalLogger::registerRoutes(PsychicHttpServer& server) {
     server.on("/api/echenon/ride-log.csv", HTTP_GET, [this](PsychicRequest *request, PsychicResponse *response) -> esp_err_t {
         response->setContentType("text/csv");
         
-        const char* header = "timestamp_ms,"
-            "pot_wiper_min,pot_wiper_mean,pot_wiper_max,"
-            "pot_hi_min,pot_hi_mean,pot_hi_max,"
-            "pot_lo_min,pot_lo_mean,pot_lo_max,"
-            "cadence_ret_min,cadence_ret_mean,cadence_ret_max,"
-            "cadence_min,cadence_mean,cadence_max,"
-            "motor_p_min,motor_p_mean,motor_p_max,"
-            "motor_n_min,motor_n_mean,motor_n_max,"
-            "enc_vcc_min,enc_vcc_mean,enc_vcc_max\n";
+        const char* header = echenon::kRideLogCsvHeader;
         response->sendChunk((uint8_t*)header, strlen(header));
         
         char buf[256];
@@ -372,16 +364,8 @@ void SignalLogger::registerRoutes(PsychicHttpServer& server) {
         for (size_t i = 0; i < _rideLogCount; i++) {
             size_t idx = (start + i) % kRideLogMaxRows;
             const auto& row = _rideLogBuffer[idx];
-            int len = snprintf(buf, sizeof(buf), "%u", (unsigned int)row.timestamp_ms);
-            for (size_t c = 0; c < kNumChannels; c++) {
-                uint32_t mean = row.channels[c].count > 0 ? (row.channels[c].sum / row.channels[c].count) : 0;
-                len += snprintf(buf + len, sizeof(buf) - len, ",%u,%u,%u",
-                                (unsigned int)row.channels[c].min_val,
-                                (unsigned int)mean,
-                                (unsigned int)row.channels[c].max_val);
-            }
-            snprintf(buf + len, sizeof(buf) - len, "\n");
-            response->sendChunk((uint8_t*)buf, strlen(buf));
+            int len = echenon::formatRideLogRow(row, buf, sizeof(buf));
+            response->sendChunk((uint8_t*)buf, len);
         }
         response->finishChunking();
         return ESP_OK;
@@ -390,7 +374,7 @@ void SignalLogger::registerRoutes(PsychicHttpServer& server) {
     server.on("/api/echenon/events.csv", HTTP_GET, [this](PsychicRequest *request, PsychicResponse *response) -> esp_err_t {
         response->setContentType("text/csv");
         
-        const char* header = "timestamp_us,type,channel,value\n";
+        const char* header = echenon::kEventsCsvHeader;
         response->sendChunk((uint8_t*)header, strlen(header));
         
         char buf[64];
@@ -398,12 +382,8 @@ void SignalLogger::registerRoutes(PsychicHttpServer& server) {
         for (size_t i = 0; i < _eventLogCount; i++) {
             size_t idx = (start + i) % kEventLogMaxEvents;
             const auto& ev = _eventLogBuffer[idx];
-            snprintf(buf, sizeof(buf), "%u,%u,%u,%u\n",
-                     (unsigned int)ev.timestamp_us,
-                     (unsigned int)ev.type,
-                     (unsigned int)ev.channel,
-                     (unsigned int)ev.value);
-            response->sendChunk((uint8_t*)buf, strlen(buf));
+            int len = echenon::formatEventRow(ev, buf, sizeof(buf));
+            response->sendChunk((uint8_t*)buf, len);
         }
         response->finishChunking();
         return ESP_OK;
@@ -414,23 +394,14 @@ void SignalLogger::registerRoutes(PsychicHttpServer& server) {
         
         char meta[256];
         uint32_t perChanRate = kAdcSampleFreq / kNumChannels; // 83333 / 8 ≈ 10416
-        snprintf(meta, sizeof(meta),
-                 "# sample_rate_per_channel_hz=%u,start_time_us=%llu,overflow_count=%u\n"
-                 "sample_idx,pot_wiper,pot_hi,pot_lo,cadence_ret,cadence,motor_p,motor_n,enc_vcc\n",
-                 (unsigned int)perChanRate,
-                 (unsigned long long)_burstStartUs,
-                 (unsigned int)_overflowCount);
-        response->sendChunk((uint8_t*)meta, strlen(meta));
+        int metaLen = echenon::formatBurstCsvHeader(perChanRate, _burstStartUs, _overflowCount, meta, sizeof(meta));
+        response->sendChunk((uint8_t*)meta, metaLen);
         
         char buf[128];
         echenon::deinterleaveBurstStream(_burstBuffer, _burstBufferCount,
             [response, &buf](size_t rowIdx, const echenon::DeinterleavedRow& row) {
-                int len = snprintf(buf, sizeof(buf), "%u", (unsigned int)rowIdx);
-                for (size_t c = 0; c < 8; c++) {
-                    len += snprintf(buf + len, sizeof(buf) - len, ",%u", (unsigned int)row.channels[c]);
-                }
-                snprintf(buf + len, sizeof(buf) - len, "\n");
-                response->sendChunk((uint8_t*)buf, strlen(buf));
+                int len = echenon::formatBurstRow(rowIdx, row, buf, sizeof(buf));
+                response->sendChunk((uint8_t*)buf, len);
             });
         response->finishChunking();
         return ESP_OK;

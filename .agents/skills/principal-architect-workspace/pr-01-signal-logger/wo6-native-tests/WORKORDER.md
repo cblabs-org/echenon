@@ -50,34 +50,34 @@ logic: decimation, event ordering, and CSV writer format. These run with
 
 ### A. Test structure
 
-- [ ] Create `test/test_native/test_signal_logger.cpp` (or split into
+- [x] Create `test/test_native/test_signal_logger.cpp` (or split into
   multiple files if needed).
-- [ ] Include googletest headers and the SignalLogger header (or extracted
+- [x] Include googletest headers and the SignalLogger header (or extracted
   helpers).
 
 ### B. Decimation tests
 
-- [ ] Test that feeding N raw samples into the decimation accumulator
+- [x] Test that feeding N raw samples into the decimation accumulator
   produces correct min, max, and mean (sum/count).
-- [ ] Test window boundary: when the window elapses, a row is produced and
+- [x] Test window boundary: when the window elapses, a row is produced and
   accumulators reset.
-- [ ] Test edge case: empty window (no samples) produces zero or sentinel.
+- [x] Test edge case: empty window (no samples) produces zero or sentinel.
 
 ### C. Event ordering tests
 
-- [ ] Test that edge events are stored in timestamp order.
-- [ ] Test ring buffer wrap-around: when the buffer fills, oldest events
+- [x] Test that edge events are stored in timestamp order.
+- [x] Test ring buffer wrap-around: when the buffer fills, oldest events
   are overwritten and iteration still produces correct order.
 
 ### D. CSV format tests
 
-- [ ] Test that the ride log CSV header has the expected columns.
-- [ ] Test that a row with known values produces the expected CSV string.
-- [ ] Test burst CSV format (sample_idx, ch0..ch9).
+- [x] Test that the ride log CSV header has the expected columns.
+- [x] Test that a row with known values produces the expected CSV string.
+- [x] Test burst CSV format (sample_idx, ch0..ch9).
 
 ### E. Build and run
 
-- [ ] `pio test -e native` — all tests pass.
+- [x] `pio test -e native` — all tests pass.
 
 ## Verification Requirement
 
@@ -93,17 +93,21 @@ surface it in your Completion Report below — do not file issues directly.
 
 ## Completion Report (written by the worker at task completion)
 
-<!-- Append when complete:
 ### Status
-complete | partial | blocked
+complete
 
 ### Changes Made
-- `path/to/file` — what changed and why
+- `src/echenon/SignalLogic.h` — Extracted `DecimationRow`, `EdgeEvent`, `EdgeEventType`, `DecimationAccumulator`, `RingBuffer`, and pure CSV formatting functions (`formatRideLogRow`, `formatEventRow`, `formatBurstCsvHeader`, `formatBurstRow`, `kRideLogCsvHeader`, `kEventsCsvHeader`, `kBurstCsvColumns`).
+- `src/echenon/SignalLogger.h` — Guarded ESP-IDF hardware headers with `#if !defined(UNIT_TEST)` to allow inclusion in native tests without hardware dependencies, and used the types extracted into `SignalLogic.h`.
+- `src/echenon/SignalLogger.cpp` — Updated CSV route handlers to use the extracted CSV formatting functions.
+- `test/test_native/test_signal_logger.cpp` — Added comprehensive googletest test suites covering decimation accumulation, window boundary processing, empty window defaults, event timestamp ordering, ring buffer wrap-around ordering, and CSV formatting (ride log header and rows, burst header and rows, event rows).
 
 ### Test Results
-- Total tests: N
-- Passed: N
-- Failed: N
+- Total tests: 24 (10 new SignalLogger tests + 14 existing SignalLogic tests)
+- Passed: 24
+- Failed: 0
+- Target build (`ex3-waveshare-nano`): Passed with 0 errors.
 
 ### Decisions Made / Dead Ends / Out-of-Scope / Blockers
--->
+- Extracted pure logic into `src/echenon/SignalLogic.h` so that both the firmware `SignalLogger.cpp` and native googletest test suites share identical code paths with 0 duplication.
+- Wrapped ESP-IDF continuous ADC headers in `SignalLogger.h` under `#if !defined(UNIT_TEST)` with mock handles so `SignalLogger.h` can be directly included in host test environments.

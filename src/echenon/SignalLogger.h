@@ -2,41 +2,19 @@
 #include <cstdint>
 #include <cstddef>
 #include <vector>
+#if !defined(UNIT_TEST)
 #include <esp_adc/adc_continuous.h>
 #include <esp_adc/adc_cali.h>
 #include <esp_adc/adc_cali_scheme.h>
+#else
+typedef void* adc_continuous_handle_t;
+typedef void* adc_cali_handle_t;
+#endif
 #include <ArduinoJson.h>
 #include "echenon/SignalLogic.h"
 
 class PsychicHttpServer;
 class EventBus;
-
-struct DecimationRow {
-    uint32_t timestamp_ms;
-    struct ChannelStats {
-        uint16_t min_val;
-        uint16_t max_val;
-        uint32_t sum;
-        uint32_t count;
-    } channels[8]; // 8 scanned channels: {0, 1, 2, 3, 4, 5, 6, 9}
-};
-
-enum EdgeEventType : uint8_t {
-    EDGE_EVENT_CADENCE = 0,
-    EDGE_EVENT_ENCODER_LEGACY_A = 1,
-    EDGE_EVENT_ENCODER_LEGACY_B = 2,
-    EDGE_EVENT_MOTOR_ON_LEGACY = 3,
-    EDGE_EVENT_MOTOR_OFF_LEGACY = 4,
-    EDGE_EVENT_MOTOR_DIRECTION = 5,
-    EDGE_EVENT_ENCODER = 6,
-};
-
-struct EdgeEvent {
-    uint32_t timestamp_us;
-    uint8_t type; // EdgeEventType
-    uint8_t channel;
-    uint16_t value;
-};
 
 class SignalLogger {
 public:

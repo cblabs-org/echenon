@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <cstdio>
+#include <string>
 #include <vector>
 
 namespace echenon {
@@ -213,4 +215,255 @@ private:
     uint64_t _pendingSinceUs = 0;
 };
 
+// ── Decimation Accumulator and Row ──
+
+struct ChannelStats {
+    uint16_t min_val = 0xFFFF;
+    uint16_t max_val = 0;
+    uint32_t sum = 0;
+    uint32_t count = 0;
+
+    void reset() {
+        min_val = 0xFFFF;
+        max_val = 0;
+        sum = 0;
+        count = 0;
+    }
+
+    void add(uint16_t val) {
+        if (val < min_val) min_val = val;
+        if (val > max_val) max_val = val;
+        sum += val;
+        count++;
+    }
+
+    uint32_t mean() const {
+        return count > 0 ? (sum / count) : 0;
+    }
+};
+
+struct DecimationRow {
+    uint32_t timestamp_ms = 0;
+    ChannelStats channels[8]; // 8 scanned channels: {0, 1, 2, 3, 4, 5, 6, 9}
+
+    void reset() {
+        timestamp_ms = 0;
+        for (size_t s = 0; s < 8; s++) {
+            channels[s].reset();
+        }
+    }
+};
+
+class DecimationAccumulator {
+public:
+    explicit DecimationAccumulator(uint32_t windowMs = 50)
+        : _windowMs(windowMs) {
+        reset();
+    }
+
+    void reset() {
+        _currentRow.reset();
+        _lastWindowMs = 0;
+    }
+
+    void addSampleSlot(size_t slot, uint16_t val) {
+        if (slot < 8) {
+            _currentRow.channels[slot].add(val);
+        }
+    }
+
+    void addSample(uint8_t channel, uint16_t val) {
+        int slot = channelToSlot(channel);
+        if (slot >= 0) {
+            addSampleSlot(static_cast<size_t>(slot), val);
+        }
+    }
+
+    bool processTick(uint32_t nowMs, DecimationRow& outRow) {
+        if (_lastWindowMs == 0) {
+            _lastWindowMs = nowMs;
+        }
+        if (nowMs - _lastWindowMs >= _windowMs) {
+            _currentRow.timestamp_ms = nowMs;
+            outRow = _currentRow;
+            _currentRow.reset();
+            _lastWindowMs = nowMs;
+            return true;
+        }
+        return false;
+    }
+
+    const DecimationRow& getCurrentRow() const { return _currentRow; }
+    DecimationRow& getCurrentRow() { return _currentRow; }
+    uint32_t getLastWindowMs() const { return _lastWindowMs; }
+    void setLastWindowMs(uint32_t lastWindowMs) { _lastWindowMs = lastWindowMs; }
+    uint32_t getWindowMs() const { return _windowMs; }
+    void setWindowMs(uint32_t windowMs) { _windowMs = windowMs; }
+
+private:
+    uint32_t _windowMs;
+    uint32_t _lastWindowMs = 0;
+    DecimationRow _currentRow;
+};
+
+// ── Edge Event Types and Ring Buffer ──
+
+enum EdgeEventType : uint8_t {
+    EDGE_EVENT_CADENCE = 0,
+    EDGE_EVENT_ENCODER_LEGACY_A = 1,
+    EDGE_EVENT_ENCODER_LEGACY_B = 2,
+    EDGE_EVENT_MOTOR_ON_LEGACY = 3,
+    EDGE_EVENT_MOTOR_OFF_LEGACY = 4,
+    EDGE_EVENT_MOTOR_DIRECTION = 5,
+    EDGE_EVENT_ENCODER = 6,
+};
+
+struct EdgeEvent {
+    uint32_t timestamp_us;
+    uint8_t type; // EdgeEventType
+    uint8_t channel;
+    uint16_t value;
+};
+
+constexpr size_t ringBufferLogicalToPhysical(size_t logicalIdx, size_t head, size_t count, size_t capacity) {
+    size_t start = (count < capacity) ? 0 : head;
+    return (start + logicalIdx) % capacity;
+}
+
+template <typename T, size_t Capacity>
+class RingBuffer {
+public:
+    static constexpr size_t kCapacity = Capacity;
+
+    void push(const T& item) {
+        _data[_head] = item;
+        _head = (_head + 1) % Capacity;
+        if (_count < Capacity) {
+            _count++;
+        }
+    }
+
+    size_t size() const { return _count; }
+    constexpr size_t capacity() const { return Capacity; }
+    bool isWrapped() const { return _count >= Capacity; }
+    size_t head() const { return _head; }
+
+    const T& operator[](size_t logicalIndex) const {
+        size_t idx = ringBufferLogicalToPhysical(logicalIndex, _head, _count, Capacity);
+        return _data[idx];
+    }
+
+    const T& at(size_t logicalIndex) const {
+        return (*this)[logicalIndex];
+    }
+
+    void clear() {
+        _head = 0;
+        _count = 0;
+    }
+
+private:
+    T _data[Capacity];
+    size_t _head = 0;
+    size_t _count = 0;
+};
+
+// ── CSV Formatting Helpers ──
+
+constexpr const char* kRideLogCsvHeader =
+    "timestamp_ms,"
+    "pot_wiper_min,pot_wiper_mean,pot_wiper_max,"
+    "pot_hi_min,pot_hi_mean,pot_hi_max,"
+    "pot_lo_min,pot_lo_mean,pot_lo_max,"
+    "cadence_ret_min,cadence_ret_mean,cadence_ret_max,"
+    "cadence_min,cadence_mean,cadence_max,"
+    "motor_p_min,motor_p_mean,motor_p_max,"
+    "motor_n_min,motor_n_mean,motor_n_max,"
+    "enc_vcc_min,enc_vcc_mean,enc_vcc_max\n";
+
+constexpr const char* kEventsCsvHeader = "timestamp_us,type,channel,value\n";
+
+constexpr const char* kBurstCsvColumns =
+    "sample_idx,pot_wiper,pot_hi,pot_lo,cadence_ret,cadence,motor_p,motor_n,enc_vcc\n";
+
+inline int formatRideLogRow(const DecimationRow& row, char* buf, size_t bufSize) {
+    if (!buf || bufSize == 0) return 0;
+    int len = snprintf(buf, bufSize, "%u", static_cast<unsigned int>(row.timestamp_ms));
+    for (size_t c = 0; c < 8; c++) {
+        uint32_t mean = row.channels[c].mean();
+        len += snprintf(buf + len, (len < static_cast<int>(bufSize)) ? (bufSize - len) : 0,
+                        ",%u,%u,%u",
+                        static_cast<unsigned int>(row.channels[c].min_val),
+                        static_cast<unsigned int>(mean),
+                        static_cast<unsigned int>(row.channels[c].max_val));
+    }
+    len += snprintf(buf + len, (len < static_cast<int>(bufSize)) ? (bufSize - len) : 0, "\n");
+    return len;
+}
+
+inline std::string formatRideLogRow(const DecimationRow& row) {
+    char buf[256];
+    formatRideLogRow(row, buf, sizeof(buf));
+    return std::string(buf);
+}
+
+inline int formatEventRow(const EdgeEvent& ev, char* buf, size_t bufSize) {
+    if (!buf || bufSize == 0) return 0;
+    return snprintf(buf, bufSize, "%u,%u,%u,%u\n",
+                    static_cast<unsigned int>(ev.timestamp_us),
+                    static_cast<unsigned int>(ev.type),
+                    static_cast<unsigned int>(ev.channel),
+                    static_cast<unsigned int>(ev.value));
+}
+
+inline std::string formatEventRow(const EdgeEvent& ev) {
+    char buf[64];
+    formatEventRow(ev, buf, sizeof(buf));
+    return std::string(buf);
+}
+
+inline int formatBurstCsvHeader(uint32_t perChanRate, uint64_t burstStartUs, uint32_t overflowCount, char* buf, size_t bufSize) {
+    if (!buf || bufSize == 0) return 0;
+    return snprintf(buf, bufSize,
+                    "# sample_rate_per_channel_hz=%u,start_time_us=%llu,overflow_count=%u\n%s",
+                    static_cast<unsigned int>(perChanRate),
+                    static_cast<unsigned long long>(burstStartUs),
+                    static_cast<unsigned int>(overflowCount),
+                    kBurstCsvColumns);
+}
+
+inline std::string formatBurstCsvHeader(uint32_t perChanRate, uint64_t burstStartUs, uint32_t overflowCount) {
+    char buf[256];
+    formatBurstCsvHeader(perChanRate, burstStartUs, overflowCount, buf, sizeof(buf));
+    return std::string(buf);
+}
+
+inline int formatBurstRow(size_t sampleIdx, const DeinterleavedRow& row, char* buf, size_t bufSize) {
+    if (!buf || bufSize == 0) return 0;
+    int len = snprintf(buf, bufSize, "%u", static_cast<unsigned int>(sampleIdx));
+    for (size_t c = 0; c < 8; c++) {
+        len += snprintf(buf + len, (len < static_cast<int>(bufSize)) ? (bufSize - len) : 0,
+                        ",%u", static_cast<unsigned int>(row.channels[c]));
+    }
+    len += snprintf(buf + len, (len < static_cast<int>(bufSize)) ? (bufSize - len) : 0, "\n");
+    return len;
+}
+
+inline std::string formatBurstRow(size_t sampleIdx, const DeinterleavedRow& row) {
+    char buf[128];
+    formatBurstRow(sampleIdx, row, buf, sizeof(buf));
+    return std::string(buf);
+}
+
 } // namespace echenon
+
+using echenon::DecimationRow;
+using echenon::EdgeEventType;
+using echenon::EdgeEvent;
+using echenon::EDGE_EVENT_CADENCE;
+using echenon::EDGE_EVENT_ENCODER_LEGACY_A;
+using echenon::EDGE_EVENT_ENCODER_LEGACY_B;
+using echenon::EDGE_EVENT_MOTOR_ON_LEGACY;
+using echenon::EDGE_EVENT_MOTOR_OFF_LEGACY;
+using echenon::EDGE_EVENT_MOTOR_DIRECTION;
+using echenon::EDGE_EVENT_ENCODER;
