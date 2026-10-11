@@ -162,7 +162,7 @@ superseded `[env:echenon]` environment, `hardware/echenon/board.h` and
 | **[x] [wo4a-encoder-integration](wo4a-encoder-integration/WORKORDER.md):** | Wire up EncoderModule on GPIO 8/9 via PCNT | `signal-logger/wo4a-encoder-integration` | `standard` | WO4 | — | ✅ Complete |
 | **[x] wo4c:** | Branch housekeeping: rename `fix/adc-gpio-conflict` → `signal-logger/wo4a-encoder-integration` | _(in-place rename)_ | `mechanical` | WO4a | — | ✅ Complete |
 | **[x] [wo4b-bench-gate](wo4b-bench-gate/WORKORDER.md):** | Scope gate outstanding items: pin idle, motor scope captures, motor current, VIN tolerance | `signal-logger/wo4b-bench-gate` | `interactive` | WO4c, bench-ready | #1, #2, #11 | ✅ Complete |
-| **[ ] [wo4d-logger-fixes](wo4d-logger-fixes/WORKORDER.md):** | Logger fixes from CA review: L-01–L-05, L-07, L-08 + native tests for de-interleave, motor FSM, timestamps | `signal-logger/wo4d-logger-fixes` | `standard` | WO4b | — | ⬜ Not started |
+| **[x] [wo4d-logger-fixes](wo4d-logger-fixes/WORKORDER.md):** | Logger fixes from CA review: L-01–L-05, L-07, L-08 + native tests for de-interleave, motor FSM, timestamps | `signal-logger/wo4d-logger-fixes` | `standard` | WO4b | — | ✅ Complete |
 | **[ ] [wo5-register-campaign](wo5-register-campaign/WORKORDER.md):** | Register campaign: rows #3–#10, #12–#13 + E-02 tap cross-check, row #6 load test, console fault-tolerance tests (#1,#2,#3,#7,#9), min pulse width, mid-seek behaviour | `signal-logger/wo5-register-campaign` | `interactive` | WO4d | #3–#10, #12–#13 | ⬜ Not started |
 | **[ ] [wo6-native-tests](wo6-native-tests/WORKORDER.md):** | Native unit tests (decimation, event log, CSV writer, calibration) | `signal-logger/wo6-native-tests` | `standard` | WO5 (base), WO2 (code) | — | ⬜ Not started |
 | **[ ] [wo7-doc-sync](wo7-doc-sync/WORKORDER.md):** | Doc-sync: SPEC, hardware spec, ex3 spec + E-01 pot polarity, E-03 A08 superseded, E-04 single formula, E-05 B-report→register mapping, bench wrap-up commit, absolute path cleanup | `signal-logger/wo7-doc-sync` | `standard` | WO6 | — | ⬜ Not started |
@@ -339,5 +339,51 @@ Evidence files under `docs/measurements/phase0/` by WO0→WO4→WO4b→WO5 (new 
   `signal-logger/wo4a-encoder-integration`. Ledger updated.
 - **Next:** Write WO4b WORKORDER + bridge prompt (interactive).
 
+### 2026-10-04 — CA progress review addendum integrated
+
+- **CA review:** L-01 through L-08 (logger defects), E-01 through E-06 (evidence gaps),
+  P-A through P-E (process items).
+- **WO4d inserted:** Logger fixes (L-01–L-08) between WO4b and WO5. Standard complexity,
+  autonomous worker.
+- **WO5 expanded:** E-02 tap cross-check, row #6 load test, console fault-tolerance
+  tests (#1/#2/#3/#7/#9 safe subset; #4/#6 blocked without owner go-ahead), minimum
+  quadrature pulse width, mid-seek behaviour.
+- **WO7 expanded:** E-01 pot polarity, E-03 A08 superseded, E-04 single formula,
+  E-05 B-report mapping, bench wrap-up commit.
+- **All WORKORDERs updated and committed** at `b1d0e07`.
+
+### 2026-10-11 — WO4b bench gate complete, WO4d logger fixes complete
+
+- **WO4b (interactive bench session):**
+  - Owner at bench with Rigol DHO804 + DMM, PA interpreting remotely.
+  - Item B (pin idle): already done in B01 sensor bringup.
+  - Item C (motor scope captures): 3 captures — reverse drive end (10ms/div),
+    forward onset (20ms/div), fast timebase (50µs/div). ±3.25V flat DC, no PWM.
+    Probes directly on motor wires (not divider output).
+  - Item D (motor current): DMM in series. Reverse: 175mA inrush → 150mA steady.
+    Forward: 95mA inrush → 50mA steady. Motor drives eccentric cam; load independent
+    of flywheel speed (magnetic braking, not friction).
+  - Item E (VIN tolerance): Datasheet — Waveshare VIN 6–21V (MP2322GQH), 9V safe.
+  - Register rows #1, #2, #11 closed with evidence.
+  - **Owner observation (parked for DR-1):** Motor drive lines may be used as signal
+    inputs only, with actual motor drive via separate H-bridge. Power architecture
+    deferred to DR-1.
+  - Committed at `5b4afbf` on `signal-logger/wo4b-bench-gate`.
+
+- **WO4d (autonomous worker, flash model):**
+  - Worker spawned and completed in ~17 minutes.
+  - All 8 review items fixed: burst de-interleave (L-01), per-channel motor FSM
+    with debounce (L-02), per-sample timestamps + overflow counter (L-03), encoder
+    EventBus subscription (L-04), 8-channel rows + 10Hz + wrap flag (L-05), debris
+    cleanup (L-07), WITH_SIGNAL_LOGGER guard (L-08).
+  - New file: `src/echenon/SignalLogic.h` — testable pure logic extracted.
+  - New file: `test/test_native/test_signal_logic.cpp` — 14 GoogleTest cases, all pass.
+  - Build verified: with and without WITH_SIGNAL_LOGGER. No printf remaining.
+  - L-06 (export race condition) noted as out of scope — needs design decision.
+  - Committed at `60409b9` on `signal-logger/wo4d-logger-fixes`.
+
+- **Next:** Tag, build, flash corrected firmware. Then WO5 (interactive bench session
+  with corrected firmware).
+
 ## Status
-**Plan Status:** WO4c complete — WO4b bench gate next (interactive)
+**Plan Status:** WO4b + WO4d complete — WO5 register campaign next (interactive, needs firmware flash)
