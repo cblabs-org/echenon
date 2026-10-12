@@ -38,8 +38,9 @@ void setup() {
 #ifdef WITH_BLE
     bleManager.setDefaultAdvertisedName("Echenon");
     bleManager.registerServiceProvider(&echenonModule.hrmRepeater());
-    // HRMClient registered in WO4
+    bleManager.registerClientProvider(&echenonModule.hrmClient());
     app.registerModule(&bleManager);
+    app.registerModule(&echenonModule.hrmClient());
 #endif
 
 #ifdef WITH_HR_SYNTHETIC
@@ -52,6 +53,11 @@ void setup() {
 
 #ifdef WITH_BLE
     bleManager.begin(app);
+    JsonDocument bleCfg;
+    bleCfg["slowRetryMs"] = 15000;
+    bleManager.applyConfig(bleCfg.as<JsonObject>());
+    echenonModule.hrmClient().setEventBus(&app.getEventBus());
+    echenonModule.hrmClient().setRepeater(&echenonModule.hrmRepeater());
     echenonModule.hrmRepeater().subscribe(app.getEventBus());
 #endif
 }

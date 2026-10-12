@@ -7,6 +7,7 @@
 
 #ifdef WITH_BLE
 #include "echenon/HRMRepeater.h"
+#include "echenon/HRMClient.h"
 #endif
 
 #ifdef WITH_HR_SYNTHETIC
@@ -55,6 +56,7 @@ public:
 
 #ifdef WITH_BLE
     HRMRepeater& hrmRepeater() { return _hrmRepeater; }
+    HRMClient& hrmClient() { return _hrmClient; }
 #endif
 
 #ifdef WITH_HR_SYNTHETIC
@@ -70,6 +72,7 @@ private:
 
 #ifdef WITH_BLE
     HRMRepeater _hrmRepeater;
+    HRMClient   _hrmClient;
 #endif
 
 #ifdef WITH_HR_SYNTHETIC
