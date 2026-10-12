@@ -34,7 +34,7 @@ existing Y-harness.
 
 | | WO | Branch | Complexity | Deps | Items | Status |
 |---|---|---|---|---|---|---|
-| **[ ] [wo1-bench-addendum](wo1-bench-addendum/WORKORDER.md):** | Interactive bench session, items 1–7 | `dr1-prep/wo1-bench-addendum` (base: `main`) | `interactive` | Bench kit; flashed `main` firmware | 1–7 | ⬜ Ready: run with the owner next session |
+| **[x] [wo1-bench-addendum](wo1-bench-addendum/WORKORDER.md):** | Interactive bench session, items 1–7 | `dr1-prep/wo1-bench-addendum` (base: `main`) | `interactive` | Bench kit; flashed `main` firmware | 1–7 | ✅ Complete (2026-10-12). Items 1–6 done, Item 7 skipped (optional). |
 
 **File overlaps:**
 - New evidence files only, plus edits to `docs/measurements/phase0/README.md`

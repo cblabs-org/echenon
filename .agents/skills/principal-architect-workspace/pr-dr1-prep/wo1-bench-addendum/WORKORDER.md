@@ -147,28 +147,104 @@ When done:
 
 ## Completion Report (written by the worker at task completion)
 
-<!-- Append when complete:
 ### Status
-complete | partial | blocked
+complete (Item 7 optional — skipped, may be done in a future ride)
 
 ### Results by item
-1. Click-to-level: …
-2. Motor sign convention: …
-3. Tap cross-check: …
-4. Cadence edge: …
-5. Fault tolerance (#1, #2, #3, #7, #9): …
-6. Row #10 input: …
-7. 60-min ride (optional): …
+
+1. **Click-to-level reconciliation.** B03's 4 detents (16 PCNT steps) per
+   level **confirmed** by independent bench observation. B02's "28% miss
+   rate" is a measurement artifact — by design, 75% of individual detent
+   clicks produce no motor response (accumulation steps, not misses).
+   Logger type-6 event = 2 physical detents. Down direction is flakier
+   (6–10 detents) than up (exactly 4). No genuinely lost clicks observed.
+   Motor stutters on reverse (stop→restart pairs) not seen going up.
+   Evidence: `A08-20261012-click-level-reconciliation.{csv,md}`. Erratum
+   added to `docs/encoder-resistance-analysis.md` §4.1.
+
+2. **Motor sign convention (row #1).** Single-ended DMM confirms neither
+   motor wire goes below −0.14 V against GND (brief back-EMF transient
+   on reversal only). The ±3.25 V from A01 was a differential measurement
+   (Red vs Black), not against GND. Console motor driver is a 3.3 V
+   H-bridge. No clamping diodes needed on ÷4 sense dividers.
+   Evidence: `A01-20261012-single-ended-motor-dmm.md`.
+
+3. **Tap cross-check (E-02).** DMM vs ADC at levels 1, 16, 32: systematic
+   6–7% offset (DMM reads higher). Green reference is stable (18 mV ADC
+   spread). B03 formula accurate to 1.5% at levels 16/32. Offset is
+   irrelevant for passive monitoring (relative ADC counts) but would need
+   calibration for active DAC-based pot resynthesis.
+   Evidence: `A04-20261012-tap-crosscheck.md`.
+
+4. **Cadence edge distortion (row #7).** Scope (Rigol DHO804) confirms
+   the 4.7 kΩ + 100 nF tap does not distort the cadence edge: fall time
+   < 1 ms with and without tap. High level drops ~0.3 V (3.1 → 2.8 V)
+   due to 4.7 kΩ series R — above any logic threshold. The 100 nF
+   filters reed-switch contact bounce (beneficial). Passive premise
+   confirmed.
+   Evidence: `A07-20261012-cadence-edge-{tap,notap}.png`,
+   `A07-20261012-cadence-edge-distortion.md`.
+
+5. **Console fault tolerance (safe subset).**
+   - #1 Encoder disconnect: **PASS** — no fault, immediate recovery.
+   - #2 Encoder stall: **PASS** — normal operation, no timeout.
+   - #3 Fast burst: **PASS with caveat** — console batches rapid detents,
+     but extreme speed can overshoot past the pot's working range into
+     360° runaway. Recovery requires motor disconnect.
+   - #7 Reversed A/B: **PASS** — works normally, direction inverted.
+   - #9 Mid-seek: **PASS** — seamless target update.
+   Evidence: `A09-20261012-console-fault-tolerance.md`.
+
+6. **Row #10 input.** Encoder VCC (GPIO 10) reads 4095 counts (3.3 V, ADC
+   rail) across all samples: ride-log (2092 rows), live endpoint at levels
+   1/16/32, and during active knob turning. Min = mean = max = 4095.
+   Console 3.3 V rail is rock-steady. Row left as "Open – DR-1" with
+   this data as waiver input.
+
+7. **60-min ride (optional).** SKIPPED — owner may do a long ride in the
+   coming weeks. Firmware `v0.1.0-dev.7` is tagged and can be reflashed.
 
 ### Proposals for DR-1
-- …
+
+- **4-detent-per-level design is settled.** Any MITM encoder scheme must
+  replicate groups of 4 detents (16 PCNT steps) per level command.
+- **Down-direction flakiness is a console characteristic**, not a wiring
+  or sense-network issue. DR-1 should note this asymmetry as a constraint
+  on encoder resynthesis timing.
+- **MITM encoder output MUST be rate-limited** to prevent overshoot past
+  the pot's working range into the runaway 360° seek failure mode.
+- **No clamping diodes needed** on the motor sense network. The ÷4
+  dividers are sufficient (max −0.035 V at GPIO from back-EMF transient).
+- **Cadence tap can be retained as-is.** Passive premise confirmed; the
+  100 nF is beneficial (filters bounce).
+- **6–7% ADC-to-DMM offset** should be characterised as a calibration
+  constant if the MITM design uses ADC readings to set DAC output levels.
+  Irrelevant for passive monitoring.
+- **Console is highly tolerant of encoder faults** — no presence
+  monitoring, no timeout, no channel-reversal detection. Favourable for
+  MITM interception.
 
 ### Dead Ends & Warnings
-- …
+
+- **Ride-log lost to device reboot.** The device rebooted (likely OOM or
+  watchdog) during the large ride-log CSV download after Item 1. Events
+  log (flash) survived; ride-log (PSRAM) was lost. The events data was
+  sufficient for Item 1's reconciliation. For Item 7, downloads should
+  target smaller time windows or use burst captures.
+- **Motor stutter on reverse** (stop→restart pairs at 731 s and 737 s in
+  events data) — needs further characterisation if the MITM design
+  detects seek-complete by monitoring motor cessation.
 
 ### Out-of-Scope Findings
-- …
+
+- **Runaway 360° motor rotation failure mode.** Rapid encoder input can
+  drive the console past the pot's working range. This is a console
+  design limitation, not a firmware or wiring issue. The MITM design must
+  include a rate limiter. Not a bug to fix; a constraint to design around.
+- **Logger type-6 event resolution.** Each type-6 event = 2 physical
+  detents (8 PCNT steps), not 1. This is a logger design choice, not a
+  defect, but it should be documented in the logger's API reference.
 
 ### Blockers
 (none)
--->
+

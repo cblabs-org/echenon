@@ -146,6 +146,16 @@ miscount approximately 1 in 4 encoder clicks.
 > resistance." The console's encoder decoder is losing counts due to the
 > noisy signal.
 
+> [!WARNING]
+> **Erratum (2026-10-12):** The 28% figure above is a measurement artifact.
+> The console accumulates **4 physical detents (16 PCNT steps) per level**
+> (B03). By design, 75% of individual detent clicks produce no motor
+> response — they are accumulation steps, not misses. This test undercounted
+> physical detents because it used ADC sampling of a single encoder channel
+> (before the wire-colour correction in B04 and before PCNT adoption). See
+> [`measurements/phase0/A08-20261012-click-level-reconciliation.md`](measurements/phase0/A08-20261012-click-level-reconciliation.md)
+> for the corrected analysis.
+
 ### 4.2 Response Rate vs Click Size
 
 | Click size | Motor response rate | Avg motor duration |
