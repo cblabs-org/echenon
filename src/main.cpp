@@ -37,8 +37,14 @@ void setup() {
 
 #ifdef WITH_BLE
     bleManager.setDefaultAdvertisedName("Echenon");
-    // Providers (HRMRepeater, HRMClient) registered in WO2/WO4
+    bleManager.registerServiceProvider(&echenonModule.hrmRepeater());
+    // HRMClient registered in WO4
     app.registerModule(&bleManager);
+#endif
+
+#ifdef WITH_HR_SYNTHETIC
+    echenonModule.hrSynthetic().setEventBus(&app.getEventBus());
+    app.registerModule(&echenonModule.hrSynthetic());
 #endif
 
     FrameworkConfig config;
@@ -46,6 +52,7 @@ void setup() {
 
 #ifdef WITH_BLE
     bleManager.begin(app);
+    echenonModule.hrmRepeater().subscribe(app.getEventBus());
 #endif
 }
 

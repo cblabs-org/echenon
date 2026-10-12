@@ -283,22 +283,39 @@ surface it in your Completion Report below — do not file issues directly.
 
 ## Completion Report (written by the worker at task completion)
 
-<!-- Written by the worker at task completion -->
-
 ### Status
-(pending)
+Complete. Implementation verified via host GoogleTest tests and target builds across all specified environments.
 
 ### Changes Made
-- (pending)
+- **HR Events (`src/echenon/HREvents.h`):** Created `HRContactState` enum, `HrSample` payload (`bpm`, `contactState`, `receivedAtMs`), and `HR_TOPIC` (`"echenon.hr"`).
+- **0x2A37 Encoding (`src/echenon/HREncoding.h`):** Created standalone `encode0x2A37()` encoder without BLE dependencies for host unit testing. Encodes uint8 BPM with flags `0x00`.
+- **HRMRepeater (`src/echenon/HRMRepeater.h`, `src/echenon/HRMRepeater.cpp`):**
+  - Implemented `IBLEServiceProvider` with provider ID `"hr_repeater"`.
+  - Registered GATT Heart Rate Service `0x180D` with `0x2A37` (Notify) and `0x2A38` (Read-only, initialized to `0x00` Other).
+  - Contributed `0x180D` advertising with `BLEAdvertisingBuilder::Priority::Normal`.
+  - Implemented subscription tracking via `onSubscriptionChanged()`, notifying Centrals only when active subscribers exist.
+  - Subscribed to `echenon.hr` on EventBus; sends `0x2A37` notifications when BPM > 0.
+  - Implemented `setBodySensorLocation()` updating the characteristic and local state.
+- **HRSynthetic (`src/echenon/HRSynthetic.h`, `src/echenon/HRSynthetic.cpp`):**
+  - Implemented `ITickable` under `WITH_HR_SYNTHETIC`. Generates a 60–120 BPM sine wave (10 s period) published to `echenon.hr` every ~1000 ms using a ring-buffer payload to satisfy EventBus async memory safety.
+- **Composition & Wiring (`src/echenon/EchenonModule.h`, `src/main.cpp`, `platformio.ini`):**
+  - Added `HRMRepeater` and `HRSynthetic` members and accessors to `EchenonModule`.
+  - Wired `hrmRepeater` to `bleManager` before `app.begin()` and subscribed to EventBus after `bleManager.begin(app)`.
+  - Wired `hrSynthetic` to `app.getEventBus()` and registered with `app` before `app.begin()`.
+  - Added `-DWITH_HR_SYNTHETIC` to `[env:ex3-waveshare-nano-diag]` in `platformio.ini`.
+- **Native Unit Tests (`test/test_native/test_hr_encoding.cpp`):**
+  - Added test suite validating `0x2A37` encoding for nominal (72 BPM), zero (0 BPM), maximum uint8 (255 BPM), small buffer (outLen=1), null buffer, zero length, and 2-arg overload.
 
 ### Decisions Made
-- (pending)
+- **Header separation (`HREncoding.h`):** Factored `encode0x2A37()` into a standalone header included by both `HRMRepeater` and native unit tests, allowing clean host compilation without pulling in NimBLE.
+- **EventBus payload memory safety:** Followed EventBus contract rule 5 by using a 4-slot ring buffer (`_sampleRing`) in `HRSynthetic` to ensure payload pointers remain valid during asynchronous event dispatch on ESP32/FreeRTOS targets.
+- **Module registration order:** Registered `hrSynthetic` as an `ITickable` module prior to `app.begin(config)` to avoid runtime rejection caused by Application hub post-begin locking.
 
 ### Dead Ends & Warnings
-- (pending)
+- `<cstddef>` was required in `HRSynthetic.h` to declare `size_t` for the ring buffer index in ESP-IDF C++17 compilation.
 
 ### Out-of-Scope Findings
-- (pending)
+- None.
 
 ### Blockers
-(pending)
+- None. Flashing was intentionally skipped per owner instruction (parallel testing on device).
