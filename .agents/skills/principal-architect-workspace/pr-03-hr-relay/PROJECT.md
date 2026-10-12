@@ -13,8 +13,8 @@
 | Gate | Status |
 |---|---|
 | PR-01 merged; framework at `v0.0.12-dev.82` or later | ✅ Met (PR #1, `5897f6f`, 2026-10-11) |
-| Echelon-app HR acceptance (register row #12) | **Proposed: becomes the WO3 go/no-go.** The nRF Connect mock was not discoverable by Android (row #12 INCONCLUSIVE), so the definitive test needs an ESP32 HR peripheral, which is this PR's WO2 |
-| Framework central-role acceptance evidence (audit P-01) | **Proposed: becomes WO5.** At `v0.0.12-dev.93` the framework's `ACCEPTANCE.md` still marks central "N/A", although the WO-8 fix is included. Echenon runs RFC §17.2 items 4–9 against the Beat strap as consumer evidence. The PA files an app-neutral upstream report |
+| Echelon-app HR acceptance (register row #12) | **Approved 2026-10-12: becomes the WO3 go/no-go.** The nRF Connect mock was not discoverable by Android (row #12 INCONCLUSIVE), so the definitive test needs an ESP32 HR peripheral, which is this PR's WO2 |
+| Framework central-role acceptance evidence (audit P-01) | **Approved 2026-10-12: becomes WO5.** At `v0.0.12-dev.93` the framework's `ACCEPTANCE.md` still marks central "N/A", although the WO-8 fix is included. Echenon runs RFC §17.2 items 4–9 against the Beat strap as consumer evidence. The PA files an app-neutral upstream report |
 
 > Changing these gates from *entry* to *in-PR go/no-go* is a programme change
 > and needs the owner's approval. If WO3 fails, PR-03 stops and escalates:
@@ -65,7 +65,7 @@ heart rate. First user-facing feature with zero bike risk.
 ## Work Order Ledger
 
 Project name for branches: `hr-relay`. Linear stack from `main`. Proposed
-2026-10-11; **awaiting owner approval**.
+2026-10-11; **approved by the owner 2026-10-12**.
 
 | | WO | Branch (base) | Complexity | Scope | Tests (SPEC §13.5) | Status |
 |---|---|---|---|---|---|---|
@@ -101,5 +101,15 @@ Framework issues are written app-neutral, with no Echenon specifics.
 - **Awaiting owner approval** of the ledger and the gate change. Once approved,
   record it here and then hand off to a PA.
 
+### 2026-10-12: Decomposition approved (owner)
+- **Owner approval (in chat, 2026-10-12):** *"approved - give me the PR-03 bridge
+  prompt"*. This approves the 7-WO ledger above and the gate change (row #12
+  becomes the WO3 go/no-go; central-role acceptance becomes WO5). Recorded here
+  as the provenance anchor per `.agents/rules/00-operating-model.md`.
+- PR-03 belongs to the **v1 Passive** release (programme restructure in
+  progress, 2026-10-12). Its scope is unchanged.
+- **Merge protocol:** the PA submits the PR and STOPS. The owner brings it to a
+  Chief Architect review; after that review, the owner merges.
+
 ## Status
-**Plan Status:** PLANNED — 7 WOs proposed; awaiting owner approval
+**Plan Status:** APPROVED — ready for PA execution (WO1 next)
