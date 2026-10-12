@@ -3,11 +3,11 @@
 > **Release:** **v1 "Passive"** ([PROGRAM-PLAN.md "Releases"](../PROGRAM-PLAN.md#releases)).
 
 > **Programme:** Echenon Firmware ([PROGRAM.md](../PROGRAM.md), [PROGRAM-PLAN.md](../PROGRAM-PLAN.md))
-> **PR target base:** `main` after PR-02 merged and DR-1 approved
+> **PR target base:** `main` after PR-02 merged and DR-1 approved (DR-1 approved with conditions 2026-10-12: **unblocked by DR-1**; PR-02 still pending)
 > **Dev Phase:** Phase 3 — Passive tap board
 > **Depends on:** PR-02, DR-1 ([decision record](../reviews/DR-1-design-freeze.md))
-> **Spec sections:** [SPEC](../../../../SPEC.md) §4.4.2 (v1 rows of the Phase 3+ pin map, as frozen at DR-1; UART0 reserved), §4.6–§4.8 (board wiring, voltage safety, parts), §8.5 (manual OTA, `autoCheck`), §12 (build), §13.6 (tests)
-> **Hardware spec:** [`docs/hardware_specification.md`](../../../../docs/hardware_specification.md) §6.2 (passive tap board; a placeholder finalised at DR-1), §3 (power)
+> **Spec sections:** [SPEC](../../../../SPEC.md) §4.4.2 (v1 rows of the Phase 3+ pin map, frozen at DR-1; UART0 reserved), §4.6–§4.8 (board wiring, power selection, voltage safety, parts), §8.5 (manual OTA, `autoCheck`), §12.3 (build flags), §13.6 (tests)
+> **Hardware spec:** [`docs/hardware_specification.md`](../../../../docs/hardware_specification.md) §6.2 (passive tap board build specification, frozen at DR-1), §3 (power)
 > **Strategy:** [`docs/implementation-strategy.md`](../../../../docs/implementation-strategy.md) Phase 3
 
 ## Mandate
@@ -17,29 +17,40 @@ product's daily-use configuration (UC1–UC3). The console keeps full control of
 motor and the knob; the board only observes. **No resistance control of any kind,
 no encoder or motor interception** (owner decision 2026-10-12).
 
-1. **Hardware scope** — J1–J4 pass-through with high-impedance series-resistor taps,
-   no motor split, per the passive-tap-board design frozen at DR-1 (sense network,
-   v1 pin map, power model). No R3/R4/R5 or standalone supplies (DR-1 §2.9).
-2. **Power: VIN + switch** (DR-1 §2.3) — The ESP32 is powered from the bike's 9 V
-   (White/Brown) via the Waveshare **VIN** pin (6–21 V, register row #11) through
-   its onboard regulator; the external MP1584EN buck is **dropped**. A **power
-   switch on the VIN line** lets USB-C power the board instead.
-   **Back-feed / power-path check (deliverable):** with USB and VIN both
-   connected, measure and document whether VBUS back-feeds the 9 V line or VIN
-   back-feeds the USB host, and record the safe procedure (default until proven:
-   switch VIN off before plugging USB). Evidence committed.
+1. **Hardware scope: the PR-01 detection circuit made permanent** (DR-1 §4,
+   condition 2.8) — J1/J2 (9-pin) and J3/J4 (3-pin) Y-harness pass-through,
+   no motor split, and **all 10 PR-01 taps** (condition 2.7) with their exact
+   values: 22 kΩ on the pot taps (GPIO 1–3), 4.7 kΩ + 100 nF on cadence
+   (GPIO 4/5) and encoder VCC (GPIO 10), 4.7 kΩ on the PCNT encoder inputs
+   (GPIO 8/9), 30 kΩ / 10 kΩ ÷4 dividers on the motor wires (GPIO 6/7). No
+   R3/R4/R5, no Green–GND link, no outputs (DR-1 §2.9). Build spec:
+   hardware spec §6.2.
+2. **WO1 — power-path check and selector design, before any soldering**
+   (DR-1 §4, condition 2.3). The board is powered from **9 V (VIN) or USB-C,
+   never both at once**; the external MP1584EN buck is **removed**. WO1 reads
+   the Waveshare ESP32-S3-Nano **VBUS/VIN power path from the schematic**,
+   records whether the board isolates the two, and designs the **selector**
+   (9 V disconnected in the USB position), adding a **diode on the VIN path**
+   if the board does not isolate them. Evidence (schematic extract, finding,
+   selector part and wiring) is committed **before soldering**; behaviour in
+   both selector positions is measured on the built board (SPEC §13.6 3.1a).
 3. **UART0 reserved** — GPIO 43 (TX, D1) and GPIO 44 (RX, D0) are left free,
    unconnected and marked reserved in `board.h` and the board layout, for a
    future nRF51422 ANT+ add-on. Console and logging use native USB-CDC.
-4. **Firmware** — Target the v1 pin map from DR-1 in
-   `hardware/ex3-waveshare-nano/board.h`, keeping `HAS_*` flags accurate for the
-   passive configuration (no motor drive, no outputs).
-5. **Manual OTA (before the board is sealed)** — Manual OTA is enabled and tested on
-   the installed board. **`autoCheck` is forced to `false` after config load and
-   again after factory reset**, because the framework default is `true` and a
-   factory reset restores it. This enforcement stays until framework #226
-   (OTA check-on-boot deferral) lands. OTA and rollback are demonstrated before the
-   console housing is closed (audit P-07).
+4. **Firmware** — The v1 pin map equals the Phase 0/1 map, so
+   `hardware/ex3-waveshare-nano/board.h` keeps all ten pins and its `HAS_*`
+   flags (`HAS_MOTOR_CONTROL 0`, no outputs). Update only the comments that
+   call the monitor pins "Phase 0/1 only" (SPEC §12.3).
+5. **OTA (before the board is sealed)** — Manual OTA is enabled and tested on
+   the installed board; OTA and rollback are demonstrated before the console
+   housing is closed (audit P-07). Framework **#226 (OTA check-on-boot
+   deferral) is closed upstream**: use the framework's check-on-boot option
+   instead of Echenon's `autoCheck = false` enforcement, **after verifying the
+   option on the framework version brought in by the PR-03 framework bump**.
+   Until that verification passes, keep forcing `autoCheck` to `false` after
+   config load and again after factory reset (the framework default is `true`
+   and a factory reset restores it).
+6. **Housing fit** — checked before the board is sealed (hardware spec §6.2.5).
 
 Board build, installation and ride tests are `complexity: interactive` WOs with
 evidence committed.
@@ -47,16 +58,25 @@ evidence committed.
 **Verification:**
 - A stock ride is indistinguishable from no board (console behaviour, power-on
   calibration, levels, app).
-- Every sensor tap reads correctly against the PR-02 calibration.
+- All ten taps read correctly against the PR-02 calibration.
 - The board fits in the console housing.
-- Manual OTA succeeds on the installed board; `autoCheck` reads `false` after a
-  reboot and after a factory reset.
-- The board runs from VIN with the switch on, and from USB-C with it off; the
-  USB + VIN back-feed result is documented.
+- Manual OTA succeeds on the installed board; no automatic update check runs
+  at boot, after a reboot or after a factory reset (framework option, or
+  `autoCheck = false` until it is verified).
+- The WO1 power-path finding and selector design were committed before
+  soldering; the board runs from VIN in the VIN position and from USB-C in the
+  USB position with 9 V disconnected; VIN and USB are never connected together.
 - GPIO 43/44 are unconnected and reserved.
 
 **Known limitation:** the stock console runaway (A09-20261012 #3) cannot be
 prevented by this board; the firmware may detect and report it.
+
+## DR-1 outcome (2026-10-12): unblocked by DR-1
+
+DR-1 was approved with conditions on 2026-10-12
+([record §4](../reviews/DR-1-design-freeze.md)); soldering is allowed under
+the condition 2.3 power-path check (item 2). The PR still waits for PR-02 to
+merge (its base).
 
 ## Prior Art
 

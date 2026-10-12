@@ -6,7 +6,7 @@
 
 | | |
 |---|---|
-| **Status** | **APPROVED WITH CONDITIONS (2026-10-12)**, see §4. Outputs (§3) in progress |
+| **Status** | **APPROVED WITH CONDITIONS (2026-10-12)**, see §4. Outputs (§3) drafted, pending Chief Architect review |
 | **Owner** | Chief Architect (Tier 1) |
 | **Entry condition** | PR-01 merged; every row of the [Phase 0 register](../../../../docs/measurements/phase0/README.md) has an Evidence file and a Result |
 | **Gates** | PR-02, PR-04a (v1). No soldering or permanent installation before approval. PR-07 is gated by [DR-2](DR-2-design-freeze.md) |
@@ -145,16 +145,20 @@ motor-sense taps show continuous drive) and alert in the portal. Prevention
 
 ## 3. Outputs: documents revised at DR-1
 
-| Output | Document and section | Driven by |
-|---|---|---|
-| Hardware configuration and v1 pin map; `[DR-1]` markers resolved | [SPEC](../../../../SPEC.md) §4.3, §4.4.2 (v1 rows; PROVISIONAL marking removed for v1), §4.6–§4.8 (v1 parts) | 2.1, 2.3, 2.7, 2.9 |
-| Sensor acquisition, level mapping, encoder monitoring | SPEC §5.1–§5.4 (§5.5–§5.6 are v2, DR-2) | 2.1, 2.11 |
-| Power engine, passive calibration method, NVS schema | SPEC §6.1–§6.4 | 2.6, 2.11 |
-| Build flags (`HAS_*` for the v1 passive configuration) | SPEC §12.3 | 2.7 |
-| DR-1 checks D.1–D.7 | SPEC §13.3 | all |
-| Power architecture: VIN, VIN/USB switch, back-feed check | [Hardware spec](../../../../docs/hardware_specification.md) §3 | 2.3 |
-| Passive tap board design finalised (placeholder replaced) | Hardware spec §6.2 (§6.2.2 lists the decisions) | 2.8 |
-| PR mandates adjusted where a decision changes scope | `pr-02`, `pr-04a`, `pr-05` PROJECT.md | all |
+Status as of 2026-10-12: all outputs drafted, **uncommitted**, for Chief
+Architect review with the owner.
+
+| Output | Document and section | Driven by | Status |
+|---|---|---|---|
+| Hardware configuration and v1 pin map; `[DR-1]` markers resolved | [SPEC](../../../../SPEC.md) §4.3, §4.4.2 (v1 rows; PROVISIONAL marking removed for v1), §4.6–§4.8 (v1 parts) | 2.1, 2.3, 2.7, 2.9 | ✅ Done: SPEC §4.3 (v1 uses the existing target), §4.4.2 (all ten taps, exact values, no outputs, UART0 reserved; v2 rows `[DR-2]`), §4.6 (passive board, VIN or USB never both, WO1 check), §4.7, §4.8 (BOM). Also §3.2–§3.3 routing |
+| Sensor acquisition, level mapping, encoder monitoring | SPEC §5.1–§5.4 (§5.5–§5.6 are v2, DR-2) | 2.1, 2.11 | ✅ Done: SPEC §5.2 (B03 linear fit, motor sense for monitoring, runaway detection `[PR-02: N]`), §5.3 (0–255 scale; Echelon, Peloton, FTMS, Garmin/Zwift/Strava mappings), §5.4 (4 detents / 16 PCNT steps per level). §5.5–§5.6 placeholders relabelled `[DR-2]` |
+| Power engine, passive calibration method, NVS schema | SPEC §6.1–§6.4 | 2.6, 2.11 | ✅ Done: SPEC §6.2 (empirical per-level × cadence table, no polynomial; accuracy statement), §6.3 (power-data sources; recalibration UI as Tier 3), §6.4 (v1 keys; v2 keys `[DR-2]`) |
+| Build flags (`HAS_*` for the v1 passive configuration) | SPEC §12.3 | 2.7 | ✅ Done: SPEC §12.3 (v1 uses `board.h` unchanged; v2 revision `[DR-2]`) |
+| DR-1 checks D.1–D.7 | SPEC §13.3 | all | ✅ Done: SPEC §13.3 status column (D.5 approved with condition). Related v1 tests updated in §13.1, §13.4, §13.6 |
+| Power architecture: VIN, VIN/USB switch, back-feed check | [Hardware spec](../../../../docs/hardware_specification.md) §3 | 2.3 | ✅ Done: hardware spec §3 banner, §3.2, §3.4, §3.5 (VIN or USB never both; selector; WO1 check; diode if needed) |
+| Passive tap board design finalised (placeholder replaced) | Hardware spec §6.2 (§6.2.2 lists the decisions) | 2.8 | ✅ Done: hardware spec §6.2.1–§6.2.7 (design, decisions, power selection, BOM delta, housing fit, build checklist, verification); §2 master BOM; v2 §7–§8 relabelled `[DR-2]` |
+| PR mandates adjusted where a decision changes scope | `pr-02`, `pr-04a`, `pr-05` PROJECT.md | all | ✅ Done: [pr-02](../pr-02-calibration-power/PROJECT.md) (unblocked; recalibration UI, Peloton mapping, runaway, power-data source), [pr-04a](../pr-04a-passive-tap/PROJECT.md) (unblocked by DR-1; WO1 power path, all ten taps, UART0, OTA after #226). pr-05: no change needed (read-only; the resistance-level field carries `L`, SPEC §5.3) |
+| Programme gates | [PROGRAM.md](../PROGRAM.md) Gates | all | ✅ Done: scope characterisation, Phase 0 register and DR-1 gates met; R3/R4/R5 decided (none in v1); VIN/USB gate restated as the WO1 check |
 
 ---
 
@@ -165,7 +169,7 @@ motor-sense taps show continuous drive) and alert in the portal. Prevention
 | **Decision** | ☐ Approved · ☑ **Approved with conditions** · ☐ Rejected |
 | **Scope** | v1 Passive design freeze: decisions 2.1, 2.3, 2.6, 2.7, 2.8, 2.9, 2.11 as recommended in §2A (v1), with the dispositions in §2A (waive row #10; row #12 → PR-03 WO3) and the known v1 limitation (stock runaway detected, not prevented) |
 | **Conditions** | **2.3:** the board is powered from **9 V (VIN) or USB, never both at once**. PR-04a WO1 reads the Waveshare VBUS/VIN power path from the schematic before any soldering and designs a selector (disconnect 9 V in the USB position; add a diode on the VIN path if the board does not isolate the two). **2.6:** PR-02 includes a **recalibration UI**: the user enters values read from the console or app screen (level, power), and the firmware correlates them with live sensor readings to update the per-level table. **2.7:** all 10 PR-01 taps are kept on the v1 board (diagnostics); GPIO 43/44 are reserved. **2.8:** the v1 board is the PR-01 detection circuit made permanent. **2.11:** the internal 0–255 scale is canonical, with per-app mappings: Echelon 1–32 (direct); **Peloton 0–100 by power equivalence** (our per-level power table against the published Peloton power curve); FTMS resistance-level field; power, cadence and HR for Garmin, Zwift and Strava |
-| **Open items carried** | PR-02 power-data source (Echelon app readings / sniffing the console's BLE broadcast / reference power meter / community tables), to be chosen by the owner at PR-02 planning. VIN/USB power-path check (PR-04a WO1) |
+| **Open items carried** | ~~PR-02 power-data source (Echelon app readings / sniffing the console's BLE broadcast / reference power meter / community tables), to be chosen by the owner at PR-02 planning.~~ **Resolved by the owner, 2026-10-12:** primary = the Echelon app's displayed power, read over a level × cadence grid and entered through the PR-02 recalibration UI; alternative / seed = community Echelon tables (UK/EU database-right caveat); rejected = reference power meter (crank removal impractical, pedals about £700) and BLE sniffing (power may not be broadcast; protocol obfuscated). Echenon's power matches the Echelon app's model and is not independently accurate (*"Approach for power curve is probably (2)"*, community tables *"also an option"*). **Still open:** VIN/USB power-path check (PR-04a WO1) |
 | **Approved by** | Owner, with the Chief Architect |
 | **Date** | 2026-10-12 |
 | **Evidence baseline** | Echenon `main` @ `fb1a06e`; Phase 0 register as merged in PR #1 (`5897f6f`) and PR #2 (`5168b1e`) |

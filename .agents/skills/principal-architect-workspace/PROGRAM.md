@@ -50,13 +50,13 @@ provisional, decomposed after DR-2).
 | Gate | Required Before | Verification | Status |
 |---|---|---|---|
 | **Bench ready**: ≥ 2-channel scope with single-shot trigger; motor-current measurement (shunt + scope or DC clamp); JST-SM 9-pin and JST 3-pin Y / back-probe harness; series tap resistors | PR-01's first WO that connects to the bike | Owner confirms kit on hand; recorded in PR-01 Session Log | PARTIAL: bench in use since 2026-10-03; scope and current measurement still to be confirmed (WO4 items C and D) |
-| **Scope characterisation** of both motor wires (both directions, at rest; 10 ms/div and µs/div) | Connecting PR-01 motor-sense taps (GPIO 6/7) | Captures committed as Phase 0 register row #1 evidence. Either result lets logging proceed (÷4 divider safe to ~13 V); result feeds DR-1 | OPEN: taps were connected before the captures (safe through the divider); captures still owed |
-| **Phase 0 register complete** ([`docs/measurements/phase0/README.md`](../../../docs/measurements/phase0/README.md)) | PR-01 exit / DR-1 start | Every row has an Evidence file and a Result | OPEN |
-| **DR-1: v1 Passive Design Freeze** | **PR-02, PR-04a** (no soldering or permanent install before approval) | Chief Architect approves the [DR-1 record](reviews/DR-1-design-freeze.md) | OPEN |
-| **VIN / USB back-feed check** | Sealing the PR-04a board | Power-path behaviour with USB and VIN both connected verified and documented (DR-1 §2.3 open item) | OPEN |
+| **Scope characterisation** of both motor wires (both directions, at rest; 10 ms/div and µs/div) | Connecting PR-01 motor-sense taps (GPIO 6/7) | Captures committed as Phase 0 register row #1 evidence. Either result lets logging proceed (÷4 divider safe to ~13 V); result feeds DR-1 | ✅ MET: PR-01 WO4b delivered the A01 scope captures (A01-20261011, ±3.25 V flat DC, no PWM) and A01-20261012 the single-ended check (worst −0.14 V; no clamp diodes). Taps had been connected earlier, safely, through the divider |
+| **Phase 0 register complete** ([`docs/measurements/phase0/README.md`](../../../docs/measurements/phase0/README.md)) | PR-01 exit / DR-1 start | Every row has an Evidence file and a Result | ✅ MET: rows closed; #10 waived for v1 (DR-1 §2A), #12 moved to PR-03 WO3 |
+| **DR-1: v1 Passive Design Freeze** | **PR-02, PR-04a** (no soldering or permanent install before approval) | Chief Architect approves the [DR-1 record](reviews/DR-1-design-freeze.md) | ✅ APPROVED WITH CONDITIONS 2026-10-12 (§4) |
+| **VIN / USB power-path check** | **Soldering** the PR-04a board | DR-1 condition 2.3: VIN or USB, never both. PR-04a WO1 reads the Waveshare VBUS/VIN path from the schematic and designs the selector (diode on VIN if not isolated); evidence committed | OPEN (PR-04a WO1) |
 | **v1 release** (beta / stable tag, owner only, rule 03) | PR-07 | PR-09 exit criteria met; owner tags | OPEN |
 | **DR-2: v2 Active Design Freeze** | **PR-07** (and all v2 PRs; no active-board soldering or interception before approval) | Chief Architect approves the [DR-2 record](reviews/DR-2-design-freeze.md) | NOT STARTED |
-| R3/R4/R5 standalone supplies | DR-2 (none in v1, DR-1 §2.9) | Pot-reference replica and switched supplies decided at DR-2 §2.2 / §2.9 | OPEN (v2) |
+| R3/R4/R5 standalone supplies | DR-2 (none in v1, DR-1 §2.9) | Pot-reference replica and switched supplies decided at DR-2 §2.2 / §2.9 | ✅ DECIDED for v1: none (DR-1 §2.9). OPEN for v2 (DR-2) |
 | Echelon-app HR spike | PR-03 (proposed: WO3 go/no-go) | Row #12 INCONCLUSIVE with the nRF mock (Android could not discover it); retest with an ESP32 HR peripheral | OPEN |
 | **Framework central-role acceptance evidence** | PR-03 entry | RFC §17.2 items 4–9 against a real 0x180D peripheral on a framework tag containing the WO-8 use-after-free fix | **OPEN** |
 | Framework #226 (OTA check-on-boot deferral) | Removing Echenon's `autoCheck=false` enforcement | Upstream issue **closed**. PR-04a uses the framework option after the PR-03 WO1 bump (verify) | CLOSED upstream |
@@ -325,3 +325,16 @@ Decisions on the v1 Passive / v2 Active restructure:
   (owner to choose).
 - DR-1 outputs (SPEC and hardware-spec text, PR-02 / PR-04a mandates) are in
   progress.
+
+### 2026-10-12: DR-1 outputs drafted; power-data source decided (owner)
+- DR-1 §3 outputs written (uncommitted, for Chief Architect review with the
+  owner): SPEC §4–§6, §12.3, §13.3 (and the v1 rows of §13.1, §13.4, §13.6);
+  hardware spec §3 and §6.2 (build spec); PR-02 and PR-04a mandates. v2
+  `[DR-1]` markers relabelled `[DR-2]`.
+- **Owner decision, PR-02 power-data source:** primary = Echelon app power
+  entered through the recalibration UI over a level × cadence grid; community
+  tables as alternative / seed (database-right caveat); reference power meter
+  and BLE sniffing rejected. Echenon's power matches the Echelon app's model
+  and is not independently accurate.
+- Gates closed: scope characterisation, Phase 0 register, DR-1; R3/R4/R5
+  decided (none in v1).
