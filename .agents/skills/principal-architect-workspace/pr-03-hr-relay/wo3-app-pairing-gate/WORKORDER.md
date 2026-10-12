@@ -135,14 +135,47 @@ If PASS:
 <!-- Written by the worker at task completion -->
 
 ### Status
-(pending)
+**PASS** — committed `762af2f` on `hr-relay/wo3-app-pairing-gate`
 
 ### Test Results
-- Test 2.1 (advertising): (pending)
-- Test 2.3 (app pairing): (pending)
+- Test 2.1 (advertising): **PASS** — `Echenon-7226` visible in nRF Connect
+  (Android) and bleak (macOS). Advertises `0x180D`, GATT table correct (0x2A37
+  Notify, 0x2A38 Read, 0x180A Device Info). 20/20 HR notifications received
+  via bleak at 1 Hz, sine wave 60–120 BPM confirmed.
+- Test 2.3 (app pairing): **PASS** — Echelon Fit app on Lenovo Tab P12
+  discovered `Echenon-7226`, paired successfully, displayed synthetic HR
+  (observed 99 BPM during sine cycle). Serial log confirmed clean connection
+  (48.75ms interval, 5.0s supervision timeout, MTU 185), stable 1 Hz
+  notifications for duration of session.
 
 ### Verdict
-(pending)
+**GO** — PR-03 may proceed. Register row #12 closed.
 
 ### Out-of-Scope Findings
-- (pending)
+
+1. **Android phone BLE connection failure (0x3e) — BLOCKING for generic
+   HR/FTMS relay.** The owner's Samsung Android phone can discover `Echenon-7226`
+   but cannot complete connection establishment. Serial logs show
+   `BLE_ERR_CONN_ESTABL_FAIL` (reason 0x3e) at the link-layer controller — the
+   NimBLE host never sees the connection. The same phone connects to the owner's
+   eBeat HR armband via Strava without issues, proving this is a defect in our
+   device's BLE behaviour, not a phone limitation. macOS (bleak) and the Echelon
+   P12 tablet both connect cleanly. Root cause is likely WiFi/BLE radio
+   coexistence under `PREFER_WIFI` arbiter policy starving BLE connection
+   request handling. The 50ms advertising interval is the safest lever to
+   investigate (100–160ms); coex preference changes are off-limits per the
+   dev.73–dev.80 hardening cycle findings. Full evidence in
+   `docs/measurements/phase2/A12-20261012-esp32-hr-pairing.md`.
+
+2. **Multi-connection radio coex architecture concern.** The full Phase 2/3
+   topology requires 1 BLE central (HR strap inbound) + 2 BLE peripheral
+   (HR re-broadcast + FTMS) + WiFi STA — all concurrent on one 2.4 GHz radio.
+   We already cannot reliably connect an Android phone with just 1 peripheral +
+   WiFi. The dev.73–dev.80 cycle proved the coex knobs are razor-thin: any tilt
+   toward BLE breaks WiFi auth, any tilt toward WiFi drops BLE connections.
+   This raises a legitimate question about whether the single-radio ESP32-S3 can
+   support this topology at all, or whether the architecture needs to adapt
+   (e.g. WiFi-off during rides, dedicated BLE-only mode, reduced peripheral
+   count, or dual-chip). **Recommend escalation to Chief Architect for a radio
+   coex architecture review before Phase 3 work orders are written.**
+
