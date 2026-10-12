@@ -220,3 +220,10 @@ Phase and PR numbering in this table is canonical; other documents follow it.
     PR-07 → v1.1.
 - **Pending owner decisions:** DR-1 §2A (joint session); PR-03 decomposition
   and gate change (proposed 2026-10-11, not yet approved).
+
+### 2026-10-12: Merge protocol (owner decision)
+- PR #1 and PR #2 were merged by the owner personally.
+- **From now on:** when a PR is submitted, the PA stops. The owner brings the
+  PR to a Chief Architect review session, the findings are applied, and **the
+  owner merges**. PAs and workers never merge. This applies to every PR,
+  including docs and evidence PRs.

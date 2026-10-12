@@ -23,6 +23,7 @@ Full project history: [PROJECT_INDEX.md](PROJECT_INDEX.md)
 Cross-cutting module index: [MODULE_INDEX.md](MODULE_INDEX.md)
 
 ## Notes
+- **Merge protocol (2026-10-12):** submit the PR, then STOP. The owner takes it to a Chief Architect review; after that review, the owner merges. Agents never merge.
 - 2026-09-25: Programme is 9 PRs + DR-1 (passive-first). Phase / PR numbering in
   [PROGRAM-PLAN.md](../PROGRAM-PLAN.md) is canonical. DR-1 gates PR-02, PR-04a and
   PR-07 ([record](../reviews/DR-1-design-freeze.md)). Hardware risk is concentrated
