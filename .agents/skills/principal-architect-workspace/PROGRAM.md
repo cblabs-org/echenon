@@ -23,7 +23,7 @@ Phase and PR numbering in this table is canonical; other documents follow it.
 | PR | Phase | Title | Dependencies | Status |
 |---|---|---|---|---|
 | PR-01 | 0 | Signal Logger (Observe) | `main` | ✅ Merged 2026-10-11 (PR #1, `5897f6f`) |
-| DR-1 | — | Design Freeze Review ([record](reviews/DR-1-design-freeze.md)) | PR-01 evidence + [DR-1 prep bench](pr-dr1-prep/PROJECT.md) | ⬜ Prep bench session ready; DR-1 to run with the owner |
+| DR-1 | — | Design Freeze Review ([record](reviews/DR-1-design-freeze.md)) | PR-01 evidence + [DR-1 prep bench](pr-dr1-prep/PROJECT.md) | 🟡 Evidence complete (PR #2); [§2A recommendations](reviews/DR-1-design-freeze.md) drafted, awaiting a joint decision |
 | PR-02 | 1 | Calibration + Power (+ live WS feed) | PR-01, **DR-1** | ⬜ Not started |
 | PR-03 | 2 | BLE Foundation + HR Relay | PR-01 ✅; gates proposed as in-PR go/no-go (WO3, WO5) | 📝 Planned: [7 WOs](pr-03-hr-relay/PROJECT.md), awaiting approval |
 | PR-04a | 3 | Passive Tap Board (+ manual OTA) | PR-02, DR-1 | ⬜ Not started |
@@ -196,3 +196,27 @@ Phase and PR numbering in this table is canonical; other documents follow it.
   `v0.0.12-dev.93` includes the WO-8 fix; #226 is closed.
 - **DR-1** to be run jointly with the owner after the prep session. PR-02 waits
   on DR-1.
+
+### 2026-10-12: DR-1 prep complete; DR-1 started
+- **PR #2** (DR-1 prep evidence) merged at `5168b1e`, **again with no pre-merge
+  review**. Two PRs in a row have skipped the agreed checkpoint. Proposal:
+  evidence/docs-only PRs may be merged by the owner; firmware PRs must get a
+  Chief Architect review before merge (consider GitHub branch protection).
+- **Findings:**
+  - The "28% missed clicks" case is withdrawn (4 detents per level by design).
+  - No motor-sense clamps are needed.
+  - The cadence tap is passive.
+  - The console is tolerant of encoder faults.
+  - **New stock failure mode:** knob-triggered runaway into continuous motor
+    rotation.
+- **DR-1 draft (§2A):**
+  - Staged architecture: **v1 = encoder MITM** (rate-limited knob, ERG via
+    click injection, NC bypass); **v1.1 = motor MITM** (PR-07, standalone UC6).
+  - ESP32 powered from VIN (drop the external buck).
+  - No R3/R4/R5 on v1 boards.
+  - Proposed pin outputs.
+  - Waive row #10; move row #12 to PR-03.
+  - Programme impact: new PR-04b (encoder relay); PR-08 re-based off PR-07;
+    PR-07 → v1.1.
+- **Pending owner decisions:** DR-1 §2A (joint session); PR-03 decomposition
+  and gate change (proposed 2026-10-11, not yet approved).

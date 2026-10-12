@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **NOT STARTED** |
+| **Status** | **IN PROGRESS**: evidence complete (2026-10-12); draft recommendations in §2A for a joint decision with the owner |
 | **Owner** | Chief Architect (Tier 1) |
 | **Entry condition** | PR-01 merged; every row of the [Phase 0 register](../../../../docs/measurements/phase0/README.md) has an Evidence file and a Result |
 | **Gates** | PR-02, PR-04a, PR-07. No soldering or permanent installation before approval |
@@ -84,6 +84,47 @@ are written `[DR-1: …]` in the specs until this record closes.
 | 2.9 | **R3 / R4 / R5**: keep, remove or make switchable, per board. Must reflect the measured pot polarity (Green ≈ 1.67 V reference, Yellow = 0 V) | H-02, E-01 | #6, #7, #10 | `[DR-1]` | OPEN |
 | 2.10 | **Interception architecture**: choose from Monitor / **Encoder MITM** (PCNT ingest, clean quadrature resynthesised to the console, NC fail-safe bypass) / Full MITM (pot simulation) / Console bypass (ESP32 H-bridge with PID; console drive used as a hint). Includes whether ERG is first delivered by encoder injection (32 levels, console drives the motor) and the resulting programme restructure (PR-04a scope, a new encoder-relay PR, PR-07 / PR-08 order) | H-05 (c), P-B | #8, #9, #13; console fault-tolerance tests §12 #1, #2, #3, #7, #9 | `[DR-1]` | OPEN |
 | 2.11 | **Resistance scale mapping**: 256-level internal scale (owner decision); exact mappings and offsets to Echelon 1–32, FTMS Supported Resistance Level Range (0x2AD6) and 1–100 displays; linearisation option (design notes §6 A / B / C) | P-A, P-C | #4 | Scale decided; mappings `[DR-1]` | PARTLY DECIDED |
+
+---
+
+## 2A. Chief Architect draft recommendations (2026-10-12): for a joint decision
+
+**Nothing in this section is decided until the owner approves it in §4.**
+Evidence base: the Phase 0 register (PR #1) plus the DR-1 prep addendum
+(PR #2: A01-20261012, A04-20261012, A07-20261012, A08-20261012, A09-20261012,
+A10-20261012).
+
+### Entry-condition dispositions
+| Row | Disposition |
+|---|---|
+| #10 console rail with parallel supplies | **Waive.** No v1 board puts a supply onto a console rail (see 2.9). The GPIO 10 encoder-VCC tap saturates at 4095 counts (≥ 3.1 V at 12 dB attenuation), which shows the rail is present but cannot show its stability. If the PR-07 standalone network ever connects to a console rail, re-open this row |
+| #12 Echelon app pairs a third-party HR device | **Moves to PR-03 WO3** (go/no-go). Not a DR-1 input |
+| SPEC 0.9 (60-minute ride log) | **Not required for DR-1.** Optional; capture it during PR-02 rides |
+
+### Recommendations
+| § | Recommendation | Key evidence |
+|---|---|---|
+| 2.1 Motor sense | **Keep** the 30 kΩ / 10 kΩ ÷4 dividers on GPIO 6/7, sampled as ADC1 analog at ≥ 1 kHz; drive direction = whichever wire is high. **No clamp diodes**: the worst single-ended excursion is −0.14 V (−0.035 V at the GPIO), and 30 kΩ limits any transient to well under 0.1 mA. *Note:* that result is DMM-based, so a short spike could be missed; the 30 kΩ series resistor covers this | A01-20261011/12 |
+| 2.2 Switchable standalone supplies | **Not on v1 boards.** Standalone operation (UC6, console absent) moves to the PR-07 board. There, the pot reference must reproduce the console's **1.66 V / 2.4 kΩ Thevenin source on Green**, e.g. a 3.3 V divider of about 4.7 kΩ / 4.7 kΩ (≈ 1.65 V, ≈ 2.35 kΩ), connected only when the console is absent. **Yellow is ground, and Green must never be tied to GND** | B01, A06 load test, A04-20261012 |
+| 2.3 Driver and rail | Power the ESP32 from **VIN (9 V)** through its onboard MP2322 regulator, and **drop the external MP1584EN buck**. For PR-07, a MOSFET H-bridge with current limit and fault output (DRV8833 class) at 3.3 V: the motor draws ≤ 175 mA, so no separate rail is needed; add bulk capacitance at the driver. *Open item:* confirm the Waveshare 3V3 rail's output rating (MP2322 is a ~1 A part) covers ESP32 peak plus the motor | A02, A11 |
+| 2.4 Fail-safe | **Normally-closed bypass on every intercepted path** (option a): the encoder A/B lines on an encoder-intercept board, and the motor lines on the PR-07 board. The ESP32 must actively hold each bypass open. The boot race is moot: there is no power-on sweep (row #13). **New risk:** the stock console's *runaway* (fast spin past level 32 leaves the motor turning continuously; recovery needs the motor unplugged). The ESP32 cannot stop this on a passive or encoder-only board. **Option for the owner:** an NC motor-cut relay on the passive board, closed in normal use (stock), which the ESP32 opens only when the wiper leaves the working range for more than N seconds | A09-20261012 #3, row #13 |
+| 2.5 Cam-aware controller | **PR-07 only.** Required behaviour: track which working ramp the cam is on by detecting the dead zone (wiper leaves the 0–2120 ramp / floats high); never leave the console's ramp (165–1327 counts); run-time bound ≈ 1 revolution (~35 s at ~16 s per half); brake-and-approach (coast < 15 counts). Loop rate and gains are set in PR-07 | A03, A09 |
+| 2.6 Power model | **Empirical per-level table** (level × cadence → W), measured in PR-02 through passive calibration. No polynomial. Tolerance target is set in PR-02 against whatever reference is available (≤ 15% without a power meter) | B03, P-C |
+| 2.7 Phase 3+ pin map | **Taps (unchanged from Phase 0):** wiper 1, Green 3 (monitor), cadence 5 (4.7 kΩ + 100 nF), motor sense 6/7, encoder in 8/9 (PCNT). Yellow (2), Grey (4) and encoder VCC (10) are dropped on production boards. **New outputs, proposed:** encoder out A/B **GPIO 17/18**, encoder bypass control **GPIO 21**, optional motor-cut relay **GPIO 38**. **PR-07:** driver IN1/IN2 **GPIO 10/11**, motor bypass control **GPIO 47**. This replaces the provisional "L9110S on 10/17" | §4.4.1, board.h |
+| 2.8 Passive tap board | J1/J2 (9-pin) and J3/J4 (3-pin) pass-through; the PR-01 tap network (22 kΩ taps, 4.7 kΩ + 100 nF cadence, ÷4 motor dividers); ESP32 on VIN; no standalone supplies; manual OTA. **If 2.10 adopts the encoder intercept**, J3/J4 go through the encoder bypass (NC) and two ESP32 outputs. Housing fit is checked in PR-04a | PR-01 evidence |
+| 2.9 R3 / R4 / R5 | **Remove** from all v1 boards. The PR-07 standalone network is the switched 1.66 V Green reference (2.2) plus a cadence pull-up, connected only when the console is absent | B01, row #6 |
+| 2.10 Interception architecture | **Recommend staged: v1 = Encoder MITM; v1.1 = motor MITM.** The "28% missed clicks" case was an artefact (4 detents per level by design; A08-20261012). The case for it now rests on three things. **(1) Robustness:** rate-limit and debounce the knob, so the stock runaway (A09 #3) cannot be triggered from the knob, and down-direction behaviour is consistent (6–10 detents vs 4 up). **(2) ERG without a motor split:** inject 4 detents per level, one level at a time, wait for seek-complete (motor-direction events), verify the level from the wiper, and never command beyond 1–32. The console tolerates every fault tested (#1, #2, #3, #7, #9) and updates its target mid-seek. **(3) Low hardware risk:** only the 3-pin loom is intercepted, behind an NC bypass. **Costs:** 32-level ERG granularity and console-speed seeks (~0.5 s per level). Motor MITM / console bypass (256 levels, PID, standalone UC6) becomes PR-07 in v1.1 | A08, A09-20261012, B03 |
+| 2.11 Scale mapping | Internal `i ∈ 0…255`. Echelon `L = round(i × 31 / 255) + 1` and `i = round((L − 1) × 255 / 31)`, giving exact endpoints 0 ↔ 1 and 255 ↔ 32. FTMS `0x2AD6` advertises **1.0–32.0 step 1.0** in v1 (step 0.1 only with motor MITM). Apps get a **linearised** resistance from the per-level table (design-notes §6 option B). Option A (uneven pulse counts) is rejected | P-A, P-C |
+
+### Programme impact if 2.10 is adopted
+| PR | Change |
+|---|---|
+| PR-02 | Unblocked by DR-1. Passive calibration and the per-level power table |
+| PR-04a | Passive tap board **+ encoder intercept with NC bypass** (+ optional motor-cut relay); ESP32 on VIN; manual OTA |
+| **PR-04b (new)** | **Encoder relay** firmware: PCNT ingest → rate-limited quadrature resynthesis (4 detents per level), bypass control, wiper-verified level tracking, runaway detection and alert, native tests. Depends on PR-02 and PR-04a |
+| PR-08 | ERG via encoder injection. Depends on PR-04b and PR-05 (no longer PR-07) |
+| PR-07 | Motor MITM + standalone (UC6) → **v1.1**, after PR-09 |
+| PR-09 | Depends on PR-06 and PR-08. UC6 standalone moves to v1.1 |
 
 ---
 

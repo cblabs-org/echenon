@@ -34,8 +34,7 @@ existing Y-harness.
 
 | | WO | Branch | Complexity | Deps | Items | Status |
 |---|---|---|---|---|---|---|
-| **[x] [wo1-bench-addendum](wo1-bench-addendum/WORKORDER.md):** | Interactive bench session, items 1–7 | `dr1-prep/wo1-bench-addendum` (base: `main`) | `interactive` | Bench kit; flashed `main` firmware | 1–7 | ✅ Complete (2026-10-12). Items 1–6 done, Item 7 skipped (optional). |
-
+| **[x] [wo1-bench-addendum](wo1-bench-addendum/WORKORDER.md):** | Interactive bench session, items 1–7 | `dr1-prep/wo1-bench-addendum` (base: `main`) | `interactive` | Bench kit; flashed `main` firmware | 1–7 | ✅ Complete (PR #2, `5168b1e`) |
 **File overlaps:**
 - New evidence files only, plus edits to `docs/measurements/phase0/README.md`
   (rows #1, #7, #8, #10) and an erratum note in `docs/encoder-resistance-analysis.md`.
@@ -52,6 +51,34 @@ existing Y-harness.
 - Firmware: `main` changed `src/` after tag `v0.1.0-dev.6` (WO6, `3888a83`).
   Rule 03 requires tagging `v0.1.0-dev.7`, then rebuilding, before flashing.
 
+### 2026-10-12: WO1 complete; PR #2 merged; Chief Architect review
+- **Merged** as PR #2 (`5168b1e`) on 2026-10-12 with no pre-merge review: the
+  second time the checkpoint has been skipped (see PROGRAM.md). This review is
+  post-hoc. The evidence is sound and nothing would have blocked the merge.
+- **Results** (Completion Report):
+  - "28% missed clicks" was an artefact of 4 detents per level. The
+    down direction needs 6–10 detents.
+  - Motor wires stay ≥ −0.14 V against GND, so no clamps are needed.
+  - The ADC reads 6–7% below the DMM through the 22 kΩ taps (systematic).
+  - The cadence tap does not distort the edge.
+  - Console fault tests #1, #2, #3, #7 and #9 pass. **New stock failure
+    mode:** a fast spin to the top drives the motor past the working range
+    into continuous rotation; recovery needs the motor unplugged.
+- **Review notes:**
+  1. Item 2 used a DMM, not the scope the WO asked for, so short spikes could
+     be missed. That is acceptable because the 30 kΩ series resistor limits
+     current; noted in DR-1 §2.1.
+  2. Item 6: 4095 counts means the ADC **saturates** (≥ 3.1 V at 12 dB). The
+     result shows the rail is present, not that it is stable; noted in the
+     DR-1 waiver.
+  3. In the runaway, the wiper read about 3.3 V, above the 1.66 V reference.
+     The wiper likely floats or is pulled up in the dead zone. Confirm this in
+     PR-04b / PR-07 before relying on it for runaway detection.
+  4. **The logger rebooted during a large ride-log CSV download**, losing the
+     PSRAM ride log. This is a logger defect (export path; see L-06), assigned
+     to PR-03 WO1, which owns the diagnostic env.
+  5. Type-6 events cover 2 detents. Document this in the logger's API notes.
+- Feeds the [DR-1 §2A draft recommendations](../reviews/DR-1-design-freeze.md).
+
 ## Status
-**Plan Status:** READY — WO1 runs interactively with the owner. Then a docs-only
-PR, a Chief Architect review, and DR-1.
+**Plan Status:** ✅ COMPLETE: evidence merged (PR #2). DR-1 in progress.

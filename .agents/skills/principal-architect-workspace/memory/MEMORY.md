@@ -1,24 +1,24 @@
 # Principal Architect Memory
-<!-- Last updated: 2026-10-11T23:00:00+01:00 -->
+<!-- Last updated: 2026-10-12T20:00:00+01:00 -->
 
 ## Active Programs
 | Program | Plan | Status |
 |---|---|---|
-| Echenon Firmware | [PROGRAM-PLAN.md](../PROGRAM-PLAN.md) · [PROGRAM.md](../PROGRAM.md) | 9 PRs + DR-1. **PR-01 merged (2026-10-11).** Next: DR-1 prep bench, then DR-1; PR-03 planned (awaiting approval). |
+| Echenon Firmware | [PROGRAM-PLAN.md](../PROGRAM-PLAN.md) · [PROGRAM.md](../PROGRAM.md) | 9 PRs + DR-1. **PR-01 merged (2026-10-11).** DR-1 prep done (PR #2); **DR-1 in progress** (§2A draft, joint decision pending); PR-03 planned (awaiting approval). |
 
 ## Active Projects
 | Project | Status | Modules | Context |
 |---|---|---|---|
-| DR-1 Prep: Phase 0 evidence addendum | WO1 ready (interactive, run with the owner) | Sensor Acquisition, Encoder (PCNT), Hardware | [PROJECT.md](../pr-dr1-prep/PROJECT.md) |
 | PR-03 HR Relay (Phase 2) | Planned: 7 WOs, awaiting approval | BLE (HRM), Build System | [PROJECT.md](../pr-03-hr-relay/PROJECT.md) |
 
 ## Recently Completed (last 5)
 | Project | Completed | Modules | Key Outcome |
 |---|---|---|---|
+| [DR-1 Prep: evidence addendum](../pr-dr1-prep/PROJECT.md) | 2026-10-12 (PR #2, `5168b1e`) | Sensor Acquisition, Encoder (PCNT) | 28% "missed clicks" withdrawn; stock runaway failure mode found; console tolerant of encoder faults |
 | [PR-01 Signal Logger (Phase 0)](../pr-01-signal-logger/PROJECT.md) | 2026-10-11 (PR #1, `5897f6f`) | Build System / Hardware, Sensor Acquisition, Web Portal, Encoder (PCNT) | Phase 0 logger + 11/13 register rows; reversed pot reference; console stock behaviour characterised |
 
 ## Older Projects
-1 completed project.
+2 completed projects.
 Full project history: [PROJECT_INDEX.md](PROJECT_INDEX.md)
 Cross-cutting module index: [MODULE_INDEX.md](MODULE_INDEX.md)
 
