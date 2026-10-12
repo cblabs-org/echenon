@@ -1,3 +1,5 @@
+#ifdef WITH_SIGNAL_LOGGER
+
 #include "SignalLogger.h"
 #include "EventBus.hpp"
 #include "EncoderModule/EncoderConfig.h"
@@ -6,11 +8,28 @@
 #include <esp_heap_caps.h>
 #include <esp_timer.h>
 #include <driver/gpio.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <cstring>
+#include <memory>
 
 static const char* TAG = "SignalLogger";
 static SignalLogger* s_instance = nullptr;
 static portMUX_TYPE eventLogSpinlock = portMUX_INITIALIZER_UNLOCKED;
+
+namespace {
+class ExportActiveGuard {
+public:
+    explicit ExportActiveGuard(std::atomic<bool>& flag) : _flag(flag) {
+        _flag.store(true);
+    }
+    ~ExportActiveGuard() {
+        _flag.store(false);
+    }
+private:
+    std::atomic<bool>& _flag;
+};
+} // namespace
 
 // Channels to scan: 0-6 (pot, cadence, motor) + 9 (encoder VCC)
 // Channels 7,8 (encoder A,B) released for PCNT EncoderModule
@@ -188,6 +207,19 @@ void SignalLogger::stop() {
 void SignalLogger::tick(uint32_t now) {
     if (!_capturing) return;
 
+    if (_exportActive.load()) {
+        // L-06: While CSV export is streaming PSRAM buffers, pause capture appends
+        // to prevent race conditions and torn rows. Drain ADC DMA pool to avoid overflow.
+        if (_adcHandle) {
+            uint8_t dummyBuf[512];
+            uint32_t outLen = 0;
+            while (adc_continuous_read(_adcHandle, dummyBuf, sizeof(dummyBuf), &outLen, 0) == ESP_OK) {
+                // drained
+            }
+        }
+        return;
+    }
+
     if (_lastWindowMs == 0) _lastWindowMs = now;
 
     uint8_t buf[1024];
@@ -354,56 +386,147 @@ void SignalLogger::registerRoutes(PsychicHttpServer& server) {
     });
 
     server.on("/api/echenon/ride-log.csv", HTTP_GET, [this](PsychicRequest *request, PsychicResponse *response) -> esp_err_t {
+        ExportActiveGuard guard(_exportActive);
         response->setContentType("text/csv");
         
         const char* header = echenon::kRideLogCsvHeader;
-        response->sendChunk((uint8_t*)header, strlen(header));
+        esp_err_t err = response->sendChunk((uint8_t*)header, strlen(header));
+        if (err != ESP_OK) return err;
         
-        char buf[256];
-        size_t start = (_rideLogCount < kRideLogMaxRows) ? 0 : _rideLogHead;
-        for (size_t i = 0; i < _rideLogCount; i++) {
+        constexpr size_t kChunkCapacity = 2048;
+        auto chunkBuf = std::make_unique<char[]>(kChunkCapacity);
+        size_t chunkLen = 0;
+        char rowBuf[256];
+
+        size_t count = _rideLogCount;
+        size_t start = (count < kRideLogMaxRows) ? 0 : _rideLogHead;
+
+        for (size_t i = 0; i < count; i++) {
             size_t idx = (start + i) % kRideLogMaxRows;
             const auto& row = _rideLogBuffer[idx];
-            int len = echenon::formatRideLogRow(row, buf, sizeof(buf));
-            response->sendChunk((uint8_t*)buf, len);
+            int rowLen = echenon::formatRideLogRow(row, rowBuf, sizeof(rowBuf));
+            if (rowLen <= 0) continue;
+
+            if (chunkLen + rowLen > kChunkCapacity) {
+                err = response->sendChunk((uint8_t*)chunkBuf.get(), chunkLen);
+                chunkLen = 0;
+                if (err != ESP_OK) {
+                    ESP_LOGW(TAG, "ride-log export sendChunk failed (%d)", err);
+                    break;
+                }
+                vTaskDelay(pdMS_TO_TICKS(1));
+            }
+
+            memcpy(chunkBuf.get() + chunkLen, rowBuf, rowLen);
+            chunkLen += rowLen;
         }
-        response->finishChunking();
-        return ESP_OK;
+
+        if (err == ESP_OK && chunkLen > 0) {
+            err = response->sendChunk((uint8_t*)chunkBuf.get(), chunkLen);
+        }
+
+        if (err == ESP_OK) {
+            response->finishChunking();
+        }
+        return err;
     });
 
     server.on("/api/echenon/events.csv", HTTP_GET, [this](PsychicRequest *request, PsychicResponse *response) -> esp_err_t {
+        ExportActiveGuard guard(_exportActive);
         response->setContentType("text/csv");
         
         const char* header = echenon::kEventsCsvHeader;
-        response->sendChunk((uint8_t*)header, strlen(header));
+        esp_err_t err = response->sendChunk((uint8_t*)header, strlen(header));
+        if (err != ESP_OK) return err;
         
-        char buf[64];
-        size_t start = (_eventLogCount < kEventLogMaxEvents) ? 0 : _eventLogHead;
-        for (size_t i = 0; i < _eventLogCount; i++) {
+        constexpr size_t kChunkCapacity = 2048;
+        auto chunkBuf = std::make_unique<char[]>(kChunkCapacity);
+        size_t chunkLen = 0;
+        char rowBuf[64];
+
+        size_t count = _eventLogCount;
+        size_t start = (count < kEventLogMaxEvents) ? 0 : _eventLogHead;
+
+        for (size_t i = 0; i < count; i++) {
             size_t idx = (start + i) % kEventLogMaxEvents;
             const auto& ev = _eventLogBuffer[idx];
-            int len = echenon::formatEventRow(ev, buf, sizeof(buf));
-            response->sendChunk((uint8_t*)buf, len);
+            int rowLen = echenon::formatEventRow(ev, rowBuf, sizeof(rowBuf));
+            if (rowLen <= 0) continue;
+
+            if (chunkLen + rowLen > kChunkCapacity) {
+                err = response->sendChunk((uint8_t*)chunkBuf.get(), chunkLen);
+                chunkLen = 0;
+                if (err != ESP_OK) {
+                    ESP_LOGW(TAG, "events export sendChunk failed (%d)", err);
+                    break;
+                }
+                vTaskDelay(pdMS_TO_TICKS(1));
+            }
+
+            memcpy(chunkBuf.get() + chunkLen, rowBuf, rowLen);
+            chunkLen += rowLen;
         }
-        response->finishChunking();
-        return ESP_OK;
+
+        if (err == ESP_OK && chunkLen > 0) {
+            err = response->sendChunk((uint8_t*)chunkBuf.get(), chunkLen);
+        }
+
+        if (err == ESP_OK) {
+            response->finishChunking();
+        }
+        return err;
     });
 
     server.on("/api/echenon/burst.csv", HTTP_GET, [this](PsychicRequest *request, PsychicResponse *response) -> esp_err_t {
+        ExportActiveGuard guard(_exportActive);
         response->setContentType("text/csv");
         
         char meta[256];
         uint32_t perChanRate = kAdcSampleFreq / kNumChannels; // 83333 / 8 ≈ 10416
         int metaLen = echenon::formatBurstCsvHeader(perChanRate, _burstStartUs, _overflowCount, meta, sizeof(meta));
-        response->sendChunk((uint8_t*)meta, metaLen);
-        
-        char buf[128];
+        esp_err_t err = response->sendChunk((uint8_t*)meta, metaLen);
+        if (err != ESP_OK) return err;
+
+        constexpr size_t kChunkCapacity = 2048;
+        auto chunkBuf = std::make_unique<char[]>(kChunkCapacity);
+        size_t chunkLen = 0;
+        char rowBuf[128];
+        bool aborted = false;
+        size_t rowsSinceYield = 0;
+
         echenon::deinterleaveBurstStream(_burstBuffer, _burstBufferCount,
-            [response, &buf](size_t rowIdx, const echenon::DeinterleavedRow& row) {
-                int len = echenon::formatBurstRow(rowIdx, row, buf, sizeof(buf));
-                response->sendChunk((uint8_t*)buf, len);
+            [&](size_t rowIdx, const echenon::DeinterleavedRow& row) {
+                if (aborted) return;
+                int rowLen = echenon::formatBurstRow(rowIdx, row, rowBuf, sizeof(rowBuf));
+                if (rowLen <= 0) return;
+
+                if (chunkLen + rowLen > kChunkCapacity) {
+                    err = response->sendChunk((uint8_t*)chunkBuf.get(), chunkLen);
+                    chunkLen = 0;
+                    if (err != ESP_OK) {
+                        ESP_LOGW(TAG, "burst export sendChunk failed (%d)", err);
+                        aborted = true;
+                        return;
+                    }
+                }
+                memcpy(chunkBuf.get() + chunkLen, rowBuf, rowLen);
+                chunkLen += rowLen;
+
+                if (++rowsSinceYield >= 100) {
+                    rowsSinceYield = 0;
+                    vTaskDelay(pdMS_TO_TICKS(1));
+                }
             });
-        response->finishChunking();
-        return ESP_OK;
+
+        if (!aborted && err == ESP_OK && chunkLen > 0) {
+            err = response->sendChunk((uint8_t*)chunkBuf.get(), chunkLen);
+        }
+
+        if (!aborted && err == ESP_OK) {
+            response->finishChunking();
+        }
+        return err;
     });
 }
+
+#endif // WITH_SIGNAL_LOGGER

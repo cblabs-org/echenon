@@ -2,6 +2,11 @@
 #include <Arduino.h>
 #include "echenon/EchenonModule.h"
 
+#ifdef WITH_BLE
+#include "BLEManager/BLEManager.hpp"
+static BLEManager bleManager;
+#endif
+
 #ifdef WITH_ENCODER
 #include "EncoderModule.hpp"
 #include "board.h"
@@ -14,6 +19,7 @@ EchenonModule echenonModule;
 void setup() {
     Serial.begin(115200);
     app.setAppName("Echenon");
+    app.getWifiManager().setDefaultHostname("echenon");
 
     // Wire dependencies
     echenonModule.setConfigManager(&app.getConfigManager());
@@ -29,8 +35,18 @@ void setup() {
     app.registerModule(&encoderModule);
 #endif
 
+#ifdef WITH_BLE
+    bleManager.setDefaultAdvertisedName("Echenon");
+    // Providers (HRMRepeater, HRMClient) registered in WO2/WO4
+    app.registerModule(&bleManager);
+#endif
+
     FrameworkConfig config;
     app.begin(config);
+
+#ifdef WITH_BLE
+    bleManager.begin(app);
+#endif
 }
 
 void loop() {
