@@ -69,7 +69,7 @@ Project name for branches: `hr-relay`. Linear stack from `main`. Proposed
 
 | | WO | Branch (base) | Complexity | Scope | Tests (SPEC §13.5) | Status |
 |---|---|---|---|---|---|---|
-| **[ ] [wo1-ble-enable](wo1-ble-enable/WORKORDER.md):** | Turn BLE on | `hr-relay/wo1-ble-enable` (`main`) | `standard` | (a) Bump the framework to the latest tag containing the WO-8 fix and #226 (currently `v0.0.12-dev.93`). (b) Local `[ble]` mix-in, `sdkconfig.ble.defaults` in the chain, Echenon `MAX_CONNECTIONS=4` / `BLE_MAX_ACT=6`. (c) `BLEManager` composition per SPEC §3.5 with no Echenon providers yet. (d) Split envs: the default `ex3-waveshare-nano` drops `WITH_SIGNAL_LOGGER`, and a new `ex3-waveshare-nano-diag` keeps it (L-08). (e) Record DRAM and heap with BLE on. (f) Native env still builds. (g) Fix the diag-env logger crash during large ride-log CSV downloads (DR-1 prep finding 4; L-06 export race / httpd stack) | 2.1 (advertising, name `Echenon-XXXX`) | ⬜ |
+| **[x] [wo1-ble-enable](wo1-ble-enable/WORKORDER.md):** | Turn BLE on | `hr-relay/wo1-ble-enable` (`main`) | `standard` | (a) Bump the framework to the latest tag containing the WO-8 fix and #226 (currently `v0.0.12-dev.93`). (b) Local `[ble]` mix-in, `sdkconfig.ble.defaults` in the chain, Echenon `MAX_CONNECTIONS=4` / `BLE_MAX_ACT=6`. (c) `BLEManager` composition per SPEC §3.5 with no Echenon providers yet. (d) Split envs: the default `ex3-waveshare-nano` drops `WITH_SIGNAL_LOGGER`, and a new `ex3-waveshare-nano-diag` keeps it (L-08). (e) Record DRAM and heap with BLE on. (f) Native env still builds. (g) Fix the diag-env logger crash during large ride-log CSV downloads (DR-1 prep finding 4; L-06 export race / httpd stack) | 2.1 (advertising, name `Echenon-XXXX`) | ✅ Complete (`579e5c9`) |
 | **[ ] [wo2-hr-repeater](wo2-hr-repeater/WORKORDER.md):** | HR peripheral | `hr-relay/wo2-hr-repeater` (wo1) | `standard` | `HRMRepeater` (`IBLEServiceProvider`, `0x180D` / `0x2A37`, Body Sensor Location from source); an EventBus HR event and payload; a synthetic HR source under `WITH_HR_SYNTHETIC` (diagnostic only); native tests for `0x2A37` encoding | — | ⬜ |
 | **[ ] [wo3-app-pairing-gate](wo3-app-pairing-gate/WORKORDER.md):** | **Go/no-go: Echelon app pairs `Echenon-XXXX`** | `hr-relay/wo3-app-pairing-gate` (wo2) | `interactive` | Owner with the P12: the Echelon app lists and pairs `Echenon-XXXX` and shows the synthetic HR. Evidence `A12-<date>-esp32-hr-pairing.md`; closes register row #12. **On failure, STOP the PR and escalate** | 2.3 (synthetic) | ⬜ |
 | **[ ] [wo4-hr-client](wo4-hr-client/WORKORDER.md):** | HR strap client | `hr-relay/wo4-hr-client` (wo3) | `standard` | `HRMClient` (`IBLEClientProvider`). A pure `0x2A37` parser (uint8/uint16, contact flags, energy, RR, BPM = 0) with native tests. Three-state contact machine; 10 s stale timeout; battery `0x2A19`; publishes the HR event (no direct repeater call). `slowRetryMs = 15000` set through BLEManager config, with the mechanism verified and recorded | 2.4 logic (native) | ⬜ |
@@ -112,4 +112,26 @@ Framework issues are written app-neutral, with no Echenon specifics.
   Chief Architect review; after that review, the owner merges.
 
 ## Status
-**Plan Status:** APPROVED — ready for PA execution (WO1 next)
+**Plan Status:** IN PROGRESS — WO1 complete, WO2 next
+
+### 2026-10-12: WO1 complete (PA session)
+- **Branch:** `hr-relay/wo1-ble-enable` at `579e5c9`.
+- Framework bumped from `v0.0.12-dev.82` to `v0.0.12-dev.93` (includes WO-8
+  central fix and #226).
+- BLE enabled: `[ble]` mix-in, `sdkconfig.ble.defaults` in chain,
+  `MAX_CONNECTIONS=4` / `BLE_MAX_ACT=6`.
+- `BLEManager` composed in `main.cpp` per SPEC §3.5 (no providers yet).
+  `bleManager.begin(app)` called after `app.begin(config)` — confirmed as the
+  correct lifecycle from `BLEManager.hpp` (binds `_app`, spawns FreeRTOS
+  worker, registers DIS, locks registration).
+- Envs split: `ex3-waveshare-nano` (default, no logger) and
+  `ex3-waveshare-nano-diag` (with `WITH_SIGNAL_LOGGER`).
+- L-06 CSV export crash fixed: RAII `ExportActiveGuard` pauses capture during
+  export; chunked 2 KB response buffers; `vTaskDelay` yields; error handling
+  on `sendChunk`.
+- `setDefaultHostname("echenon")` added for mDNS.
+- **Build metrics (BLE on, no providers):**
+  - `ex3-waveshare-nano`: RAM 53,084 B (16.2%), Flash 1,522,175 B (24.2%)
+  - `ex3-waveshare-nano-diag`: RAM 53,484 B (16.3%), Flash 1,544,447 B (24.5%)
+  - `native`: 24/24 tests pass.
+- **Next:** WO2 (HRMRepeater).
