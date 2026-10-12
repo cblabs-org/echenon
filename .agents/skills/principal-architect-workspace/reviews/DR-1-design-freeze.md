@@ -6,7 +6,7 @@
 
 | | |
 |---|---|
-| **Status** | **IN PROGRESS**: evidence complete (2026-10-12); re-scoped to v1 Passive (2026-10-12, owner decision); v1 recommendations in §2A for a joint decision with the owner |
+| **Status** | **APPROVED WITH CONDITIONS (2026-10-12)**, see §4. Outputs (§3) in progress |
 | **Owner** | Chief Architect (Tier 1) |
 | **Entry condition** | PR-01 merged; every row of the [Phase 0 register](../../../../docs/measurements/phase0/README.md) has an Evidence file and a Result |
 | **Gates** | PR-02, PR-04a (v1). No soldering or permanent installation before approval. PR-07 is gated by [DR-2](DR-2-design-freeze.md) |
@@ -162,12 +162,13 @@ motor-sense taps show continuous drive) and alert in the portal. Prevention
 
 | | |
 |---|---|
-| **Decision** | ☐ Approved · ☐ Approved with conditions · ☐ Rejected (re-run Phase 0 items) |
-| **Conditions / open items** | |
-| **Approved by** | |
-| **Date** | |
-| **Evidence baseline** | Echenon commit `[hash]`, Phase 0 register revision `[hash]` |
-| **Owner acknowledgement** | *(the owner's own words, quoted from chat)* |
+| **Decision** | ☐ Approved · ☑ **Approved with conditions** · ☐ Rejected |
+| **Scope** | v1 Passive design freeze: decisions 2.1, 2.3, 2.6, 2.7, 2.8, 2.9, 2.11 as recommended in §2A (v1), with the dispositions in §2A (waive row #10; row #12 → PR-03 WO3) and the known v1 limitation (stock runaway detected, not prevented) |
+| **Conditions** | **2.3:** the board is powered from **9 V (VIN) or USB, never both at once**. PR-04a WO1 reads the Waveshare VBUS/VIN power path from the schematic before any soldering and designs a selector (disconnect 9 V in the USB position; add a diode on the VIN path if the board does not isolate the two). **2.6:** PR-02 includes a **recalibration UI**: the user enters values read from the console or app screen (level, power), and the firmware correlates them with live sensor readings to update the per-level table. **2.7:** all 10 PR-01 taps are kept on the v1 board (diagnostics); GPIO 43/44 are reserved. **2.8:** the v1 board is the PR-01 detection circuit made permanent. **2.11:** the internal 0–255 scale is canonical, with per-app mappings: Echelon 1–32 (direct); **Peloton 0–100 by power equivalence** (our per-level power table against the published Peloton power curve); FTMS resistance-level field; power, cadence and HR for Garmin, Zwift and Strava |
+| **Open items carried** | PR-02 power-data source (Echelon app readings / sniffing the console's BLE broadcast / reference power meter / community tables), to be chosen by the owner at PR-02 planning. VIN/USB power-path check (PR-04a WO1) |
+| **Approved by** | Owner, with the Chief Architect |
+| **Date** | 2026-10-12 |
+| **Evidence baseline** | Echenon `main` @ `fb1a06e`; Phase 0 register as merged in PR #1 (`5897f6f`) and PR #2 (`5168b1e`) |
+| **Owner acknowledgement** | *"2.1 - ok / 2.3 - we should design to have EITHER usb OR 9v in. Not both. / 2.6 - ok (we may want a general re-calibration UI where the user enters data from the screen and correlates it into the sensor readings) / 2.7 - ok / 2.8 - ok - circuit basically as it is now for the detection rounds / 2.9 - ok / 2.11 - ok. (we should be able to translate into data that makes sense to the peloton app too (100 levels?) as well as garmin, strava or whatever?"* (chat, 2026-10-12) |
 
-Approval unblocks PR-02 and PR-04a. PR-07 waits for [DR-2](DR-2-design-freeze.md). Record it in the
-[PROGRAM.md](../PROGRAM.md) session log.
+Approval unblocks **PR-02** and **PR-04a** (soldering allowed under the 2.3 condition). The v2 decisions remain open in [DR-2](DR-2-design-freeze.md).

@@ -28,7 +28,7 @@ provisional, decomposed after DR-2).
 | Release | PR | Phase | Title | Dependencies | Status |
 |---|---|---|---|---|---|
 | v1 | PR-01 | 0 | Signal Logger (Observe) | `main` | ✅ Merged 2026-10-11 (PR #1, `5897f6f`) |
-| v1 | DR-1 | — | v1 Passive Design Freeze ([record](reviews/DR-1-design-freeze.md)) | PR-01 evidence + [DR-1 prep bench](pr-dr1-prep/PROJECT.md) | 🟡 Evidence complete (PR #2); re-scoped to v1 (2026-10-12); [§2A v1 recommendations](reviews/DR-1-design-freeze.md) awaiting a joint decision |
+| v1 | DR-1 | — | v1 Passive Design Freeze ([record](reviews/DR-1-design-freeze.md)) | PR-01 evidence + [DR-1 prep bench](pr-dr1-prep/PROJECT.md) | ✅ Approved with conditions 2026-10-12 |
 | v1 | PR-02 | 1 | Calibration + Power (+ live WS feed) | PR-01, **DR-1** | ⬜ Not started |
 | v1 | PR-03 | 2 | BLE Foundation + HR Relay | PR-01 ✅; gates proposed as in-PR go/no-go (WO3, WO5) | 📝 Planned: [7 WOs](pr-03-hr-relay/PROJECT.md), awaiting approval |
 | v1 | PR-04a | 3 | Passive Tap Board (VIN + VIN/USB switch, manual OTA, UART0 reserved) | PR-02, DR-1 | ⬜ Not started |
@@ -312,3 +312,16 @@ Decisions on the v1 Passive / v2 Active restructure:
    - The full burst logger stays in the `-diag` env.
    - This refines the L-08 rule: production carries a *bounded* diagnostics
      module, not the full logger.
+
+### 2026-10-12: DR-1 approved with conditions
+- The owner approved the v1 Passive design freeze (DR-1 §4).
+- **Conditions:**
+  - VIN **or** USB power, never both (PR-04a WO1 checks the power path and
+    designs the selector);
+  - a recalibration UI in PR-02;
+  - all 10 taps kept;
+  - Peloton 0–100 mapped by power equivalence.
+- **Unblocks PR-02 and PR-04a.** Open item: the PR-02 power-data source
+  (owner to choose).
+- DR-1 outputs (SPEC and hardware-spec text, PR-02 / PR-04a mandates) are in
+  progress.
