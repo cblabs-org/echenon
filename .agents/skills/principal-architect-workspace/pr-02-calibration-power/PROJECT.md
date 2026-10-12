@@ -43,6 +43,10 @@ USB-C powered. No changes.
 After this PR merges, the firmware shows calibrated cadence, resistance and
 estimated power via the live WS feed, agreeing with the Echelon app.
 
+## Owner decision 2026-10-12: runaway detection
+
+Add stock-runaway **detection and alert**: the wiper stays outside the working range (165–1327 counts) for more than `[N]` s. Publish an EventBus event and alert in the portal (PR-14 persists and surfaces it). A passive board cannot prevent a runaway (known v1 limitation; prevention is v2/DR-2).
+
 ## Prior Art
 
 - [wo2-sensors/WORKORDER.md](../archive-pa-decomposition/wo2-sensors/WORKORDER.md) — uses the superseded linear level model

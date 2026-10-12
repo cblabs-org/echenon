@@ -5,7 +5,12 @@
 > **Status:** Draft, repaired 2026-09-25 (readiness review RR-01 to RR-03, RR-13).
 > Values written as `[DR-1: …]` are decided at the Design Freeze (DR-1) from
 > Phase 0 evidence and are not specified before then. Values written as
-> `[PR-nn: …]` are tuned and recorded by the named PR.
+> `[PR-nn: …]` are tuned and recorded by the named PR. Values written as
+> `[DR-2: …]` belong to the v2 Active Design Freeze.
+>
+> **Releases (owner decision 2026-10-12):** **v1 "Passive"** and **v2 "Active"**
+> (§1.1, §1.5). Sections or rows marked **v2** describe the provisional v2
+> release and are not part of v1.
 
 ---
 
@@ -14,16 +19,20 @@
 ### 1.1 Purpose
 
 Echenon turns an Echelon EX-3 Smart Connect indoor bike into a self-contained,
-open training computer. It is **passive-first**: the default permanent install
-is a **passive tap board** that only reads the bike's signals, while every wire
-still runs unaltered between the bike frame and the Echelon console. An
-optional **Man-in-the-Middle (MITM) intercept board** adds control of the
-resistance motor.
+open training computer. It ships as **two releases**:
 
-| Install | Board | What it adds | Use cases |
+- **v1 "Passive"**: a permanent **passive tap board** that only reads the
+  bike's signals, while every wire still runs unaltered between the bike frame
+  and the Echelon console. **No resistance control of any kind.**
+- **v2 "Active"** (provisional): an **active intercept board** (the "MITM"
+  board) that takes the knob, the console's motor drive and the sensors in as
+  signals and re-emits them, adding resistance control and console-off
+  operation.
+
+| Release | Board | What it adds | Use cases |
 |---|---|---|---|
-| **Default** | Passive tap board (PR-04a) | Session overlay, automatic recording and Strava upload, FTMS telemetry broadcast, heart-rate relay | UC1–UC3 |
-| **Optional** | MITM intercept board (PR-07) | Override Mode, motor control, FTMS Control Point and ERG | UC4–UC6 |
+| **v1 Passive** | Passive tap board (PR-04a); ESP32 on the bike's 9 V via VIN, with a VIN/USB switch | Session overlay, automatic recording and Strava upload, **read-only** FTMS telemetry (Indoor Bike Data) over BLE, heart-rate relay | UC1–UC3 |
+| **v2 Active** | Active intercept board (PR-07): H-bridge + PWM motor drive, encoder emulation, NC fail-safe bypasses | Mode 1 relay/active: FTMS Control Point targets, ERG, resistance setting, portal-native HR-zone auto-resistance. Mode 2 console off (UC6) | UC4–UC6 + HR zones |
 
 Echenon provides:
 
@@ -32,23 +41,30 @@ Echenon provides:
 - **Automatic session recording** with post-ride upload to Strava (other
   platforms post-v1)
 - A **BLE FTMS broadcast** readable by Zwift, TrainerRoad, Xert EBC and any
-  FTMS-aware app
+  FTMS-aware app (**read-only in v1**: no Control Point targets)
 - A **heart-rate relay**: Echenon connects to an HR strap and re-broadcasts to
   the Echelon tablet app, the FTMS stream and the session recording
-- **Automatic resistance control (ERG)**, with the MITM board only: FTMS
-  Control Point targets drive the resistance motor under closed-loop cam-angle
-  control
+- **v2:** **automatic resistance control (ERG)** and portal-native HR-zone
+  auto-resistance, with the active board only: FTMS Control Point targets drive
+  the resistance motor under closed-loop cam-angle control
 
-With the MITM board installed, Echenon has two operating modes:
+**v2** — with the active board installed, Echenon has two operating modes
+(details `[DR-2]`; §5.6 uses the earlier names Intercept and Override):
 
-- **Intercept Mode**: the console is connected and in charge. The ESP32 senses
-  the console's motor drive and reproduces it on the motor. The Echelon app runs
-  unchanged.
-- **Override Mode**: the console is disconnected or ignored. The ESP32 drives
-  the resistance motor from the knob, the web overlay or the FTMS Control Point.
+- **Mode 1, relay/active (Intercept)**: the console is connected. The ESP32
+  takes the knob and the console's motor drive in as signals, emulates the
+  encoder toward the console and drives the motor through an H-bridge
+  ("console as signal source", `docs/mitm-encoder-design-notes.md` §11). The
+  Echelon app runs unchanged.
+- **Mode 2, console off (Override, UC6)**: the console is switched off or
+  unplugged. The ESP32 drives the resistance motor from the knob, the web
+  overlay or the FTMS Control Point, with a replica of the console's pot
+  reference.
 
-The passive tap board has no motor path; it always behaves like Intercept Mode
-for telemetry, and FTMS control requests are refused (§7.4).
+The v1 passive tap board has no motor path and no outputs; it only observes,
+and FTMS is read-only (§7.3, §7.4). **ANT+ is not supported** in either
+release (the ESP32-S3 has no ANT radio); UART0 is reserved for a future ANT+
+add-on (§4.4).
 
 Related documents:
 
@@ -69,8 +85,9 @@ Related documents:
 1. **Non-destructive**: no factory wire is cut. Both boards plug into the
    existing JST connectors between the bike frame and the console. Unplugging
    restores the bike to stock.
-2. **Passive first, control optional**: the default install observes only.
-   Motor control is an opt-in hardware upgrade, not a prerequisite.
+2. **Passive first, control in v2**: v1 observes only and never controls
+   resistance. Motor control and interception are the v2 hardware upgrade,
+   not a prerequisite.
 3. **Hands-free daily use**: recording starts when the rider pedals and uploads
    when the rider stops. No buttons, no apps to open.
 4. **Three independent outputs**: the session overlay, the BLE FTMS broadcast
@@ -80,8 +97,8 @@ Related documents:
 6. **Invisible taps**: the passive tap board reads the cadence, potentiometer,
    encoder and motor-drive signals through high-impedance taps (series
    resistors, no internal pulls). The console sees the same signals it sees
-   without Echenon. Only the optional MITM board places the ESP32 in the motor
-   path.
+   without Echenon. v1 places the ESP32 in no signal path; only the v2 active
+   board does.
 7. **Measured, not assumed**: resistance control precision, speed and the size
    of any Override level scale are goals validated against Phase 0 data
    (`[DR-1]`), not claims made in advance.
@@ -111,33 +128,64 @@ fetch pipeline, the module composition architecture and the optional
 
 ### 1.4 Out of Scope (v1)
 
+**Out of scope for v1 "Passive":**
+
+- **Any resistance control**: no FTMS Control Point targets, no ERG, no
+  resistance setting from the portal or apps, no HR-zone auto-resistance
+  (external or portal-native). These are v2
+- **Any interception**: no encoder or motor interception, no outputs to the
+  bike; the stock console runaway (A09-20261012 #3) can be detected but not
+  prevented (§13.11)
+- Standalone / console-off operation (UC6; v2 mode 2)
+- **ANT+**: not supported. The ESP32-S3 has no ANT radio. A future hardware
+  add-on (e.g. an nRF51422 ANT+ module) may connect over **UART0, GPIO 43 /
+  44, reserved** on every board (§4.4)
 - On-device physical display
 - Custom PCB manufacture (v1 uses perfboard or protoboard)
-- Automatic mode switching (Intercept ↔ Override is a software setting)
-- Portal-native HR-zone auto-resistance (v2; in v1 external apps provide
-  HR-zone ERG via the FTMS Control Point)
 - Direct upload to platforms other than Strava (§10.6)
+
+**Out of scope for v2 "Active"** (provisional):
+
+- ANT+ (as v1; the UART0 reservation stands)
+- Automatic mode switching between mode 1 and mode 2 `[DR-2]`
+- On-device physical display; custom PCB manufacture
 
 ### 1.5 Delivery Phases
 
 The programme (`.agents/skills/principal-architect-workspace/PROGRAM-PLAN.md`)
 is canonical for sequencing. This specification uses its numbering.
 
+**v1 "Passive"** (UC1–UC3):
+
 | Phase | Work | PR | Hardware |
 |---|---|---|---|
-| 0 | Observe | PR-01 | Fly-wire logger on USB power (§4.4) |
-| — | Design Freeze | **DR-1** | — |
+| 0 | Observe | PR-01 ✅ | Fly-wire logger on USB power (§4.4) |
+| — | v1 Passive Design Freeze | **DR-1** | — |
 | 1 | Calibrate | PR-02 (gated on DR-1) | Same fly-wire rig |
 | 2 | HR relay | PR-03 | Same rig (BLE only) |
-| 3 | Passive tap board | PR-04a | Passive tap board, permanent install |
-| 3 | FTMS telemetry | PR-05 | Fly-wire rig is sufficient |
+| 3 | Passive tap board (VIN + VIN/USB switch, manual OTA, UART0 reserved) | PR-04a | Passive tap board, permanent install |
+| 3 | FTMS telemetry, read-only | PR-05 | Fly-wire rig is sufficient |
 | 4 | Session + TCX + Strava | PR-06 | Any of the above |
-| 5 | MITM board + motor control + safety | PR-07 | MITM intercept board |
-| 6 | ERG + Control Point | PR-08 | MITM intercept board |
-| 7 | Integration / release candidate | PR-09 | Both boards (UC1–UC3 passive, UC4–UC6 MITM) |
+| 4 | Diagnostics & run-data persistence (save-to-flash option, default off; paged query interface) | PR-14 | Any of the above |
+| 7 | v1 integration and release (`1.0.0`) | PR-09 | Passive tap board |
 
-The DR-1 decision record is
-`.agents/skills/principal-architect-workspace/reviews/DR-1-design-freeze.md`.
+**v2 "Active"** (provisional; decomposed after DR-2; UC4–UC6 + HR zones):
+
+| Phase | Work | PR | Hardware |
+|---|---|---|---|
+| — | Active-design bench evidence | DR-2 prep | Bench rig only |
+| — | v2 Active Design Freeze | **DR-2** | — |
+| 5 | Active board + motor control + safety | PR-07 (after DR-2 and the v1 release) | Active intercept board |
+| 5 | Encoder emulation + relay mode (mode 1) | PR-10 | Active intercept board |
+| 6 | ERG + Control Point targets + resistance setting | PR-08 | Active intercept board |
+| 6 | HR-zone auto-resistance (portal-native) | PR-11 | Active intercept board |
+| 6 | Console-off standalone (mode 2, UC6) | PR-12 | Active intercept board + pot-reference replica |
+| 7 | v2 integration and release | PR-13 | Active intercept board |
+
+The decision records are
+`.agents/skills/principal-architect-workspace/reviews/DR-1-design-freeze.md`
+(v1) and `.agents/skills/principal-architect-workspace/reviews/DR-2-design-freeze.md`
+(v2).
 
 ---
 
@@ -233,25 +281,26 @@ uses the separate authoritative map in §4.4.1.
 │    Console motor + / −      → 30 kΩ/10 kΩ (÷4) → D3 / GPIO 6, D4 / GPIO 7
 │                               ADC1 analog sense inputs only
 │
-│  MITM board only (Phase 5+):
+│  v2 active board only (Phase 5+, pins [DR-2]):
 │    D7 / GPIO 10 ──► L9110S A-IA ─┐
 │    D8 / GPIO 17 ──► L9110S A-IB ─┴─► A-OA / A-OB ──► bike motor Red / Black
 │    Console-side Red / Black terminate in the ÷4 sense divider only.
 │
-│  Power: White +9 V ──► MP1584EN buck ──► 3V3 rail (ESP32, L9110S)
-│         (the Phase 0/1 logger is powered from USB-C instead, §4.4.1)
+│  Power (v1): White +9 V ──► VIN switch ──► Waveshare VIN ──► onboard 3V3
+│         (USB-C with the VIN switch off; Phase 0/1 logger on USB-C, §4.4.1)
+│  UART0 GPIO 43/44 reserved (future ANT+ add-on)
 │
 │  Firmware:
 │    CadenceSensor, ResistanceSensor, EncoderModule ──► PowerEngine
 │    PowerEngine ──► SessionManager ──► Overlay / FTMS / Upload
 │    HRMClient ──► EventBus ──► HRMRepeater, FTMSServer, SessionManager
-│    InterceptController, ResistanceMotor, ERGController (MITM only)
+│    InterceptController, ResistanceMotor, ERGController (v2 only)
 └───────┬───────────────────────────┬───────────────────────────┬──
         │ WiFi (HTTP + WebSocket)   │ BLE                       │ WiFi (HTTPS)
         ▼                           ▼                           ▼
   Floating overlay            FTMS 0x1826                  Strava API
   (echenon.local)             HR   0x180D
-                              Control Point 0x2AD9
+                              Control Point 0x2AD9 (v2)
                                     │
                                     ▼
                   Zwift / TrainerRoad / Xert EBC; Echelon app (HR)
@@ -301,7 +350,7 @@ phase and are never driver outputs; the driver uses GPIO 10 and 17.
      subscribed
    - `SessionManager` appends a data point to the ride buffer
    - the overlay receives a WebSocket update
-6. **Motor path (MITM board only)** at `[DR-1: control loop rate]`:
+6. **v2 — Motor path (active board only)** at `[DR-1: control loop rate]`:
    - **Intercept Mode**: `InterceptController` samples the console's motor
      drive on GPIO 6/7 (analog, ADC1) and reproduces the drive direction, and
      the waveform where DR-1 requires it, on the L9110S inputs (GPIO 10/17).
@@ -312,7 +361,7 @@ phase and are never driver outputs; the driver uses GPIO 10 and 17.
    in hardware (PCNT) and publishes `encoder.rotate` events. In Override Mode
    the event adjusts the target; in Intercept Mode the console acts on the
    knob and Echenon records the event for telemetry only.
-8. **On an FTMS Control Point target write** (Override Mode, PR-08): the
+8. **v2 — On an FTMS Control Point target write** (Override Mode, PR-08): the
    `ERGController` converts target watts at the current smoothed cadence into
    a target cam angle using the power model, and keeps adjusting it as
    cadence changes (§5.6).
@@ -334,16 +383,16 @@ phase and are never driver outputs; the driver uses GPIO 10 and 17.
 | `CalibrationWizard` | Portal page for passive (PR-02) and motor-driven (PR-07) calibration | — | PR-02 |
 | `HRMClient` | BLE Central to the HR strap; parses 0x2A37; publishes HR on the EventBus | `IBLEClientProvider` | PR-03 |
 | `HRMRepeater` | Re-broadcasts HR as the BLE Heart Rate Service; subscribes to HR events | `IBLEServiceProvider` | PR-03 |
-| `FTMSServer` | FTMS GATT service: Indoor Bike Data, Feature, ranges, Control Point, Status | `IBLEServiceProvider`, `ITickable` | PR-05 |
+| `FTMSServer` | FTMS GATT service: Indoor Bike Data, Feature, ranges (v1, read-only); Control Point and Status (**v2**, PR-08) | `IBLEServiceProvider`, `ITickable` | PR-05 / PR-08 |
 | `SessionManager` | Auto/manual start-stop, ride buffering, checkpoints | — | PR-06 |
 | `RideStore` | PSRAM buffer for data points | — | PR-06 |
 | `TCXGenerator` | Streams 1 Hz TCX to a gzip file on LittleFS | — | PR-06 |
 | `UploadQueue` | The only upload execution path: runs one pipeline stage per `fetchUpdate()` | `IDataSource` | PR-06 |
 | `StravaUploader` | Describes the Strava service: BYOA OAuth, request building, response parsing | `IUploader` (Echenon), `IWebContributor` | PR-06 |
 | `SessionOverlay` | Session REST API, authenticated TCX download and Session History tab (PR-06); standalone `/overlay` page and `/ws/session` WebSocket push (PR-09) | `IWebContributor` | PR-06 / PR-09 |
-| `InterceptController` | Mode manager (Intercept ↔ Override), console-drive relay, command source arbitration | — | PR-07 |
-| `ResistanceMotor` | L9110S driver, cam-angle position controller, safety limits | — | PR-07 |
-| `ERGController` | Control Point target handling, ERG state machine, Fitness Machine Status | — | PR-08 |
+| `InterceptController` (**v2**) | Mode manager (Intercept ↔ Override), console-drive relay, command source arbitration | — | PR-07 / PR-10 |
+| `ResistanceMotor` (**v2**) | Motor driver (`[DR-2]`), cam-angle position controller, safety limits | — | PR-07 |
+| `ERGController` (**v2**) | Control Point target handling, ERG state machine, Fitness Machine Status | — | PR-08 |
 
 `HRMClient` has no reference to `HRMRepeater`; heart rate flows only through
 the EventBus (§8.2).
@@ -496,7 +545,7 @@ Watchdog panics if the main loop blocks for more than 5 s.
 | **Floating window** | Android's freeform/split-screen PiP mode; Chrome can be resized to a small overlay window on top of full-screen apps |
 | **Bike placement** | Tablet on the bike's handlebar tablet holder |
 | **ESP32 placement, Phase 0/1** | Fly-wire logger beside the bike, powered from USB-C (laptop or power bank) |
-| **ESP32 placement, Phase 3+** | On the passive tap board or MITM board inside the console housing, powered from the 9 V rail via the MP1584EN buck converter |
+| **ESP32 placement, Phase 3+** | v1: on the passive tap board inside the console housing, powered from the bike's 9 V rail via the Waveshare VIN pin through a VIN/USB power switch (no external buck). v2: on the active board, same power path `[DR-2]` |
 
 The Lenovo P12 runs both the Echelon class app (full-screen) and Chrome showing
 `echenon.local` (floating window) at the same time. This is a native Android
@@ -590,7 +639,7 @@ Rules for Phase 0/1:
 - The logger is **powered from USB-C**, with ESP32 GND tied to Brown. Use a
   power bank or a laptop running on battery, so that the USB ground does not
   form a mains ground loop through the bike's GND (hardware spec §5.3, §9). The
-  MP1584EN buck is not used before the PR-04a board.
+  The MP1584EN buck is not used on any board (dropped at DR-1, §4.6).
 - Capture uses the ESP-IDF **ADC continuous (DMA)** driver on 8 channels
   (CH0–CH6, CH9). GPIO 8 and 9 are assigned exclusively to PCNT hardware
   decoding (`EncoderModule`), achieving 0% bounce and 100% click detection (B04).
@@ -603,23 +652,35 @@ Rules for Phase 0/1:
   Phase 3 standalone network (SW2/SW3, R4) is incorrect based on this measured
   polarity; DR-1 §2.2/§2.9 must redesign the standalone pot reference circuit.
 
-#### 4.4.2 Phase 3+ Map — PROVISIONAL `[DR-1]`
+#### 4.4.2 Phase 3+ Map — PROVISIONAL `[DR-1]` (v1) / `[DR-2]` (v2)
 
-> **PROVISIONAL — DR-1 confirms or replaces this map. Do not build Phase 3+
-> hardware from it before DR-1 closes.**
+> **PROVISIONAL — DR-1 confirms or replaces the v1 rows; DR-2 the v2 rows.
+> Do not build Phase 3+ hardware from it before the matching review closes.**
 
-| GPIO | Header | Signal | Direction | Board |
+| GPIO | Header | Signal | Direction | Release / board |
 |---|---|---|---|---|
-| 1 | A0 | Pot wiper | ADC1 input (series R) | Passive and MITM |
-| 5 | D2 | Cadence | Digital input, interrupt (series R) | Passive and MITM |
-| 6 | D3 | Console motor + sense | ADC1 input (÷4 divider) | Passive and MITM |
-| 7 | D4 | Console motor − sense | ADC1 input (÷4 divider) | Passive and MITM |
-| 8 | D5 | Encoder Ch A (Black) | Input, PCNT (series R) | Passive and MITM |
-| 9 | D6 | Encoder Ch B (Red) | Input, PCNT (series R) | Passive and MITM |
-| 10 | D7 | L9110S A-IA | Output (10 kΩ external pull-down) | MITM only |
-| 17 | D8 | L9110S A-IB | Output (10 kΩ external pull-down) | MITM only |
-| — | 3V3 | 3.3 V from buck converter | Power | Both |
-| — | GND | Common ground | Power | Both |
+| 1 | A0 | Pot wiper | ADC1 input (series R) | v1 passive and v2 active |
+| 3 | A2 | Green (pot reference, monitor) | ADC1 input (series R) | v1 passive and v2 active (DR-1 §2A proposal) |
+| 5 | D2 | Cadence | Digital input, interrupt (series R) | v1 passive and v2 active |
+| 6 | D3 | Console motor + sense | ADC1 input (÷4 divider) | v1 passive and v2 active |
+| 7 | D4 | Console motor − sense | ADC1 input (÷4 divider) | v1 passive and v2 active |
+| 8 | D5 | Encoder Ch A (Black) | Input, PCNT (series R) | v1 passive and v2 active |
+| 9 | D6 | Encoder Ch B (Red) | Input, PCNT (series R) | v1 passive and v2 active |
+| 10 | D7 | L9110S A-IA (DR-2 draft: driver IN1) | Output (10 kΩ external pull-down) | **v2** only `[DR-2]` |
+| 17 | D8 | L9110S A-IB (DR-2 draft: encoder out A) | Output (10 kΩ external pull-down) | **v2** only `[DR-2]` |
+| 43 | D1 (TX) | **UART0 TX — reserved** (future ANT+ add-on) | Reserved; leave unconnected | v1 and v2 |
+| 44 | D0 (RX) | **UART0 RX — reserved** (future ANT+ add-on) | Reserved; leave unconnected | v1 and v2 |
+| — | VIN | 9 V from White via the VIN/USB power switch | Power | v1 and v2 |
+| — | 3V3 | 3.3 V from the Waveshare onboard regulator | Power | v1 and v2 |
+| — | GND | Common ground | Power | v1 and v2 |
+
+- **v1 has no outputs.** GPIO 10 and 17 are unused on the v1 board.
+- **v2 (draft, DR-2 §2A):** encoder out A/B GPIO 17/18, encoder bypass control
+  GPIO 21, driver IN1/IN2 GPIO 10/11, motor bypass control GPIO 47, optional
+  motor-cut relay GPIO 38. This replaces the L9110S rows above once DR-2 closes.
+- **UART0 (GPIO 43/44) is reserved on every board and pin map** for a future
+  nRF51422 ANT+ module. No module may claim it. Console and logging use native
+  USB-CDC.
 
 - GPIO 6 and 7 are **always sense inputs**; they are never driver outputs.
   The L9110S inputs are on GPIO 10 and 17 (digital use only, so the ADC2
@@ -628,9 +689,9 @@ Rules for Phase 0/1:
   decides otherwise.
 - The series-resistor and no-internal-pull rules from §4.4.1 still apply.
   Every direct tap keeps a series resistor ("series R"); its value per tap is
-  `[DR-1]` (22 kΩ in Phase 0; hardware spec §6.2.2). The external 10 kΩ
-  pull-downs (R6, R7) on A-IA and A-IB hold the driver off while the ESP32 is
-  in reset (§5.5).
+  `[DR-1]` (22 kΩ in Phase 0; hardware spec §6.2.2). **v2:** the external
+  10 kΩ pull-downs (R6, R7) on A-IA and A-IB hold the driver off while the
+  ESP32 is in reset (§5.5).
 - Encoder Ch B conditioning: Early teardown notes suggested an analog pulse of
   ~1.5–2 V on Ch B (A08). Following wire-colour correction, B04 confirmed PCNT
   decodes both channels cleanly with 0% bounce and 100% detection. A08 is
@@ -655,8 +716,8 @@ and PCB, see [`docs/ex3_specification.md`](docs/ex3_specification.md).
 
 ### 4.6 Board Wiring Plan
 
-Both Phase 3+ boards sit between the bike's two JST connectors and the Echelon
-console. No factory wire is cut; the connectors plug in and out to restore
+Both Phase 3+ boards (v1 passive, **v2** active) sit between the bike's two JST
+connectors and the Echelon console. No factory wire is cut; the connectors plug in and out to restore
 stock. Pin numbers are from the **provisional** Phase 3+ map (§4.4.2).
 
 **Connectors:**
@@ -668,7 +729,7 @@ stock. Pin numbers are from the **provisional** Phase 3+ map (§4.4.2).
 | J3 | JST 3-pin socket | Knob (input) | Receives the rotary encoder from the red knob |
 | J4 | JST 3-pin plug | Console (output) | Passes encoder signals through to the console |
 | J5 | Pin header (30-pin) | — | Waveshare ESP32-S3-Nano carrier socket |
-| J6 | Screw terminals | Motor output (MITM only) | L9110S motor A output → bike motor (Red + Black) |
+| J6 | Screw terminals | Motor output (**v2** only) | Motor driver output → bike motor (Red + Black) |
 
 **J1 → J2 (9-pin) with ESP32 taps:**
 
@@ -681,7 +742,7 @@ stock. Pin numbers are from the **provisional** Phase 3+ map (§4.4.2).
 | 5 | Green (Pot outer ref, 1.67 V) | Pass-through | — | — | Subject to DR-1 redesign (measured 1.67 V) |
 | 6 | Orange (Cadence) | Pass-through | GPIO 5 via series R (4.7 kΩ) | — | R3 pull-up from 3.3 V via SW1 |
 | 7 | Grey (Cadence return) | Pass-through | GPIO 4 via series R (4.7 kΩ) | — | `[DR-1: ground or leave, register #7]` |
-| 8 | White (+9 V) | Pass-through | Buck converter input | — | — |
+| 8 | White (+9 V) | Pass-through | VIN via the VIN/USB power switch | — | — |
 | 9 | Brown (GND) | Pass-through | Common GND | GND | — |
 
 **J3 → J4 (3-pin encoder) with ESP32 taps:**
@@ -692,34 +753,35 @@ stock. Pin numbers are from the **provisional** Phase 3+ map (§4.4.2).
 | 2 | Orange (VCC 3.3 V) | Pass-through | GPIO 10 via series R (4.7 kΩ, ADC1 CH9) | R5 from 3.3 V via SW4 |
 | 3 | Red (Ch B) | Pass-through | GPIO 9 via series R (4.7 kΩ, PCNT) | Pull direction `[DR-1: register #8]` |
 
-**Switchable standalone supports.** R3 (cadence pull-up), R4 (pot reference),
+**Switchable standalone supports (v2).** R3 (cadence pull-up), R4 (pot reference),
 R5 (encoder supply) and the Green–GND link exist only so that the sensors work
 with the console disconnected (UC6). Each sits behind its own switch: SW1
 (R3), SW2 (R4), SW3 (Green–GND) and SW4 (R5), as in hardware spec §7.5. The
 switches are jumpers at minimum, a high-side or analog switch preferred. All
 four are **open by default** and whenever the console is connected, so the
 board never back-feeds the console's rails. Their values, the switch type and
-whether each support is needed at all are DR-1 outputs from
-register rows #6, #7, #8 and #10. The passive tap board fits none of them.
+whether each support is needed at all are DR-2 outputs (DR-2 §2.2 / §2.9,
+including the pot-reference replica). The v1 passive tap board fits none of
+them (DR-1 §2.9).
 
-**Power regulation (Phase 3+ boards):**
+**Power (Phase 3+ boards, DR-1 §2.3):**
 
 ```
 9 V DC (White, J1 pin 8)
     │
-    └──► MP1584EN buck converter, 9 V → 3.3 V
+    └──► VIN/USB power switch
               │
-              ├──► ESP32 3V3 pin (direct to SoC, bypasses the onboard LDO)
-              ├──► L9110S VCC (MITM board only)
-              └──► Switchable standalone supports R3 / R4 / R5 (MITM board only)
+              └──► Waveshare VIN (6–21 V, register #11) ──► onboard MP2322 ──► 3V3
+                        │
+                        ├──► ESP32-S3 (v1 and v2)
+                        ├──► Motor driver (v2 only, supply [DR-2])
+                        └──► Switchable standalone supports (v2 only, [DR-2])
 ```
 
-The rail's current budget is not yet known: motor current is unmeasured
-(register #2), and whether the Waveshare VIN pin could take 9 V directly is
-register #11. Rail sizing and the buck output setting are DR-1 outputs. When
-the board is powered from the buck, USB-C is used for serial only, with the
-buck's 3.3 V output disconnected during flashing so the two supplies never
-contend.
+The external MP1584EN buck is **dropped**. With the VIN switch off, USB-C
+powers the board. **Open item (DR-1 / PR-04a):** the back-feed and power-path
+behaviour with USB and VIN both connected is not yet verified; until it is,
+switch VIN off before connecting USB.
 
 ### 4.7 Voltage Safety
 
@@ -733,7 +795,8 @@ contend.
   register row #1. They are read only as analog signals on ADC1 through the
   ÷4 divider, which keeps the pin within range up to about 13 V. They are
   never connected to a digital input directly.
-- The 9 V rail reaches only the buck converter input and never touches a GPIO.
+- The 9 V rail reaches only the VIN pin (through the VIN/USB switch) and never
+  touches a GPIO.
 - When the ESP32 is unpowered while the console is powered, the series
   resistors limit back-powering current through the protection diodes. This
   is why Phase 0/1 uses USB power and why every direct tap has a series
@@ -748,16 +811,17 @@ contend.
 | 30 kΩ + 10 kΩ resistor pairs (÷4 motor-sense dividers) | 2 | 0+ | To purchase | £0.20 |
 | JST-SM 9-pin socket + plug pair (Y / back-probe harness, then board) | 2 | 0+ | To purchase | £6 |
 | JST 3-pin socket + plug pair (Y / back-probe harness, then board) | 2 | 0+ | To purchase | £2 |
-| GTIWUNG MP1584EN adjustable buck converter module (9 V → 3.3 V) | 1 | 3+ | Owned (10-pack) | — |
+| ~~GTIWUNG MP1584EN buck converter~~ | — | — | Dropped (DR-1 §2.3: ESP32 on VIN) | — |
+| VIN/USB power switch (SPST, ≥ 1 A, on the 9 V line to VIN) | 1 | 3+ (v1) | To purchase | £1 |
 | Perfboard / protoboard (70 × 50 mm) | 1 | 3+ | To purchase | £2 |
 | 100 nF ceramic capacitors (C1: cadence filter, C2: wiper filter, ESP32 side of the series resistor) | 2 | 3+ | To purchase | £0.20 |
 | 30-pin female header strips (ESP32 carrier) | 2 | 3+ | To purchase | £1 |
 | Hookup wire (22 AWG, assorted colours) | — | 0+ | To purchase | £3 |
-| L9110S Dual-Channel H-Bridge Motor Driver Module | 1 | 5+ | Owned | — |
-| R6, R7: 10 kΩ resistors (L9110S A-IA / A-IB reset pull-downs) | 2 | 5+ | To purchase | £0.10 |
-| R3 cadence pull-up, R4 pot reference, R5 encoder supply | 3 | 5+ | Values `[DR-1]` | — |
-| SW1–SW4: jumpers or high-side / analog switches for R3, R4, the Green–GND link and R5 (open by default) | 4 | 5+ | Type `[DR-1]` | — |
-| Screw terminal block (2-pin, motor output) | 1 | 5+ | To purchase | £0.50 |
+| **v2:** L9110S Dual-Channel H-Bridge Motor Driver Module (DR-2 draft: DRV8833-class H-bridge) | 1 | 5+ | Owned | — |
+| **v2:** R6, R7: 10 kΩ resistors (driver input reset pull-downs) | 2 | 5+ | To purchase | £0.10 |
+| **v2:** standalone network: pot-reference replica (≈ 4.7 kΩ / 4.7 kΩ), cadence pull-up, encoder supply | 3 | 5+ | Values `[DR-2]` | — |
+| **v2:** switches for the standalone network (open by default) | 4 | 5+ | Type `[DR-2]` | — |
+| **v2:** Screw terminal block (2-pin, motor output) | 1 | 5+ | To purchase | £0.50 |
 
 **Bench equipment for Phase 0** (the PR-01 bench-ready entry condition):
 
@@ -845,7 +909,7 @@ The red resistance knob is an incremental quadrature encoder on a separate
   GPIO 8 and 9 were released from ADC to the ESP-IDF PCNT hardware peripheral
   (`EncoderModule`), achieving 0% bounce and 100% detection without analog
   conditioning.
-- **Phase 5+ (MITM board)**: the framework `EncoderModule` (`WITH_ENCODER`)
+- **v2 — Phase 5+ (active board)**: the framework `EncoderModule` (`WITH_ENCODER`)
   decodes the knob in the PCNT hardware peripheral with its glitch filter.
   `board.h` supplies a `BoardEncoder` descriptor `{ id, pinA, pinB,
   stepsPerDetent, reversed, accel }` with pins 8 and 9, `stepsPerDetent = 4`
@@ -856,15 +920,18 @@ The red resistance knob is an incremental quadrature encoder on a separate
 - PR-07 verifies that the PCNT pin configuration enables no internal pulls on
   GPIO 8 and 9.
 
-**In Intercept Mode** the encoder signals pass through to the console, which
-drives the motor. Echenon records knob events for telemetry only.
+**In v1** (and in v2 Intercept Mode before PR-10 adds encoder emulation) the
+encoder signals pass through to the console, which drives the motor. Echenon
+records knob events for telemetry only.
 
-**In Override Mode** each knob event moves the target by one display level
+**v2 — in Override Mode** each knob event moves the target by one display level
 and cancels or suspends any active ERG target (§5.6).
 
 ### 5.5 Resistance Motor Control
 
-Applies to the MITM board only (PR-07). The L9110S H-bridge drives the
+> **v2.** Not part of v1. Driver part and pins are `[DR-2]`.
+
+Applies to the v2 active board only (PR-07). The L9110S H-bridge drives the
 resistance motor from two GPIO outputs.
 
 **L9110S module (datasheet values):**
@@ -913,6 +980,11 @@ click-offs and the resistance extremes and records θ<sub>min</sub> and
 θ<sub>max</sub> (§6.3).
 
 ### 5.6 Operating Modes
+
+> **v2.** Not part of v1: the v1 passive board has no operating mode. In v2,
+> Intercept Mode corresponds to mode 1 (relay/active, with encoder emulation,
+> PR-10) and Override Mode with the console absent to mode 2 (console off,
+> PR-12); the detail is `[DR-2]`.
 
 The `InterceptController` manages the operating mode on the MITM board. The
 mode is a persisted software setting, not a physical switch. The passive tap
@@ -1058,7 +1130,7 @@ Calibration is split between a passive step and a motor-driven step.
   each step. The console level is the resistance proxy. The result is the
   32-entry level table used for the Intercept display (§5.3) and as the
   resistance index for Tier 2 tables.
-- **Motor-driven calibration (PR-07, MITM board).** A full-revolution sweep
+- **v2 — Motor-driven calibration (PR-07, active board).** A full-revolution sweep
   finds the click-offs and the cam extremes and records θ<sub>min</sub> and
   θ<sub>max</sub>, which bound the Override working range.
 
@@ -1206,12 +1278,12 @@ BLEManager behaviour relied on (from the `v0.0.12-dev.82` headers):
 
 | Characteristic | UUID | Properties | PR |
 |---|---|---|---|
-| Fitness Machine Feature | `0x2ACC` | Read | PR-05 |
-| Indoor Bike Data | `0x2AD2` | Notify @ 2 Hz | PR-05 |
-| Supported Resistance Level Range | `0x2AD6` | Read | PR-05 |
-| Supported Power Range | `0x2AD8` | Read | PR-05 |
-| Fitness Machine Control Point | `0x2AD9` | Write, Indicate | PR-05 (Request Control); PR-08 (targets) |
-| Fitness Machine Status | `0x2ADA` | Notify | PR-08 |
+| Fitness Machine Feature | `0x2ACC` | Read | PR-05 (v1) |
+| Indoor Bike Data | `0x2AD2` | Notify @ 2 Hz | PR-05 (v1) |
+| Supported Resistance Level Range | `0x2AD6` | Read | v1 only if FTMS v1.0 permits it without Resistance Target Setting (PR-05 check); otherwise PR-08 (**v2**) |
+| Supported Power Range | `0x2AD8` | Read | v1 only if FTMS v1.0 permits it without Power Target Setting (PR-05 check); otherwise PR-08 (**v2**) |
+| Fitness Machine Control Point | `0x2AD9` | Write, Indicate | **v2** (PR-08). Omitted in v1 if FTMS v1.0 allows (PR-05 check) |
+| Fitness Machine Status | `0x2ADA` | Notify | **v2** (PR-08) |
 
 **Fitness Machine Feature (`0x2ACC`)** — Fitness Machine Features field
 (bytes 0–3) and Target Setting Features field (bytes 4–7):
@@ -1222,12 +1294,13 @@ BLEManager behaviour relied on (from the `v0.0.12-dev.82` headers):
 | Resistance Level Supported | Features, bit 7 | Yes | |
 | Heart Rate Measurement Supported | Features, bit 10 | Yes | |
 | Power Measurement Supported | Features, bit 14 | Yes | |
-| Resistance Target Setting Supported | Target Settings, bit 2 | Override Mode only | Enables Set Target Resistance Level |
-| Power Target Setting Supported | Target Settings, bit 3 | Override Mode only | Enables Set Target Power (ERG) |
+| Resistance Target Setting Supported | Target Settings, bit 2 | v1: **No**. **v2:** Override Mode only | Enables Set Target Resistance Level |
+| Power Target Setting Supported | Target Settings, bit 3 | v1: **No**. **v2:** Override Mode only | Enables Set Target Power (ERG) |
 
-The target-setting bits are **mode-dependent**: they are clear on the passive
-board, in Intercept Mode and in builds without ERG support, and set only in
-Override Mode with ERG compiled in.
+**v1: Target Setting Features = 0** (the whole field is zero). FTMS is
+read-only. **v2:** the target-setting bits are mode-dependent: clear in
+Intercept Mode and in builds without ERG support, set only in Override Mode
+with ERG compiled in `[DR-2]`.
 
 ```cpp
 class FTMSServer : public IBLEServiceProvider, public ITickable {
@@ -1256,13 +1329,17 @@ Advertising is 31-byte legacy only (the framework sets
 
 ### 7.4 FTMS Control Point (`0x2AD9`)
 
-The Control Point lets FTMS clients command resistance. Responsibility is
-split between two PRs:
+> **v2.** v1 FTMS is read-only.
 
-- **PR-05** exposes `0x2AD9`, handles `0x00` Request Control, and answers every
-  target opcode with `0x05` (Control Not Permitted) in Intercept Mode and on
-  the passive board, or `0x02` (Op Code Not Supported) otherwise.
-- **PR-08** implements the target opcodes and Fitness Machine Status.
+The Control Point lets FTMS clients command resistance.
+
+- **v1 (PR-05):** no targets. If the FTMS v1.0 requirement table allows the
+  Control Point to be omitted when no target setting is supported, v1 omits
+  it. If it is required, v1 exposes it with `0x00` Request Control only and
+  answers every other opcode with `0x02` (Op Code Not Supported). PR-05's first
+  WO records the answer with a citation.
+- **v2 (PR-08):** implements the target opcodes and Fitness Machine Status
+  below.
 
 **Opcodes:**
 
@@ -1274,7 +1351,7 @@ split between two PRs:
 | `0x05` | Set Target Power | SINT16, watts | ERG: target angle for the current smoothed cadence (§5.6) |
 | `0x07` | Start or Resume | — | Accepted; no-op (recording is automatic) |
 | `0x08` | Stop or Pause | — | Accepted; no-op |
-| `0x11` | Set Indoor Bike Simulation Parameters | wind, grade, Crr, Cw | Returns `0x02` in v1. The parameter handling is reserved for v1.1; the Control Point parser leaves room for it. |
+| `0x11` | Set Indoor Bike Simulation Parameters | wind, grade, Crr, Cw | Returns `0x02` (Op Code Not Supported). Simulation mode is reserved for a later release; the v2 Control Point parser leaves room for it. |
 
 **Response (Indicate):** `[0x80] [request_opcode] [result_code]`
 
@@ -1316,7 +1393,8 @@ HR re-broadcast notifications follow the strap's native rate (typically 1 Hz).
 ### 7.7 App Compatibility
 
 These apps form the FTMS test matrix. Support is verified per app in PR-05
-(telemetry) and PR-08 (control).
+(v1 telemetry, including how each app behaves with read-only FTMS) and PR-08
+(**v2** control).
 
 | App | Platform | Notes |
 |---|---|---|
@@ -2258,9 +2336,9 @@ lightweight.
 - **Mutations, downloads and motor commands** (session start/stop/discard,
   calibration, uploader credentials, `GET /api/session/download`,
   `POST /api/resistance`): require `AuthManager` authentication.
-- **`POST /api/resistance`** is accepted only in Override Mode on the MITM
+- **v2: `POST /api/resistance`** is accepted only in Override Mode on the MITM
   board; it returns `409` otherwise.
-- **BLE Control Point**: any Central in range can Request Control. This is an
+- **v2: BLE Control Point**: any Central in range can Request Control. This is an
   accepted, documented risk.
 
 ---
@@ -2518,7 +2596,8 @@ constexpr int8_t PIN_KNOB_ENC_A       = 8;   // D5  Black,  ADC1 (J3 left pin)
 constexpr int8_t PIN_KNOB_ENC_B       = 9;   // D6  Red,    ADC1 (J3 right pin)
 constexpr int8_t PIN_KNOB_ENC_VCC     = 10;  // D7  Orange, ADC1 (J3 centre pin, Phase 0/1 only)
 
-#define HAS_MOTOR_CONTROL    0               // MITM board only (Phase 5+)
+#define HAS_MOTOR_CONTROL    0               // v2 active board only (Phase 5+)
+// GPIO 43/44 (UART0) reserved for a future ANT+ add-on: never assigned (§4.4.2)
 
 // No display pin block and no button block: WITH_DISPLAY_U8G2 and
 // WITH_BUTTONS are forbidden for this target (§12.3).
@@ -2551,7 +2630,14 @@ LVGL display contract.
 
 ## 13. Testing & Verification
 
-Tests are organised by delivery phase (§1.5), one subsection per PR plus DR-1.
+Tests are organised by delivery phase (§1.5), one subsection per PR plus DR-1,
+and grouped by release:
+
+| Release | Subsections |
+|---|---|
+| **v1 "Passive"** | §13.1 (v1 rows), §13.2 PR-01, §13.3 DR-1, §13.4 PR-02, §13.5 PR-03, §13.6 PR-04a / PR-05, §13.7 PR-06, §13.10 PR-09, §13.11 v1 limitations |
+| **v2 "Active"** (provisional) | §13.8 PR-07, §13.9 PR-08, §13.12 PR-13. Tests for DR-2, PR-10, PR-11 and PR-12 are written after DR-2 |
+
 Test IDs use the phase number. Use-case tests derive from
 [`docs/use_case_analysis.md`](docs/use_case_analysis.md), with pin numbers,
 level scales and mode names updated to this specification. Every PR also
@@ -2571,13 +2657,14 @@ access sits behind thin interfaces, so the logic is testable without a board.
 | `PowerEngine` | Polynomial, clamping, bilinear matrix interpolation, CSV matrix parsing | PR-02 |
 | HR Measurement parser | uint8/uint16, contact flags, BPM = 0, energy and RR fields, truncated input | PR-03 |
 | HR stale-data timer | 10 s timeout, disconnect → HR = 0 | PR-03 |
-| FTMS encoders and Control Point parser | Indoor Bike Data flags and layout, feature bits by mode, opcode results (`0x05` / `0x02` / success) | PR-05 / PR-08 |
+| FTMS encoders | Indoor Bike Data flags and layout; Target Setting Features = 0 (v1) | PR-05 |
+| **v2:** Control Point parser | Feature bits by mode, opcode results (`0x05` / `0x02` / success) | PR-08 |
 | Session state machine | Start threshold, pause, 180 s auto-end, trailing-zero trim, checkpoint recovery | PR-06 |
 | TCX writer | Exactly one trackpoint per second, 2 Hz → 1 Hz averaging, `<Watts>0</Watts>` when coasting | PR-06 |
 | Upload stage machine | Stage sequencing, `UpdateStatus` mapping, duplicate = success, resume after failure | PR-06 |
 | OAuth helpers | `state` generation and single-use validation, rotated-token persistence order | PR-06 |
-| Position controller logic | Direction choice, never crossing an extreme, settle/retry limit, run-time bound, plausibility faults | PR-07 |
-| ERG state machine | `ACTIVE` / `SUSPENDED_BY_RIDER` / `RELEASED` transitions, stored targets, hold time, Status opcodes, deadband, rate limit | PR-08 |
+| **v2:** Position controller logic | Direction choice, never crossing an extreme, settle/retry limit, run-time bound, plausibility faults | PR-07 |
+| **v2:** ERG state machine | `ACTIVE` / `SUSPENDED_BY_RIDER` / `RELEASED` transitions, stored targets, hold time, Status opcodes, deadband, rate limit | PR-08 |
 
 ### 13.2 PR-01 — Phase 0: Observe
 
@@ -2607,7 +2694,7 @@ fitted.
 
 **Exit:** test 0.13 passes. The register is the input to DR-1.
 
-### 13.3 DR-1 — Design Freeze
+### 13.3 DR-1 — Design Freeze (v1 Passive)
 
 | # | Check | Expected result |
 |---|---|---|
@@ -2615,8 +2702,8 @@ fitted.
 | D.2 | Pin map. | §4.4.2 confirmed or replaced; the PROVISIONAL marking is removed. |
 | D.3 | Resistance model. | Wiper profile, click-off threshold, working half-revolution and fast-path rate decided; Override scale size decided. |
 | D.4 | Power model. | Coefficients (or the decision to rely on Tier 2) decided from data. |
-| D.5 | MITM safety. | H-05 fail-safe mechanism, motor rail, run-time bound, loop rate, dead band and PWM profile decided. |
-| D.6 | Standalone supports. | R3/R4/R5 and the Green–GND link: values, switch type, or removal decided. |
+| D.5 | v1 power path. | VIN supply, VIN/USB switch and the USB + VIN back-feed check decided (MITM safety moved to DR-2). |
+| D.6 | Standalone supports. | None on the v1 board (R3/R4/R5 and the Green–GND link are DR-2 items). |
 | D.7 | Decision record. | [`DR-1-design-freeze.md`](.agents/skills/principal-architect-workspace/reviews/DR-1-design-freeze.md) approved by the owner. |
 
 ### 13.4 PR-02 — Phase 1: Calibrate
@@ -2648,13 +2735,15 @@ fitted.
 | 2.6 | Factory reset, then repeat 2.5. | Slow retry is still 15 s. |
 | 2.7 | Progressive coexistence check: HR relay plus portal open plus a large HTTPS POST, 5 minutes. | No HR gap > 2.5 s while on-skin (criterion b). |
 
-### 13.6 PR-04a and PR-05 — Phase 3: Passive Tap Board and FTMS Telemetry (UC1, UC3)
+### 13.6 PR-04a and PR-05 — Phase 3: Passive Tap Board and FTMS Telemetry (UC1, UC3) — v1
 
 **PR-04a — Passive tap board (permanent install):**
 
 | # | Test | Expected result |
 |---|---|---|
-| 3.1 | Install the passive tap board between frame and console. | Console powers on normally from its own supply path; the ESP32 runs from the buck. |
+| 3.1 | Install the passive tap board between frame and console. | Console powers on normally from its own supply path; the ESP32 runs from VIN with the VIN switch on. |
+| 3.1a | VIN switch off, USB-C connected; then VIN and USB both connected. | Board runs from USB alone; USB + VIN back-feed / power-path behaviour measured and documented (DR-1 §2.3 open item). |
+| 3.1b | Inspect GPIO 43/44. | Unconnected and marked reserved (UART0). |
 | 3.2 | Echelon class with knob changes (UC1). | Class, resistance changes and motor behaviour identical to stock; overlay tracks cadence and level. |
 | 3.3 | Compare console behaviour with and without the board. | No difference at power-on, during rides or in sleep (taps are invisible). |
 | 3.4 | Manual OTA from the System tab. | Update applies; device reboots into the new firmware. |
@@ -2666,13 +2755,14 @@ fitted.
 |---|---|---|
 | 3.6 | nRF Connect: scan and connect. | `Echenon-XXXX` advertises FTMS (`0x1826`) with service data. |
 | 3.7 | Subscribe to Indoor Bike Data. | 2 Hz notifications with cadence, level, power and HR (when valid). |
-| 3.8 | Read Fitness Machine Feature in Intercept Mode / on the passive board. | Target-setting bits clear. |
-| 3.9 | Write Request Control (`0x00`), then Set Target Power (`0x05`). | `0x00` succeeds; target returns `0x05` (Control Not Permitted); resistance unchanged. |
+| 3.8 | Read Fitness Machine Feature. | Target Setting Features field = 0. |
+| 3.9 | Inspect the FTMS service for `0x2AD9`. | Absent if FTMS v1.0 allows omission; otherwise present, Request Control only, every target opcode returns `0x02`. Resistance never changes. |
+| 3.9a | Connect Zwift, TrainerRoad, Xert EBC and two other §7.7 apps. | Each pairs and shows telemetry; behaviour without resistance control (manual/level mode, ERG refused, warning) recorded per app. |
 | 3.10 | Pair a fitness app (e.g. Xert EBC) as FTMS device while the Echelon class runs (UC3). | App shows live power, cadence and HR matching the overlay. |
 | 3.11 | Echelon tablet (HR) plus a fitness app (FTMS) at the same time. | Both connections coexist; data flows to both. |
 | 3.12 | Progressive coexistence check: 3 peripherals + HR central + overlay, 5 minutes. | FTMS gap ≤ 600 ms; HR gap ≤ 2.5 s; free DRAM recorded. |
 
-### 13.7 PR-06 — Phase 4: Session, TCX and Strava (UC2)
+### 13.7 PR-06 — Phase 4: Session, TCX and Strava (UC2) — v1
 
 | # | Test | Expected result |
 |---|---|---|
@@ -2689,9 +2779,11 @@ fitted.
 | 4.11 | Download the TCX from the portal without and with login. | Refused without authentication; served with it. |
 | 4.12 | Build without `WITH_BLE`. | Upload pipeline compiles and runs; no `ScanInhibit` dependency. |
 
-### 13.8 PR-07 — Phase 5: MITM Board, Motor Control and Safety (UC6 hardware)
+### 13.8 PR-07 — Phase 5: MITM Board, Motor Control and Safety (UC6 hardware) — v2
 
-> MITM intercept board installed. Pin map from DR-1.
+> **v2 (provisional).** Active intercept board installed. Pin map from DR-2.
+> Tests 5.4–5.7 and 5.12 (standalone supports) move to PR-12 when v2 is
+> decomposed; they use the DR-2 pot-reference replica, not R3/R4/R5.
 
 | # | Test | Expected result |
 |---|---|---|
@@ -2708,7 +2800,10 @@ fitted.
 | 5.11 | Reboot in Override with cadence present. | Stored half verified by a small move; no full homing sweep while pedalling. |
 | 5.12 | Reconnect the console, open the standalone supports, switch to Intercept Mode. | Pass-through restored; no contention; console position still valid (no desync). |
 
-### 13.9 PR-08 — Phase 6: ERG and Control Point (UC4, UC5)
+### 13.9 PR-08 — Phase 6: ERG and Control Point (UC4, UC5) — v2
+
+> **v2 (provisional).** Test 6.8's external HR-zone app is joined by PR-11's
+> portal-native HR-zone control when v2 is decomposed.
 
 | # | Test | Expected result |
 |---|---|---|
@@ -2723,42 +2818,60 @@ fitted.
 | 6.9 | Reset (`0x01`), then a control-loss event. | ERG → `RELEASED`; Status `0xFF` Control Permission Lost sent on control loss. |
 | 6.10 | `POST /api/resistance` in Override Mode, then in Intercept Mode, then unauthenticated. | Accepted; `409`; refused. |
 
-### 13.10 PR-09 — Phase 7: Integration and Release Candidate
+### 13.10 PR-09 — Phase 7: v1 Integration and Release Candidate — v1
 
 | # | Test | Expected result |
 |---|---|---|
-| 7.1 | **Final coexistence verification** (§8.5) at maximum configuration. | All pass criteria met; results documented. |
-| 7.2 | Mode switching: Intercept → Override → Intercept via the portal. | Clean transitions; motor control passes correctly; no console desync. |
+| 7.1 | **v1 coexistence verification** (§8.5) at the maximum v1 configuration. | All pass criteria met; results documented. |
 | 7.3 | Floating window: Chrome on the P12 over the Echelon app. | Overlay shows live data without interfering with the class. |
-| 7.4 | Dual-app: Xert EBC (ERG) + Zwift (visuals) over FTMS. | Both receive data; ERG commands from EBC drive resistance. |
+| 7.4 | Dual-app: Xert EBC + Zwift (visuals) over read-only FTMS. | Both receive telemetry; neither can change resistance. |
 | 7.5 | Ride in Zwift, which also uploads to Strava. | Echenon auto-upload disabled for the session, or Strava reports a duplicate that Echenon treats as success. |
-| 7.6 | Power-cycle mid-ride. | Reboot; mode restored; session recovered; no corruption. |
+| 7.6 | Power-cycle mid-ride. | Reboot; session recovered; no corruption. |
 | 7.7 | Manual OTA. | Update applies; new version runs; no automatic check at boot. |
-| 7.8 | UC1–UC6 end-to-end runs from [`docs/use_case_analysis.md`](docs/use_case_analysis.md). | Each use case passes on the matching install (UC1–UC3 passive board, UC4–UC6 MITM board). |
+| 7.8 | UC1–UC3 end-to-end runs from [`docs/use_case_analysis.md`](docs/use_case_analysis.md). | Each use case passes on the installed passive tap board. |
+
+Test 7.2 (mode switching) moved to §13.12 (v2).
 
 ### 13.11 Known Limitations
 
 - Power is estimated, not measured. Accuracy improves with Tier 2 or Tier 3
   calibration.
 - Speed is synthetic (from cadence); Strava distance is approximate.
-- ERG requires the MITM board in Override Mode. It is not available on the
-  passive board or when the console controls resistance in Intercept Mode.
+- **v1 has no resistance control.** FTMS is read-only; ERG, resistance
+  targets and HR-zone auto-resistance need the v2 active board.
+- **v1 cannot prevent the stock console runaway** (a fast knob spin past level
+  32 leaves the motor turning; A09-20261012 #3). The passive board can detect
+  and report it; prevention is a v2 item (DR-2 §2.4).
+- ANT+ is not supported (no ANT radio); UART0 is reserved for a future add-on.
 - Motor positioning precision depends on the quality of the cam-angle
   calibration and on the DR-1 control parameters.
 - The Echelon app may show slightly different cadence or resistance values,
   because it reads the same sensors independently.
-- Pot calibration differs between console-referenced and standalone
-  (R4-referenced) operation. Echenon keeps both, but a change of console
+- **v2:** pot calibration differs between console-referenced and standalone
+  (replica-referenced) operation. Echenon keeps both, but a change of console
   connection state needs the matching calibration to exist.
 - OTA is manual-only until framework issue #226 lands.
-- Any BLE Central in range can take FTMS control.
+- **v2:** any BLE Central in range can take FTMS control.
+
+### 13.12 PR-13 — Phase 7: v2 Integration and Release — v2
+
+> **v2 (provisional).** Detailed tests are written after DR-2.
+
+| # | Test | Expected result |
+|---|---|---|
+| 8.1 | **v2 coexistence verification** (§8.5) at maximum configuration. | All pass criteria met; results documented. |
+| 8.2 | Mode switching: mode 1 (relay) → mode 2 (console off) → mode 1 via the portal. | Clean transitions; motor control passes correctly; no console desync. |
+| 8.3 | Dual-app: Xert EBC (ERG) + Zwift (visuals) over FTMS. | Both receive data; ERG commands from EBC drive resistance. |
+| 8.4 | Portal-native HR-zone auto-resistance during an Echelon class. | Resistance tracks the HR zone; knob overrides. |
+| 8.5 | UC4–UC6 end-to-end runs from [`docs/use_case_analysis.md`](docs/use_case_analysis.md). | Each use case passes on the active board. |
 
 ---
 
 ## Appendix J: User Journeys
 
-Journeys 1, 2, 3, 5, 6 and 7 work with the default **passive tap board**.
-Journeys 4, 4b, 4c and 4d need the optional **MITM intercept board**.
+Journeys 1, 2, 3, 5, 6 and 7 are **v1**: they work with the **passive tap
+board** (in Journey 3, FTMS is read-only). Journeys 4, 4b, 4c and 4d are **v2**:
+they need the **active intercept board**.
 
 ### Journey 1 — Daily Echelon Class (Hands-Free)
 
@@ -2815,7 +2928,7 @@ Journeys 4, 4b, 4c and 4d need the optional **MITM intercept board**.
 
 ---
 
-### Journey 4 — Structured Training with ERG (TrainerRoad / SYSTM) — MITM board
+### Journey 4 — Structured Training with ERG (TrainerRoad / SYSTM) — MITM board (**v2**)
 
 > Power-based workout with automatic resistance control.
 
@@ -2832,7 +2945,7 @@ re-requests control or the hold time expires.
 
 ---
 
-### Journey 4b — Xert SMART Workout with ERG — MITM board
+### Journey 4b — Xert SMART Workout with ERG — MITM board (**v2**)
 
 > Dynamic workout with real-time fatigue tracking.
 
@@ -2857,7 +2970,7 @@ both connected to `Echenon-XXXX` (up to 3 peripheral connections).
 
 ---
 
-### Journey 4c — Standalone Ride (No Echelon Console) — MITM board
+### Journey 4c — Standalone Ride (No Echelon Console) — MITM board (**v2**)
 
 > The console is disconnected; the bike is a pure FTMS smart trainer.
 > *(UC6 in [`docs/use_case_analysis.md`](docs/use_case_analysis.md))*
@@ -2879,7 +2992,7 @@ or ecosystem dependency.
 
 ---
 
-### Journey 4d — Echelon Class with External Auto-Resistance (HR Zones) — MITM board
+### Journey 4d — Echelon Class with External Auto-Resistance (HR Zones) — MITM board (**v2**)
 
 > Follow an Echelon class while an external app sets resistance by heart-rate
 > zone. *(UC5 in [`docs/use_case_analysis.md`](docs/use_case_analysis.md))*

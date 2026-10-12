@@ -1,10 +1,13 @@
 # Use Case Analysis — Passive Tap and Intercept Board Design Validation
 
-Echenon is passive-first. **UC1–UC3** are delivered by the **passive tap board** (PR-04a):
-all wires pass through, there is no motor split, and the console drives the motor exactly as
-stock. The optional **intercept board** (PR-07, provisional until DR-1) splits the motor wires
-and adds Override and ERG for **UC4–UC6**; it also supports UC1–UC3 in Intercept mode, which is
-what the motor-relay steps in the UC1 trace below describe. See
+Echenon ships as two releases (owner decision 2026-10-12). **v1 "Passive"** delivers
+**UC1–UC3** with the **passive tap board** (PR-04a): all wires pass through, there is no motor
+split, the console drives the motor exactly as stock, and FTMS is **read-only** (no resistance
+control of any kind). **v2 "Active"** (provisional) delivers **UC4–UC6** plus portal-native
+HR-zone auto-resistance with the **active intercept board** (PR-07, provisional until DR-2),
+which splits the motor wires; it also supports UC1–UC3 in Intercept mode (mode 1), which is
+what the motor-relay steps in the UC1 trace below describe. On the v1 board those steps do not
+apply: the console drives the motor directly. See
 [`hardware_specification.md`](hardware_specification.md) §1 for the hardware configurations.
 
 Pin references below use the provisional Phase 3+ map (hardware spec §7.8, `[DR-1]`):
@@ -12,14 +15,14 @@ console motor sense on GPIO 6/7 (ADC1, sense only) and motor driver inputs on GP
 
 ## Use Case Summary
 
-| UC | Mode | Console | Echelon App | FTMS Client | Resistance Control | Key Test |
-|---|---|---|---|---|---|---|
-| **1** | Intercept | Connected | Active (class) | — | Manual knob | Pure pass-through + HR relay |
-| **2** | Intercept | Connected | Active (class) | — | Manual knob | As UC1 + Strava recording |
-| **3** | Intercept | Connected | Active (class) | Fitness app | Manual knob | As UC1 + FTMS telemetry to external app |
-| **4** | Override | Connected (idle) | Not used | Fitness app | FTMS Control Point (ERG) | External app drives resistance, console ignored |
-| **5** | Override | Connected (idle) | Active (class) | External app | FTMS Control Point (HR-zone) | Echelon class running, resistance via external app |
-| **6** | Override | **Disconnected** | N/A | Fitness app | FTMS / Encoder | Console broken or removed, pure FTMS trainer |
+| UC | Release | Mode | Console | Echelon App | FTMS Client | Resistance Control | Key Test |
+|---|---|---|---|---|---|---|---|
+| **1** | **v1** | Passive (v2: Intercept) | Connected | Active (class) | — | Manual knob | Pure pass-through + HR relay |
+| **2** | **v1** | Passive (v2: Intercept) | Connected | Active (class) | — | Manual knob | As UC1 + Strava recording |
+| **3** | **v1** | Passive (v2: Intercept) | Connected | Active (class) | Fitness app (read-only FTMS) | Manual knob | As UC1 + FTMS telemetry to external app |
+| **4** | **v2** | Override (mode 1) | Connected (idle) | Not used | Fitness app | FTMS Control Point (ERG) | External app drives resistance, console ignored |
+| **5** | **v2** | Override (mode 1) | Connected (idle) | Active (class) | External app or portal | FTMS Control Point (HR-zone) or portal-native HR-zone (PR-11) | Echelon class running, resistance via HR zones |
+| **6** | **v2** | Override (mode 2, console off) | **Disconnected** | N/A | Fitness app | FTMS / Encoder | Console broken or removed, pure FTMS trainer |
 
 ---
 
@@ -144,7 +147,7 @@ Multi-client BLE (§7.8) supports up to 3 simultaneous Peripheral connections. T
 
 ---
 
-## UC4 — External App with Dynamic Resistance (Console Idle)
+## UC4 — External App with Dynamic Resistance (Console Idle) — v2
 
 > *Override Mode. FTMS fitness app drives resistance via Control Point. Console board is powered and mounted but not being used.*
 
@@ -192,7 +195,7 @@ The key insight: the motor is **always** driven by the L9110S, never directly by
 
 ---
 
-## UC5 — Echelon Class + External Auto-Resistance (HR Zones)
+## UC5 — Echelon Class + External Auto-Resistance (HR Zones) — v2
 
 > *Echelon app running a class. An external app or the portal takes over resistance control based on HR zones.*
 
@@ -226,14 +229,16 @@ resistance control in the Echelon app to conflict with Override Mode. The
 Echelon app's resistance bar will show the *actual* pot position (set by the
 ESP32/motor), which may not match instructor callouts. This is expected.
 
-**HR-zone auto-resistance — Approach A (external app) for v1:**
+**HR-zone auto-resistance (v2) — superseded release split:**
 
 | Approach | Where Logic Lives | FTMS? | New Firmware? | Status |
 |---|---|---|---|---|
-| **A. External app** | Third-party app reads HR, calculates target, sends FTMS Set Target Power/Resistance | Uses existing Control Point | No — already supported | **v1 ✅** |
-| **B. Portal-native** | ESP32 maps HR → zone → resistance level, drives motor directly | No FTMS needed | Yes — new `HRZoneController` module | **Deferred to v2** |
+| **A. External app** | Third-party app reads HR, calculates target, sends FTMS Set Target Power/Resistance | Uses the v2 Control Point (PR-08) | Comes with PR-08 | **v2** (was v1 before 2026-10-12) |
+| **B. Portal-native** | ESP32 maps HR → zone → resistance level, drives motor directly | No FTMS needed | Yes — new `HRZoneController` module | **v2 (PR-11)** |
 
-### Test Case (Approach A — external app, v1)
+v1 has no resistance control, so neither approach is available in v1.
+
+### Test Case (Approach A — external app, v2)
 
 | Step | Action | Expected Result |
 |---|---|---|
@@ -246,7 +251,7 @@ ESP32/motor), which may not match instructor callouts. This is expected.
 
 ---
 
-## UC6 — Console Disconnected / Broken (Pure FTMS Trainer)
+## UC6 — Console Disconnected / Broken (Pure FTMS Trainer) — v2
 
 > *Override Mode. Console board completely disconnected or broken. Bike as a pure FTMS device.*
 
@@ -327,17 +332,20 @@ In the stock bike, the console provides this. With the console disconnected, we 
 
 ### Gap 1: Standalone Sensor Power ✅ RESOLVED
 
-Added to [`hardware_specification.md`](hardware_specification.md) §7–8 (provisional until DR-1) and SPEC.md:
+Added to [`hardware_specification.md`](hardware_specification.md) §7–8 (v2; provisional until DR-2) and SPEC.md:
 - R3 (10kΩ pull-up) for cadence reed switch
 - R4 (100Ω series) for pot reference contention protection
 - R5 (10Ω series) for encoder power contention protection
 - Each supply, and the Green–GND link, sits behind a switch (SW1–SW4) that is open by default and
-  closed only in standalone Override; values and switch type are `[DR-1: H-02]`
+  closed only in standalone Override; values and switch type are `[DR-2]`. The DR-2 draft
+  replaces R4 with a pot-reference replica (≈ 4.7 kΩ / 4.7 kΩ from 3.3 V, matching the
+  console's 1.66 V / 2.4 kΩ Green source; Yellow is ground)
 
-### Gap 2: HR-Zone Auto-Resistance ✅ DECIDED
+### Gap 2: HR-Zone Auto-Resistance ✅ DECIDED (revised 2026-10-12)
 
-**Approach A (external app via FTMS Control Point) for v1.** Portal-native
-HR-zone controller deferred to v2 and listed in SPEC.md §1.4 Out of Scope.
+Both approaches are **v2**: Approach A (external app via the FTMS Control
+Point, PR-08) and Approach B (portal-native, PR-11). v1 has no resistance
+control (SPEC §1.4).
 
 ### Gap 3: Cadence Pull-Up Source ✅ RESOLVED
 

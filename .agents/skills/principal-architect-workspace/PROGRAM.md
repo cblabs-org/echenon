@@ -13,25 +13,37 @@
 > **Hardware Specification:** [`docs/hardware_specification.md`](../../../docs/hardware_specification.md)
 > **Upstream RFC:** BLEManager (framework PR #235, tag `v0.0.12-dev.82` or later)
 > **Latest review:** [2026-09-25 readiness review](reviews/2026-09-25-readiness-review.md)
+> **Design freezes:** [DR-1 (v1 Passive)](reviews/DR-1-design-freeze.md) · [DR-2 (v2 Active)](reviews/DR-2-design-freeze.md)
 
 ---
 
 ## Programme Status
 
 Phase and PR numbering in this table is canonical; other documents follow it.
+The programme has two releases (owner decision 2026-10-12; see
+[PROGRAM-PLAN.md "Releases"](PROGRAM-PLAN.md#releases)): **v1 "Passive"** (UC1–UC3,
+no resistance control) and **v2 "Active"** (UC4–UC6 + HR-zone auto-resistance;
+provisional, decomposed after DR-2).
 
-| PR | Phase | Title | Dependencies | Status |
-|---|---|---|---|---|
-| PR-01 | 0 | Signal Logger (Observe) | `main` | ✅ Merged 2026-10-11 (PR #1, `5897f6f`) |
-| DR-1 | — | Design Freeze Review ([record](reviews/DR-1-design-freeze.md)) | PR-01 evidence + [DR-1 prep bench](pr-dr1-prep/PROJECT.md) | 🟡 Evidence complete (PR #2); [§2A recommendations](reviews/DR-1-design-freeze.md) drafted, awaiting a joint decision |
-| PR-02 | 1 | Calibration + Power (+ live WS feed) | PR-01, **DR-1** | ⬜ Not started |
-| PR-03 | 2 | BLE Foundation + HR Relay | PR-01 ✅; gates proposed as in-PR go/no-go (WO3, WO5) | 📝 Planned: [7 WOs](pr-03-hr-relay/PROJECT.md), awaiting approval |
-| PR-04a | 3 | Passive Tap Board (+ manual OTA) | PR-02, DR-1 | ⬜ Not started |
-| PR-05 | 3 | FTMS Telemetry (+ Control Point access layer) | PR-02, PR-03 | ⬜ Not started |
-| PR-06 | 4 | Session + TCX + Strava | PR-02 | ⬜ Not started |
-| PR-07 | 5 | MITM Board + Motor Control + Safety | PR-02, DR-1 | ⬜ Not started |
-| PR-08 | 6 | ERG + Control Point targets | PR-05, PR-07 | ⬜ Not started |
-| PR-09 | 7 | Integration / RC, Portal, UC1–UC6 | PR-06, PR-08 | ⬜ Not started |
+| Release | PR | Phase | Title | Dependencies | Status |
+|---|---|---|---|---|---|
+| v1 | PR-01 | 0 | Signal Logger (Observe) | `main` | ✅ Merged 2026-10-11 (PR #1, `5897f6f`) |
+| v1 | DR-1 | — | v1 Passive Design Freeze ([record](reviews/DR-1-design-freeze.md)) | PR-01 evidence + [DR-1 prep bench](pr-dr1-prep/PROJECT.md) | 🟡 Evidence complete (PR #2); re-scoped to v1 (2026-10-12); [§2A v1 recommendations](reviews/DR-1-design-freeze.md) awaiting a joint decision |
+| v1 | PR-02 | 1 | Calibration + Power (+ live WS feed) | PR-01, **DR-1** | ⬜ Not started |
+| v1 | PR-03 | 2 | BLE Foundation + HR Relay | PR-01 ✅; gates proposed as in-PR go/no-go (WO3, WO5) | 📝 Planned: [7 WOs](pr-03-hr-relay/PROJECT.md), awaiting approval |
+| v1 | PR-04a | 3 | Passive Tap Board (VIN + VIN/USB switch, manual OTA, UART0 reserved) | PR-02, DR-1 | ⬜ Not started |
+| v1 | PR-05 | 3 | FTMS Telemetry, **read-only** (Target Setting Features = 0) | PR-02, PR-03 | ⬜ Not started |
+| v1 | PR-06 | 4 | Session + TCX + Strava | PR-02 | ⬜ Not started |
+| v1 | PR-14 | 4 | Diagnostics & Run-Data Persistence ([stub](pr-14-diagnostics/PROJECT.md)) | PR-06 | ⬜ Not started |
+| v1 | PR-09 | 7 | v1 Integration & Release (UC1–UC3) | PR-04a, PR-05, PR-14 | ⬜ Not started |
+| v2 | DR-2 prep | — | Active-design bench evidence ([project](pr-dr2-prep/PROJECT.md)) | DR-1 (timing: owner) | ⬜ Provisional |
+| v2 | DR-2 | — | v2 Active Design Freeze ([record](reviews/DR-2-design-freeze.md)) | DR-2 prep | ⬜ Not started |
+| v2 | PR-07 | 5 | Active Intercept Board + Motor Control + Safety | **DR-2**, v1 release (PR-09) | ⬜ Provisional |
+| v2 | PR-10 | 5 | Encoder Emulation + Relay Mode (mode 1) | PR-07 | ⬜ Provisional |
+| v2 | PR-08 | 6 | ERG + Control Point targets + resistance setting | PR-10, PR-05 | ⬜ Provisional |
+| v2 | PR-11 | 6 | HR-Zone Auto-Resistance (portal-native) | PR-08 | ⬜ Provisional |
+| v2 | PR-12 | 6 | Console-Off Standalone Mode (mode 2, UC6) | PR-07, PR-10 | ⬜ Provisional |
+| v2 | PR-13 | 7 | v2 Integration & Release (UC4–UC6) | PR-07, PR-10, PR-08, PR-11, PR-12 | ⬜ Provisional |
 
 ### Gates
 
@@ -40,8 +52,11 @@ Phase and PR numbering in this table is canonical; other documents follow it.
 | **Bench ready**: ≥ 2-channel scope with single-shot trigger; motor-current measurement (shunt + scope or DC clamp); JST-SM 9-pin and JST 3-pin Y / back-probe harness; series tap resistors | PR-01's first WO that connects to the bike | Owner confirms kit on hand; recorded in PR-01 Session Log | PARTIAL: bench in use since 2026-10-03; scope and current measurement still to be confirmed (WO4 items C and D) |
 | **Scope characterisation** of both motor wires (both directions, at rest; 10 ms/div and µs/div) | Connecting PR-01 motor-sense taps (GPIO 6/7) | Captures committed as Phase 0 register row #1 evidence. Either result lets logging proceed (÷4 divider safe to ~13 V); result feeds DR-1 | OPEN: taps were connected before the captures (safe through the divider); captures still owed |
 | **Phase 0 register complete** ([`docs/measurements/phase0/README.md`](../../../docs/measurements/phase0/README.md)) | PR-01 exit / DR-1 start | Every row has an Evidence file and a Result | OPEN |
-| **DR-1: Design Freeze** | **PR-02, PR-04a, PR-07** (no soldering or permanent install before approval) | Chief Architect approves the [DR-1 record](reviews/DR-1-design-freeze.md) | OPEN |
-| R3/R4/R5 standalone supplies | DR-1 | Decided as part of the switchable-supply and fail-safe strategy | OPEN |
+| **DR-1: v1 Passive Design Freeze** | **PR-02, PR-04a** (no soldering or permanent install before approval) | Chief Architect approves the [DR-1 record](reviews/DR-1-design-freeze.md) | OPEN |
+| **VIN / USB back-feed check** | Sealing the PR-04a board | Power-path behaviour with USB and VIN both connected verified and documented (DR-1 §2.3 open item) | OPEN |
+| **v1 release** (beta / stable tag, owner only, rule 03) | PR-07 | PR-09 exit criteria met; owner tags | OPEN |
+| **DR-2: v2 Active Design Freeze** | **PR-07** (and all v2 PRs; no active-board soldering or interception before approval) | Chief Architect approves the [DR-2 record](reviews/DR-2-design-freeze.md) | NOT STARTED |
+| R3/R4/R5 standalone supplies | DR-2 (none in v1, DR-1 §2.9) | Pot-reference replica and switched supplies decided at DR-2 §2.2 / §2.9 | OPEN (v2) |
 | Echelon-app HR spike | PR-03 (proposed: WO3 go/no-go) | Row #12 INCONCLUSIVE with the nRF mock (Android could not discover it); retest with an ESP32 HR peripheral | OPEN |
 | **Framework central-role acceptance evidence** | PR-03 entry | RFC §17.2 items 4–9 against a real 0x180D peripheral on a framework tag containing the WO-8 use-after-free fix | **OPEN** |
 | Framework #226 (OTA check-on-boot deferral) | Removing Echenon's `autoCheck=false` enforcement | Upstream issue **closed**. PR-04a uses the framework option after the PR-03 WO1 bump (verify) | CLOSED upstream |
@@ -53,6 +68,8 @@ Phase and PR numbering in this table is canonical; other documents follow it.
 - PR-02 and PR-03 share `EchenonModule.*`, `platformio.ini` and `main.cpp`. The PR
   that merges second rebases onto `main` and resolves the conflict.
 - PR-04a, PR-05 and PR-06 can run **in parallel** once their own dependencies merge.
+- v2 PRs do not start until DR-2 is approved and v1 is released. DR-2 prep (bench
+  evidence only) may overlap late v1 work.
 
 ---
 
@@ -227,3 +244,71 @@ Phase and PR numbering in this table is canonical; other documents follow it.
   PR to a Chief Architect review session, the findings are applied, and **the
   owner merges**. PAs and workers never merge. This applies to every PR,
   including docs and evidence PRs.
+
+### 2026-10-12: Programme restructured into v1 Passive / v2 Active releases (owner decision)
+- **Owner decision** (in chat, 2026-10-12): the programme ships as two explicit
+  releases. This **supersedes** the DR-1 §2A draft "v1 = encoder MITM, v1.1 =
+  motor MITM" and the PROGRAM-PLAN "Candidate Restructure"; their content is
+  carried as draft input into [DR-2 §2A](reviews/DR-2-design-freeze.md).
+- **v1 "Passive"** (UC1–UC3): today's tap circuitry wired permanently; BLE only
+  (FTMS Indoor Bike Data **read-only**, HR re-broadcast); session recording and
+  Strava upload. **No resistance control of any kind**: no Control Point
+  targets, no encoder or motor interception. ESP32 on the bike's 9 V via the
+  Waveshare **VIN** pin (6–21 V, row #11) with a **power switch on the VIN line**
+  for USB-C use; the MP1584EN buck is dropped. Back-feed / power-path behaviour
+  with USB and VIN both connected is an open item for DR-1 / PR-04a.
+  PRs: PR-01 ✅, DR-1 (re-scoped to the v1 passive freeze), PR-02, PR-03,
+  PR-04a, PR-05 (read-only; Target Setting Features = 0; Control Point omitted
+  if FTMS v1.0 allows), PR-06, PR-09 (v1 integration and release).
+- **v2 "Active"** (provisional; UC4–UC6 + portal-native HR-zone
+  auto-resistance): mode 1 relay/active (signals in and re-emitted; H-bridge +
+  PWM motor drive; encoder emulation toward the console; enables Control
+  Point targets and HR-zone control) and mode 2 console-off (pot-reference
+  replica: Green 1.66 V / 2.4 kΩ, Yellow ground). PRs: DR-2 prep, DR-2, PR-07,
+  **new** PR-10 (encoder emulation + relay mode), PR-08 (now after PR-10 and
+  PR-05), **new** PR-11 (HR-zone), **new** PR-12 (console-off standalone),
+  **new** PR-13 (v2 integration and release). PR-07 depends on DR-2 and the v1
+  release.
+- **DR-1 moves to DR-2:** decisions 2.2, 2.4, 2.5, 2.10, and the v2 parts of
+  2.3 (motor driver) and 2.7 (active outputs). DR-1 keeps 2.1, 2.3 (VIN),
+  2.6, 2.7 (taps only), 2.8, 2.9 (none), 2.11 (report only).
+- **Known v1 limitation:** the stock runaway (A09-20261012 #3) cannot be
+  prevented by a passive board.
+- **ANT+ not supported** (the ESP32-S3 has no ANT radio). A future nRF51422
+  add-on over UART is possible: **UART0, GPIO 43 (TX, D1) / GPIO 44 (RX, D0),
+  is reserved** on every board and pin map. Console and logging use USB-CDC.
+- Docs updated (uncommitted, for Chief Architect review with the owner):
+  PROGRAM-PLAN, this file, DR-1, new DR-2 skeleton, SPEC, implementation
+  strategy, hardware spec, use-case analysis, PR mandates (PR-03 header tag
+  only), new stubs `pr-10`…`pr-13` and `pr-dr2-prep`.
+- **Open for the owner:** FTMS v1.0 conditional requirements (Control Point,
+  `0x2AD6`, `0x2AD8` without target settings) to be confirmed in PR-05 WO1;
+  PR-09 now depends on PR-04a, PR-05 and PR-06; DR-2 prep timing.
+
+### 2026-10-12: Release-structure decisions (owner)
+Decisions on the v1 Passive / v2 Active restructure:
+1. **v1 FTMS is read-only.** Fitness Machine Feature + Indoor Bike Data only.
+   No Control Point, Fitness Machine Status, 0x2AD6 or 0x2AD8. PR-05 WO1
+   confirms the FTMS v1.0 conditional rules with a citation and checks
+   Zwift / TrainerRoad. Fallback: a minimal Control Point that accepts
+   Request Control and refuses every target.
+2. **PR-09 dependencies** are agreed (now PR-04a, PR-05, PR-14).
+3. **PR-06** depends only on PR-02 (agreed).
+4. **DR-2 prep** may overlap late v1 work, **on the fly-wire / Y-harness rig
+   only**, never on the installed v1 board.
+5. **Versions:** v1 = `1.0.0` (`v1.0.0-beta.N` → `v1.0.0`); v2 = `2.0.0`.
+   Development tags stay `v0.x.y-dev.N` until the first beta. The owner
+   creates beta and stable tags.
+6. **v1 keeps monitoring and diagnostics:**
+   - The Green reference tap on GPIO 3 is kept as a monitor.
+   - Stock-runaway **detection and alert** goes in PR-02.
+   - New **PR-14, Diagnostics & Run-Data Persistence** (after PR-06, before
+     PR-09):
+     - a lightweight production diagnostics module;
+     - an **option to save run data to flash, default off**, capped within
+       LittleFS;
+     - a reworked **query interface**: a list of runs, per-run download,
+       and time-windowed / paged queries instead of whole-buffer dumps.
+   - The full burst logger stays in the `-diag` env.
+   - This refines the L-08 rule: production carries a *bounded* diagnostics
+     module, not the full logger.

@@ -11,7 +11,7 @@ from a bench logger on USB power to a permanent board in the console.*
 For development strategy and firmware, see
 [`implementation-strategy.md`](implementation-strategy.md).
 The authoritative pin maps are SPEC §4.4.1 (Phase 0/1) and §4.4.2 (Phase 3+,
-provisional) ([`../SPEC.md`](../SPEC.md)); the
+provisional; v1 and v2 rows) ([`../SPEC.md`](../SPEC.md)); the
 Phase 0 exit checklist is the Phase 0 register,
 [`measurements/phase0/README.md`](measurements/phase0/README.md).*
 
@@ -19,33 +19,42 @@ Phase 0 exit checklist is the Phase 0 register,
 
 ## 1. Design Overview
 
-Echenon is passive-first. The system uses four hardware configurations, each
-tied to the programme phases (numbering as in the programme plan and SPEC §1.5):
+Echenon ships as two releases (owner decision 2026-10-12): **v1 "Passive"**
+(UC1–UC3, no resistance control of any kind) and **v2 "Active"** (UC4–UC6,
+provisional). The system uses four hardware configurations, each tied to the
+programme phases (numbering as in the programme plan and SPEC §1.5):
 
 | # | Configuration | Phases (PRs) | What You Build | Bike wiring |
 |---|---|---|---|---|
 | 1 | **Breadboard observer** | 0 Observe (PR-01), 1 Calibrate (PR-02) | ESP32 on a breadboard, powered from USB-C. Y / back-probe harness on the looms, series-resistor taps, ÷4 motor-sense dividers. | Read-only. The bike is unmodified. |
 | 2 | **HR-only (USB)** | 2 HR relay (PR-03) | Just the ESP32 on USB-C. BLE only. | None |
-| 3 | **Passive tap board** | 3 Passive tap + FTMS telemetry (PR-04a, PR-05), 4 Session / upload (PR-06) | Permanent board in the console housing: J1–J4 pass-through, high-impedance taps, buck-powered, manual OTA. **Design finalised at DR-1** (§6.2). | Pass-through. No wires split. |
-| 4 | **Intercept board** | 5 MITM (PR-07), 6 ERG (PR-08), 7 Integration (PR-09) | Perfboard with ESP32, motor driver, JST connectors, switchable standalone supplies. Motor wires split. **PROVISIONAL — superseded at DR-1** (§7–§8). | Motor split (MITM). |
+| 3 | **Passive tap board** (**v1**) | 3 Passive tap + FTMS telemetry (PR-04a, PR-05), 4 Session / upload (PR-06), 7 v1 Integration (PR-09) | Permanent board in the console housing: J1–J4 pass-through, high-impedance taps, ESP32 on the bike's 9 V via VIN with a VIN/USB switch (no buck), manual OTA, UART0 reserved. **Design finalised at DR-1** (§6.2). | Pass-through. No wires split. |
+| 4 | **Active intercept board** (**v2**) | 5 (PR-07, PR-10), 6 (PR-08, PR-11, PR-12), 7 v2 Integration (PR-13) | Perfboard with ESP32, H-bridge, NC bypasses, encoder emulation, switchable standalone supplies with a pot-reference replica. Motor wires split. **PROVISIONAL — redesigned at DR-2** (§7–§8). | Motor split (MITM). |
 
 PR-05 (FTMS telemetry) needs no new hardware: the breadboard observer is
 enough to develop it; the passive tap board is the daily-use host once built.
 
-DR-1 (Design Freeze Review) sits between Phase 0 and every soldered board.
-No hardware is soldered or permanently installed until DR-1 is approved.
+DR-1 (v1 Passive Design Freeze) sits between Phase 0 and every soldered board.
+No hardware is soldered or permanently installed until DR-1 is approved. The
+v2 active board is frozen separately at DR-2.
+
+**UART0 reservation (all boards).** GPIO 43 (TX, header D1) and GPIO 44 (RX,
+header D0) are **reserved on every board and pin map** for a future ANT+
+add-on (e.g. an nRF51422 module over UART). The ESP32-S3 has no ANT radio, so
+ANT+ is not supported without it. Leave both pins unconnected and their header
+pads accessible. Console and logging use native USB-CDC.
 
 ```
-Phase 0/1            Phase 2          Phase 3–4              Phase 5–7
-Breadboard observer  HR-only          Passive tap board      Intercept board
+Phase 0/1            Phase 2          Phase 3–4, 7 (v1)      Phase 5–7 (v2)
+Breadboard observer  HR-only          Passive tap board      Active intercept board
 ┌───────────────┐    ┌──────────┐     ┌──────────────────┐   ┌──────────────────────┐
-│ ESP32 (USB-C) │    │ ESP32    │     │ ESP32  MP1584EN  │   │ ESP32  motor driver  │
-│ ÷4 dividers   │    │ (USB-C)  │     │ J1–J4 pass-thru  │   │ buck / motor rail    │
-│ 22k taps ×8   │    │          │     │ hi-Z taps        │   │ J1–J4, J6            │
-│ Y harness     │    │          │     │ manual OTA       │   │ R3–R5 + SW1–SW4      │
-└───────────────┘    └──────────┘     │ [DR-1]           │   │ Motor split (MITM)   │
-                                      └──────────────────┘   │ PROVISIONAL [DR-1]   │
-                                                             └──────────────────────┘
+│ ESP32 (USB-C) │    │ ESP32    │     │ ESP32 on VIN     │   │ ESP32  H-bridge/PWM  │
+│ ÷4 dividers   │    │ (USB-C)  │     │ VIN/USB switch   │   │ NC bypasses          │
+│ 22k taps ×8   │    │          │     │ J1–J4 pass-thru  │   │ J1–J4, J6            │
+│ Y harness     │    │          │     │ hi-Z taps, OTA   │   │ pot-ref replica      │
+└───────────────┘    └──────────┘     │ UART0 reserved   │   │ Motor split (MITM)   │
+                                      │ [DR-1]           │   │ PROVISIONAL [DR-2]   │
+                                      └──────────────────┘   └──────────────────────┘
 ```
 
 ---
@@ -55,11 +64,12 @@ Breadboard observer  HR-only          Passive tap board      Intercept board
 Every component across all configurations. ✓ = needed in that
 configuration. `[DR-1]` = the part or its value is decided at DR-1.
 
-| Ref | Item | Qty | 0/1 Observer | 2 HR | 3 Passive (PR-04a) | 5 Intercept (PR-07) | Status |
+| Ref | Item | Qty | 0/1 Observer | 2 HR | 3 Passive (v1, PR-04a) | 5 Intercept (v2, PR-07) | Status |
 |---|---|---|---|---|---|---|---|
 | U1 | Waveshare ESP32-S3-Nano | 1 | ✓ | ✓ | ✓ | ✓ | Owned |
 | U2 | L9110S Dual-Channel H-Bridge Motor Driver Module | 1 | — | — | — | ✓ `[DR-1: D3]` | Owned (5-pack) |
-| U3 | GTIWUNG MP1584EN DC-DC Adjustable Buck Converter Module | 1 | — | — | ✓ `[DR-1]` | ✓ `[DR-1]` | Owned (10-pack) |
+| U3 | ~~GTIWUNG MP1584EN DC-DC Adjustable Buck Converter Module~~ | — | — | — | — (dropped: ESP32 on VIN, DR-1 §2.3) | — `[DR-2]` | Owned (10-pack) |
+| SW0 | VIN/USB power switch (SPST, ≥ 1 A) on the 9 V line to the Waveshare VIN pin | 1 | — | — | ✓ | ✓ | To purchase |
 | H1 | JST-SM 9-pin mating pair (plug + socket), made into the Y / back-probe harness | 1 pair | ✓ | — | — | — | To purchase |
 | H2 | JST 3-pin mating pair (plug + socket), made into the Y / back-probe harness | 1 pair | ✓ | — | — | — | To purchase |
 | J1 | JST-SM 9-pin socket (female, bike side) | 1 | — | — | ✓ | ✓ | To purchase |
@@ -102,9 +112,17 @@ the bench:
 
 ## 3. Power Supply
 
-In Phase 0/1 the logger is powered **from USB-C only** (§5.3). The buck
-converter described here is first used on the passive tap board (PR-04a) and
-then on the intercept board.
+In Phase 0/1 the logger is powered **from USB-C only** (§5.3).
+
+> **v1 power path (DR-1 §2.3, owner decision 2026-10-12).** The passive tap
+> board powers the ESP32 from the bike's 9 V (White/Brown) through a **power
+> switch (SW0) on the VIN line** into the Waveshare **VIN** pin (6–21 V,
+> register row #11; onboard MP2322 regulator). **The external MP1584EN buck is
+> dropped.** With SW0 off, USB-C powers the board. **Open item:** the
+> back-feed / power-path behaviour with USB and VIN both connected is verified
+> at DR-1 / PR-04a; until then, switch VIN off before connecting USB. The
+> MP1584EN material in §3.2–§3.4 is retained as history and for the v2 driver
+> decision (DR-2).
 
 ### 3.1 Source
 
@@ -182,15 +200,15 @@ the L9110S on the SoC's 3.3V rail, plus bulk capacitance near the SoC
 - **Phase 0/1 (breadboard observer) and Phase 2 (HR-only):** USB-C is the
   only power source. There is no buck converter to disconnect, and the
   logger can be flashed at any time without rewiring.
-- **Buck-powered boards (passive tap and intercept):** the USB port feeds
-  the ESP32's VBUS, and the onboard LDO produces a second 3.3V source on the
-  same rail.
+- **VIN-powered boards (v1 passive tap; v2 active):** the 9 V line feeds VIN
+  through SW0, and the USB port feeds VBUS. Both go through the Waveshare's
+  own power path to the onboard regulator.
 
 > [!WARNING]
-> On a buck-powered board, **disconnect the buck converter's output** (or
-> its 9V input) before plugging in USB-C. Two regulators on one 3.3V rail can
-> cause droop or overshoot. Routine updates on installed boards use **manual
-> OTA** (enabled and tested in PR-04a), so USB is a recovery path only.
+> On a VIN-powered board, **turn SW0 (VIN) off before plugging in USB-C**
+> until the USB + VIN back-feed / power-path check (DR-1 §2.3, PR-04a) shows
+> both can be connected safely. Routine updates on installed boards use
+> **manual OTA** (enabled and tested in PR-04a), so USB is a recovery path only.
 
 ---
 
@@ -584,13 +602,19 @@ breadboard circuits.
   dividers, as in Phase 0 (§5.4, §5.5). No pull-ups, pull-downs, reference
   supplies or Green–GND link: the board never sources current into a bike
   line.
-- **Powered from the buck** (MP1584EN, from White/Brown via J1, §3), not USB.
+- **Powered from VIN** (9 V from White/Brown via J1, through the SW0 VIN/USB
+  switch, §3); no external buck. USB-C with SW0 off. Back-feed check with both
+  connected is a PR-04a deliverable.
 - **Manual OTA** enabled and tested before the board is sealed in the
   housing; `autoCheck` is forced to `false` after config load and after
   factory reset until framework #226 lands.
 - **Pin map:** the sense-only subset of the provisional Phase 3+ map (§7.8):
   wiper GPIO 1, cadence GPIO 5, motor sense +/− GPIO 6/7, encoder A/B
-  GPIO 8/9. No encoder-VCC sense. GPIO 10/17 are unused on this board.
+  GPIO 8/9 (DR-1 §2A also proposes Green on GPIO 3 as a monitor). No
+  encoder-VCC sense. **No outputs**: GPIO 10/17 are unused on this board.
+- **UART0 reserved:** GPIO 43/44 unconnected, pads accessible (§1).
+- **No resistance control, no interception** (v1). The stock console runaway
+  cannot be prevented by this board.
 
 #### 6.2.2 Decisions DR-1 Must Make
 
@@ -600,7 +624,7 @@ breadboard circuits.
 | 2 | Series-resistor value per tap, and whether C1/C2 filtering is fitted | WO0 spike (ADC settling), register #4, #7 |
 | 3 | Motor-sense sampling scheme (analog level vs PWM detection) and rate | Register #1, §5.2 captures |
 | 4 | Encoder Ch B conditioning (the pulse is below V_IH) and whether `EncoderModule` (PCNT) can decode it | WO0 spike Q3, register #8 |
-| 5 | SoC supply: external buck, or 9V direct to the board's VIN; trimpot fixed or replaced | Register #11, audit H-03 |
+| 5 | SoC supply: **9 V to VIN via SW0** (owner direction 2026-10-12; buck dropped); back-feed / power-path check with USB + VIN | Register #11, audit H-03 |
 | 6 | Behaviour at power-on: boot-order back-power risk and the console's start-up sweep | Register #13 |
 | 7 | Bulk capacitance and brown-out margin on the SoC rail | Register #2 (if shared supply), audit H-03 |
 | 8 | Board size, placement and cable routing in the console housing | Physical survey |
@@ -612,16 +636,20 @@ breadboard circuits.
 - All sensor taps read correctly.
 - The board fits in the console housing.
 - Manual OTA succeeds with the board installed.
+- Runs from VIN (SW0 on) and USB (SW0 off); USB + VIN back-feed result documented.
 
 ---
 
-## 7. Phase 5+ — Intercept Board (PR-07)
+## 7. Phase 5+ — Intercept Board (PR-07) — v2
 
 > [!CAUTION]
-> **PROVISIONAL — superseded at DR-1, do not build.** Everything in §7 and
-> §8 is a pre-measurement design. DR-1 rewrites it from Phase 0 evidence
-> (motor driver and rail — decision D3; standalone supplies — audit H-02;
-> fail-safe — audit H-05). No part of it is soldered before DR-1 is approved.
+> **v2 — PROVISIONAL, do not build.** Everything in §7 and §8 is a
+> pre-measurement design for the **v2 Active** release. DR-2 rewrites it
+> (motor driver: H-bridge + PWM, DRV8833 class; NC fail-safe bypasses and
+> runaway protection; encoder emulation; standalone supplies with a
+> pot-reference replica of the console's 1.66 V / 2.4 kΩ Green source, e.g.
+> ≈ 4.7 kΩ / 4.7 kΩ from 3.3 V). Power is the v1 VIN path (§3), not the buck
+> drawn below. No part of it is soldered before DR-2 is approved.
 
 > **Goal:** The intercept board sits between the bike frame and the Echelon
 > console and splits the motor wires (MITM), adding Override and ERG.
@@ -995,7 +1023,7 @@ Every electrical connection on the intercept board, grouped by function.
 The Phase 3+ direct taps keep a series resistor as in Phase 0 (§5.5); the
 value per tap is `[DR-1]` (§6.2.2 #2).
 
-### 7.8 ESP32-S3-Nano Pin Map (Phase 3+) — PROVISIONAL `[DR-1]`
+### 7.8 ESP32-S3-Nano Pin Map (Phase 3+) — PROVISIONAL `[DR-2]` (v2)
 
 This map mirrors SPEC §4.4.2. It applies to the intercept board; the passive tap board
 uses its sense-only subset (no GPIO 10/17). **GPIO 6/7 are sense inputs
@@ -1013,8 +1041,13 @@ only; they are never driver outputs.** The Phase 0/1 map is SPEC §4.4.1.
 | Left | D6 | GPIO 9 | Input (PCNT/INT) | ENC_CHB | Encoder channel B |
 | Right | D7 | GPIO 10 | Output | L9110S_IA | Motor forward drive (intercept only) |
 | Right | D8 | GPIO 17 | Output | L9110S_IB | Motor reverse drive (intercept only) |
+| — | D1 (TX) | GPIO 43 | Reserved | UART0_TX | **Reserved** for a future ANT+ add-on (all boards) |
+| — | D0 (RX) | GPIO 44 | Reserved | UART0_RX | **Reserved** for a future ANT+ add-on (all boards) |
 
-There is no encoder-VCC sense in Phase 3+.
+There is no encoder-VCC sense in Phase 3+. **DR-2 draft outputs** (replace
+the L9110S rows once DR-2 closes): encoder out A/B GPIO 17/18, encoder bypass
+GPIO 21, driver IN1/IN2 GPIO 10/11, motor bypass GPIO 47, optional motor-cut
+relay GPIO 38. Power: VIN via SW0 (§3) rather than the 3V3 pin from a buck.
 
 ### 7.9 Wire Routing Summary
 
