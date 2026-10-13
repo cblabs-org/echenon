@@ -72,7 +72,7 @@ Project name for branches: `hr-relay`. Linear stack from `main`. Proposed
 | **[x] [wo1-ble-enable](wo1-ble-enable/WORKORDER.md):** | Turn BLE on | `hr-relay/wo1-ble-enable` (`main`) | `standard` | (a) Bump the framework to the latest tag containing the WO-8 fix and #226 (currently `v0.0.12-dev.93`). (b) Local `[ble]` mix-in, `sdkconfig.ble.defaults` in the chain, Echenon `MAX_CONNECTIONS=4` / `BLE_MAX_ACT=6`. (c) `BLEManager` composition per SPEC §3.5 with no Echenon providers yet. (d) Split envs: the default `ex3-waveshare-nano` drops `WITH_SIGNAL_LOGGER`, and a new `ex3-waveshare-nano-diag` keeps it (L-08). (e) Record DRAM and heap with BLE on. (f) Native env still builds. (g) Fix the diag-env logger crash during large ride-log CSV downloads (DR-1 prep finding 4; L-06 export race / httpd stack) | 2.1 (advertising, name `Echenon-XXXX`) | ✅ Complete (`579e5c9`) |
 | **[x] [wo2-hr-repeater](wo2-hr-repeater/WORKORDER.md):** | HR peripheral | `hr-relay/wo2-hr-repeater` (wo1) | `standard` | `HRMRepeater` (`IBLEServiceProvider`, `0x180D` / `0x2A37`, Body Sensor Location from source); an EventBus HR event and payload; a synthetic HR source under `WITH_HR_SYNTHETIC` (diagnostic only); native tests for `0x2A37` encoding | — | ✅ Complete (`1e4a46d`) |
 | **[x] [wo3-app-pairing-gate](wo3-app-pairing-gate/WORKORDER.md):** | **Go/no-go: Echelon app pairs `Echenon-XXXX`** | `hr-relay/wo3-app-pairing-gate` (wo2) | `interactive` | Owner with the P12: the Echelon app lists and pairs `Echenon-XXXX` and shows the synthetic HR. Evidence `A12-<date>-esp32-hr-pairing.md`; closes register row #12. **On failure, STOP the PR and escalate** | 2.3 (synthetic) | ✅ CONDITIONAL (`5a0350f`) |
-| **[ ] [wo3b-debug-android-connect](wo3b-debug-android-connect/WORKORDER.md):** | Debug Android BLE 0x3e | `hr-relay/wo3b-debug-android-connect` (wo3) | `interactive` | CA-directed investigation: (a) Android connects with WiFi STA disconnected; (b) diag build with `WIFI_PS_MIN_MODEM` (local override) — if Android connects, check for `AUTH_EXPIRE`; (c) Android HCI snoop log of connection parameters; (d) only if a–c inconclusive, test 100 ms advertising interval. Evidence in `docs/measurements/phase2/`. File one upstream issue (power-save / coex finding + adv interval if data supports). | — | ⬜ |
+| **[ ] [wo3b-debug-android-connect](wo3b-debug-android-connect/WORKORDER.md):** | Debug Android BLE 0x3e | `hr-relay/wo3b-debug-android-connect` (wo3) | `interactive` | CA-directed investigation: (a) Android connects with WiFi STA disconnected; (b) diag build with `WIFI_PS_MIN_MODEM` (local override) — if Android connects, check for `AUTH_EXPIRE`; (c) Android HCI snoop log of connection parameters; (d) only if a–c inconclusive, test 100 ms advertising interval. Evidence in `docs/measurements/phase2/`. File one upstream issue (power-save / coex finding + adv interval if data supports). | — | ⏸️ PAUSED — escalated to CA |
 | **[ ] [wo4-hr-client](wo4-hr-client/WORKORDER.md):** | HR strap client | `hr-relay/wo4-hr-client` (wo3b) | `standard` | `HRMClient` (`IBLEClientProvider`). A pure `0x2A37` parser (uint8/uint16, contact flags, energy, RR, BPM = 0) with native tests. Three-state contact machine; 10 s stale timeout; battery `0x2A19`; publishes the HR event (no direct repeater call). `slowRetryMs = 15000` set through BLEManager config, with the mechanism verified and recorded | 2.4 logic (native) | ⬜ |
 | **[ ] [wo5-strap-acceptance](wo5-strap-acceptance/WORKORDER.md):** | Strap and central acceptance | `hr-relay/wo5-strap-acceptance` (wo4) | `interactive` | Beat HW901, plus a second standard strap if available: portal scan and pair, end-to-end relay to the Echelon app, contact loss, auto-sleep and reconnect ≤ 20 s, factory reset. Also **RFC §17.2 items 4–9 as consumer evidence**. Evidence in `docs/measurements/phase2/`. The PA files an app-neutral upstream report | 2.2–2.6 | ⬜ |
 | **[ ] [wo6-coexistence](wo6-coexistence/WORKORDER.md):** | Full v1 BLE topology coexistence | `hr-relay/wo6-coexistence` (wo5) | `interactive` | **Full v1 topology:** HR strap (central) + P12 tablet + Android phone (both subscribed to HR) + portal WebSocket at 2 Hz + HTTPS POST, 5–10 minutes. Measure HR gaps, connection drops, heap and DRAM. **Programme gate:** "v1 BLE topology proven" — Android must connect. **If WO6 fails, STOP and escalate to Chief Architect. Do not pick an architecture option.** | 2.7 | ⬜ |
@@ -113,7 +113,7 @@ Framework issues are written app-neutral, with no Echenon specifics.
   Chief Architect review; after that review, the owner merges.
 
 ## Status
-**Plan Status:** IN PROGRESS — WO1–WO3 complete, WO3b (CA-directed) next, WO4 worker running (will rebase onto WO3b)
+**Plan Status:** IN PROGRESS — WO1–WO3 complete, **WO3b PAUSED** (research complete, escalated to CA with new evidence: `PREFER_BALANCE` + `WIFI_PS_NONE` untested combination, SmartSpin2k proves viability), WO4 worker running (will rebase onto WO3b)
 
 ### 2026-10-12: CA response — WO3b inserted, WO6 widened (PA session)
 - **CA analysis:** The prime suspect for Android 0x3e is `WifiManager::applyPowerSave()`
@@ -150,17 +150,52 @@ Framework issues are written app-neutral, with no Echenon specifics.
 - **Verdict: CONDITIONAL PASS** — register row #12 closed for the P12 target.
   Two risks escalated to the Chief Architect.
 - **Evidence:** `docs/measurements/phase2/A12-20261012-esp32-hr-pairing.md`.
-- **Risk 1 — Android BLE 0x3e (BLOCKING for generic relay):** Samsung Android
-  can discover but not connect. Same phone connects to eBeat via Strava.
-  Root cause: 50 ms hardcoded advertising interval in BLEStack.cpp under
-  PREFER_WIFI coex arbitration. Blocks Strava/Zwift/Wahoo phone use case.
-  Framework issue needed (configurable adv interval, default 100 ms).
+- **Risk 1 — Android BLE 0x3e (BLOCKING for generic relay):** Google Pixel
+  10 Pro Fold can discover but not connect. Same phone connects to eBeat
+  via Strava. Root cause: `PREFER_WIFI` + `WIFI_PS_NONE` coex dead zone
+  starves BLE connection events. Blocks Strava/Zwift/Wahoo phone use case.
+  Framework-level fix required.
 - **Risk 2 — Multi-connection radio coex (ARCHITECTURE):** Full Phase 2/3
   topology (1 central + 2 peripheral + WiFi STA on single ESP32-S3 radio)
   may be infeasible. If single-peripheral already fails Android, 3-connection
   is strictly harder. Requires CA review (DR-2 scope) to determine if
   architecture needs to change (WiFi-off, dual-chip, reduced conn count).
 - **BLE risk report** written and delivered to owner for CA escalation.
+
+### 2026-10-13: WO3b research phase complete — PAUSED for CA escalation (interactive session)
+- **Branch:** `hr-relay/wo3b-debug-android-connect` at `633de75` (diag tag
+  `v0.1.0-dev.9`).
+- **CA corrections applied (2026-10-13 14:33):**
+  - Device: Google Pixel 10 Pro Fold (not Samsung). Tablet: Lenovo Tab P12.
+  - 0x3e mechanics: failure is in the establishment window (post-CONNECT_IND),
+    not in discovery or advertising.
+  - Removed unfounded "Samsung aggressive interval" reasoning.
+  - CA revised the test order: Steps 0–6 (supersedes original A–D).
+- **Baseline test executed (WiFi STA connected, `WIFI_PS_NONE`):**
+  Mac ✅ (30ms/720ms), Tab P12 ✅ (48.75ms/5000ms), Pixel ❌ × 2 (0x3e).
+- **Step 0 desk search DONE:** 13 esp-idf/nimble issues curated. Key finding:
+  `WIFI_PS_NONE` is explicitly prohibited by ESP-IDF when BLE is active
+  (esp-idf#9595, #2467, #11280). `CONFIG_BT_NIMBLE_ENABLE_CONN_REATTEMPT`
+  exists as a built-in mitigation.
+- **SmartSpin2k codebase analysis DONE:** Shipping product on original ESP32
+  runs BLE FTMS server + HR client + WiFi web UI using `PREFER_BALANCE` +
+  `WIFI_PS_NONE`. Proves the combination works with additional mitigations
+  (conn reattempt, BT controller modem sleep, paced WiFi reconnect).
+- **Framework coex history reconstructed from PA memory:** dev.67–dev.83
+  timeline. Critical finding: the dev.78 test of `PREFER_BALANCE` (which
+  caused `AUTH_EXPIRE`) likely ran with modem sleep, not `WIFI_PS_NONE`.
+  **`PREFER_BALANCE` + `WIFI_PS_NONE` was never tested together.**
+- **Upstream issue #294 neutralised:** removed Echenon-specific references.
+- **Evidence:**
+  [`BLE-0x3e-debug-2026-10-13.md`](wo3b-debug-android-connect/../../../../docs/measurements/phase2/BLE-0x3e-debug-2026-10-13.md)
+  (742 lines — serial evidence, desk search, SmartSpin2k comparison,
+  framework coex history, architectural tension matrix, suggested test
+  matrix for CA).
+- **Decision needed from CA:** Should the hardware test plan include
+  `PREFER_BALANCE` + `WIFI_PS_NONE` as an additional test case (not in the
+  current WO3b plan)? This is potentially a framework-level fix that would
+  resolve the 0x3e and benefit all consumer apps.
+- **Hardware tests Steps 1–6 NOT STARTED** — paused pending CA review.
 
 ### 2026-10-12: WO2 complete (PA session)
 - **Branch:** `hr-relay/wo2-hr-repeater` at `1e4a46d`.

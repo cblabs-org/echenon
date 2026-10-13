@@ -144,22 +144,101 @@ framework repo. The issue should cover:
 
 ## Completion Report (written by the worker at task completion)
 
-<!-- Written by the worker at task completion -->
-
 ### Status
-(pending)
+**PAUSED — escalated to Chief Architect for revised test plan.**
 
-### Test Results
-- Test A (WiFi off): (pending)
-- Test B (WIFI_PS_MIN_MODEM): (pending)
-- Test C (HCI snoop): (pending)
-- Test D (100ms adv, if run): (pending)
+Research phase complete. Hardware test plan revised by CA mid-session.
+Baseline data and two research threads (desk search + SmartSpin2k codebase
+analysis) surfaced a critical untested combination that changes the
+investigation's direction. Evidence doc passed to CA for review before
+continuing hardware tests.
 
-### Root Cause
-(pending)
+### Test Results (partial)
+- Test A (WiFi off): **BLOCKED** — BLE requires `AppState::Running` which
+  requires WiFi STA precondition. AP-only mode never reaches RUNNING.
+  This is itself a finding (see v1 finding below).
+- Baseline (WiFi STA connected, `WIFI_PS_NONE`): **EXECUTED**
+  - Mac (bleak): ✅ PASS (4.07s, itvl=30ms, timeout=720ms)
+  - Lenovo Tab P12: ✅ PASS (itvl=48.75ms, timeout=5000ms)
+  - Google Pixel 10 Pro Fold: ❌ FAIL × 2 (reason `0x3e`)
+- Test B (WIFI_PS_MIN_MODEM): NOT STARTED (pending CA review of revised plan)
+- Test C (HCI snoop): NOT STARTED
+- Test D (100ms adv): DEPRIORITISED by CA
+
+### CA-Revised Test Order (2026-10-13)
+Original test order superseded. New order per CA evaluation:
+0. Desk search (DONE — 13 ESP-IDF issues curated)
+1. H2: disconnect phone's other BLE devices, retry ×10 (pending)
+2. CONTROL (decisive): BLE with WiFi idle — bare NimBLE sketch or
+   `advertiseInConfiguring=true`, retry ×10 (pending)
+3. Test C: Pixel HCI snoop log (pending)
+4. Test B: `WIFI_PS_MIN_MODEM` override, retry ×10 (pending, only if
+   Step 2 passes)
+5. Reproduce on DEFAULT env (no SignalLogger) (pending)
+6. Client matrix: non-Pixel Android + iPhone (pending)
+
+### Research Findings (new evidence, not in original workorder)
+
+**1. `WIFI_PS_NONE` is explicitly prohibited by ESP-IDF when BLE is active.**
+Multiple esp-idf issues confirm this (esp-idf#9595 crashes, esp-idf#2467
+causes 10–15% 0x3e failures). Our framework runs this configuration.
+
+**2. `PREFER_BALANCE` + `WIFI_PS_NONE` was never tested together.**
+The dev.78 test of `PREFER_BALANCE` (which caused `AUTH_EXPIRE`) likely ran
+with modem sleep active, not `WIFI_PS_NONE`. The combination of balanced
+arbitration + always-on radio was never evaluated.
+
+**3. SmartSpin2k (shipping product) proves `PREFER_BALANCE` + `WIFI_PS_NONE`
+is viable.** SmartSpin2k runs BLE FTMS server + HR client + WiFi web UI on
+the original ESP32 (less capable than our S3) using exactly this
+combination, plus: `CONFIG_BT_NIMBLE_ENABLE_CONN_REATTEMPT=y` (max 3),
+BT controller modem sleep, disabled WiFi auto-reconnect with paced retry,
+and wider advertising intervals (100–156ms).
+
+**4. The framework has two compounding factors, not one:**
+- `WIFI_PS_NONE` — WiFi radio never sleeps
+- `PREFER_WIFI` — WiFi always wins arbitration
+Together, BLE is completely starved. The Pixel's connection establishment
+window expires because the controller cannot service it.
+
+### Root Cause (preliminary)
+`PREFER_WIFI` + `WIFI_PS_NONE` creates a coex dead zone where the BLE
+controller is starved of radio time during connection establishment.
+Devices with conservative connection parameters (P12 tablet) survive;
+devices with tighter parameters (Pixel) fail. The fix likely involves
+`PREFER_BALANCE` + `WIFI_PS_NONE` (untested in the dev.73–dev.80 hardening
+cycle but proven in SmartSpin2k), plus NimBLE connection reattempt and
+paced WiFi reconnect mitigations.
+
+**This is NOT a final root cause determination.** Hardware tests (Steps 1–6)
+are required. The evidence and suggested test matrix have been escalated to
+the Chief Architect.
 
 ### Upstream Issue
-(pending — issue number and URL)
+NOT YET FILED — pending CA review of the complete evidence. The issue scope
+has expanded beyond the original `WIFI_PS_NONE` finding to include:
+- `PREFER_BALANCE` + `WIFI_PS_NONE` as a candidate fix
+- `CONFIG_BT_NIMBLE_ENABLE_CONN_REATTEMPT` as a framework default
+- WiFi auto-reconnect pacing
+- BLE-depends-on-WiFi-STA architectural defect (separate issue)
 
 ### Out-of-Scope Findings
-- (pending)
+1. **BLE depends on WiFi STA** — BLE cannot operate without WiFi STA
+   connected. At boot: no STA → no RUNNING → no BLE. During operation:
+   STA loss regresses to CONFIGURING, killing BLE relay. Hardware test
+   (router off 3 min) and upstream issue pending.
+2. **softAP SSID uses generic name** — Filed as
+   [esp32-app-foundation#294](https://github.com/matthewmcneill/esp32-app-foundation/issues/294)
+   (neutralised to use app-generic wording).
+
+### Evidence
+- [`docs/measurements/phase2/BLE-0x3e-debug-2026-10-13.md`](../../../../docs/measurements/phase2/BLE-0x3e-debug-2026-10-13.md) — 742 lines,
+  complete investigation report with serial evidence, desk search (13
+  issues), SmartSpin2k comparison, framework coex history (dev.67–dev.83),
+  architectural tension matrix, and escalation recommendations.
+- Serial logs: `tmp/serial-testA-*.log` (captured, not committed)
+
+### Diagnostic Overrides (to revert before commit)
+- `sdkconfig.diag.defaults` — NimBLE log level override
+- `platformio.ini` — `board_build.cmake_extra_args` in `[env:ex3-waveshare-nano-diag]`
+

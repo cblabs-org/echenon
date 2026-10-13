@@ -1,5 +1,5 @@
 # Principal Architect Memory
-<!-- Last updated: 2026-10-12T20:00:00+01:00 -->
+<!-- Last updated: 2026-10-13T21:00:00+01:00 -->
 
 ## Active Programs
 | Program | Plan | Status |
@@ -9,7 +9,7 @@
 ## Active Projects
 | Project | Status | Modules | Context |
 |---|---|---|---|
-| PR-03 HR Relay (Phase 2) | Planned: 7 WOs, awaiting approval | BLE (HRM), Build System | [PROJECT.md](../pr-03-hr-relay/PROJECT.md) |
+| PR-03 HR Relay (Phase 2) | WO1–WO3 ✅, **WO3b ⏸️ PAUSED** (research done, escalated to CA — `PREFER_BALANCE` + `WIFI_PS_NONE` untested combo found), WO4–WO7 pending | BLE (HRM), Build System, WifiManager (coex) | [PROJECT.md](../pr-03-hr-relay/PROJECT.md) |
 
 ## Recently Completed (last 5)
 | Project | Completed | Modules | Key Outcome |
