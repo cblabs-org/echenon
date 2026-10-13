@@ -1,244 +1,280 @@
 ---
 name: hr-relay-wo3b
-description: Interactive CA-directed investigation of Android BLE 0x3e connection failure
+description: CA-directed bench session — Android BLE 0x3e investigation with paper corrections
 complexity: interactive
 ---
 
-# WO3b — Debug Android BLE Connection Failure
+# WO3b — Debug Android BLE Connection Failure (CA-directed bench session)
 
 > **PR:** PR-03 HR Relay (Phase 2) — v1 Passive
 > **Project:** [PROJECT.md](../PROJECT.md)
 > **Branch:** `hr-relay/wo3b-debug-android-connect` (base: `hr-relay/wo3-app-pairing-gate`)
 > **Worktree:** `/Users/mcneillm/Documents/Projects/Echenon-hr-relay`
-> **Directive:** Chief Architect — owner-approved 2026-10-12
+> **Directive:** Chief Architect review — owner-approved 2026-10-13
 
 ## Role Definition
 
 > You are an expert senior software engineer working interactively with the
-> owner on a diagnostic bench session. You are NOT the Principal Architect.
-> Your task is to execute the investigation plan below in order, record
-> evidence, and file one upstream issue.
+> owner on a time-boxed (≈2 hour) diagnostic bench session. You are NOT the
+> Principal Architect. Execute the tests below in order, apply the paper
+> corrections, and draft upstream issues.
 
 ## Background
 
-During the WO3 app-pairing gate session, the owner's Samsung Android phone
-could discover `Echenon-7226` but failed to connect (`BLE_ERR_CONN_ESTABL_FAIL`,
-reason `0x3e`). The P12 tablet and macOS connected cleanly. The same phone
-connects to the eBeat HR armband via Strava without issues.
+An initial desk-research session produced
+`docs/measurements/phase2/BLE-0x3e-debug-2026-10-13.md`. The Chief Architect
+reviewed it and identified 7 corrections (C1–C7) plus a 7-test bench plan
+(T1–T7). This WORKORDER supersedes the original investigation plan.
 
-**Chief Architect analysis — prime suspect:**
+---
 
-The framework's `WifiManager::applyPowerSave()` forces `WIFI_PS_NONE` when BT
-is enabled (`WifiManager.cpp` L230–231, framework `v0.0.12-dev.93`). ESP-IDF
-explicitly warns: *"Should enable WiFi modem sleep when both WiFi and Bluetooth
-are enabled."* With `WIFI_PS_NONE`, the WiFi radio never yields — the coex
-arbiter under `PREFER_WIFI` starves BLE connection event servicing. This causes
-the ESP32's controller to miss the phone's `CONNECT_IND` packets.
+## PART 1: PAPER CORRECTIONS (C1–C7)
 
-**History:** WO-10 originally set `WIFI_PS_MIN_MODEM` on BLE builds, but this
-caused `AUTH_EXPIRE` on congested 2.4 GHz networks (dev.81 regression), so it
-was reverted to `WIFI_PS_NONE`. The question is whether `AUTH_EXPIRE` recurs on
-the owner's network.
+Apply these to `docs/measurements/phase2/BLE-0x3e-debug-2026-10-13.md`.
+Cross-check each one against the referenced files before editing.
 
-**Secondary factor:** The Android phone's initial connection interval may be
-tighter than the P12 tablet's, making it more sensitive to missed events.
+### C1. Coex preference: the framework already runs BALANCE, not WIFI
 
-## Investigation Plan (execute in order)
+Evidence to verify:
+- ESP-IDF 5.5.5 header:
+  `~/.platformio/packages/framework-espidf/components/esp_coex/include/esp_coexist.h`
+  lines 115–126: `esp_coex_preference_set()` is `@deprecated`, doc comment
+  says "Default, it prefer to balance."
+- `grep -rn esp_coex_preference_set framework/modules src` → no calls.
 
-### Test A: WiFi STA disconnected
+Edits:
+- Remove the "Key insight: PREFER_WIFI vs PREFER_BALANCE" argument.
+- Remove the "razor's edge" rows that depend on it.
+- Note that test-matrix rows 1–2 (`WIFI_PS_NONE` + `PREFER_BALANCE`) ARE
+  the current, failing configuration.
+- Add a finding: the framework comments in
+  `framework/modules/BLEManager/BLEStack.cpp` (~L270–273) and
+  `framework/hardware/_common/sdkconfig.ble.defaults` (~L302–315) wrongly
+  call the default "PREFER_WIFI".
 
-1. Build `env:ex3-waveshare-nano-diag` (current code, `WITH_HR_SYNTHETIC`).
-2. Flash — **ask the owner before flashing**.
-3. Disconnect WiFi STA (either disable WiFi in firmware or disconnect the AP).
-   The simplest method: temporarily comment out WiFi connection in code, or
-   use the portal to forget the network, or just ensure no AP is available.
-4. Attempt Android phone connection.
-5. **Record result:** If Android connects with WiFi off, this confirms the
-   coex arbiter (not the advertising stack) is the problem.
+### C2. NimBLE connection reattempt is ALREADY enabled
 
-### Test B: `WIFI_PS_MIN_MODEM` override
+Evidence: `sdkconfig.ex3-waveshare-nano` and `sdkconfig.ex3-waveshare-nano-diag`
+contain:
+```
+CONFIG_BT_NIMBLE_ENABLE_CONN_REATTEMPT=y
+CONFIG_BT_NIMBLE_MAX_CONN_REATTEMPT=3
+```
+This produces the "Reattempt advertising; reason: 0x3e" log line. In the
+peripheral role it only restarts advertising; it cannot fix a central-side
+failure.
 
-1. Add a **local-only** override in `main.cpp` (after `app.begin(config)`):
-   ```cpp
-   #include <WiFi.h>
-   WiFi.setSleep(WIFI_PS_MIN_MODEM);
-   ```
-   This is a **diagnostic override**, not a framework change.
-2. Rebuild `env:ex3-waveshare-nano-diag` and flash.
-3. Connect WiFi STA to the owner's network.
-4. Attempt Android phone connection.
-5. **If Android connects:**
-   - Run for 5+ minutes — check serial logs for `AUTH_EXPIRE` or WiFi
-     disconnections.
-   - If WiFi stays stable: `WIFI_PS_MIN_MODEM` is the fix. Record this.
-   - If `AUTH_EXPIRE` occurs: Record the timing and conditions. The framework
-     will need a more nuanced solution (e.g. modem sleep only when BLE
-     connections are active, or network-dependent config).
+Edit: change "Not set ❌" to "Already enabled". Remove it from proposed
+mitigations.
 
-### Test C: Android HCI snoop log
+### C3. Do NOT recommend Bluetooth controller modem sleep
 
-1. On the Android phone, enable **Bluetooth HCI snoop log** (Developer Options
-   → Enable Bluetooth HCI Snoop Log).
-2. Reproduce the connection failure (or success if test B fixed it).
-3. Pull the snoop log: `adb pull /data/misc/bluetooth/logs/btsnoop_hci.log`
-   (path varies by Android version; may need `adb bugreport`).
-4. Analyse with Wireshark — look for:
-   - `CONNECT_IND` packet and the connection parameters the phone requests
-   - Whether the ESP32 responds with `LL_CONNECTION_UPDATE_IND`
-   - Any `LL_REJECT` or timeout
-5. Record the phone's requested connection interval, supervision timeout, and
-   latency.
+Evidence: ESP-IDF issue
+[espressif/esp-idf#2467](https://github.com/espressif/esp-idf/issues/2467)
+(cited in the paper) is titled "LE Connection fail rate 10-15% after enabling
+BT Modem sleep".
+Current build: `# CONFIG_BT_CTRL_MODEM_SLEEP is not set` (correct for
+mains-powered).
 
-### Test D: 100 ms advertising interval (only if A–C inconclusive)
+Edit: remove it from the SmartSpin2k mitigations to adopt.
 
-1. **Only run this test if A–C did not identify the root cause.**
-2. Patch `BLEStack.cpp` L390–391 locally:
-   ```cpp
-   pAdv->setMinInterval(160);   // 160 × 0.625 ms = 100 ms
-   pAdv->setMaxInterval(160);
-   ```
-3. Rebuild, flash, test Android connection.
-4. Record result.
+### C4. WIFI_PS_NONE is the LEADING SUSPECT, not a confirmed cause
 
-## Strict Boundary Box
+- [espressif/esp-idf#9595](https://github.com/espressif/esp-idf/issues/9595)
+  is a crash bug that Espressif fixed. It does not show that `WIFI_PS_NONE`
+  is prohibited.
+- Our serial log prints "Coexist!!! Wi-Fi station would only keep waked when
+  available" — suggests the coex scheduler still time-slices under PS_NONE.
 
-- **DO NOT** change the framework permanently. All overrides are local
-  diagnostics, reverted before commit.
-- **DO NOT** edit `PROGRAM.md`, `PROGRAM-PLAN.md`, or `reviews/` files.
-- **DO NOT** pick an architecture option or make coex policy decisions.
+Edits:
+- Rename "Confirmed mechanism" to "Leading hypothesis".
+- Remove "WiFi never yields / no idle slots" as a stated fact.
+
+### C5. Fix issue statuses in Appendix A
+
+- [espressif/esp-idf#17871](https://github.com/espressif/esp-idf/issues/17871)
+  is CLOSED (paper says Open).
+- [espressif/esp-idf#12948](https://github.com/espressif/esp-idf/issues/12948)
+  is OPEN and concerns ESP32-C3 (paper says Closed).
+
+From now on, write every issue reference as `owner/repo#number` with a full
+URL. Framework issues: `matthewmcneill/esp32-app-foundation#N`.
+
+### C6. Record the SPEC/build divergence — DO NOT change it
+
+- SPEC.md §8.5 lists `CONFIG_ESP_COEX_POWER_MANAGEMENT=y`.
+- Built sdkconfig has `# CONFIG_ESP_COEX_POWER_MANAGEMENT is not set`.
+
+Add this as an open finding for the CA. Do NOT edit SPEC.md.
+
+### C7. Reinterpret SmartSpin2k
+
+SmartSpin2k runs `WIFI_PS_NONE` + default (BALANCE) coex preference — the
+same as us — and works. So the difference must be elsewhere.
+
+List these candidates in the paper:
+- Chip/controller: classic ESP32 vs ESP32-S3
+- ESP-IDF version
+- Our WiFi traffic during tests (diag dashboard polling `/api/echenon/live`,
+  mDNS)
+- Diag build's ADC DMA / interrupt load (`WITH_SIGNAL_LOGGER`)
+
+---
+
+## PART 2: BENCH TESTS (T1–T7)
+
+**Definitions** (use for every attempt):
+- **ATTEMPT** = Tap Connect once in nRF Connect (or the app). Wait up to 30 s.
+  Disconnect fully, then wait 10 s before the next attempt.
+- **PASS** = ESP32 serial log shows ">>> Central connected" for that client
+  AND the client lists service 0x180D within 30 s.
+- **FAIL** = Serial log shows "Reattempt advertising; reason: 0x3e", OR no
+  connection within 30 s.
+- For every attempt, record: **test ID, client, attempt number, PASS/FAIL,
+  timestamp, WiFi state (STA connected / AP only / off).**
+- Unless a step says otherwise, use the current diag firmware.
+
+### T1. Pixel HCI snoop (during a normal failing attempt)
+
+1. Pixel: Settings → Developer options → "Enable Bluetooth HCI snoop log" →
+   turn BT off/on → reproduce one failure → "Take bug report" (full).
+2. Extract `btsnoop_hci.log` and open in Wireshark.
+3. Record from the phone's LE Create Connection / CONNECT_IND:
+   - Connection interval (min/max)
+   - Supervision timeout
+   - ChSel (CSA#2) bit
+   - PHY
+   - Phone's own connection-complete status code
+
+### T2. Phone-side isolation
+
+Disconnect every other Bluetooth device from the Pixel (watch, earbuds, car,
+etc.). **10 attempts.**
+
+### T3. CONTROL — the decisive test: BLE with NO WiFi at all
+
+Build a bare NimBLE heart-rate peripheral sketch that **never starts WiFi**:
+- Advertise 0x180D
+- Send synthetic HR
+- Build as a SEPARATE scratch PlatformIO project under `tmp/ble-control/`
+  (not in `src/`, not committed)
+
+Flash to the same board. **10 attempts with Pixel; 10 with P12.**
+
+Do NOT use `BLEConfig.advertiseInConfiguring` — in CONFIGURING the softAP is
+still transmitting, so WiFi is not idle.
+
+If the rule-03 flash hook blocks the scratch sketch, stop and ask the owner.
+
+**Decision point:**
+- Pixel PASSES ≥ 9/10 → **coexistence confirmed.** Continue to T4.
+- Pixel FAILS → **not coexistence** (interop or phone-side). Skip T4, go to T5.
+
+### T4. Only if T3 passed: WIFI_PS_MIN_MODEM override
+
+Apply a **local-only** override in `src/main.cpp` (after `app.begin()`):
+```cpp
+#include <WiFi.h>
+WiFi.setSleep(WIFI_PS_MIN_MODEM);
+```
+Do NOT commit this to the PR.
+
+1. **T4a:** 10 Pixel attempts with STA connected and portal dashboard CLOSED.
+2. **T4b:** 10 Pixel attempts with the dashboard OPEN.
+3. **T4c:** 10 WiFi association cycles on the owner's network (reboot → STA
+   connected). Record connect time and any AUTH_EXPIRE.
+
+### T5. Repeat decisive result on DEFAULT env
+
+Repeat the decisive test (T3 if it failed, T4a otherwise) on the DEFAULT env
+(`ex3-waveshare-nano`, no `WITH_SIGNAL_LOGGER`). **10 attempts.**
+
+### T6. Baseline rates — CURRENT firmware, STA connected
+
+**10 attempts each** for the P12 and the Mac (bleak).
+
+### T7. WiFi-dependency check
+
+With the current firmware:
+1. Strap connected and relaying HR to the P12.
+2. Power off the router for 3 minutes.
+3. Switch the strap off and on.
+
+Record: AppState transitions (serial), whether the HR relay continues, and
+whether the strap reconnects.
+
+---
+
+## PART 3: RULES
+
+- **DO NOT** choose or implement a coexistence fix. Do not pick architecture
+  option (A–F).
+- **DO NOT** edit anything under `framework/`. Any fix belongs in the
+  framework repo as an app-neutral issue/PR.
+- **Write issue DRAFTS** (do not file them) for:
+  - (i) The mislabelled coex default and the deprecated API (C1)
+  - (ii) The WiFi power-save policy, depending on T3/T4 results
+  - (iii) BLE requiring a STA connection (T7)
+  Use no Echenon names in drafts.
+- **DO NOT** edit `SPEC.md`, `PROGRAM*.md`, or `reviews/*`.
+- Evidence doc must use **relative links only** (no `file:///` or `/Users/`).
 - **Flash only with owner permission.**
 
-## Rules
+## Rules — Tag/Build/Flash
 
-- **Rule 03 (Tag → Build → Flash):** Tag before flash.
-- **Rule 04 (PlatformIO MCP tools only):** No `pio` CLI.
+- **Rule 03 (Tag → Build → Flash):** Tag before flash. Dev tags are
+  autonomous. For the scratch sketch in T3, ask the owner if the hook blocks.
+- **Rule 04 (PlatformIO MCP tools only):** Use MCP tools; never `pio` CLI.
 
-## Evidence
+---
 
-Create `docs/measurements/phase2/BLE-0x3e-debug-<date>.md` with:
-- Test A result (WiFi off)
-- Test B result (`WIFI_PS_MIN_MODEM`)
-- Test C result (HCI snoop analysis)
-- Test D result (if run)
-- Connection parameters from serial logs and HCI snoop
-- Conclusion: which factor is primary, which is secondary
+## PART 4: WHEN DONE
 
-## Upstream Issue
-
-After the investigation, file **one** app-neutral upstream issue on the
-framework repo. The issue should cover:
-- The `WIFI_PS_NONE` / coex finding (primary, if confirmed)
-- Configurable advertising interval (secondary, if data supports)
-- Evidence references (relative paths within the repo, or inline)
-- No Echenon-specific details in the issue — it's a framework concern
-
-## Commit
-
-- [ ] Revert all local diagnostic overrides (`WIFI_PS_MIN_MODEM`, adv
-  interval patches) — the commit must match the WO3 codebase.
-- [ ] `git add docs/measurements/phase2/BLE-0x3e-debug-*.md`
-- [ ] `git commit -m "wo3b: Android BLE 0x3e debug — <result summary>"`
-- [ ] Do NOT push.
+1. Revert all local diagnostic overrides (`WIFI_PS_MIN_MODEM`, adv interval
+   patches, scratch sketches). The commit must match the WO3 codebase plus
+   evidence.
+2. Commit the updated paper and evidence.
+3. Update the WO3b Completion Report: per-test results, plus a "Leading
+   hypothesis after testing" paragraph.
+4. Give the owner this return prompt:
+   > "WO3b bench session complete. Chief Architect: read
+   > `docs/measurements/phase2/BLE-0x3e-debug-2026-10-13.md` (T1–T7 results)
+   > and the three upstream issue drafts, then decide the coex direction."
 
 ---
 
 ## Completion Report (written by the worker at task completion)
 
+<!-- Written by the worker at task completion -->
+
 ### Status
-**PAUSED — escalated to Chief Architect for revised test plan.**
+(pending)
 
-Research phase complete. Hardware test plan revised by CA mid-session.
-Baseline data and two research threads (desk search + SmartSpin2k codebase
-analysis) surfaced a critical untested combination that changes the
-investigation's direction. Evidence doc passed to CA for review before
-continuing hardware tests.
+### Paper Corrections Applied
+- C1 (coex preference): (pending)
+- C2 (conn reattempt): (pending)
+- C3 (BT modem sleep): (pending)
+- C4 (leading hypothesis): (pending)
+- C5 (issue statuses): (pending)
+- C6 (SPEC divergence): (pending)
+- C7 (SmartSpin2k reinterpretation): (pending)
 
-### Test Results (partial)
-- Test A (WiFi off): **BLOCKED** — BLE requires `AppState::Running` which
-  requires WiFi STA precondition. AP-only mode never reaches RUNNING.
-  This is itself a finding (see v1 finding below).
-- Baseline (WiFi STA connected, `WIFI_PS_NONE`): **EXECUTED**
-  - Mac (bleak): ✅ PASS (4.07s, itvl=30ms, timeout=720ms)
-  - Lenovo Tab P12: ✅ PASS (itvl=48.75ms, timeout=5000ms)
-  - Google Pixel 10 Pro Fold: ❌ FAIL × 2 (reason `0x3e`)
-- Test B (WIFI_PS_MIN_MODEM): NOT STARTED (pending CA review of revised plan)
-- Test C (HCI snoop): NOT STARTED
-- Test D (100ms adv): DEPRIORITISED by CA
+### Test Results
+- T1 (HCI snoop): (pending)
+- T2 (phone isolation): (pending)
+- T3 (no-WiFi control): (pending)
+- T4 (PS_MIN_MODEM, if run): (pending)
+- T5 (default env): (pending)
+- T6 (baseline): (pending)
+- T7 (WiFi dependency): (pending)
 
-### CA-Revised Test Order (2026-10-13)
-Original test order superseded. New order per CA evaluation:
-0. Desk search (DONE — 13 ESP-IDF issues curated)
-1. H2: disconnect phone's other BLE devices, retry ×10 (pending)
-2. CONTROL (decisive): BLE with WiFi idle — bare NimBLE sketch or
-   `advertiseInConfiguring=true`, retry ×10 (pending)
-3. Test C: Pixel HCI snoop log (pending)
-4. Test B: `WIFI_PS_MIN_MODEM` override, retry ×10 (pending, only if
-   Step 2 passes)
-5. Reproduce on DEFAULT env (no SignalLogger) (pending)
-6. Client matrix: non-Pixel Android + iPhone (pending)
+### Leading Hypothesis After Testing
+(pending)
 
-### Research Findings (new evidence, not in original workorder)
-
-**1. `WIFI_PS_NONE` is explicitly prohibited by ESP-IDF when BLE is active.**
-Multiple esp-idf issues confirm this (esp-idf#9595 crashes, esp-idf#2467
-causes 10–15% 0x3e failures). Our framework runs this configuration.
-
-**2. `PREFER_BALANCE` + `WIFI_PS_NONE` was never tested together.**
-The dev.78 test of `PREFER_BALANCE` (which caused `AUTH_EXPIRE`) likely ran
-with modem sleep active, not `WIFI_PS_NONE`. The combination of balanced
-arbitration + always-on radio was never evaluated.
-
-**3. SmartSpin2k (shipping product) proves `PREFER_BALANCE` + `WIFI_PS_NONE`
-is viable.** SmartSpin2k runs BLE FTMS server + HR client + WiFi web UI on
-the original ESP32 (less capable than our S3) using exactly this
-combination, plus: `CONFIG_BT_NIMBLE_ENABLE_CONN_REATTEMPT=y` (max 3),
-BT controller modem sleep, disabled WiFi auto-reconnect with paced retry,
-and wider advertising intervals (100–156ms).
-
-**4. The framework has two compounding factors, not one:**
-- `WIFI_PS_NONE` — WiFi radio never sleeps
-- `PREFER_WIFI` — WiFi always wins arbitration
-Together, BLE is completely starved. The Pixel's connection establishment
-window expires because the controller cannot service it.
-
-### Root Cause (preliminary)
-`PREFER_WIFI` + `WIFI_PS_NONE` creates a coex dead zone where the BLE
-controller is starved of radio time during connection establishment.
-Devices with conservative connection parameters (P12 tablet) survive;
-devices with tighter parameters (Pixel) fail. The fix likely involves
-`PREFER_BALANCE` + `WIFI_PS_NONE` (untested in the dev.73–dev.80 hardening
-cycle but proven in SmartSpin2k), plus NimBLE connection reattempt and
-paced WiFi reconnect mitigations.
-
-**This is NOT a final root cause determination.** Hardware tests (Steps 1–6)
-are required. The evidence and suggested test matrix have been escalated to
-the Chief Architect.
-
-### Upstream Issue
-NOT YET FILED — pending CA review of the complete evidence. The issue scope
-has expanded beyond the original `WIFI_PS_NONE` finding to include:
-- `PREFER_BALANCE` + `WIFI_PS_NONE` as a candidate fix
-- `CONFIG_BT_NIMBLE_ENABLE_CONN_REATTEMPT` as a framework default
-- WiFi auto-reconnect pacing
-- BLE-depends-on-WiFi-STA architectural defect (separate issue)
+### Upstream Issue Drafts
+- (i) Coex default mislabelling: (pending)
+- (ii) WiFi power-save policy: (pending)
+- (iii) BLE requiring STA: (pending)
 
 ### Out-of-Scope Findings
-1. **BLE depends on WiFi STA** — BLE cannot operate without WiFi STA
-   connected. At boot: no STA → no RUNNING → no BLE. During operation:
-   STA loss regresses to CONFIGURING, killing BLE relay. Hardware test
-   (router off 3 min) and upstream issue pending.
-2. **softAP SSID uses generic name** — Filed as
-   [esp32-app-foundation#294](https://github.com/matthewmcneill/esp32-app-foundation/issues/294)
-   (neutralised to use app-generic wording).
-
-### Evidence
-- [`docs/measurements/phase2/BLE-0x3e-debug-2026-10-13.md`](../../../../docs/measurements/phase2/BLE-0x3e-debug-2026-10-13.md) — 742 lines,
-  complete investigation report with serial evidence, desk search (13
-  issues), SmartSpin2k comparison, framework coex history (dev.67–dev.83),
-  architectural tension matrix, and escalation recommendations.
-- Serial logs: `tmp/serial-testA-*.log` (captured, not committed)
-
-### Diagnostic Overrides (to revert before commit)
-- `sdkconfig.diag.defaults` — NimBLE log level override
-- `platformio.ini` — `board_build.cmake_extra_args` in `[env:ex3-waveshare-nano-diag]`
-
+- (pending)
