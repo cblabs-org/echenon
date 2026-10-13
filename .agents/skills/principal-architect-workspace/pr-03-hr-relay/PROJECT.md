@@ -71,10 +71,11 @@ Project name for branches: `hr-relay`. Linear stack from `main`. Proposed
 |---|---|---|---|---|---|---|
 | **[x] [wo1-ble-enable](wo1-ble-enable/WORKORDER.md):** | Turn BLE on | `hr-relay/wo1-ble-enable` (`main`) | `standard` | (a) Bump the framework to the latest tag containing the WO-8 fix and #226 (currently `v0.0.12-dev.93`). (b) Local `[ble]` mix-in, `sdkconfig.ble.defaults` in the chain, Echenon `MAX_CONNECTIONS=4` / `BLE_MAX_ACT=6`. (c) `BLEManager` composition per SPEC §3.5 with no Echenon providers yet. (d) Split envs: the default `ex3-waveshare-nano` drops `WITH_SIGNAL_LOGGER`, and a new `ex3-waveshare-nano-diag` keeps it (L-08). (e) Record DRAM and heap with BLE on. (f) Native env still builds. (g) Fix the diag-env logger crash during large ride-log CSV downloads (DR-1 prep finding 4; L-06 export race / httpd stack) | 2.1 (advertising, name `Echenon-XXXX`) | ✅ Complete (`579e5c9`) |
 | **[x] [wo2-hr-repeater](wo2-hr-repeater/WORKORDER.md):** | HR peripheral | `hr-relay/wo2-hr-repeater` (wo1) | `standard` | `HRMRepeater` (`IBLEServiceProvider`, `0x180D` / `0x2A37`, Body Sensor Location from source); an EventBus HR event and payload; a synthetic HR source under `WITH_HR_SYNTHETIC` (diagnostic only); native tests for `0x2A37` encoding | — | ✅ Complete (`1e4a46d`) |
-| **[ ] [wo3-app-pairing-gate](wo3-app-pairing-gate/WORKORDER.md):** | **Go/no-go: Echelon app pairs `Echenon-XXXX`** | `hr-relay/wo3-app-pairing-gate` (wo2) | `interactive` | Owner with the P12: the Echelon app lists and pairs `Echenon-XXXX` and shows the synthetic HR. Evidence `A12-<date>-esp32-hr-pairing.md`; closes register row #12. **On failure, STOP the PR and escalate** | 2.3 (synthetic) | ⬜ |
-| **[ ] [wo4-hr-client](wo4-hr-client/WORKORDER.md):** | HR strap client | `hr-relay/wo4-hr-client` (wo3) | `standard` | `HRMClient` (`IBLEClientProvider`). A pure `0x2A37` parser (uint8/uint16, contact flags, energy, RR, BPM = 0) with native tests. Three-state contact machine; 10 s stale timeout; battery `0x2A19`; publishes the HR event (no direct repeater call). `slowRetryMs = 15000` set through BLEManager config, with the mechanism verified and recorded | 2.4 logic (native) | ⬜ |
+| **[x] [wo3-app-pairing-gate](wo3-app-pairing-gate/WORKORDER.md):** | **Go/no-go: Echelon app pairs `Echenon-XXXX`** | `hr-relay/wo3-app-pairing-gate` (wo2) | `interactive` | Owner with the P12: the Echelon app lists and pairs `Echenon-XXXX` and shows the synthetic HR. Evidence `A12-<date>-esp32-hr-pairing.md`; closes register row #12. **On failure, STOP the PR and escalate** | 2.3 (synthetic) | ✅ CONDITIONAL (`5a0350f`) |
+| **[ ] [wo3b-debug-android-connect](wo3b-debug-android-connect/WORKORDER.md):** | Debug Android BLE 0x3e | `hr-relay/wo3b-debug-android-connect` (wo3) | `interactive` | CA-directed investigation: (a) Android connects with WiFi STA disconnected; (b) diag build with `WIFI_PS_MIN_MODEM` (local override) — if Android connects, check for `AUTH_EXPIRE`; (c) Android HCI snoop log of connection parameters; (d) only if a–c inconclusive, test 100 ms advertising interval. Evidence in `docs/measurements/phase2/`. File one upstream issue (power-save / coex finding + adv interval if data supports). | — | ⬜ |
+| **[ ] [wo4-hr-client](wo4-hr-client/WORKORDER.md):** | HR strap client | `hr-relay/wo4-hr-client` (wo3b) | `standard` | `HRMClient` (`IBLEClientProvider`). A pure `0x2A37` parser (uint8/uint16, contact flags, energy, RR, BPM = 0) with native tests. Three-state contact machine; 10 s stale timeout; battery `0x2A19`; publishes the HR event (no direct repeater call). `slowRetryMs = 15000` set through BLEManager config, with the mechanism verified and recorded | 2.4 logic (native) | ⬜ |
 | **[ ] [wo5-strap-acceptance](wo5-strap-acceptance/WORKORDER.md):** | Strap and central acceptance | `hr-relay/wo5-strap-acceptance` (wo4) | `interactive` | Beat HW901, plus a second standard strap if available: portal scan and pair, end-to-end relay to the Echelon app, contact loss, auto-sleep and reconnect ≤ 20 s, factory reset. Also **RFC §17.2 items 4–9 as consumer evidence**. Evidence in `docs/measurements/phase2/`. The PA files an app-neutral upstream report | 2.2–2.6 | ⬜ |
-| **[ ] [wo6-coexistence](wo6-coexistence/WORKORDER.md):** | Progressive coexistence | `hr-relay/wo6-coexistence` (wo5) | `interactive` | HR relay, portal open and a large HTTPS POST for 5 minutes; a scripted `bleak` client for repeatability. Measure the HR gap, heap and DRAM | 2.7 | ⬜ |
+| **[ ] [wo6-coexistence](wo6-coexistence/WORKORDER.md):** | Full v1 BLE topology coexistence | `hr-relay/wo6-coexistence` (wo5) | `interactive` | **Full v1 topology:** HR strap (central) + P12 tablet + Android phone (both subscribed to HR) + portal WebSocket at 2 Hz + HTTPS POST, 5–10 minutes. Measure HR gaps, connection drops, heap and DRAM. **Programme gate:** "v1 BLE topology proven" — Android must connect. **If WO6 fails, STOP and escalate to Chief Architect. Do not pick an architecture option.** | 2.7 | ⬜ |
 | **[ ] [wo7-doc-sync](wo7-doc-sync/WORKORDER.md):** | Docs | `hr-relay/wo7-doc-sync` (wo6) | `standard` | SPEC §3.5, §7.8, §8 and §13.5 match what was built; register row #12 final; the PR-03 PROJECT.md wrap-up | — | ⬜ |
 
 **File overlaps:**
@@ -112,7 +113,54 @@ Framework issues are written app-neutral, with no Echenon specifics.
   Chief Architect review; after that review, the owner merges.
 
 ## Status
-**Plan Status:** IN PROGRESS — WO1+WO2 complete, WO3 (interactive gate) next
+**Plan Status:** IN PROGRESS — WO1–WO3 complete, WO3b (CA-directed) next, WO4 worker running (will rebase onto WO3b)
+
+### 2026-10-12: CA response — WO3b inserted, WO6 widened (PA session)
+- **CA analysis:** The prime suspect for Android 0x3e is `WifiManager::applyPowerSave()`
+  forcing `WIFI_PS_NONE` (`WifiManager.cpp` L230–231), violating ESP-IDF's
+  coex requirement for modem sleep. The advertising interval is NOT the likely
+  cause (phone discovered the device successfully). Secondary factor: Android
+  phone's tighter initial connection interval.
+- **WO3b inserted** (`hr-relay/wo3b-debug-android-connect`, interactive):
+  CA-directed investigation — WiFi-off test, `WIFI_PS_MIN_MODEM` override,
+  HCI snoop, adv interval only if inconclusive.
+- **WO4 base changed** from `wo3` to `wo3b` — WO4 worker is mid-execution
+  on the old base; will be rebased onto WO3b when both complete.
+- **WO6 widened** to full v1 topology: HR strap (central) + P12 + Android
+  phone + portal WebSocket 2 Hz + HTTPS POST, 5–10 min.
+- **Programme gate added:** "v1 BLE topology proven" (WO6, including Android)
+  required before PR-05. On failure, escalate to CA — do not pick architecture
+  option.
+- **Upstream issue:** File one app-neutral issue after WO3b with power-save /
+  coex evidence. Do NOT file adv-interval issue yet.
+- **Relative links:** CA noted committed docs must use relative paths, not
+  `file:///`. Will fix in WO7 doc-sync.
+
+### 2026-10-12: WO3 CONDITIONAL PASS — gate closed with risks (interactive session)
+- **Branch:** `hr-relay/wo3-app-pairing-gate` at `5a0350f`.
+- **Tag:** `v0.1.0-dev.8` (flashed `ex3-waveshare-nano-diag` with
+  `WITH_HR_SYNTHETIC`).
+- **Test 2.1 (advertising):** PASS — `Echenon-7226` visible in nRF Connect
+  and bleak. GATT table: `0x180D` → `0x2A37` (Notify) + `0x2A38` (Read) +
+  `0x180A` (DIS). 20/20 HR notifications at 1 Hz, sine 60–120 BPM confirmed.
+- **Test 2.3 (app pairing gate):** PASS — Echelon Fit on Lenovo Tab P12
+  discovered and paired `Echenon-7226`. App displayed synthetic HR (99 BPM
+  observed). Clean connection: 48.75 ms interval, 5.0 s supervision timeout,
+  MTU 185.
+- **Verdict: CONDITIONAL PASS** — register row #12 closed for the P12 target.
+  Two risks escalated to the Chief Architect.
+- **Evidence:** `docs/measurements/phase2/A12-20261012-esp32-hr-pairing.md`.
+- **Risk 1 — Android BLE 0x3e (BLOCKING for generic relay):** Samsung Android
+  can discover but not connect. Same phone connects to eBeat via Strava.
+  Root cause: 50 ms hardcoded advertising interval in BLEStack.cpp under
+  PREFER_WIFI coex arbitration. Blocks Strava/Zwift/Wahoo phone use case.
+  Framework issue needed (configurable adv interval, default 100 ms).
+- **Risk 2 — Multi-connection radio coex (ARCHITECTURE):** Full Phase 2/3
+  topology (1 central + 2 peripheral + WiFi STA on single ESP32-S3 radio)
+  may be infeasible. If single-peripheral already fails Android, 3-connection
+  is strictly harder. Requires CA review (DR-2 scope) to determine if
+  architecture needs to change (WiFi-off, dual-chip, reduced conn count).
+- **BLE risk report** written and delivered to owner for CA escalation.
 
 ### 2026-10-12: WO2 complete (PA session)
 - **Branch:** `hr-relay/wo2-hr-repeater` at `1e4a46d`.
