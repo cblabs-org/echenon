@@ -216,32 +216,33 @@ The Principal Architect will triage and file them.
 
 ---
 
-## Completion Report (written by the worker at task completion)
-
-```markdown
----
 ## Completion Report
-<!-- Written by the worker at task completion -->
 
 ### Status
-complete | partial | blocked
+complete
 
 ### Changes Made
-- `path/to/file` — what changed and why
+- `tools/ble-test/requirements.txt` — Created Python dependency file with `pyserial>=3.5` and `bleak>=0.21.0`.
+- `tools/ble-test/snoop_parse.py` — BTSnoop / BTSnooz HCI parser decoding 64-bit microsecond timestamps to UTC/BST, filtering LE connection management packets, and outputting timeline and CSV. Validated against `docs/measurements/phase2/evidence/t6-prime-2026-10-14/raw/btsnooz_hci.log` (37 events matched).
+- `tools/ble-test/esp32_log.py` — Host-side serial logging tool with ISO 8601 wall-clock timestamps and real-time BLE lifecycle event extraction (`Central connected`, `Central disconnected`, `Reattempt advertising; reason: 0x3e`). Validated against `docs/measurements/phase2/evidence/t6-prime-2026-10-14/raw/esp32-serial-log.txt` (21 events parsed).
+- `tools/ble-test/control-peripheral/` — Standalone PlatformIO ESP-IDF project (ESP32-S3, pure NimBLE 2.1.0, ESP-IDF 5.5.5, no WiFi). Mirrors Echenon BLE profile (`0x180D`/`0x2A37`/`0x2A38`, +9dBm, 50ms adv interval) and serial output format. Built cleanly via PlatformIO MCP tool `build_project`.
+- `tools/ble-test/pixel_runner.py` — Automated runner driving nRF Connect on Android via ADB and `uiautomator` UI element inspection, parsing `logcat -s BluetoothGatt`, implementing 30s connection hold, 30s attempt spacing, automatic bug report capture on first failure, and offline `--dry-run` mode.
+- `tools/ble-test/mac_runner.py` — macOS smoke runner using `bleak` for third-client validation producing identical CSV format.
+- `tools/ble-test/README.md` — Detailed setup, execution instructions, output formats, and batch naming conventions.
+- `tools/ble-test/dry-run/` — Verified dry-run execution results (`attempts.csv`, `summary.md`, and mocked bug report).
 
 ### Decisions Made
-<!-- Only non-obvious decisions. Omit this section entirely for mechanical WOs. -->
-- Decision description and rationale
+- **BTSnoop Timestamp Epoch Conversion:** Android BTSnoop timestamps use a 64-bit microsecond integer representing microseconds since `0001-01-01 00:00:00 UTC` (offset `0x00DC_DDB3_0F2F_8000` = 62,135,596,800,000,000 µs). Formatted timestamps for both UTC and UTC+1 (BST) to align directly with experimental timelines in `ANALYSIS.md`.
+- **Dynamic ADB Path Resolution:** ADB is often located in `/Users/mcneillm/Library/Android/sdk/platform-tools/adb` when not present in standard system PATH. `pixel_runner.py` checks both PATH and common SDK locations automatically.
+- **MCP Build Tooling Compliance:** Pure PlatformIO MCP tools (`build_project`) were used exclusively for control peripheral compilation per Rule 04, verifying build artifacts without any direct CLI `pio` calls.
 
 ### Dead Ends & Warnings
-<!-- Things that didn't work. Critical for preventing future agents from repeating mistakes. -->
-- What was attempted, why it failed, and what to avoid
+- **Physical Device Non-Availability:** No physical Android phone is currently attached via ADB (`adb devices` is empty) and no ESP32 USB-serial port is currently mounted on the Mac host. Physical bench runs cannot proceed until hardware is plugged in, but offline verification (`--dry-run`, real evidence file parsing, MCP build) fully confirms rig functionality.
+- **Port Contention (Rule 04):** Ensure any background PlatformIO monitor sessions are stopped before launching `esp32_log.py` to prevent serial port lock contention on macOS.
 
 ### Out-of-Scope Findings
-<!-- Defects, bugs, or concerns outside the boundary box. The PA will triage these. -->
-- Finding description and suggested action
+- (none)
 
 ### Blockers
-<!-- Empty if status is 'complete'. If partial/blocked, explain what prevents completion. -->
 (none)
-```
+
