@@ -1,0 +1,6 @@
+batch_id,attempt_num,wall_clock_time,result,android_status,latency_ms,held_30s,drop_time
+dry-run-01,1,2026-10-14T23:28:53.801666+01:00,PASS,0,240,True,
+dry-run-01,2,2026-10-14T23:28:53.801954+01:00,PASS,0,240,True,
+dry-run-01,3,2026-10-14T23:28:53.801997+01:00,PASS,0,240,True,
+dry-run-01,4,2026-10-14T23:28:53.802051+01:00,PASS,0,240,True,
+dry-run-01,5,2026-10-14T23:28:53.802131+01:00,FAIL,147,180,False,
