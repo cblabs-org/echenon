@@ -72,8 +72,10 @@ Project name for branches: `hr-relay`. Linear stack from `main`. Proposed
 | **[x] [wo1-ble-enable](wo1-ble-enable/WORKORDER.md):** | Turn BLE on | `hr-relay/wo1-ble-enable` (`main`) | `standard` | (a) Bump the framework to the latest tag containing the WO-8 fix and #226 (currently `v0.0.12-dev.93`). (b) Local `[ble]` mix-in, `sdkconfig.ble.defaults` in the chain, Echenon `MAX_CONNECTIONS=4` / `BLE_MAX_ACT=6`. (c) `BLEManager` composition per SPEC §3.5 with no Echenon providers yet. (d) Split envs: the default `ex3-waveshare-nano` drops `WITH_SIGNAL_LOGGER`, and a new `ex3-waveshare-nano-diag` keeps it (L-08). (e) Record DRAM and heap with BLE on. (f) Native env still builds. (g) Fix the diag-env logger crash during large ride-log CSV downloads (DR-1 prep finding 4; L-06 export race / httpd stack) | 2.1 (advertising, name `Echenon-XXXX`) | ✅ Complete (`579e5c9`) |
 | **[x] [wo2-hr-repeater](wo2-hr-repeater/WORKORDER.md):** | HR peripheral | `hr-relay/wo2-hr-repeater` (wo1) | `standard` | `HRMRepeater` (`IBLEServiceProvider`, `0x180D` / `0x2A37`, Body Sensor Location from source); an EventBus HR event and payload; a synthetic HR source under `WITH_HR_SYNTHETIC` (diagnostic only); native tests for `0x2A37` encoding | — | ✅ Complete (`1e4a46d`) |
 | **[x] [wo3-app-pairing-gate](wo3-app-pairing-gate/WORKORDER.md):** | **Go/no-go: Echelon app pairs `Echenon-XXXX`** | `hr-relay/wo3-app-pairing-gate` (wo2) | `interactive` | Owner with the P12: the Echelon app lists and pairs `Echenon-XXXX` and shows the synthetic HR. Evidence `A12-<date>-esp32-hr-pairing.md`; closes register row #12. **On failure, STOP the PR and escalate** | 2.3 (synthetic) | ✅ CONDITIONAL (`5a0350f`) |
-| **[ ] [wo3b-debug-android-connect](wo3b-debug-android-connect/WORKORDER.md):** | Debug Android BLE 0x3e | `hr-relay/wo3b-debug-android-connect` (wo3) | `interactive` | CA-directed investigation: (a) Android connects with WiFi STA disconnected; (b) diag build with `WIFI_PS_MIN_MODEM` (local override) — if Android connects, check for `AUTH_EXPIRE`; (c) Android HCI snoop log of connection parameters; (d) only if a–c inconclusive, test 100 ms advertising interval. Evidence in `docs/measurements/phase2/`. File one upstream issue (power-save / coex finding + adv interval if data supports). | — | ⏸️ PAUSED — escalated to CA |
-| **[ ] [wo4-hr-client](wo4-hr-client/WORKORDER.md):** | HR strap client | `hr-relay/wo4-hr-client` (wo3b) | `standard` | `HRMClient` (`IBLEClientProvider`). A pure `0x2A37` parser (uint8/uint16, contact flags, energy, RR, BPM = 0) with native tests. Three-state contact machine; 10 s stale timeout; battery `0x2A19`; publishes the HR event (no direct repeater call). `slowRetryMs = 15000` set through BLEManager config, with the mechanism verified and recorded | 2.4 logic (native) | ⬜ |
+| **[ ] [wo3b-debug-android-connect](wo3b-debug-android-connect/WORKORDER.md):** | Debug Android BLE 0x3e | `hr-relay/wo3b-debug-android-connect` (wo3) | `interactive` | CA-directed investigation: (a) Android connects with WiFi STA disconnected; (b) diag build with `WIFI_PS_MIN_MODEM` (local override) — if Android connects, check for `AUTH_EXPIRE`; (c) Android HCI snoop log of connection parameters; (d) only if a–c inconclusive, test 100 ms advertising interval. Evidence in `docs/measurements/phase2/`. File one upstream issue (power-save / coex finding + adv interval if data supports). | — | ⏸️ PAUSED — superseded by WO3c/WO3d test strategy |
+| **[ ] [wo3c-ble-test-rig](wo3c-ble-test-rig/WORKORDER.md):** | Build BLE A/B test rig | `hr-relay/wo3c-ble-test-rig` (wo3b) | `standard` | Build automated test tooling under `tools/ble-test/`: (a) `pixel_runner.py` — adb/uiautomator-driven nRF Connect test runner; (b) `esp32_log.py` — serial capture with wall-clock timestamps; (c) `control-peripheral/` — standalone PlatformIO project (NimBLE HR, no WiFi, same BLE presentation as Echenon); (d) `snoop_parse.py` — btsnoop HCI log parser; (e) optional `mac_runner.py` (bleak). Dry run 5 attempts on current firmware. No changes to `src/`, `framework/`, `SPEC.md`, `PROGRAM*.md` or `reviews/*`. | — | ⬜ |
+| **[ ] [wo3d-ble-ab-run](wo3d-ble-ab-run/WORKORDER.md):** | Run A/B/A′ BLE experiment | `hr-relay/wo3d-ble-ab-run` (wo3c) | `interactive` | Automated A/B/A′ experiment using WO3c rig: Batch A (Echenon, WiFi STA connected, ~50 attempts), Batch B (control peripheral, no WiFi, ~50 attempts), Batch A′ (Echenon again). Decision rules pre-agreed with CA. Capture first-failure HCI bug reports. Commit evidence under `docs/measurements/phase2/evidence/`. Escalate A/B/A′ results to CA — do not choose a coex fix. | — | ⬜ |
+| **[ ] [wo4-hr-client](wo4-hr-client/WORKORDER.md):** | HR strap client | `hr-relay/wo4-hr-client` (wo3d) | `standard` | `HRMClient` (`IBLEClientProvider`). A pure `0x2A37` parser (uint8/uint16, contact flags, energy, RR, BPM = 0) with native tests. Three-state contact machine; 10 s stale timeout; battery `0x2A19`; publishes the HR event (no direct repeater call). `slowRetryMs = 15000` set through BLEManager config, with the mechanism verified and recorded | 2.4 logic (native) | ⬜ Needs rebase onto wo3d |
 | **[ ] [wo5-strap-acceptance](wo5-strap-acceptance/WORKORDER.md):** | Strap and central acceptance | `hr-relay/wo5-strap-acceptance` (wo4) | `interactive` | Beat HW901, plus a second standard strap if available: portal scan and pair, end-to-end relay to the Echelon app, contact loss, auto-sleep and reconnect ≤ 20 s, factory reset. Also **RFC §17.2 items 4–9 as consumer evidence**. Evidence in `docs/measurements/phase2/`. The PA files an app-neutral upstream report | 2.2–2.6 | ⬜ |
 | **[ ] [wo6-coexistence](wo6-coexistence/WORKORDER.md):** | Full v1 BLE topology coexistence | `hr-relay/wo6-coexistence` (wo5) | `interactive` | **Full v1 topology:** HR strap (central) + P12 tablet + Android phone (both subscribed to HR) + portal WebSocket at 2 Hz + HTTPS POST, 5–10 minutes. Measure HR gaps, connection drops, heap and DRAM. **Programme gate:** "v1 BLE topology proven" — Android must connect. **If WO6 fails, STOP and escalate to Chief Architect. Do not pick an architecture option.** | 2.7 | ⬜ |
 | **[ ] [wo7-doc-sync](wo7-doc-sync/WORKORDER.md):** | Docs | `hr-relay/wo7-doc-sync` (wo6) | `standard` | SPEC §3.5, §7.8, §8 and §13.5 match what was built; register row #12 final; the PR-03 PROJECT.md wrap-up | — | ⬜ |
@@ -113,7 +115,30 @@ Framework issues are written app-neutral, with no Echenon specifics.
   Chief Architect review; after that review, the owner merges.
 
 ## Status
-**Plan Status:** IN PROGRESS — WO1–WO3 complete, **WO3b PAUSED** (research complete, escalated to CA with new evidence: `PREFER_BALANCE` + `WIFI_PS_NONE` untested combination, SmartSpin2k proves viability), WO4 worker running (will rebase onto WO3b)
+**Plan Status:** IN PROGRESS — WO1–WO3 ✅, WO3b ⏸️ (superseded by test strategy), **WO3c next** (spawning worker), WO3d after WO3c (interactive), WO4 needs rebase onto wo3d
+
+### 2026-10-14: CA test strategy approved — WO3c/WO3d added (PA session)
+- **CA document:** `reviews/2026-10-14-wo3b-ble-test-strategy.md` (on `origin/main`
+  @ `8e56da0`). **Supersedes** all earlier CA notes on WO3b (consolidated message,
+  K/A correction lists, revised `t8-setup-plan.md`).
+- **Owner approval:** 2026-10-14. Recorded here as provenance anchor.
+- **WO3b evidence committed** (`8264444`): paper corrections (K1–K11), T6'
+  `ANALYSIS.md` (446-line HCI/nRF cross-correlation, 6/12 pass rate). Raw data
+  (serial logs, bugreport ZIP, HCI dumps) retained locally under gitignored
+  `raw/` directories — contain WiFi SSID/BSSID.
+- **WO3c added** (`ble-test-rig`, standard): automated test rig —
+  `pixel_runner.py`, `esp32_log.py`, control peripheral (no WiFi), `snoop_parse.py`.
+- **WO3d added** (`ble-ab-run`, interactive): A/B/A′ experiment (~50 attempts
+  per batch). Decision rules pre-agreed: B ≥ 48/50 + A,A′ ≤ 85% → H-COEX
+  confirmed → WO3e; B ≈ A → not coex; A/A′ disagree → rerun.
+- **WO4 base changed** from `wo3b` to `wo3d`. WO4 branch (`90519d6`) needs
+  rebase. WO4 may proceed in parallel (CA confirmed).
+- **Key CA findings incorporated:**
+  - F6: Pixel connect path is normal and identical every time (HCI verified)
+  - F8: No failing attempt captured in HCI trace (ring buffer overwrite)
+  - "Cold/warm" distinction retired → "clustering" (F3)
+  - Success criteria for eventual fix: ≥ 95% Pixel (n ≥ 100), zero 30-min
+    drops, P12 unchanged, 10/10 WiFi associations no AUTH_EXPIRE
 
 ### 2026-10-12: CA response — WO3b inserted, WO6 widened (PA session)
 - **CA analysis:** The prime suspect for Android 0x3e is `WifiManager::applyPowerSave()`
