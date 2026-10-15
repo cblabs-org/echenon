@@ -75,7 +75,7 @@ Project name for branches: `hr-relay`. Linear stack from `main`. Proposed
 | **[ ] [wo3b-debug-android-connect](wo3b-debug-android-connect/WORKORDER.md):** | Debug Android BLE 0x3e | `hr-relay/wo3b-debug-android-connect` (wo3) | `interactive` | CA-directed investigation: (a) Android connects with WiFi STA disconnected; (b) diag build with `WIFI_PS_MIN_MODEM` (local override) — if Android connects, check for `AUTH_EXPIRE`; (c) Android HCI snoop log of connection parameters; (d) only if a–c inconclusive, test 100 ms advertising interval. Evidence in `docs/measurements/phase2/`. File one upstream issue (power-save / coex finding + adv interval if data supports). | — | ⏸️ PAUSED — superseded by WO3c/WO3d test strategy |
 | **[x] [wo3c-ble-test-rig](wo3c-ble-test-rig/WORKORDER.md):** | Build BLE A/B test rig | `hr-relay/wo3c-ble-test-rig` (wo3b) | `standard` | Build automated test tooling under `tools/ble-test/`: (a) `pixel_runner.py` — adb/uiautomator-driven nRF Connect test runner; (b) `esp32_log.py` — serial capture with wall-clock timestamps; (c) `control-peripheral/` — standalone PlatformIO project (NimBLE HR, no WiFi, same BLE presentation as Echenon); (d) `snoop_parse.py` — btsnoop HCI log parser; (e) optional `mac_runner.py` (bleak). Dry run 5 attempts on current firmware. No changes to `src/`, `framework/`, `SPEC.md`, `PROGRAM*.md` or `reviews/*`. | — | ✅ Complete (`b454d5d`) |
 | **[x] [wo3d-ble-ab-run](wo3d-ble-ab-run/WORKORDER.md):** | Run A/B/A′ BLE experiment | `hr-relay/wo3d-ble-ab-run` (wo3c) | `interactive` | Automated A/B/A′ experiment using WO3c rig: Batch A (Echenon, WiFi STA connected, ~50 attempts), Batch B (control peripheral, no WiFi, ~50 attempts), Batch A′ (Echenon again). Decision rules pre-agreed with CA. **Result: Decision Rule 2 triggered — H-COEX ELIMINATED.** A=26%, B=32%, A′=28% (Δ within 10 pp). Failure is ESP32 NimBLE/controller scheduling, not WiFi coex. | — | ✅ Complete (`62984c6`) |
-| **[ ] [wo4-hr-client](wo4-hr-client/WORKORDER.md):** | HR strap client | `hr-relay/wo4-hr-client` (wo3d) | `standard` | `HRMClient` (`IBLEClientProvider`). A pure `0x2A37` parser (uint8/uint16, contact flags, energy, RR, BPM = 0) with native tests. Three-state contact machine; 10 s stale timeout; battery `0x2A19`; publishes the HR event (no direct repeater call). `slowRetryMs = 15000` set through BLEManager config, with the mechanism verified and recorded | 2.4 logic (native) | ⬜ Needs rebase onto wo3d |
+| **[x] [wo4-hr-client](wo4-hr-client/WORKORDER.md):** | HR strap client | `hr-relay/wo4-hr-client` (wo3d) | `standard` | `HRMClient` (`IBLEClientProvider`). A pure `0x2A37` parser (uint8/uint16, contact flags, energy, RR, BPM = 0) with native tests. Three-state contact machine; 10 s stale timeout; battery `0x2A19`; publishes the HR event (no direct repeater call). `slowRetryMs = 15000` set through BLEManager config, with the mechanism verified and recorded | 2.4 logic (native) | ✅ Complete (`e40653f`) |
 | **[ ] [wo5-strap-acceptance](wo5-strap-acceptance/WORKORDER.md):** | Strap and central acceptance | `hr-relay/wo5-strap-acceptance` (wo4) | `interactive` | Beat HW901, plus a second standard strap if available: portal scan and pair, end-to-end relay to the Echelon app, contact loss, auto-sleep and reconnect ≤ 20 s, factory reset. Also **RFC §17.2 items 4–9 as consumer evidence**. Evidence in `docs/measurements/phase2/`. The PA files an app-neutral upstream report | 2.2–2.6 | ⬜ |
 | **[ ] [wo6-coexistence](wo6-coexistence/WORKORDER.md):** | Full v1 BLE topology coexistence | `hr-relay/wo6-coexistence` (wo5) | `interactive` | **Full v1 topology:** HR strap (central) + P12 tablet + Android phone (both subscribed to HR) + portal WebSocket at 2 Hz + HTTPS POST, 5–10 minutes. Measure HR gaps, connection drops, heap and DRAM. **Programme gate:** "v1 BLE topology proven" — Android must connect. **If WO6 fails, STOP and escalate to Chief Architect. Do not pick an architecture option.** | 2.7 | ⬜ |
 | **[ ] [wo7-doc-sync](wo7-doc-sync/WORKORDER.md):** | Docs | `hr-relay/wo7-doc-sync` (wo6) | `standard` | SPEC §3.5, §7.8, §8 and §13.5 match what was built; register row #12 final; the PR-03 PROJECT.md wrap-up | — | ⬜ |
@@ -115,7 +115,32 @@ Framework issues are written app-neutral, with no Echenon specifics.
   Chief Architect review; after that review, the owner merges.
 
 ## Status
-**Plan Status:** IN PROGRESS — WO1–WO3 ✅, WO3b ⏸️, WO3c ✅, **WO3d ✅** (H-COEX eliminated — escalating to CA), WO4 next (needs rebase onto wo3d)
+**Plan Status:** IN PROGRESS — WO1–WO3 ✅, WO3b ⏸️, WO3c ✅, WO3d ✅, **WO4 ✅** (rebased onto wo3d, 46/46 native, all envs clean), WO5 next (interactive)
+
+### 2026-10-15: WO4 complete — HRMClient rebased and verified (PA session)
+- **Branch:** `hr-relay/wo4-hr-client` at `e40653f`.
+- **Rebase:** `git rebase --onto hr-relay/wo3d-ble-ab-run hr-relay/wo3-app-pairing-gate
+  hr-relay/wo4-hr-client`. Conflict on `PROJECT.md` (expected — WO3b-WO3d
+  insertions not present in the pre-rebase PA prep commit). Resolved by keeping
+  wo3d's version (`git checkout --ours`). Second commit (HRMClient code) applied
+  cleanly.
+- **Post-rebase verification:**
+  - `env:native`: **46/46** tests pass (32 WO1-WO2 + 1 WO3d + 13 WO4 parser).
+  - `env:ex3-waveshare-nano`: builds clean (RAM 53,164 B, Flash 1,527,651 B).
+  - `env:ex3-waveshare-nano-diag`: builds clean (RAM 53,768 B, Flash 1,677,351 B).
+- **WO4 deliverables (from worker Completion Report):**
+  - `HRMClient`: `IBLEClientProvider` + `ITickable`. Scan, connect, subscribe
+    to HR strap. 3-state contact FSM (ACTIVE/NO_CONTACT/DISCONNECTED). 10 s
+    stale timeout publishes HR=0. Battery `0x2A19`, Body Sensor Location `0x2A38`.
+  - `HRParsing.h`: Standalone inline `parse0x2A37()` (BLE-free, native-testable).
+  - EventBus publish via 4-slot ring buffer on `"echenon.hr"` — no direct
+    `HRMRepeater` call (strict architectural decoupling).
+  - `slowRetryMs = 15000`: set via `bleManager.applyConfig()` with `JsonDocument`
+    after `bleManager.begin(app)`. Mechanism verified: `BLEManager::applyConfig()`
+    accepts `"slowRetryMs"` in the `"ble"` config namespace and propagates to
+    all active reconnect policies.
+- **No flash** — build-only. No GPIO 43/44 references in new code.
+- **Next:** WO5 (interactive — strap acceptance with Beat HW901).
 
 ### 2026-10-15: WO3d A/B/A′ COMPLETE — H-COEX ELIMINATED (interactive session)
 - **Branch:** `hr-relay/wo3d-ble-ab-run` at `f8f4985`.

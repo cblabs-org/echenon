@@ -9,7 +9,7 @@
 ## Active Projects
 | Project | Status | Modules | Context |
 |---|---|---|---|
-| PR-03 HR Relay (Phase 2) | WO1–WO3 ✅, WO3b–WO3d ✅ (**H-COEX eliminated** — A/B/A′ Rule 2), WO4 next (needs rebase), WO5–WO7 pending | BLE (HRM), Build System, WifiManager (coex ruled out), Test Tooling | [PROJECT.md](../pr-03-hr-relay/PROJECT.md) |
+| PR-03 HR Relay (Phase 2) | WO1–WO4 ✅, WO3b–WO3d ✅ (H-COEX eliminated), **WO5 next** (interactive — strap acceptance), WO6–WO7 pending | BLE (HRM: Repeater + Client + Parsing), Build System, Test Tooling | [PROJECT.md](../pr-03-hr-relay/PROJECT.md) |
 
 ## Recently Completed (last 5)
 | Project | Completed | Modules | Key Outcome |
