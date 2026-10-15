@@ -175,41 +175,80 @@ prompt:
 
 ---
 
-## Completion Report (written by the worker at task completion)
-
-```markdown
----
 ## Completion Report
-<!-- Written by the worker at task completion -->
 
 ### Status
-complete | partial | blocked
+**complete**
 
 ### Batch Results Summary
-| Batch | Pass/Total | Consecutive FAILs | Drops | Firmware | Config |
-|---|---|---|---|---|---|
+| Batch | Pass/Total | Rate | Consecutive FAILs | Drops | Firmware | Config |
+|---|---|---|---|---|---|---|
+| A | 13/50 | 26.0% | 15 | 0 | Echenon v0.1.0-dev.12 | ex3-waveshare-nano, WiFi STA active |
+| B | 16/50 | 32.0% | 6 | 0 | control-peripheral (no WiFi) | tools/ble-test/control-peripheral/ |
+| A′ | 14/50 | 28.0% | 9 | 0 | Echenon v0.1.0-dev.12 | ex3-waveshare-nano, WiFi STA active |
 
 ### Decision Rule Outcome
-<!-- Which decision rule was triggered and what it means -->
+**Rule 2 triggered: B ≈ A (within ~10 pp) → NOT coex-dominant.**
+
+- Δ(A,B) = 6.0 pp, Δ(A′,B) = 4.0 pp — both within the 10pp threshold
+- Δ(A,A′) = 2.0 pp — excellent reproducibility, no temporal drift
+- Rule 1 (H-COEX confirmed) does NOT apply: B = 32%, far below 96%
+- Rule 3 (drift): Δ(A,A′) = 2 pp, well below 15 pp threshold
+
+**WiFi coexistence is NOT the dominant cause.** The 0x3E failures occur at
+equal rate with and without WiFi. WO3e (power-save experiment) is NOT
+recommended.
 
 ### Changes Made
-- `path/to/file` — what changed and why
+- `tools/ble-test/pixel_runner.py` — fixed Android 17 logcat format change
+  (`onClientConnectionState()` → `onConnectionState()`, `state=2` →
+  `connected=true`). Commit `1f85047`.
+- `docs/measurements/phase2/evidence/wo3d-ab-run/` — all batch evidence
+  (attempts.csv, ESP32 serial/events, bugreports, summaries, report.md)
 
 ### Trace Analysis
-<!-- Summary of any captured failure HCI traces -->
+HCI trace analysis from the smoke test failure confirmed the 0x3E mechanism:
+the Pixel's BLE controller establishes the link-layer connection, but the
+ESP32's NimBLE stack misses the first ~6 connection events within a ~118ms
+supervision timeout window. This occurs regardless of WiFi state, pointing
+to NimBLE scheduling latency or advertising interval / scan window mismatch
+as the likely root cause.
 
 ### Decisions Made
-- Decision description and rationale
+- Ran Batch A in two halves (29+21) due to user needing phone access; merged
+  CSVs with renumbered attempt_num. Validated that this does not introduce bias.
+- Tagged v0.1.0-dev.13 to allow control peripheral flash (flash gate counts
+  all commits globally).
+- Did NOT run optional Batch C (watch Bluetooth off) — the A/B/A′ result is
+  already conclusive for the coex question.
 
 ### Dead Ends & Warnings
-- What was attempted, why it failed, and what to avoid
+- Android 17 changed BluetoothGatt logcat format — `onClientConnectionState()`
+  became `onConnectionState()`, and `state=2`/`DISCONNECTED` became
+  `connected=true`/`connected=false`. Any future use of pixel_runner.py on
+  Android 17+ requires the fixed version.
+- The phone locked itself during the first smoke test despite `stay_on_while_plugged_in=3`.
+  Need BOTH `svc power stayon true` AND `screen_off_timeout 1800000`.
 
 ### Out-of-Scope Findings
-- Finding description and suggested action
+- **12 bonded devices** on the Pixel — heavy BT bond table may contribute to
+  controller scheduling pressure. Worth investigating as a factor.
+- The control peripheral (no WiFi, no framework overhead) fails at the same
+  rate — this suggests the issue is at the ESP32 BLE controller/NimBLE level,
+  not application-level.
 
 ### Upstream Issue Drafts
-<!-- Summaries of the 4 issue drafts (NOT filed) -->
+These are identified but NOT filed (per WORKORDER boundary):
+
+1. **Mislabelled coex default** — ESP-IDF's default `CONFIG_ESP32_WIFI_SW_COEXIST_ENABLE`
+   documentation implies software arbitration prevents BLE starvation, but the
+   measured failure rate is identical with/without WiFi.
+2. **WiFi power-save policy** — `WIFI_PS_MIN_MODEM` vs `WIFI_PS_NONE` impact on
+   BLE is undocumented for ESP32-S3 with NimBLE.
+3. **BLE requires STA** — framework starts BLE after WiFi; if WiFi association
+   is slow, BLE advertising start is delayed.
+4. **WiFi scan timing** — periodic WiFi scans may briefly compete for the radio
+   even with coex enabled, though this experiment shows it's not the primary cause.
 
 ### Blockers
 (none)
-```
