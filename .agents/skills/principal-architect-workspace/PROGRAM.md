@@ -57,8 +57,11 @@ provisional, decomposed after DR-2).
 | **v1 release** (beta / stable tag, owner only, rule 03) | PR-07 | PR-09 exit criteria met; owner tags | OPEN |
 | **DR-2: v2 Active Design Freeze** | **PR-07** (and all v2 PRs; no active-board soldering or interception before approval) | Chief Architect approves the [DR-2 record](reviews/DR-2-design-freeze.md) | NOT STARTED |
 | R3/R4/R5 standalone supplies | DR-2 (none in v1, DR-1 §2.9) | Pot-reference replica and switched supplies decided at DR-2 §2.2 / §2.9 | ✅ DECIDED for v1: none (DR-1 §2.9). OPEN for v2 (DR-2) |
-| Echelon-app HR spike | PR-03 (proposed: WO3 go/no-go) | Row #12 INCONCLUSIVE with the nRF mock (Android could not discover it); retest with an ESP32 HR peripheral | OPEN |
-| **Framework central-role acceptance evidence** | PR-03 entry | RFC §17.2 items 4–9 against a real 0x180D peripheral on a framework tag containing the WO-8 use-after-free fix | **OPEN** |
+| Echelon-app HR spike | PR-03 WO3 go/no-go | Echelon app on the P12 pairs `Echenon-XXXX` and shows HR (register row #12) | ✅ PASSED (PR-03 WO3) |
+| **Framework central-role acceptance evidence** | PR-03 WO5 (in-PR, approved 2026-10-12) | RFC §17.2 items 4–9 against a real 0x180D peripheral on a framework tag containing the WO-8 use-after-free fix | **OPEN** |
+| **v1 BLE topology on the P12** | PR-03 merge (WO6) | HR strap (central) + P12 (HR peripheral) + portal WebSocket + HTTPS POST, sustained; no HR gaps > 2.5 s, no link drops | OPEN |
+| **BLE works without WiFi** (v1 requirement) | v1 release (PR-09); fix lands upstream in the framework | BLE advertising, strap reconnect and discovery continue at boot without STA and through a sustained STA outage | OPEN (framework issue draft (iii)) |
+| **Android phone connection reliability** | **PR-05 entry** | ≥ 95% single-attempt connect success (n ≥ 50, `tools/ble-test` rig) on the Pixel 10 Pro Fold and one other Android phone | OPEN: Pixel currently 26–32% (WO3d) |
 | Framework #226 (OTA check-on-boot deferral) | Removing Echenon's `autoCheck=false` enforcement | Upstream issue **closed**. PR-04a uses the framework option after the PR-03 WO1 bump (verify) | CLOSED upstream |
 
 ### Parallelism
@@ -338,3 +341,49 @@ Decisions on the v1 Passive / v2 Active restructure:
   and is not independently accurate.
 - Gates closed: scope characterisation, Phase 0 register, DR-1; R3/R4/R5
   decided (none in v1).
+
+### 2026-10-15: WO3d result: WiFi coexistence eliminated; gates split
+- **Experiment** (PR-03 WO3d, automated `tools/ble-test` rig, 150 attempts,
+  Pixel 10 Pro Fold + nRF Connect):
+
+  | Batch | Pass rate |
+  |---|---|
+  | A: Echenon, WiFi on | 26% |
+  | **B: control peripheral, no WiFi** | **32%** |
+  | A′: Echenon, WiFi on | 28% |
+
+  **H-COEX eliminated:** the failure rate doesn't change without WiFi, and A
+  and A′ agree, so there was no drift. No established-link drops across all
+  150 30-second holds.
+- **CA review of the evidence:**
+  - About **80% of failures are silent on the ESP32**: the ESP32 never
+    registered the phone's CONNECT_IND (A 29/37, B 29/34, A′ 27/36). The rest
+    are 0x3e (request heard, early connection events missed).
+  - The phone-side "connection complete 0x00" only shows that the phone sent
+    the request, so the report's "Pixel establishes the link" claim was
+    corrected.
+  - The leading hypothesis is now **H-INTEROP**: the ESP32-S3 controller
+    misses or rejects the Pixel's connection requests. A short connection
+    interval cannot explain missed requests.
+- **Next (PR-03 WO3e, side-swap tests with the rig):**
+  - X1: Pixel → a non-ESP32 peripheral;
+  - X2: the control firmware on a classic ESP32 (different controller);
+  - X3: P12 via nRF Connect;
+  - X4: other phones;
+  - X5: an over-the-air sniffer, only if the evidence points at the S3 (owner
+    approval before any purchase).
+
+  An `espressif/esp-idf` issue may follow, as a draft for CA review first.
+- **Upstream drafts:**
+  - (i) mislabelled coex default: keep;
+  - (ii) WiFi power-save policy: **withdrawn**;
+  - (iii) BLE requires STA: keep, **high priority** (v1 requirement);
+  - (iv) WiFi scan timing / auto-scan: keep, low priority.
+- **Gates split:**
+  - WO6 proves the **v1 topology on the P12** (PR-03 scope).
+  - **Android phone reliability (≥ 95% single attempt, Pixel + one other
+    Android) becomes a PR-05 entry gate.**
+  - "BLE works without WiFi" is a v1 release gate.
+  - PR-03 is **not blocked**: the P12 HR relay works.
+- WO4 (HRMClient) approved to proceed (rebased onto WO3d).
+- Strategy: [2026-10-14 WO3b test strategy](reviews/2026-10-14-wo3b-ble-test-strategy.md).

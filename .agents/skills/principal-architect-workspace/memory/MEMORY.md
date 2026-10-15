@@ -23,6 +23,7 @@ Full project history: [PROJECT_INDEX.md](PROJECT_INDEX.md)
 Cross-cutting module index: [MODULE_INDEX.md](MODULE_INDEX.md)
 
 ## Notes
+- **BLE (2026-10-15):** WiFi coex eliminated as the cause of Pixel connect failures (WO3d). Leading hypothesis: ESP32-S3 ↔ Pixel controller interop (PR-03 WO3e side-swap tests). Android phone reliability is a PR-05 entry gate; "BLE works without WiFi" is a v1 gate.
 - **Releases (2026-10-12):** v1 Passive `1.0.0` (PR-01…06, PR-14, PR-09; read-only FTMS; diagnostics with an optional save-to-flash) / v2 Active `2.0.0` (DR-2, PR-07, 10, 08, 11, 12, 13). UART0 (GPIO 43/44) is reserved for a future ANT+ module.
 - **Release structure (owner decision 2026-10-12):** **v1 "Passive"** = UC1–UC3,
   permanent tap board, BLE-only (FTMS **read-only** + HR relay), Strava upload,
