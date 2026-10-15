@@ -74,7 +74,7 @@ Project name for branches: `hr-relay`. Linear stack from `main`. Proposed
 | **[x] [wo3-app-pairing-gate](wo3-app-pairing-gate/WORKORDER.md):** | **Go/no-go: Echelon app pairs `Echenon-XXXX`** | `hr-relay/wo3-app-pairing-gate` (wo2) | `interactive` | Owner with the P12: the Echelon app lists and pairs `Echenon-XXXX` and shows the synthetic HR. Evidence `A12-<date>-esp32-hr-pairing.md`; closes register row #12. **On failure, STOP the PR and escalate** | 2.3 (synthetic) | ✅ CONDITIONAL (`5a0350f`) |
 | **[ ] [wo3b-debug-android-connect](wo3b-debug-android-connect/WORKORDER.md):** | Debug Android BLE 0x3e | `hr-relay/wo3b-debug-android-connect` (wo3) | `interactive` | CA-directed investigation: (a) Android connects with WiFi STA disconnected; (b) diag build with `WIFI_PS_MIN_MODEM` (local override) — if Android connects, check for `AUTH_EXPIRE`; (c) Android HCI snoop log of connection parameters; (d) only if a–c inconclusive, test 100 ms advertising interval. Evidence in `docs/measurements/phase2/`. File one upstream issue (power-save / coex finding + adv interval if data supports). | — | ⏸️ PAUSED — superseded by WO3c/WO3d test strategy |
 | **[x] [wo3c-ble-test-rig](wo3c-ble-test-rig/WORKORDER.md):** | Build BLE A/B test rig | `hr-relay/wo3c-ble-test-rig` (wo3b) | `standard` | Build automated test tooling under `tools/ble-test/`: (a) `pixel_runner.py` — adb/uiautomator-driven nRF Connect test runner; (b) `esp32_log.py` — serial capture with wall-clock timestamps; (c) `control-peripheral/` — standalone PlatformIO project (NimBLE HR, no WiFi, same BLE presentation as Echenon); (d) `snoop_parse.py` — btsnoop HCI log parser; (e) optional `mac_runner.py` (bleak). Dry run 5 attempts on current firmware. No changes to `src/`, `framework/`, `SPEC.md`, `PROGRAM*.md` or `reviews/*`. | — | ✅ Complete (`b454d5d`) |
-| **[ ] [wo3d-ble-ab-run](wo3d-ble-ab-run/WORKORDER.md):** | Run A/B/A′ BLE experiment | `hr-relay/wo3d-ble-ab-run` (wo3c) | `interactive` | Automated A/B/A′ experiment using WO3c rig: Batch A (Echenon, WiFi STA connected, ~50 attempts), Batch B (control peripheral, no WiFi, ~50 attempts), Batch A′ (Echenon again). Decision rules pre-agreed with CA. Capture first-failure HCI bug reports. Commit evidence under `docs/measurements/phase2/evidence/`. Escalate A/B/A′ results to CA — do not choose a coex fix. | — | ⬜ |
+| **[x] [wo3d-ble-ab-run](wo3d-ble-ab-run/WORKORDER.md):** | Run A/B/A′ BLE experiment | `hr-relay/wo3d-ble-ab-run` (wo3c) | `interactive` | Automated A/B/A′ experiment using WO3c rig: Batch A (Echenon, WiFi STA connected, ~50 attempts), Batch B (control peripheral, no WiFi, ~50 attempts), Batch A′ (Echenon again). Decision rules pre-agreed with CA. **Result: Decision Rule 2 triggered — H-COEX ELIMINATED.** A=26%, B=32%, A′=28% (Δ within 10 pp). Failure is ESP32 NimBLE/controller scheduling, not WiFi coex. | — | ✅ Complete (`62984c6`) |
 | **[ ] [wo4-hr-client](wo4-hr-client/WORKORDER.md):** | HR strap client | `hr-relay/wo4-hr-client` (wo3d) | `standard` | `HRMClient` (`IBLEClientProvider`). A pure `0x2A37` parser (uint8/uint16, contact flags, energy, RR, BPM = 0) with native tests. Three-state contact machine; 10 s stale timeout; battery `0x2A19`; publishes the HR event (no direct repeater call). `slowRetryMs = 15000` set through BLEManager config, with the mechanism verified and recorded | 2.4 logic (native) | ⬜ Needs rebase onto wo3d |
 | **[ ] [wo5-strap-acceptance](wo5-strap-acceptance/WORKORDER.md):** | Strap and central acceptance | `hr-relay/wo5-strap-acceptance` (wo4) | `interactive` | Beat HW901, plus a second standard strap if available: portal scan and pair, end-to-end relay to the Echelon app, contact loss, auto-sleep and reconnect ≤ 20 s, factory reset. Also **RFC §17.2 items 4–9 as consumer evidence**. Evidence in `docs/measurements/phase2/`. The PA files an app-neutral upstream report | 2.2–2.6 | ⬜ |
 | **[ ] [wo6-coexistence](wo6-coexistence/WORKORDER.md):** | Full v1 BLE topology coexistence | `hr-relay/wo6-coexistence` (wo5) | `interactive` | **Full v1 topology:** HR strap (central) + P12 tablet + Android phone (both subscribed to HR) + portal WebSocket at 2 Hz + HTTPS POST, 5–10 minutes. Measure HR gaps, connection drops, heap and DRAM. **Programme gate:** "v1 BLE topology proven" — Android must connect. **If WO6 fails, STOP and escalate to Chief Architect. Do not pick an architecture option.** | 2.7 | ⬜ |
@@ -115,7 +115,41 @@ Framework issues are written app-neutral, with no Echenon specifics.
   Chief Architect review; after that review, the owner merges.
 
 ## Status
-**Plan Status:** IN PROGRESS — WO1–WO3 ✅, WO3b ⏸️, **WO3c ✅** (`b454d5d`), **WO3d next** (interactive — bridge prompt ready), WO4 needs rebase onto wo3d
+**Plan Status:** IN PROGRESS — WO1–WO3 ✅, WO3b ⏸️, WO3c ✅, **WO3d ✅** (H-COEX eliminated — escalating to CA), WO4 next (needs rebase onto wo3d)
+
+### 2026-10-15: WO3d A/B/A′ COMPLETE — H-COEX ELIMINATED (interactive session)
+- **Branch:** `hr-relay/wo3d-ble-ab-run` at `f8f4985`.
+- **Result (Decision Rule 2 triggered):** WiFi coexistence is **NOT** the
+  dominant cause of 0x3E connection failures.
+  - Batch A (Echenon + WiFi): **26.0%** pass (13/50)
+  - Batch B (control, no WiFi): **32.0%** pass (16/50)
+  - Batch A′ (Echenon + WiFi): **28.0%** pass (14/50)
+  - Δ(A, B) = 6 pp, Δ(A′, B) = 4 pp — both within 10 pp threshold.
+  - A vs A′ = 2 pp — excellent reproducibility, no temporal drift.
+- **150 total attempts, zero drops during 30s holds** (H-UPD not observed).
+- **HCI trace confirmed mechanism:** Pixel establishes link (CONNECTION_COMPLETE
+  status=0x00) but ESP32 misses first 6 data-channel events within 112.5ms
+  (6 × 18.75ms). This happens identically with and without WiFi.
+- **Revised hypothesis standings:**
+  - ~~H-COEX~~ → **ELIMINATED** (Rule 2)
+  - H-PHONE → **Promoted to leading** (Pixel's 18.75ms interval gives half
+    the establishment window of the P12's ~36.25ms)
+  - H-ESP32 → **New** (NimBLE/controller scheduling latency, independent of WiFi)
+  - H-UPD → **Not observed** (0/150 drops)
+- **Programme impact:**
+  - WO3e (power-save experiment) **NOT triggered** — Rule 2 applies, not Rule 1.
+  - The phone question still gates **PR-05**, not PR-03. PR-03 is unblocked.
+  - `WIFI_PS_NONE` is no longer the prime suspect. The upstream WiFi PS issue
+    draft (#ii) may need revision or withdrawal.
+  - WO6 coexistence gate ("v1 BLE topology proven") remains — but the
+    expected failure mode is now NimBLE scheduling, not WiFi coex.
+- **Evidence:** `docs/measurements/phase2/evidence/wo3d-ab-run/report.md`
+  (322-line systematic debugging report). Raw bugreports and serial logs
+  in gitignored `raw/` directories.
+- **Side findings:** Android 17 logcat format change (fixed in `pixel_runner.py`,
+  commit `1f85047`); 12 bonded BLE devices on the Pixel may contribute.
+- **Next:** Escalate to CA for direction on the phone/NimBLE question and
+  the PR-05 gate implications. WO4 (HRMClient) may proceed — needs rebase.
 
 ### 2026-10-14: CA test strategy approved — WO3c/WO3d added (PA session)
 - **CA document:** `reviews/2026-10-14-wo3b-ble-test-strategy.md` (on `origin/main`

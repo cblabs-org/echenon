@@ -1,5 +1,5 @@
 # Principal Architect Memory
-<!-- Last updated: 2026-10-14T23:22:00+01:00 -->
+<!-- Last updated: 2026-10-15T20:53:00+01:00 -->
 
 ## Active Programs
 | Program | Plan | Status |
@@ -9,7 +9,7 @@
 ## Active Projects
 | Project | Status | Modules | Context |
 |---|---|---|---|
-| PR-03 HR Relay (Phase 2) | WO1–WO3 ✅, WO3b ⏸️ (superseded by test strategy), **WO3c** spawning (ble-test-rig), WO3d pending (ble-ab-run, interactive), WO4 needs rebase onto wo3d | BLE (HRM), Build System, WifiManager (coex), Test Tooling | [PROJECT.md](../pr-03-hr-relay/PROJECT.md) |
+| PR-03 HR Relay (Phase 2) | WO1–WO3 ✅, WO3b–WO3d ✅ (**H-COEX eliminated** — A/B/A′ Rule 2), WO4 next (needs rebase), WO5–WO7 pending | BLE (HRM), Build System, WifiManager (coex ruled out), Test Tooling | [PROJECT.md](../pr-03-hr-relay/PROJECT.md) |
 
 ## Recently Completed (last 5)
 | Project | Completed | Modules | Key Outcome |
