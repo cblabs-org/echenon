@@ -432,19 +432,26 @@ class PixelRunner:
         }
 
     def _wait_for_connection_state(self, timeout: float, start_time: float) -> Tuple[str, int, int]:
-        """Polls logcat for onClientConnectionState result."""
+        """Polls logcat for BLE connection state result.
+
+        Supports both pre-Android-17 (onClientConnectionState, state=2/0)
+        and Android 17+ (onConnectionState, connected=true/false) log formats.
+        """
         deadline = start_time + timeout
         while time.time() < deadline:
             code, out, _ = self.adb.run_cmd(["logcat", "-d", "-s", "BluetoothGatt:*"])
             for line in out.splitlines():
-                if "onClientConnectionState()" in line or "onConnectionStateChange" in line:
+                if ("onClientConnectionState()" in line
+                        or "onConnectionStateChange" in line
+                        or "onConnectionState()" in line):
                     m = re.search(r"status=(\d+)", line)
                     if m:
                         status = int(m.group(1))
                         latency = int((time.time() - start_time) * 1000)
-                        if status == 0 and ("state=2" in line or "CONNECTED" in line or "state: 2" in line):
+                        if status == 0 and ("state=2" in line or "CONNECTED" in line
+                                            or "state: 2" in line or "connected=true" in line):
                             return "PASS", 0, latency
-                        elif status in (147, 133) or "DISCONNECTED" in line:
+                        elif status in (147, 133) or "DISCONNECTED" in line or "connected=false" in line:
                             return "FAIL", status, latency
             time.sleep(0.05)
 
@@ -454,15 +461,18 @@ class PixelRunner:
     def _check_logcat_drop(self) -> bool:
         code, out, _ = self.adb.run_cmd(["logcat", "-d", "-s", "BluetoothGatt:*"])
         for line in out.splitlines():
-            if ("DISCONNECTED" in line or "state=0" in line or "state: 0" in line) and "status=0" in line:
-                return True
+            if ("onConnectionState()" in line or "onClientConnectionState()" in line
+                    or "onConnectionStateChange" in line):
+                if ("DISCONNECTED" in line or "state=0" in line
+                        or "state: 0" in line or "connected=false" in line):
+                    return True
         return False
 
     def _wait_for_disconnect_confirm(self, timeout: float):
         start = time.time()
         while time.time() - start < timeout:
             code, out, _ = self.adb.run_cmd(["logcat", "-d", "-s", "BluetoothGatt:*"])
-            if "DISCONNECTED" in out or "state=0" in out:
+            if "DISCONNECTED" in out or "state=0" in out or "connected=false" in out:
                 return
             time.sleep(0.2)
 
