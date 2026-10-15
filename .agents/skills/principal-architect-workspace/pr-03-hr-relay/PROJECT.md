@@ -77,7 +77,8 @@ Project name for branches: `hr-relay`. Linear stack from `main`. Proposed
 | **[x] [wo3d-ble-ab-run](wo3d-ble-ab-run/WORKORDER.md):** | Run A/B/A′ BLE experiment | `hr-relay/wo3d-ble-ab-run` (wo3c) | `interactive` | Automated A/B/A′ experiment using WO3c rig: Batch A (Echenon, WiFi STA connected, ~50 attempts), Batch B (control peripheral, no WiFi, ~50 attempts), Batch A′ (Echenon again). Decision rules pre-agreed with CA. **Result: Decision Rule 2 triggered — H-COEX ELIMINATED.** A=26%, B=32%, A′=28% (Δ within 10 pp). Failure is ESP32 NimBLE/controller scheduling, not WiFi coex. | — | ✅ Complete (`62984c6`) |
 | **[x] [wo4-hr-client](wo4-hr-client/WORKORDER.md):** | HR strap client | `hr-relay/wo4-hr-client` (wo3d) | `standard` | `HRMClient` (`IBLEClientProvider`). A pure `0x2A37` parser (uint8/uint16, contact flags, energy, RR, BPM = 0) with native tests. Three-state contact machine; 10 s stale timeout; battery `0x2A19`; publishes the HR event (no direct repeater call). `slowRetryMs = 15000` set through BLEManager config, with the mechanism verified and recorded | 2.4 logic (native) | ✅ Complete (`e40653f`) |
 | **[ ] [wo5-strap-acceptance](wo5-strap-acceptance/WORKORDER.md):** | Strap and central acceptance | `hr-relay/wo5-strap-acceptance` (wo4) | `interactive` | Beat HW901, plus a second standard strap if available: portal scan and pair, end-to-end relay to the Echelon app, contact loss, auto-sleep and reconnect ≤ 20 s, factory reset. Also **RFC §17.2 items 4–9 as consumer evidence**. Evidence in `docs/measurements/phase2/`. The PA files an app-neutral upstream report | 2.2–2.6 | ⬜ |
-| **[ ] [wo6-coexistence](wo6-coexistence/WORKORDER.md):** | Full v1 BLE topology coexistence | `hr-relay/wo6-coexistence` (wo5) | `interactive` | **Full v1 topology:** HR strap (central) + P12 tablet + Android phone (both subscribed to HR) + portal WebSocket at 2 Hz + HTTPS POST, 5–10 minutes. Measure HR gaps, connection drops, heap and DRAM. **Programme gate:** "v1 BLE topology proven" — Android must connect. **If WO6 fails, STOP and escalate to Chief Architect. Do not pick an architecture option.** | 2.7 | ⬜ |
+| **[ ] [wo3e-side-swap-tests](wo3e-side-swap-tests/WORKORDER.md):** | Side-swap BLE interop tests | `hr-relay/wo3e-side-swap-tests` (wo5) | `interactive` | CA-directed: isolate whether the connection failure is ESP32-S3-specific or peripheral-generic. Apply CA corrections C1-C4 to the WO3d report. Using the existing rig, 50 attempts each: **X1** Pixel -> non-ESP32 peripheral (eBeat or nRF Connect advertiser); **X2** control peripheral rebuilt for classic ESP32 (esp32dev); **X3** P12 via nRF Connect rig; **X4** if available, non-Pixel Android + iPhone; **X5** only if X1/X2 point at ESP32-S3, escalate for sniffer. Do NOT sweep adv intervals or switch to Bluedroid. Upstream draft: withdraw (ii) power-save; keep (i)(iii)(iv). Escalate results to CA | — | ⬜ |
+| **[ ] [wo6-coexistence](wo6-coexistence/WORKORDER.md):** | P12 v1 topology coexistence | `hr-relay/wo6-coexistence` (wo3e) | `interactive` | **v1 topology on the P12:** HR strap (central) + P12 tablet + portal WebSocket at 2 Hz + HTTPS POST, 5-10 minutes. Measure HR gaps, connection drops, heap and DRAM. **Programme gate:** "v1 BLE topology proven on the P12". Android phone reliability (>= 95% single attempt, Pixel + one other Android) is a **PR-05 ENTRY gate**, not PR-03. **If WO6 fails, STOP and escalate to Chief Architect. Do not pick an architecture option.** | 2.7 | ⬜ |
 | **[ ] [wo7-doc-sync](wo7-doc-sync/WORKORDER.md):** | Docs | `hr-relay/wo7-doc-sync` (wo6) | `standard` | SPEC §3.5, §7.8, §8 and §13.5 match what was built; register row #12 final; the PR-03 PROJECT.md wrap-up | — | ⬜ |
 
 **File overlaps:**
@@ -115,7 +116,42 @@ Framework issues are written app-neutral, with no Echenon specifics.
   Chief Architect review; after that review, the owner merges.
 
 ## Status
-**Plan Status:** IN PROGRESS — WO1–WO3 ✅, WO3b ⏸️, WO3c ✅, WO3d ✅, **WO4 ✅** (rebased onto wo3d, 46/46 native, all envs clean), WO5 next (interactive)
+**Plan Status:** IN PROGRESS — WO1–WO4 ✅, WO3b ⏸️, WO3c–WO3d ✅, **WO5 next** (interactive — strap acceptance), WO3e (CA-directed side-swap), WO6 (revised: P12 only), WO7
+
+### 2026-10-15: CA WO3d review — H-COEX accepted, WO3e ordered (owner-approved)
+- **CA verdict:** H-COEX ELIMINATED (A 26%, B 32%, A' 28%; Rule 2). Clean experiment.
+- **Corrections C1-C4 required to `wo3d-ab-run/report.md`:**
+  - C1: `LE_ENH_CONNECTION_COMPLETE status=0x00` on the phone means the phone SENT
+    `CONNECT_IND`, not that the link was established. Remove "successfully establishes
+    the link".
+  - C2: ~80% of failures are "CONNECT_IND never received" (silent misses), ~20% are
+    0x3e (request heard, early events missed). Fix the data-flow diagram.
+    A: 37 failures / 8 logged 0x3e (29 silent); B: 34/5 (29); A': 36/9 (27).
+  - C3: Rename H-PHONE to **H-INTEROP** — 18.75 ms interval cannot explain silent
+    misses (interval only matters after CONNECT_IND received). Leading hypothesis:
+    ESP32-S3 controller misses or rejects the Pixel's CONNECT_IND.
+  - C4: Remove unverified chipset/"BLE stack" row. Reconcile P12 interval (~36.25 ms
+    in table vs 48.75 ms in logs). Remove Android versions unless from bug report.
+- **WO3e added** (side-swap tests, interactive, 50 attempts each):
+  - X1: Pixel -> non-ESP32 peripheral (eBeat or nRF advertiser)
+  - X2: Control peripheral rebuilt for classic ESP32 (esp32dev)
+  - X3: P12 via nRF Connect rig (quantify P12 reliability)
+  - X4: If available: non-Pixel Android, iPhone
+  - X5: Only if X1/X2 point at ESP32-S3 -> escalate for sniffer (no purchases without owner)
+  - Do NOT sweep adv intervals or switch to Bluedroid
+- **Upstream draft status revised:**
+  - (i) coex default comments: **KEEP**
+  - (ii) power-save policy: **WITHDRAW**
+  - (iii) BLE requires STA, HIGH priority: **KEEP**
+  - (iv) scan timing, LOW priority: **KEEP**
+  - A new espressif/esp-idf issue may follow X1/X2 results. Draft only.
+- **Gate revisions:**
+  - **WO6** = v1 topology on the P12 only (strap + P12 + portal + HTTPS POST).
+    Android phone excluded from PR-03 scope.
+  - **Android phone reliability** (>= 95% single attempt, Pixel + one other Android)
+    is now a **PR-05 ENTRY gate**, not PR-03.
+- **WO4:** CA approved. Rebase already complete (`e40653f`).
+- **PR-03 is not blocked.**
 
 ### 2026-10-15: WO4 complete — HRMClient rebased and verified (PA session)
 - **Branch:** `hr-relay/wo4-hr-client` at `e40653f`.
