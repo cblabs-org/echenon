@@ -1,5 +1,5 @@
 # Principal Architect Memory
-<!-- Last updated: 2026-10-15T20:53:00+01:00 -->
+<!-- Last updated: 2026-10-16T23:06:00+01:00 -->
 
 ## Active Programs
 | Program | Plan | Status |
@@ -9,7 +9,7 @@
 ## Active Projects
 | Project | Status | Modules | Context |
 |---|---|---|---|
-| PR-03 HR Relay (Phase 2) | **BLOCKED** — WO1–WO4 ✅, WO5 ⚠️ PARTIAL (2/11, framework F1: MAC byte-order inversion in BLEStack.cpp breaks all central connections). WO3e–WO7 pending framework fix | BLE (HRM: Repeater + Client + Parsing), BLEStack (framework bug), Build System, Test Tooling | [PROJECT.md](../pr-03-hr-relay/PROJECT.md) |
+| PR-03 HR Relay (Phase 2) | **ACTIVE** — WO1–WO4 ✅, WO5 ⚠️ PARTIAL (2/11 pass, framework F1 fix landed at `1e90ec68`, re-run pending). WO3e–WO7 pending | BLE (HRM: Repeater + Client + Parsing), BLEStack (framework fix merged), Build System, Test Tooling | [PROJECT.md](../pr-03-hr-relay/PROJECT.md) |
 
 ## Recently Completed (last 5)
 | Project | Completed | Modules | Key Outcome |
