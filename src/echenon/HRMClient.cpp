@@ -3,7 +3,6 @@
 #ifdef WITH_BLE
 
 #include "EventBus/EventBus.hpp"
-#include "echenon/HRMRepeater.h"
 
 #if defined(ESP_PLATFORM)
 #include <Arduino.h>
@@ -73,9 +72,10 @@ void HRMClient::onClientReadyWorker(NimBLEClient& client) {
 #else
     (void)client;
 #endif
-    if (_repeater) {
-        _repeater->setBodySensorLocation(_bodySensorLocation);
-    }
+    // Known limitation (S4): BSL is stored locally in _bodySensorLocation and exposed
+    // via getBodySensorLocation(). Direct call into HRMRepeater is omitted to avoid
+    // cross-thread calls from the BLE worker task. HRMRepeater defaults to 0x00 (Other)
+    // until EventBus routing for BSL is introduced.
 }
 
 void HRMClient::onNotification(const BLENotification& n) {

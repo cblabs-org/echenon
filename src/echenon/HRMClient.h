@@ -10,7 +10,6 @@
 #include <cstddef>
 
 class EventBus;
-class HRMRepeater;
 class NimBLEClient;
 
 /**
@@ -40,7 +39,6 @@ public:
     void tick(uint32_t currentMillis) override;  // 10 s stale timeout
 
     void setEventBus(EventBus* bus) { _bus = bus; }
-    void setRepeater(HRMRepeater* rep) { _repeater = rep; }
 
     // Accessors for portal / MCP
     uint8_t getBpm() const { return _lastBpm; }
@@ -52,7 +50,6 @@ private:
     void publishHr(uint8_t bpm, echenon::HRContactState state, uint32_t receivedAtMs);
 
     EventBus*               _bus = nullptr;
-    HRMRepeater*            _repeater = nullptr;
 
     uint8_t                 _lastBpm = 0;
     echenon::HRContactState _contactState = echenon::HRContactState::UNKNOWN;

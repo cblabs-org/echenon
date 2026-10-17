@@ -57,7 +57,6 @@ void setup() {
     bleCfg["slowRetryMs"] = 15000;
     bleManager.applyConfig(bleCfg.as<JsonObject>());
     echenonModule.hrmClient().setEventBus(&app.getEventBus());
-    echenonModule.hrmClient().setRepeater(&echenonModule.hrmRepeater());
     echenonModule.hrmRepeater().subscribe(app.getEventBus());
 #endif
 }
