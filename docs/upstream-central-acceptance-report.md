@@ -8,7 +8,7 @@ A consumer application using the framework's central BLE role (via `IBLEClientPr
 ran the RFC §17.2 items 4–9 central-role acceptance tests. Initial testing (v0.1.0-dev.14)
 discovered a **critical address byte-ordering bug** in `BLEStack.cpp` that prevented all
 central connections. The bug was fixed in **PR #296 (commit `1e90ec68`)**, and re-testing
-(v0.1.0-dev.15) confirms all central-role acceptance items pass except auto-reconnect (F4).
+(v0.1.0-dev.15) confirms all pass except auto-reconnect (F4) and item 9 is partial.
 
 ## Test Environment
 
@@ -21,7 +21,7 @@ central connections. The bug was fixed in **PR #296 (commit `1e90ec68`)**, and r
 | **NimBLE** | esp-nimble-cpp (via PlatformIO, `BLE_EXT_ADV` disabled) |
 | **BLE Strap** | Echelon Beat HW901 (`EBEAT-0014941`), standard `0x180D` Heart Rate profile |
 | **Tablet** | Lenovo Tab P12 (peripheral-role test client) |
-| **WiFi** | Active on `<REDACTED_SSID>`, IP 192.168.1.100 |
+| **WiFi** | Active on `<ssid>`, IP `<ip>` |
 
 ## RFC §17.2 Results
 
@@ -32,7 +32,7 @@ central connections. The bug was fixed in **PR #296 (commit `1e90ec68`)**, and r
 | 6 | DRAM budget with central role active | **PASS** | **PASS** | `heap_min_free` = 77,376 B (threshold: 20,480 B) |
 | 7 | Boot sequence with central role registered | **PASS** | **PASS** | Clean boot, both providers registered, no errors |
 | 8 | Peripheral re-advertising after central disconnect | BLOCKED | **PASS** | P12 BT toggled off/on, reconnected, HR resumed |
-| 9 | Central reconnect vs peripheral connections | BLOCKED | **PASS** | Strap removed while P12 connected; P12 survived, `droppedEvents: 0` |
+| 9 | Central reconnect vs peripheral connections | BLOCKED | **PARTIAL** | Strap removed while P12 connected; P12 survived, `droppedEvents: 0`. Only strap disconnection was tested; auto-reconnect was not exercised due to F4 |
 
 ## Bug Fix Confirmation: MAC Address Byte-Order Inversion
 
