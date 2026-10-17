@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "ops": [
+    {
+      "type": "add",
+      "entry_id": "seed-138bdbe6",
+      "dossier_scope": "pr-dr1-prep",
+      "timestamp": "2026-10-12T18:54:58+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "ruled-out",
+        "text": "**Ride-log lost to device reboot.** The device rebooted (likely OOM or"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-7f309941",
+      "dossier_scope": "pr-dr1-prep",
+      "timestamp": "2026-10-12T18:54:58+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "ruled-out",
+        "text": "**Motor stutter on reverse** (stop→restart pairs at 731 s and 737 s in"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-253650e7",
+      "dossier_scope": "pr-dr1-prep",
+      "timestamp": "2026-10-12T18:54:58+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "open-issue",
+        "text": "**Runaway 360° motor rotation failure mode.** Rapid encoder input can"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-d25971dd",
+      "dossier_scope": "pr-dr1-prep",
+      "timestamp": "2026-10-12T18:54:58+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "open-issue",
+        "text": "**Logger type-6 event resolution.** Each type-6 event = 2 physical"
+      }
+    }
+  ],
+  "created_at": "2026-10-12T17:54:58Z",
+  "batch_id": "01M4RM1RAG5X1ZXQ9424CM736C"
+}

@@ -1,0 +1,449 @@
+{
+  "version": 1,
+  "ops": [
+    {
+      "type": "add",
+      "entry_id": "docseed-125127e0",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-12T21:07:26Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/mitm-encoder-design-notes.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "91a27d41f2d70402d69a413f599136d147ad5cb0",
+        "source_doc_path": "SPEC.md",
+        "text": "**Mode 1, relay/active (Intercept)**: the console is connected. The ESP32 takes the knob and the console's motor drive in as signals, emulates the encoder toward the console and drives the motor through an H-bridge (\"console as signal source\", `docs/mitm-encoder-design-notes.md` §11). The Echelon app runs unchanged."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-5c68dcae",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-12T21:07:26Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/ex3_specification.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "91a27d41f2d70402d69a413f599136d147ad5cb0",
+        "source_doc_path": "SPEC.md",
+        "text": "EX-3 internal sensors, looms, connectors and actuators: [`docs/ex3_specification.md`](docs/ex3_specification.md)"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-b54b7cc6",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-12T21:07:26Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/hardware_specification.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "91a27d41f2d70402d69a413f599136d147ad5cb0",
+        "source_doc_path": "SPEC.md",
+        "text": "Circuit build guide per phase: [`docs/hardware_specification.md`](docs/hardware_specification.md)"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-b2888efc",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-12T21:07:26Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/implementation-strategy.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "91a27d41f2d70402d69a413f599136d147ad5cb0",
+        "source_doc_path": "SPEC.md",
+        "text": "Development rationale: [`docs/implementation-strategy.md`](docs/implementation-strategy.md)"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-9e31f3f2",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-12T21:07:26Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/use_case_analysis.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "91a27d41f2d70402d69a413f599136d147ad5cb0",
+        "source_doc_path": "SPEC.md",
+        "text": "Operating scenarios UC1–UC6: [`docs/use_case_analysis.md`](docs/use_case_analysis.md)"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-cad3e2bf",
+      "dossier_scope": "docs/measurements/phase0",
+      "timestamp": "2026-10-12T21:07:26Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase0/README.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "91a27d41f2d70402d69a413f599136d147ad5cb0",
+        "source_doc_path": "SPEC.md",
+        "text": "Phase 0 measurement register: [`docs/measurements/phase0/README.md`](docs/measurements/phase0/README.md) (the \"Phase 0 register\", also called Appendix A in programme documents)"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-149da17b",
+      "dossier_scope": "hardware",
+      "timestamp": "2026-10-12T21:07:26Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "hardware"
+        ],
+        "entry_type": "recipe",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "procedural",
+        "source_doc_blob_sha": "91a27d41f2d70402d69a413f599136d147ad5cb0",
+        "source_doc_path": "SPEC.md",
+        "text": "**Hardware-portable**: all hardware-specific configuration (pin map, bike signal set, partition table, SDK settings) lives in one target directory under `hardware/`. A different ESP32 board or bike is a new target directory plus a PlatformIO environment. Firmware uses `#if HAS_*` guards for bike signals and `WITH_*` flags for compiled modules (§12.3)."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-4ffa8947",
+      "dossier_scope": "framework/hardware/esp32s3nano",
+      "timestamp": "2026-10-12T21:07:26Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "framework/hardware/_common/board_contract.h",
+          "framework/hardware/_TEMPLATE",
+          "framework/hardware/esp32s3nano/board.h"
+        ],
+        "entry_type": "contract",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "91a27d41f2d70402d69a413f599136d147ad5cb0",
+        "source_doc_path": "SPEC.md",
+        "text": "**One header.** `board.h` is the single source of truth for pins and bike signals. It follows the framework's board contract (`framework/hardware/_common/board_contract.h`) and is authored from the framework's `framework/hardware/_TEMPLATE/`, not cloned from the reference `framework/hardware/esp32s3nano/board.h`, whose display and button pins collide with Echenon's tap pins (§12.3). No other p..."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-2dda879b",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-12T21:07:26Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "platformio.ini"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "91a27d41f2d70402d69a413f599136d147ad5cb0",
+        "source_doc_path": "SPEC.md",
+        "text": "**Two flag families.** `HAS_*` macros in `board.h` state that a bike signal exists and is wired. `WITH_*` build flags in `platformio.ini` select which framework and application modules compile (§12.3)."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-1914be52",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-12T21:07:26Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "sdkconfig.defaults"
+        ],
+        "entry_type": "recipe",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "procedural",
+        "source_doc_blob_sha": "91a27d41f2d70402d69a413f599136d147ad5cb0",
+        "source_doc_path": "SPEC.md",
+        "text": "**Build wiring.** The PlatformIO env passes `-DBOARD_HEADER=\\\"hardware/ex3-waveshare-nano/board.h\\\"`, the target's partition table and the target's `sdkconfig.defaults` (§12.2)."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-678b3000",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-12T21:07:26Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/ex3_specification.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "91a27d41f2d70402d69a413f599136d147ad5cb0",
+        "source_doc_path": "SPEC.md",
+        "text": "The cadence, potentiometer and encoder signals operate at 3.3 V logic (see [`docs/ex3_specification.md` §10](docs/ex3_specification.md#10-voltage-summary)). They reach the ESP32 only through series resistors (§4.4)."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-fa409e1c",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-12T21:07:26Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "sdkconfig.defaults"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "91a27d41f2d70402d69a413f599136d147ad5cb0",
+        "source_doc_path": "SPEC.md",
+        "text": "**SDK config chain.** The project-root `sdkconfig.defaults` holds the project-level defaults. The framework's `sync_sdkconfig.py` pre-script keeps it in step with the framework root file, as it does for the template app. The framework BLE defaults follow, and the target's own `sdkconfig.defaults` comes last, so the target's octal-PSRAM, 16 MB flash, USB-console and NimBLE slot settings win."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-e71e522f",
+      "dossier_scope": "hardware/ex3-waveshare-nano",
+      "timestamp": "2026-10-12T19:52:36Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "hardware/ex3-waveshare-nano/board.h"
+        ],
+        "entry_type": "contract",
+        "evidence": [
+          "doc:docs/implementation-strategy.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "2ee3627d054503a81c2823b2b12f8fe4ebfa2666",
+        "source_doc_path": "docs/implementation-strategy.md",
+        "text": "`hardware/ex3-waveshare-nano/board.h` — pin map, bike characteristics and `HAS_*` signal flags. Built from the framework's `hardware/_common/board_contract.h` and `hardware/_TEMPLATE/`, not cloned from the reference `esp32s3nano` board."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-569dd29a",
+      "dossier_scope": "hardware/ex3-waveshare-nano",
+      "timestamp": "2026-10-12T19:52:36Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "hardware/ex3-waveshare-nano/partitions.csv"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/implementation-strategy.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "2ee3627d054503a81c2823b2b12f8fe4ebfa2666",
+        "source_doc_path": "docs/implementation-strategy.md",
+        "text": "`hardware/ex3-waveshare-nano/partitions.csv` — flash partition table"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-d11c20de",
+      "dossier_scope": "hardware/ex3-waveshare-nano",
+      "timestamp": "2026-10-12T19:52:36Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "hardware/ex3-waveshare-nano/sdkconfig.defaults"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/implementation-strategy.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "2ee3627d054503a81c2823b2b12f8fe4ebfa2666",
+        "source_doc_path": "docs/implementation-strategy.md",
+        "text": "`hardware/ex3-waveshare-nano/sdkconfig.defaults` — SDK overrides"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-449dd672",
+      "dossier_scope": "docs/measurements/phase0",
+      "timestamp": "2026-10-12T19:52:36Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase0"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/implementation-strategy.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "2ee3627d054503a81c2823b2b12f8fe4ebfa2666",
+        "source_doc_path": "docs/implementation-strategy.md",
+        "text": "**Inputs:** the Phase 0 register with every row's evidence (scope captures, CSVs, photos) under `docs/measurements/phase0/`, and the WO0 spike results."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-8c80567d",
+      "dossier_scope": "docs/measurements/phase0",
+      "timestamp": "2026-10-04T13:22:40Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase0/B02-20261004-encoder-baseline-raw.csv"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase0/B02-20261004-encoder-characterisation.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "d5e927c4b8a4caad190ffb2a6022c93bd2fa9711",
+        "source_doc_path": "docs/measurements/phase0/B02-20261004-encoder-characterisation.md",
+        "text": "[`B02-20261004-encoder-baseline-raw.csv`](B02-20261004-encoder-baseline-raw.csv) — encoder-only columns"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-5b6a9386",
+      "dossier_scope": "docs/measurements/phase0",
+      "timestamp": "2026-10-04T13:22:40Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase0/B02-20261004-encoder-baseline-full.csv"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase0/B02-20261004-encoder-characterisation.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "d5e927c4b8a4caad190ffb2a6022c93bd2fa9711",
+        "source_doc_path": "docs/measurements/phase0/B02-20261004-encoder-characterisation.md",
+        "text": "[`B02-20261004-encoder-baseline-full.csv`](B02-20261004-encoder-baseline-full.csv) — all 10 ADC channels"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-e3c9185d",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-11T21:36:21Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/encoder-resistance-analysis.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/mitm-encoder-design-notes.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "8cbae9aac38cca3defeb037abd9af5f442212403",
+        "source_doc_path": "docs/mitm-encoder-design-notes.md",
+        "text": "[`docs/encoder-resistance-analysis.md`](encoder-resistance-analysis.md) — signal quality, calibration, cam model"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-80fa9fb4",
+      "dossier_scope": "docs/measurements/phase0",
+      "timestamp": "2026-10-11T21:36:21Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase0"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/mitm-encoder-design-notes.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "8cbae9aac38cca3defeb037abd9af5f442212403",
+        "source_doc_path": "docs/mitm-encoder-design-notes.md",
+        "text": "[`docs/measurements/phase0/B02-*`](measurements/phase0/) — encoder characterisation data"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-d78df89e",
+      "dossier_scope": "docs/measurements/phase0",
+      "timestamp": "2026-10-11T21:36:21Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase0"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/mitm-encoder-design-notes.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "8cbae9aac38cca3defeb037abd9af5f442212403",
+        "source_doc_path": "docs/mitm-encoder-design-notes.md",
+        "text": "[`docs/measurements/phase0/B03-*`](measurements/phase0/) — resistance calibration data"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-79695500",
+      "dossier_scope": "framework/modules/EncoderModule",
+      "timestamp": "2026-10-11T21:36:21Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "framework/modules/EncoderModule"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/mitm-encoder-design-notes.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "8cbae9aac38cca3defeb037abd9af5f442212403",
+        "source_doc_path": "docs/mitm-encoder-design-notes.md",
+        "text": "`framework/modules/EncoderModule/` — PCNT-based encoder module"
+      }
+    }
+  ],
+  "created_at": "2026-10-17T22:59:21.629466Z",
+  "batch_id": "01M561EPWXGTH3RBEV5RX6P4FY"
+}

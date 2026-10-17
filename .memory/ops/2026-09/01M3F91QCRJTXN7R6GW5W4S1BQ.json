@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "ops": [
+    {
+      "type": "add",
+      "entry_id": "seed-d04dbb3d",
+      "dossier_scope": "hardware/ex3-waveshare-nano",
+      "timestamp": "2026-09-26T17:33:51+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": [
+          "platformio.ini",
+          "hardware/ex3-waveshare-nano/board.h",
+          "hardware/ex3-waveshare-nano/partitions.csv",
+          "hardware/ex3-waveshare-nano/sdkconfig.defaults",
+          "sdkconfig.defaults",
+          "src/main.cpp",
+          "src/echenon/EchenonModule.h",
+          "src/echenon/EchenonModule.cpp",
+          "CMakeLists.txt",
+          ".gitignore"
+        ],
+        "entry_type": "decision",
+        "text": "Partition table: Used partition name `storage` for LittleFS (2.75 MB) and `config` (1 MB) to match `framework/modules/Application/Application.cpp:143` (`LittleFS.begin(true, \"/littlefs\", 10, \"storage\")`)."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-c36b2296",
+      "dossier_scope": "hardware/ex3-waveshare-nano",
+      "timestamp": "2026-09-26T17:33:51+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": [
+          "platformio.ini",
+          "hardware/ex3-waveshare-nano/board.h",
+          "hardware/ex3-waveshare-nano/partitions.csv",
+          "hardware/ex3-waveshare-nano/sdkconfig.defaults",
+          "sdkconfig.defaults",
+          "src/main.cpp",
+          "src/echenon/EchenonModule.h",
+          "src/echenon/EchenonModule.cpp",
+          "CMakeLists.txt",
+          ".gitignore"
+        ],
+        "entry_type": "decision",
+        "text": "`platformio.ini` native target: Set `-DBOARD_HEADER=\\\"hardware/native/board.h\\\"` per SPEC §12.2 to resolve native board headers cleanly."
+      }
+    }
+  ],
+  "created_at": "2026-09-26T16:33:51Z",
+  "batch_id": "01M3F91QCRJTXN7R6GW5W4S1BQ"
+}
