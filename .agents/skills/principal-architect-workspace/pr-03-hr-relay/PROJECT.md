@@ -81,7 +81,7 @@ Project name for branches: `hr-relay`. Linear stack from `main`. Proposed
 | **[~] [wo5-strap-acceptance](wo5-strap-acceptance/WORKORDER.md):** | Strap and central acceptance | `hr-relay/wo5-strap-acceptance` (wo4) | `interactive` | Beat HW901, plus a second standard strap if available: portal scan and pair, end-to-end relay to the Echelon app, contact loss, auto-sleep and reconnect ≤ 20 s, factory reset. Also **RFC §17.2 items 4–9 as consumer evidence**. Evidence in `docs/measurements/phase2/`. The PA files an app-neutral upstream report | 2.2–2.6 | ⚠️ MOSTLY PASS (`5866e3d`) — 9/11 pass, 2.5 FAIL (F4: discovery scan blocks auto-reconnect), 2.6 BLOCKED (by F4). F3: BPM=0 not relayed. F4/F5: framework findings. |
 | **[-] [wo3e-side-swap-tests](wo3e-side-swap-tests/WORKORDER.md):** | Side-swap BLE interop tests | `hr-relay/wo3e-side-swap-tests` (wo5) | `interactive` | CA-directed: isolate whether the connection failure is ESP32-S3-specific or peripheral-generic. Apply CA corrections C1-C4 to the WO3d report. Using the existing rig, 50 attempts each: X1–X5. | — | ⏭️ DEFERRED — owner decision 2026-10-17. Android phone reliability is PR-05 entry gate, not PR-03. Sufficient data collected in WO3d. |
 | **[x] [wo6-coexistence](wo6-coexistence/WORKORDER.md):** | P12 v1 topology coexistence | `hr-relay/wo6-coexistence` (wo5) | `interactive` | **v1 topology on the P12:** HR strap (central) + P12 tablet + portal WebSocket at 2 Hz + HTTPS POST, 5-10 minutes. Measure HR gaps, connection drops, heap and DRAM. **Programme gate:** "v1 BLE topology proven on the P12". | 2.7 | ✅ PASS (`49a364f`) — **Programme gate cleared.** Max HR gap 1,200 ms (≤2,500 ms). 326 notifications / 325.3 s. 30/30 HTTP OK. Zero dropped events. Heap stable (min 81 KB). |
-| **[x] [wo7-doc-sync](wo7-doc-sync/WORKORDER.md):** | Docs + F3 fix | `hr-relay/wo7-doc-sync` (wo6) | `standard` | SPEC §3.5, §7.8, §8 and §13.5 match what was built; register row #12 final; fix F3 (BPM=0 relay); the PR-03 PROJECT.md wrap-up | — | ✅ Complete (`d3f6b32`) — F3 fixed, SPEC verified, 45/45 native tests, all 3 envs build clean. |
+| **[x] [wo7-doc-sync](wo7-doc-sync/WORKORDER.md):** | Docs + F3 fix | `hr-relay/wo7-doc-sync` (wo6) | `standard` | SPEC §3.5, §7.8, §8 and §13.5 match what was built; register row #12 final; fix F3 (BPM=0 relay); the PR-03 PROJECT.md wrap-up; CA review remediation (B3/B4/B5/S2/S4/S5/S8/S9) | — | ✅ Complete (`d3f6b32`) + CA remediation commits (`a174874`..`HEAD`) — F3 fixed, SPEC verified, 45/45 native tests, builds pass. |
 
 **File overlaps:**
 - Inside the stack: `EchenonModule.*` and `main.cpp` change in WO1, WO2 and WO4 (additive, linear).
@@ -118,7 +118,22 @@ Framework issues are written app-neutral, with no Echenon specifics.
   Chief Architect review; after that review, the owner merges.
 
 ## Status
-**Plan Status:** **COMPLETE** — WO1–WO4 ✅, WO5 ⚠️ MOSTLY PASS (9/11), WO6 ✅ PROGRAMME GATE CLEARED, WO7 ✅, WO3e deferred. Ready for stack push and PR.
+**Plan Status:** **CA REVIEW REMEDIATION COMPLETE** — WO1–WO4 ✅, WO5 ⚠️ MOSTLY PASS (9/11, tests 2.5/2.6 pending re-run), WO6 ✅ PROGRAMME GATE CLEARED, WO7 ✅, WO3e deferred. CA review items B3/B4/B5/S1/S2/S4/S5/S8/S9 resolved; B1/B2/S3 pending owner/interactive action. PR #3 updated.
+
+### 2026-10-18: CA review remediation complete
+- CA review on PR #3 requested changes: 5 blockers (B1–B5), 9 should-fix (S1–S9)
+- B1 (F4): Framework fix merged (PR #301 on esp32-app-foundation), `pair()` now calls `stopDiscovery()`. Framework bumped to `v0.0.12-beta.3` (`726dce2d`). Tests 2.5/2.6 re-run pending with new firmware.
+- B2: SPEC §8.2/§8.4 diff proposed to owner (SPEC is owner-controlled)
+- B3: `_anySubscriber` flag removed from HRMRepeater — NimBLE handles per-peer tracking (`a174874`)
+- B4: Absolute paths replaced with `<worktree>` placeholders (`3ccde3b`)
+- B5: Framework submodule bumped to `v0.0.12-beta.3` (`dd07166`)
+- S1: PR description updated (RFC 9 partial, H-INTEROP wording)
+- S2: Upstream report scrubbed (SSID/IP removed, item 9 → PARTIAL) (`0bb2bbd`)
+- S4: Cross-thread `_repeater` call removed from Client (`8b86a07`)
+- S5: `slowRetryMs` override documented as SPEC-mandated (`789e673`)
+- S8: `main` merged into stack tip — clean merge, no conflicts
+- S9: Mock bugreport zip deleted (`34d1ce9`)
+- Remaining: B2 (owner applies SPEC diff), tests 2.5/2.6 re-run (interactive, needs F4-fixed firmware), S3 (upstream issues for F2/F5)
 
 ### 2026-10-17: WO7 complete — F3 fixed, SPEC verified, PR-03 ready for submission (PA session)
 - **Commit:** `d3f6b32` on `hr-relay/wo7-doc-sync`.
