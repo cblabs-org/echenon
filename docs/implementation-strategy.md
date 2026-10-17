@@ -7,27 +7,45 @@ next phase adds complexity. Hardware and firmware develop together — we don't
 build the full intercept board and then write firmware; we build what we need
 for the current phase and extend it.
 
-The product is **passive-first**. The default permanent install is the
-passive tap board (UC1–UC3). The MITM intercept board is optional and adds
-Override and ERG (UC4–UC6). Nothing is soldered until the Design Freeze
-Review (DR-1) has turned Phase 0 measurements into a frozen design.
+The product ships as **two releases** (owner decision, 2026-10-12):
+
+- **v1 "Passive"** (UC1–UC3): the permanent passive tap board, powered from
+  the bike's 9 V via the Waveshare VIN pin with a VIN/USB switch. BLE only
+  (read-only FTMS, HR relay), Strava upload. **No resistance control of any
+  kind.**
+- **v2 "Active"** (provisional; UC4–UC6 + HR-zone auto-resistance): the active
+  intercept board. Mode 1 relay/active (H-bridge + PWM, encoder emulation,
+  Control Point targets); mode 2 console off.
+
+Nothing is soldered until the v1 Passive Design Freeze (DR-1) has turned
+Phase 0 measurements into a frozen design, and nothing active until the v2
+Active Design Freeze (DR-2). ANT+ is not supported; UART0 (GPIO 43/44) is
+reserved on every board for a future add-on.
 
 The phase numbering and PR mapping follow the programme plan
 ([`PROGRAM-PLAN.md`](../.agents/skills/principal-architect-workspace/PROGRAM-PLAN.md))
 and SPEC §1.5:
 
-| Phase | Work | PR | Hardware configuration ([hardware spec §1](hardware_specification.md)) |
-|---|---|---|---|
-| 0 | Observe | PR-01 | Breadboard observer (USB-powered) |
-| — | **Design Freeze** | **DR-1** | — (docs-only milestone) |
-| 1 | Calibrate | PR-02 (gated on DR-1) | Breadboard observer |
-| 2 | HR relay | PR-03 | HR-only (USB) |
-| 3 | Passive tap board | PR-04a | Passive tap board |
-| 3 | FTMS telemetry | PR-05 | Breadboard observer is enough; passive tap board once built |
-| 4 | Session + TCX + Strava | PR-06 | No new hardware (any of the above) |
-| 5 | MITM board + motor control + safety | PR-07 | Intercept board |
-| 6 | ERG + Control Point | PR-08 | Intercept board |
-| 7 | Integration / release candidate | PR-09 | Passive tap board and intercept board |
+| Release | Phase | Work | PR | Hardware configuration ([hardware spec §1](hardware_specification.md)) |
+|---|---|---|---|---|
+| v1 | 0 | Observe | PR-01 ✅ | Breadboard observer (USB-powered) |
+| v1 | — | **v1 Passive Design Freeze** | **DR-1** | — (docs-only milestone) |
+| v1 | 1 | Calibrate | PR-02 (gated on DR-1) | Breadboard observer |
+| v1 | 2 | HR relay | PR-03 | HR-only (USB) |
+| v1 | 3 | Passive tap board | PR-04a | Passive tap board (VIN + VIN/USB switch) |
+| v1 | 3 | FTMS telemetry, read-only | PR-05 | Breadboard observer is enough; passive tap board once built |
+| v1 | 4 | Session + TCX + Strava | PR-06 | No new hardware (any of the above) |
+| v1 | 7 | v1 integration and release | PR-09 | Passive tap board |
+| v2 | — | Active-design bench evidence; **v2 Active Design Freeze** | DR-2 prep; **DR-2** | Bench rig only |
+| v2 | 5 | Active board + motor control + safety | PR-07 | Active intercept board |
+| v2 | 5 | Encoder emulation + relay mode (mode 1) | PR-10 | Active intercept board |
+| v2 | 6 | ERG + Control Point targets | PR-08 | Active intercept board |
+| v2 | 6 | HR-zone auto-resistance (portal-native) | PR-11 | Active intercept board |
+| v2 | 6 | Console-off standalone (mode 2, UC6) | PR-12 | Active intercept board |
+| v2 | 7 | v2 integration and release | PR-13 | Active intercept board |
+
+v2 is provisional and is decomposed after DR-2; its phases are described
+below as originally planned and are tagged **v2**.
 
 ```
 Phase 0    DR-1      Phase 1    Phase 2    Phase 3        Phase 4     Phase 5     Phase 6    Phase 7
@@ -197,10 +215,15 @@ burst captures. The register, with evidence, is the input to DR-1.
 
 ---
 
-## DR-1 — Design Freeze Review
+## DR-1 — Design Freeze Review (v1 Passive)
 
-> **Goal:** Turn Phase 0 evidence into a frozen design before anything is
-> soldered or calibrated against. Docs-only; owned by the Chief Architect.
+> **Goal:** Turn Phase 0 evidence into a frozen **v1 passive** design before
+> anything is soldered or calibrated against. Docs-only; owned by the Chief
+> Architect. Re-scoped 2026-10-12: the intercept-board outputs below (driver,
+> fail-safe, standalone supplies, controller) moved to **DR-2** (v2 Active
+> Design Freeze, fed by a DR-2 prep bench session); DR-1 keeps the sense
+> network, VIN power path with a VIN/USB switch (back-feed check open),
+> power model, v1 pin map (taps only, UART0 reserved) and passive board.
 
 - **Inputs:** the Phase 0 register with every row's evidence (scope
   captures, CSVs, photos) under `docs/measurements/phase0/`, and the WO0
@@ -404,7 +427,12 @@ The first soldered board, built to the DR-1 design
 
 - J1–J4 pass-through, high-impedance taps, **no motor split** — the console
   drives the motor exactly as stock.
-- Powered from the MP1584EN buck on the bike's 9V rail.
+- Powered from the bike's 9V rail via the Waveshare **VIN** pin, with a
+  **power switch on the VIN line** so USB-C can be used instead (no external
+  buck). The USB + VIN back-feed / power-path behaviour is checked here.
+- **UART0 (GPIO 43/44) left free**, reserved for a future ANT+ add-on.
+- **No resistance control, no interception.** The stock console runaway
+  cannot be prevented by this board (v1 known limitation).
 - **Manual OTA enabled and tested** before the board is sealed in the
   console housing. `autoCheck` is forced to `false` after config load and
   after factory reset, until framework #226 lands.
@@ -412,24 +440,26 @@ The first soldered board, built to the DR-1 design
 **Key test:** a stock ride with the board fitted is indistinguishable from
 no board; all sensor taps read correctly; the board fits in the housing.
 
-### Firmware — FTMS Telemetry (PR-05)
+### Firmware — FTMS Telemetry, read-only (PR-05)
 
 PR-05 needs no new hardware: the breadboard observer is enough to develop
 it. It runs in parallel with PR-04a.
 
 | Module | Purpose |
 |---|---|
-| `FTMSServer` | FTMS GATT service (`0x1826`), Indoor Bike Data notifications at 2 Hz, Feature flags, Fitness Machine Control Point (`0x2AD9`) |
+| `FTMSServer` | FTMS GATT service (`0x1826`), Indoor Bike Data notifications at 2 Hz, Feature flags with Target Setting Features = 0 (read-only) |
 
 `BLEManager`, `HRMClient`, and `HRMRepeater` are already built and proven
 from Phase 2. Phase 3 adds the FTMS service to the existing BLE stack and
 verifies that FTMS + HR coexist with multiple simultaneous client
 connections.
 
-**Control Point scope in PR-05:** expose `0x2AD9` and handle `0x00` Request
-Control. Target opcodes are answered with `0x05` (Control Not Permitted) in
-Intercept mode and `0x02` (Op Code Not Supported) otherwise. The target
-opcodes and Fitness Machine Status are implemented in Phase 6 (PR-08).
+**v1 FTMS is read-only.** If FTMS v1.0 allows the Control Point (`0x2AD9`)
+to be omitted when no target setting is supported, PR-05 omits it; otherwise
+it exposes Request Control only and answers every target opcode with `0x02`
+(Op Code Not Supported). PR-05 also records how Zwift, TrainerRoad, Xert and
+others behave with read-only FTMS. Target opcodes and Fitness Machine Status
+are v2 (PR-08).
 
 ### What We Learn
 
@@ -455,13 +485,15 @@ opcodes and Fitness Machine Status are implemented in Phase 6 (PR-08).
 - [ ] Zwift sees `Echenon-XXXX` and displays live power/cadence
 - [ ] Xert EBC connects and receives data
 - [ ] All three BLE connections coexist: Echelon tablet (HR) + fitness app (FTMS) + ESP32 Central (armband)
-- [ ] Control Point present: Request Control handled; target opcodes answered `0x05` (Intercept) or `0x02`
+- [ ] Feature reports Target Setting Features = 0; Control Point absent (or Request Control only, targets `0x02`) per the FTMS v1.0 check
+- [ ] App behaviour with read-only FTMS recorded for Zwift, TrainerRoad, Xert and others
+- [ ] PR-04a: board runs from VIN (switch on) and USB (switch off); back-feed result documented
 
 ### Deliverable
 
 **A permanent passive install and a visible smart trainer** — the bike
 appears in any FTMS-compatible app with live power, cadence, resistance, and
-heart rate data, with the console still in full control.
+heart rate data (read-only), with the console still in full control.
 
 ---
 
@@ -518,7 +550,7 @@ action.
 
 ---
 
-## Phase 5 — Motor Interception (PR-07)
+## Phase 5 — Motor Interception (PR-07, PR-10) — v2
 
 > **Goal:** Build the intercept board to the DR-1 design. Prove we can
 > transparently relay the motor, then prove we can override it. This is the
@@ -526,9 +558,12 @@ action.
 
 ### Hardware (First Motor-Path Build)
 
-Build the intercept board from the DR-1 revision of
-[`hardware_specification.md`](hardware_specification.md) §7–§8. Until DR-1,
-those sections are provisional and not to be built.
+Build the active intercept board from the DR-2 revision of
+[`hardware_specification.md`](hardware_specification.md) §7–§8. Until DR-2,
+those sections are provisional and not to be built. The v2 plan (H-bridge +
+PWM, NC bypasses, runaway protection in PR-07; encoder emulation and relay
+mode in PR-10; console-off standalone with a pot-reference replica in PR-12)
+replaces the sub-phases below when v2 is decomposed.
 
 - Perfboard with ESP32 carrier, motor driver and rail (decision D3), buck
 - JST connectors (J1–J4)
@@ -604,7 +639,7 @@ Mode, and the user can switch to Override Mode for direct control.
 
 ---
 
-## Phase 6 — ERG Mode + Control Point (PR-08)
+## Phase 6 — ERG Mode + Control Point (PR-08, PR-11, PR-12) — v2
 
 > **Goal:** Close the loop. External apps control resistance. Delivers
 > UC4 and UC5.
@@ -622,7 +657,7 @@ No hardware changes. Intercept board.
 
 **ERG state machine:** ACTIVE, SUSPENDED_BY_RIDER, RELEASED. A knob turn
 moves ERG to SUSPENDED_BY_RIDER; the state latches until the client sends a
-new Request Control or Reset, or until `[DR-1/PR-08: hold time]` expires.
+new Request Control or Reset, or until `[DR-2/PR-08: hold time]` expires.
 Target writes that arrive while suspended are stored, not applied.
 Fitness Machine Status sends `0x08` (Target Power Changed) and `0x07`
 (Target Resistance Level Changed) on target changes, and `0xFF` (Control
@@ -658,22 +693,23 @@ commands from any app.
 
 ---
 
-## Phase 7 — Integration & Use Case Validation (PR-09)
+## Phase 7 — Integration & Use Case Validation (PR-09 v1, PR-13 v2)
 
 > **Goal:** Walk through every use case from
 > [`use_case_analysis.md`](use_case_analysis.md) and verify it works
-> end-to-end. Fix the gaps.
+> end-to-end. Fix the gaps. **PR-09** releases v1 (UC1–UC3); **PR-13**
+> releases v2 (UC4–UC6 + HR zones).
 
 ### Acceptance Matrix
 
-| UC | Description | Earliest Phase | Validated? |
-|---|---|---|---|
-| **UC1** | Pure pass-through + HR relay | Phase 2 + 3 (passive tap board) | [ ] |
-| **UC2** | As UC1 + Strava recording | Phase 2 + 3 + 4 | [ ] |
-| **UC3** | As UC1 + FTMS fitness app recording | Phase 2 + 3 | [ ] |
-| **UC4** | Override Mode + ERG, console idle | Phase 5b + 6 | [ ] |
-| **UC5** | Echelon class + external HR-zone app | Phase 5b + 6 | [ ] |
-| **UC6** | Console disconnected, pure FTMS | Phase 5b + 6 | [ ] |
+| UC | Description | Release | Earliest Phase | Validated? |
+|---|---|---|---|---|
+| **UC1** | Pure pass-through + HR relay | v1 (PR-09) | Phase 2 + 3 (passive tap board) | [ ] |
+| **UC2** | As UC1 + Strava recording | v1 (PR-09) | Phase 2 + 3 + 4 | [ ] |
+| **UC3** | As UC1 + FTMS fitness app recording (read-only) | v1 (PR-09) | Phase 2 + 3 | [ ] |
+| **UC4** | Override Mode + ERG, console idle | v2 (PR-13) | Phase 5 + 6 | [ ] |
+| **UC5** | Echelon class + HR-zone auto-resistance | v2 (PR-13) | Phase 5 + 6 (PR-08, PR-11) | [ ] |
+| **UC6** | Console disconnected, pure FTMS | v2 (PR-13) | Phase 5 + 6 (PR-12) | [ ] |
 
 ### Additional Work
 
@@ -683,17 +719,17 @@ commands from any app.
 - **`SessionOverlay`** — standalone `/overlay` floating window with live data for the tablet (WebSocket)
 - **Edge cases** — power cycling, WiFi reconnection, BLE reconnection,
   multiple riders, factory reset
-- **Standalone sensor power verification** — disconnect console, close the
+- **v2: Standalone sensor power verification** — disconnect console, close the
   standalone-supply switches, verify all sensors stay alive (UC6)
-- **Pot recalibration** — verify that switching between console-connected
+- **v2: Pot recalibration** — verify that switching between console-connected
   and standalone Override prompts recalibration
 
 OTA is already in place from Phase 3 (PR-04a).
 
 ### Deliverable
 
-**A production-quality system** — all 6 use cases validated, edge cases
-handled, portal polished.
+**Production-quality releases** — v1 with UC1–UC3 validated (PR-09); v2 with
+UC4–UC6 validated (PR-13); edge cases handled, portal polished.
 
 ---
 
@@ -707,14 +743,14 @@ handled, portal polished.
 | **2** | PR-03 | HR-only (USB) | "Can we relay HR to the Echelon app?" | HRMClient, HRMRepeater (+ framework BLEManager) |
 | **3** | PR-04a, PR-05 | Passive tap board | "Can we install permanently and can fitness apps see our data?" | FTMSServer, OTA enablement |
 | **4** | PR-06 | Same | "Do rides upload?" | SessionManager, RideStore, TCXGenerator, IUploader / StravaUploader, UploadQueue |
-| **5a** | PR-07 | Intercept board (build) | "Can we relay the motor transparently?" | InterceptController, ResistanceMotor |
-| **5b** | PR-07 | Same | "Can we control resistance ourselves?" | EncoderModule integration, CalibrationWizard motor-driven sweep |
-| **6** | PR-08 | Same | "Can apps control us?" | ERGController, FTMSServer Control Point targets |
-| **7** | PR-09 | Same | "Do all 6 use cases work end-to-end?" | SessionOverlay (`/overlay`), portal polish, edge cases |
+| **5a** (v2) | PR-07 | Intercept board (build) | "Can we relay the motor transparently?" | InterceptController, ResistanceMotor |
+| **5b** (v2) | PR-07, PR-10 | Same | "Can we control resistance ourselves?" | EncoderModule integration, CalibrationWizard motor-driven sweep |
+| **6** (v2) | PR-08, PR-11, PR-12 | Same | "Can apps control us?" | ERGController, FTMSServer Control Point targets |
+| **7** | PR-09 (v1), PR-13 (v2) | Passive tap board (v1); active board (v2) | "Do all 6 use cases work end-to-end?" | SessionOverlay (`/overlay`), portal polish, edge cases |
 
 ### Risk Profile
 
-Phase 5 is the riskiest — it's where we physically modify the motor path and
+Phase 5 (v2) is the riskiest — it's where we physically modify the motor path and
 drive a motor for the first time. Everything before it is **read-only,
 pass-through or BLE-only** (no change to how the console controls the bike),
 and DR-1 ensures the Phase 5 design rests on measurement. Everything after

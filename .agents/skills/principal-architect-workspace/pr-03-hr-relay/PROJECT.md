@@ -1,4 +1,6 @@
-# PR-03: HR Armband Relay (Phase 2 — HR relay)
+# PR-03: HR Armband Relay (Phase 2 — HR relay) — v1
+
+> **Release:** **v1 "Passive"** ([PROGRAM-PLAN.md "Releases"](../PROGRAM-PLAN.md#releases)).
 
 > **Programme:** Echenon Firmware ([PROGRAM.md](../PROGRAM.md), [PROGRAM-PLAN.md](../PROGRAM-PLAN.md))
 > **PR target base:** `main` after PR-01 merged
