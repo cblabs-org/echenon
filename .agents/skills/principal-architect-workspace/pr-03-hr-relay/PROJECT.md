@@ -78,7 +78,7 @@ Project name for branches: `hr-relay`. Linear stack from `main`. Proposed
 | **[x] [wo4-hr-client](wo4-hr-client/WORKORDER.md):** | HR strap client | `hr-relay/wo4-hr-client` (wo3d) | `standard` | `HRMClient` (`IBLEClientProvider`). A pure `0x2A37` parser (uint8/uint16, contact flags, energy, RR, BPM = 0) with native tests. Three-state contact machine; 10 s stale timeout; battery `0x2A19`; publishes the HR event (no direct repeater call). `slowRetryMs = 15000` set through BLEManager config, with the mechanism verified and recorded | 2.4 logic (native) | ✅ Complete (`e40653f`) |
 | **[~] [wo5-strap-acceptance](wo5-strap-acceptance/WORKORDER.md):** | Strap and central acceptance | `hr-relay/wo5-strap-acceptance` (wo4) | `interactive` | Beat HW901, plus a second standard strap if available: portal scan and pair, end-to-end relay to the Echelon app, contact loss, auto-sleep and reconnect ≤ 20 s, factory reset. Also **RFC §17.2 items 4–9 as consumer evidence**. Evidence in `docs/measurements/phase2/`. The PA files an app-neutral upstream report | 2.2–2.6 | ⚠️ MOSTLY PASS (`5866e3d`) — 9/11 pass, 2.5 FAIL (F4: discovery scan blocks auto-reconnect), 2.6 BLOCKED (by F4). F3: BPM=0 not relayed. F4/F5: framework findings. |
 | **[-] [wo3e-side-swap-tests](wo3e-side-swap-tests/WORKORDER.md):** | Side-swap BLE interop tests | `hr-relay/wo3e-side-swap-tests` (wo5) | `interactive` | CA-directed: isolate whether the connection failure is ESP32-S3-specific or peripheral-generic. Apply CA corrections C1-C4 to the WO3d report. Using the existing rig, 50 attempts each: X1–X5. | — | ⏭️ DEFERRED — owner decision 2026-10-17. Android phone reliability is PR-05 entry gate, not PR-03. Sufficient data collected in WO3d. |
-| **[ ] [wo6-coexistence](wo6-coexistence/WORKORDER.md):** | P12 v1 topology coexistence | `hr-relay/wo6-coexistence` (wo5) | `interactive` | **v1 topology on the P12:** HR strap (central) + P12 tablet + portal WebSocket at 2 Hz + HTTPS POST, 5-10 minutes. Measure HR gaps, connection drops, heap and DRAM. **Programme gate:** "v1 BLE topology proven on the P12". Android phone reliability (>= 95% single attempt, Pixel + one other Android) is a **PR-05 ENTRY gate**, not PR-03. **If WO6 fails, STOP and escalate to Chief Architect. Do not pick an architecture option.** | 2.7 | ⬜ |
+| **[x] [wo6-coexistence](wo6-coexistence/WORKORDER.md):** | P12 v1 topology coexistence | `hr-relay/wo6-coexistence` (wo5) | `interactive` | **v1 topology on the P12:** HR strap (central) + P12 tablet + portal WebSocket at 2 Hz + HTTPS POST, 5-10 minutes. Measure HR gaps, connection drops, heap and DRAM. **Programme gate:** "v1 BLE topology proven on the P12". | 2.7 | ✅ PASS (`49a364f`) — **Programme gate cleared.** Max HR gap 1,200 ms (≤2,500 ms). 326 notifications / 325.3 s. 30/30 HTTP OK. Zero dropped events. Heap stable (min 81 KB). |
 | **[ ] [wo7-doc-sync](wo7-doc-sync/WORKORDER.md):** | Docs + F3 fix | `hr-relay/wo7-doc-sync` (wo6) | `standard` | SPEC §3.5, §7.8, §8 and §13.5 match what was built; register row #12 final; fix F3 (BPM=0 relay); the PR-03 PROJECT.md wrap-up | — | ⬜ |
 
 **File overlaps:**
@@ -116,7 +116,28 @@ Framework issues are written app-neutral, with no Echenon specifics.
   Chief Architect review; after that review, the owner merges.
 
 ## Status
-**Plan Status:** **ACTIVE** — WO1–WO4 ✅, WO5 ⚠️ MOSTLY PASS (9/11, F4 auto-reconnect blocker), WO3e–WO7 pending.
+**Plan Status:** **ACTIVE** — WO1–WO4 ✅, WO5 ⚠️ MOSTLY PASS (9/11), WO6 ✅ **PROGRAMME GATE CLEARED**, WO3e deferred, WO7 pending.
+
+### 2026-10-17: WO6 PASS — programme gate cleared (PA session)
+- **Commit:** `49a364f` on `hr-relay/wo6-coexistence`.
+- **Firmware:** `v0.1.0-dev.15` (no re-flash — same as WO5 re-run).
+- **v1 topology sustained >5 minutes:**
+  Beat HW901 (central) + P12 Echelon Fit (peripheral) + WiFi portal (WebSocket)
+  + 30 HTTP requests across 3 bursts + WiFi network scan during test.
+- **Results:**
+  - Max HR gap: **1,200 ms** (criterion ≤ 2,500 ms) — **PASS**
+  - 326 `0x2A37` notifications over 325.3 s (~1.003 Hz mean)
+  - 90.8% of gaps within 900–1,100 ms, zero gaps > 1,500 ms
+  - 30/30 HTTP requests OK, `droppedEvents: 0`
+  - Beat central connection stable throughout
+  - P12 peripheral connection stable (48.75 ms interval, MTU 185)
+  - Portal WebSocket maintained with periodic interaction
+  - `heap_min_free` = 81,080 B >> 20,480 B, heap Δ = −712 B (negligible)
+- **Gate decision: PASS.** "v1 BLE topology proven on the P12" — cleared.
+- **WO3e DEFERRED** (owner decision, 2026-10-17): Android phone investigation
+  parked for PR-05. Sufficient data from WO3d.
+- **Evidence:** `docs/measurements/phase2/wo6-coexistence/evidence.md`.
+- **Next:** WO7 (doc-sync + F3 fix, standard complexity — spawn worker).
 
 ### 2026-10-17: WO5 re-run MOSTLY PASS — 9/11 pass, F4 auto-reconnect blocker (PA session)
 - **Commit:** `5866e3d` on `hr-relay/wo5-strap-acceptance`.
