@@ -84,9 +84,7 @@ void HRMRepeater::onHrEvent(const char* topic, const void* payload, void* ctx) {
     auto* self = static_cast<HRMRepeater*>(ctx);
     const auto* sample = static_cast<const echenon::HrSample*>(payload);
     self->_lastBpm = sample->bpm;
-    if (sample->bpm > 0) {
-        self->notifyHr(sample->bpm);
-    }
+    self->notifyHr(sample->bpm);
 }
 
 void HRMRepeater::notifyHr(uint8_t bpm) {
