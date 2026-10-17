@@ -65,9 +65,10 @@ void HRMRepeater::onSubscriptionChanged(BLEConnHandle handle, uint16_t charHandl
     (void)charHandle;
     (void)indicate;
     if (charUuid16 == 0x2A37 || charUuid16 == 0) {
-        _anySubscriber = notify;
 #if defined(ESP_PLATFORM)
         ESP_LOGI(TAG, "HR Measurement subscription changed: %s", notify ? "SUBSCRIBED" : "UNSUBSCRIBED");
+#else
+        (void)notify;
 #endif
     }
 }
@@ -89,9 +90,6 @@ void HRMRepeater::onHrEvent(const char* topic, const void* payload, void* ctx) {
 
 void HRMRepeater::notifyHr(uint8_t bpm) {
     _lastBpm = bpm;
-    if (!_anySubscriber) {
-        return;
-    }
 
 #if defined(ESP_PLATFORM)
     if (!_hrMeasChar) {

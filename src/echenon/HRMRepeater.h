@@ -33,14 +33,12 @@ public:
 
     uint8_t getBodySensorLocation() const { return _bodySensorLocation; }
     uint8_t getLastBpm() const { return _lastBpm; }
-    bool isSubscribed() const { return _anySubscriber; }
 
 private:
     NimBLECharacteristic* _hrMeasChar   = nullptr;  // 0x2A37
     NimBLECharacteristic* _bodySensChar = nullptr;  // 0x2A38
     uint8_t  _bodySensorLocation = 0x00;  // Other; updated from strap
     uint8_t  _lastBpm = 0;
-    bool     _anySubscriber = false;
 
     static void onHrEvent(const char* topic, const void* payload, void* ctx);
     void notifyHr(uint8_t bpm);
