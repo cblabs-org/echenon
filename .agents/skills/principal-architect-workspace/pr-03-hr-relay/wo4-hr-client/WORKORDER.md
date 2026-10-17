@@ -9,7 +9,7 @@ complexity: standard
 > **PR:** PR-03 HR Relay (Phase 2) — v1 Passive
 > **Project:** [PROJECT.md](../PROJECT.md)
 > **Branch:** `hr-relay/wo4-hr-client` (base: `hr-relay/wo3-app-pairing-gate`)
-> **Worktree:** `/Users/mcneillm/Documents/Projects/Echenon-hr-relay`
+> **Worktree:** `<worktree>`
 
 ## Role Definition
 
@@ -17,7 +17,7 @@ complexity: standard
 > agent. You are NOT the Principal Architect. Do not make high-level
 > architectural decisions and do not create new branches beyond what this
 > WORKORDER specifies. All work happens on `hr-relay/wo4-hr-client` in the
-> worktree at `/Users/mcneillm/Documents/Projects/Echenon-hr-relay`.
+> worktree at `<worktree>`.
 
 ## Objective
 
@@ -48,13 +48,13 @@ parser thoroughly.
 
 - PlatformIO MCP server for builds and tests.
 - Temporary files in `tmp/` at the worktree root.
-- All work in: `/Users/mcneillm/Documents/Projects/Echenon-hr-relay`
+- All work in: `<worktree>`
 
 ## Pre-WO Setup
 
 - [ ] Create branch:
   ```bash
-  cd /Users/mcneillm/Documents/Projects/Echenon-hr-relay
+  cd <worktree>
   git checkout -b hr-relay/wo4-hr-client hr-relay/wo3-app-pairing-gate
   ```
 

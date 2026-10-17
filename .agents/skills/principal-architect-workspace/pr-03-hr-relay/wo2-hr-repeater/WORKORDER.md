@@ -9,7 +9,7 @@ complexity: standard
 > **PR:** PR-03 HR Relay (Phase 2) — v1 Passive
 > **Project:** [PROJECT.md](../PROJECT.md)
 > **Branch:** `hr-relay/wo2-hr-repeater` (base: `hr-relay/wo1-ble-enable`)
-> **Worktree:** `/Users/mcneillm/Documents/Projects/Echenon-hr-relay`
+> **Worktree:** `<worktree>`
 
 ## Role Definition
 
@@ -18,7 +18,7 @@ complexity: standard
 > architectural decisions, do not plan, and do not create new branches beyond
 > what this WORKORDER specifies. Your task is strictly limited to executing the
 > checklist below. All work happens on the branch `hr-relay/wo2-hr-repeater` in
-> the worktree at `/Users/mcneillm/Documents/Projects/Echenon-hr-relay`.
+> the worktree at `<worktree>`.
 
 ## Objective
 
@@ -50,13 +50,13 @@ publish to).
 
 - Use the `platformio-mcp_platformio` MCP server for all builds and tests.
 - Temporary files go in `tmp/` at the worktree root.
-- All work is in the worktree: `/Users/mcneillm/Documents/Projects/Echenon-hr-relay`
+- All work is in the worktree: `<worktree>`
 
 ## Pre-WO Setup
 
 - [ ] Create the WO2 branch from the WO1 tip:
   ```bash
-  cd /Users/mcneillm/Documents/Projects/Echenon-hr-relay
+  cd <worktree>
   git checkout -b hr-relay/wo2-hr-repeater hr-relay/wo1-ble-enable
   ```
 

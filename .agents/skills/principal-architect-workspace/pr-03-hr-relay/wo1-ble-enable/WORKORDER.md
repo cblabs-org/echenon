@@ -9,7 +9,7 @@ complexity: standard
 > **PR:** PR-03 HR Relay (Phase 2) — v1 Passive
 > **Project:** [PROJECT.md](../PROJECT.md)
 > **Branch:** `hr-relay/wo1-ble-enable` (base: `main` via `origin/main`)
-> **Worktree:** `/Users/mcneillm/Documents/Projects/Echenon-hr-relay`
+> **Worktree:** `<worktree>`
 
 ## Role Definition
 
@@ -18,7 +18,7 @@ complexity: standard
 > architectural decisions, do not create branches, and do not plan. Your task
 > is strictly limited to executing the checklist below. All work happens on
 > the already-checked-out branch `hr-relay/wo1-ble-enable` in the worktree at
-> `/Users/mcneillm/Documents/Projects/Echenon-hr-relay`.
+> `<worktree>`.
 
 ## Objective
 
@@ -55,7 +55,7 @@ export crash, and record DRAM/heap numbers with BLE enabled.
 - Use `git` commands for the framework submodule bump.
 - Temporary files go in `tmp/` at the worktree root (create it and ensure it's
   in `.gitignore`).
-- All work is in the worktree: `/Users/mcneillm/Documents/Projects/Echenon-hr-relay`
+- All work is in the worktree: `<worktree>`
 
 ## Line-Item Instructions
 

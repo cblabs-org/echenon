@@ -26,7 +26,7 @@ the framework's central BLE role, which the upstream ACCEPTANCE.md marks as
 
 | Item | Details |
 |---|---|
-| **Worktree** | `/Users/mcneillm/Documents/Projects/Echenon-hr-relay` |
+| **Worktree** | `<worktree>` |
 | **Branch** | `hr-relay/wo5-strap-acceptance` (based on `hr-relay/wo4-hr-client`) |
 | **SPEC** | `SPEC.md` §8 (HR relay), §8.4 (reconnect policy), §13.5 (tests 2.2–2.6) |
 | **Prior evidence** | `docs/measurements/phase2/A12-20261012-esp32-hr-pairing.md` (WO3 — tablet pairing with synthetic HR) |

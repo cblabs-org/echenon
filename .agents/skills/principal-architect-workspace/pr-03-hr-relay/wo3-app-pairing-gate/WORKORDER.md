@@ -9,7 +9,7 @@ complexity: interactive
 > **PR:** PR-03 HR Relay (Phase 2) — v1 Passive
 > **Project:** [PROJECT.md](../PROJECT.md)
 > **Branch:** `hr-relay/wo3-app-pairing-gate` (base: `hr-relay/wo2-hr-repeater`)
-> **Worktree:** `/Users/mcneillm/Documents/Projects/Echenon-hr-relay`
+> **Worktree:** `<worktree>`
 
 ## Role Definition
 
@@ -39,7 +39,7 @@ This closes register row #12 (originally inconclusive in DR-1 prep).
 
 1. **Create the WO3 branch:**
    ```bash
-   cd /Users/mcneillm/Documents/Projects/Echenon-hr-relay
+   cd <worktree>
    git checkout -b hr-relay/wo3-app-pairing-gate hr-relay/wo2-hr-repeater
    ```
 

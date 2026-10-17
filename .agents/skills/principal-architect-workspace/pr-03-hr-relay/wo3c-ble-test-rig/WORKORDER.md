@@ -233,7 +233,7 @@ complete
 
 ### Decisions Made
 - **BTSnoop Timestamp Epoch Conversion:** Android BTSnoop timestamps use a 64-bit microsecond integer representing microseconds since `0001-01-01 00:00:00 UTC` (offset `0x00DC_DDB3_0F2F_8000` = 62,135,596,800,000,000 µs). Formatted timestamps for both UTC and UTC+1 (BST) to align directly with experimental timelines in `ANALYSIS.md`.
-- **Dynamic ADB Path Resolution:** ADB is often located in `/Users/mcneillm/Library/Android/sdk/platform-tools/adb` when not present in standard system PATH. `pixel_runner.py` checks both PATH and common SDK locations automatically.
+- **Dynamic ADB Path Resolution:** ADB is often located in `<android-sdk>/platform-tools/adb` when not present in standard system PATH. `pixel_runner.py` checks both PATH and common SDK locations automatically.
 - **MCP Build Tooling Compliance:** Pure PlatformIO MCP tools (`build_project`) were used exclusively for control peripheral compilation per Rule 04, verifying build artifacts without any direct CLI `pio` calls.
 
 ### Dead Ends & Warnings

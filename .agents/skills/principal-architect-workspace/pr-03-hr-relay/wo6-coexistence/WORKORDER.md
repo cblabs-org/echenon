@@ -26,7 +26,7 @@ fixes or pick architecture alternatives.
 
 | Item | Details |
 |---|---|
-| **Worktree** | `/Users/mcneillm/Documents/Projects/Echenon-hr-relay` |
+| **Worktree** | `<worktree>` |
 | **Branch** | `hr-relay/wo6-coexistence` (based on `hr-relay/wo5-strap-acceptance`) |
 | **SPEC** | §8.5 (Radio Coexistence Policy), §13.5 test 2.7 |
 | **Prior evidence** | WO5 re-run: 9/11 PASS (2.2–2.4, RFC 4–9). HR relay proven point-to-point. |

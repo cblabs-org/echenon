@@ -32,7 +32,7 @@ Applied direct voltage to the motor (bypassing console controller) to drive cont
 
 ### Run 1 — Full Profile
 
-![Pot revolution run 1](/Users/mcneillm/.gemini/antigravity/brain/c5a109c4-c7b7-4b4b-ad35-753ec0589a6b/A03-chart-pot-revolution-run1.png)
+![Pot revolution run 1](./A03-chart-pot-revolution-run1.png)
 
 | Feature | Time | ADC | Voltage |
 |---|---|---|---|
@@ -49,7 +49,7 @@ Applied direct voltage to the motor (bypassing console controller) to drive cont
 
 ### Run 2 — With Motor Voltage
 
-![Pot revolution run 2 with motor](/Users/mcneillm/.gemini/antigravity/brain/c5a109c4-c7b7-4b4b-ad35-753ec0589a6b/A03-chart-pot-revolution-run2.png)
+![Pot revolution run 2 with motor](./A03-chart-pot-revolution-run2.png)
 
 | Measurement | Value |
 |---|---|
@@ -71,10 +71,10 @@ Applied direct voltage to the motor (bypassing console controller) to drive cont
 
 | File | Rows | Description |
 |---|---|---|
-| [A03-pot-revolution.csv](file:///Users/mcneillm/Documents/Projects/Echenon/docs/measurements/phase0/A03-20261011-pot-revolution.csv) | 9,460 | Run 1 ride log |
-| [A03-pot-revolution-run2.csv](file:///Users/mcneillm/Documents/Projects/Echenon/docs/measurements/phase0/A03-20261011-pot-revolution-run2.csv) | 24,222 | Run 2 ride log (with motor voltage) |
-| [A03-pot-revolution-burst.csv](file:///Users/mcneillm/Documents/Projects/Echenon/docs/measurements/phase0/A03-20261011-pot-revolution-burst.csv) | — | Run 1 burst capture |
-| [A03-pot-revolution-run2-burst.csv](file:///Users/mcneillm/Documents/Projects/Echenon/docs/measurements/phase0/A03-20261011-pot-revolution-run2-burst.csv) | — | Run 2 burst capture |
+| [A03-pot-revolution.csv](./A03-20261011-pot-revolution.csv) | 9,460 | Run 1 ride log |
+| [A03-pot-revolution-run2.csv](./A03-20261011-pot-revolution-run2.csv) | 24,222 | Run 2 ride log (with motor voltage) |
+| [A03-pot-revolution-burst.csv](./A03-20261011-pot-revolution-burst.csv) | — | Run 1 burst capture |
+| [A03-pot-revolution-run2-burst.csv](./A03-20261011-pot-revolution-run2-burst.csv) | — | Run 2 burst capture |
 
 ---
 
@@ -86,7 +86,7 @@ Clicked encoder knob from level 1 to level 32, pausing ~2s at each level for the
 
 ### Results
 
-![32 resistance levels](/Users/mcneillm/.gemini/antigravity/brain/c5a109c4-c7b7-4b4b-ad35-753ec0589a6b/A04-chart-levels-1-32.png)
+![32 resistance levels](./A04-chart-levels-1-32.png)
 
 | Level | ADC | mV | | Level | ADC | mV | | Level | ADC | mV |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -125,8 +125,8 @@ Clicked encoder knob from level 1 to level 32, pausing ~2s at each level for the
 
 | File | Rows | Description |
 |---|---|---|
-| [A04-levels-1-32.csv](file:///Users/mcneillm/Documents/Projects/Echenon/docs/measurements/phase0/A04-20261011-levels-1-32.csv) | 36,000 | Ride log (wrapped buffer) |
-| [A04-levels-1-32-events.csv](file:///Users/mcneillm/Documents/Projects/Echenon/docs/measurements/phase0/A04-20261011-levels-1-32-events.csv) | 167 | Encoder + motor events |
+| [A04-levels-1-32.csv](./A04-20261011-levels-1-32.csv) | 36,000 | Ride log (wrapped buffer) |
+| [A04-levels-1-32-events.csv](./A04-20261011-levels-1-32-events.csv) | 167 | Encoder + motor events |
 
 ---
 
@@ -175,7 +175,7 @@ With the console powered and at level 1 (ADC 264):
 
 ### Results
 
-![Motor disconnect test](/Users/mcneillm/.gemini/antigravity/brain/c5a109c4-c7b7-4b4b-ad35-753ec0589a6b/A09-chart-motor-disconnect.png)
+![Motor disconnect test](./A09-chart-motor-disconnect.png)
 
 | Phase | Time | Duration | Observation |
 |---|---|---|---|
@@ -206,8 +206,8 @@ With the console powered and at level 1 (ADC 264):
 
 | File | Rows | Description |
 |---|---|---|
-| [A09-motor-disconnect.csv](file:///Users/mcneillm/Documents/Projects/Echenon/docs/measurements/phase0/A09-20261011-motor-disconnect.csv) | 36,000 | Full ride log including disconnect period |
-| [A09-motor-disconnect-events.csv](file:///Users/mcneillm/Documents/Projects/Echenon/docs/measurements/phase0/A09-20261011-motor-disconnect-events.csv) | 167 | Encoder events during knob turns |
+| [A09-motor-disconnect.csv](./A09-20261011-motor-disconnect.csv) | 36,000 | Full ride log including disconnect period |
+| [A09-motor-disconnect-events.csv](./A09-20261011-motor-disconnect-events.csv) | 167 | Encoder events during knob turns |
 
 ---
 
@@ -223,7 +223,7 @@ Full power cycle of the console with the signal logger capturing:
 
 ### Results
 
-![Power-on capture](/Users/mcneillm/.gemini/antigravity/brain/c5a109c4-c7b7-4b4b-ad35-753ec0589a6b/A13-chart-power-on-capture.png)
+![Power-on capture](./A13-chart-power-on-capture.png)
 
 | Event | Time | Detail |
 |---|---|---|
@@ -254,7 +254,7 @@ Full power cycle of the console with the signal logger capturing:
 
 | File | Rows | Description |
 |---|---|---|
-| [A13-power-on-capture.csv](file:///Users/mcneillm/Documents/Projects/Echenon/docs/measurements/phase0/A13-20261011-power-on-capture.csv) | 36,000 | Full ride log across power cycle |
+| [A13-power-on-capture.csv](./A13-power-on-capture.csv) | 36,000 | Full ride log across power cycle |
 
 ---
 
@@ -282,7 +282,7 @@ Full power cycle of the console with the signal logger capturing:
 
 ## Complete Data File Inventory
 
-All files stored in [`docs/measurements/phase0/`](file:///Users/mcneillm/Documents/Projects/Echenon/docs/measurements/phase0/):
+All files stored in `docs/measurements/phase0/`:
 
 | File | Size | Test |
 |---|---|---|

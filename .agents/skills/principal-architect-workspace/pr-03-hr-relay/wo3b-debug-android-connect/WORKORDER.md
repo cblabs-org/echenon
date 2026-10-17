@@ -9,7 +9,7 @@ complexity: interactive
 > **PR:** PR-03 HR Relay (Phase 2) — v1 Passive
 > **Project:** [PROJECT.md](../PROJECT.md)
 > **Branch:** `hr-relay/wo3b-debug-android-connect` (base: `hr-relay/wo3-app-pairing-gate`)
-> **Worktree:** `/Users/mcneillm/Documents/Projects/Echenon-hr-relay`
+> **Worktree:** `<worktree>`
 > **Directive:** Chief Architect consolidated review — owner-approved 2026-10-14.
 >   Supersedes all earlier CA notes on WO3b.
 

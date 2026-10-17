@@ -19,7 +19,7 @@ sections match what was built, and prepare PROJECT.md for PR submission.
 
 | Item | Details |
 |---|---|
-| **Worktree** | `/Users/mcneillm/Documents/Projects/Echenon-hr-relay` |
+| **Worktree** | `<worktree>` |
 | **Branch** | `hr-relay/wo7-doc-sync` (based on `hr-relay/wo6-coexistence`) |
 | **SPEC** | `SPEC.md` — verify §3.5, §7.8, §8, §13.5 match implementation |
 | **Prior WOs** | WO1–WO4 ✅, WO5 ⚠️ 9/11, WO6 ✅ programme gate cleared |
