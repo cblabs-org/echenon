@@ -79,7 +79,7 @@ Project name for branches: `hr-relay`. Linear stack from `main`. Proposed
 | **[~] [wo5-strap-acceptance](wo5-strap-acceptance/WORKORDER.md):** | Strap and central acceptance | `hr-relay/wo5-strap-acceptance` (wo4) | `interactive` | Beat HW901, plus a second standard strap if available: portal scan and pair, end-to-end relay to the Echelon app, contact loss, auto-sleep and reconnect ≤ 20 s, factory reset. Also **RFC §17.2 items 4–9 as consumer evidence**. Evidence in `docs/measurements/phase2/`. The PA files an app-neutral upstream report | 2.2–2.6 | ⚠️ MOSTLY PASS (`5866e3d`) — 9/11 pass, 2.5 FAIL (F4: discovery scan blocks auto-reconnect), 2.6 BLOCKED (by F4). F3: BPM=0 not relayed. F4/F5: framework findings. |
 | **[-] [wo3e-side-swap-tests](wo3e-side-swap-tests/WORKORDER.md):** | Side-swap BLE interop tests | `hr-relay/wo3e-side-swap-tests` (wo5) | `interactive` | CA-directed: isolate whether the connection failure is ESP32-S3-specific or peripheral-generic. Apply CA corrections C1-C4 to the WO3d report. Using the existing rig, 50 attempts each: X1–X5. | — | ⏭️ DEFERRED — owner decision 2026-10-17. Android phone reliability is PR-05 entry gate, not PR-03. Sufficient data collected in WO3d. |
 | **[x] [wo6-coexistence](wo6-coexistence/WORKORDER.md):** | P12 v1 topology coexistence | `hr-relay/wo6-coexistence` (wo5) | `interactive` | **v1 topology on the P12:** HR strap (central) + P12 tablet + portal WebSocket at 2 Hz + HTTPS POST, 5-10 minutes. Measure HR gaps, connection drops, heap and DRAM. **Programme gate:** "v1 BLE topology proven on the P12". | 2.7 | ✅ PASS (`49a364f`) — **Programme gate cleared.** Max HR gap 1,200 ms (≤2,500 ms). 326 notifications / 325.3 s. 30/30 HTTP OK. Zero dropped events. Heap stable (min 81 KB). |
-| **[ ] [wo7-doc-sync](wo7-doc-sync/WORKORDER.md):** | Docs + F3 fix | `hr-relay/wo7-doc-sync` (wo6) | `standard` | SPEC §3.5, §7.8, §8 and §13.5 match what was built; register row #12 final; fix F3 (BPM=0 relay); the PR-03 PROJECT.md wrap-up | — | ⬜ |
+| **[x] [wo7-doc-sync](wo7-doc-sync/WORKORDER.md):** | Docs + F3 fix | `hr-relay/wo7-doc-sync` (wo6) | `standard` | SPEC §3.5, §7.8, §8 and §13.5 match what was built; register row #12 final; fix F3 (BPM=0 relay); the PR-03 PROJECT.md wrap-up | — | ✅ Complete (`d3f6b32`) — F3 fixed, SPEC verified, 45/45 native tests, all 3 envs build clean. |
 
 **File overlaps:**
 - Inside the stack: `EchenonModule.*` and `main.cpp` change in WO1, WO2 and WO4 (additive, linear).
@@ -116,7 +116,21 @@ Framework issues are written app-neutral, with no Echenon specifics.
   Chief Architect review; after that review, the owner merges.
 
 ## Status
-**Plan Status:** **ACTIVE** — WO1–WO4 ✅, WO5 ⚠️ MOSTLY PASS (9/11), WO6 ✅ **PROGRAMME GATE CLEARED**, WO3e deferred, WO7 pending.
+**Plan Status:** **COMPLETE** — WO1–WO4 ✅, WO5 ⚠️ MOSTLY PASS (9/11), WO6 ✅ PROGRAMME GATE CLEARED, WO7 ✅, WO3e deferred. Ready for stack push and PR.
+
+### 2026-10-17: WO7 complete — F3 fixed, SPEC verified, PR-03 ready for submission (PA session)
+- **Commit:** `d3f6b32` on `hr-relay/wo7-doc-sync`.
+- **F3 fixed:** Removed `if (sample->bpm > 0)` guard in `HRMRepeater.cpp:87`.
+  BPM=0 (off-skin signal) now relayed transparently to downstream apps.
+- **SPEC verification:** §3.5, §7.8, §8.1–§8.5, §13.5 all match implementation.
+  No discrepancies found.
+- **Build:** 45/45 native tests pass. `ex3-waveshare-nano`: RAM 53,164 B (16.2%),
+  Flash 1,527,583 B (24.3%). `-diag`: builds clean.
+- **Upstream report:** `docs/upstream-central-acceptance-report.md` verified
+  app-neutral, PR #296 referenced, WO5 evidence included. Ready for PA review.
+- **Note:** Worker flagged legacy `file:///` URLs in `docs/measurements/phase0/`
+  — outside WO7 boundary box, deferred to WO7 or doc cleanup.
+- **All WOs complete.** Next: push stack → open PR → STOP.
 
 ### 2026-10-17: WO6 PASS — programme gate cleared (PA session)
 - **Commit:** `49a364f` on `hr-relay/wo6-coexistence`.
