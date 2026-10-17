@@ -53,6 +53,8 @@ void setup() {
 
 #ifdef WITH_BLE
     bleManager.begin(app);
+    // SPEC §8.4: slowRetryMs is fixed at 15000 ms (15 s). This is not
+    // user-configurable — it is applied unconditionally at every boot.
     JsonDocument bleCfg;
     bleCfg["slowRetryMs"] = 15000;
     bleManager.applyConfig(bleCfg.as<JsonObject>());
