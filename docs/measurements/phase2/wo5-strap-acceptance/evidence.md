@@ -223,3 +223,173 @@ BLE config was modified during testing:
 - `reconnectScan` widened to `{intervalMs:320, windowMs:160}` (50% duty)
 - Beat stored and then forgotten via `/api/ble/forget`
 - Multiple scan/pair/forget cycles performed
+---
+
+## Re-Run (v0.1.0-dev.15)
+
+**Firmware:** `v0.1.0-dev.15`  
+**Board:** ESP32-S3 Waveshare Nano (`ex3-waveshare-nano`)  
+**Framework:** submodule at `1e90ec68` (PR #296 — MAC byte-order fix)  
+**Strap:** Echelon Beat HW901, `EBEAT-0014941`, BLE address `E7:A7:DC:1C:4C:AD` (RandomStatic)  
+**Tablet:** Lenovo Tab P12 running Echelon Fit app  
+**Date:** 2026-10-17  
+
+---
+
+### Pre-Flight
+
+- Tag: `v0.1.0-dev.15` created and pushed
+- Build: `ex3-waveshare-nano` compiled successfully (RAM 16.2%, Flash 24.3%, 91s)
+- Flash: MCP `upload_firmware` completed successfully
+- Version verify: `curl http://192.168.1.100/api/system` → `"firmware_version": "0.1.0-dev.15"`
+- Serial boot: `hr_client` and `hr_repeater` providers registered, BLE advertising `0x180D`, WiFi connected
+
+### Framework Fix Verification
+
+The MAC byte-order fix (PR #296) corrects `NimBLEAddress` constructor usage. Serial log confirms correct address:
+```
+I NimBLE: GAP procedure initiated: connect;
+I NimBLE: peer_addr_type=1 peer_addr=
+I NimBLE: e7:a7:dc:1c:4c:ad
+```
+Address `e7:a7:dc:1c:4c:ad` matches the stored address — no byte reversal. Connection succeeds immediately.
+
+---
+
+### Test 2.2: BLE Portal — Scan and Pair HR Armband — PASS ✅
+
+- Portal scan found `EBEAT-0014941` at RSSI -91 dBm
+- Pair click initiated connection; portal showed green dot "CONNECTED"
+- Serial: `0x2A37` HR Measurement characteristic subscribed (write to att_handle=25 status=0)
+- Serial: `Read Body Sensor Location: 0x04` (Hand)
+- Battery service `0x180F` / `0x2A19` subscribed (write to att_handle=34 status=0)
+- Connection stable for 5+ minutes without disconnect
+- `secureConnection: failed rc=1285` — benign; Beat doesn't support bonding. Framework proceeds despite this.
+
+**Note:** First connection disconnected due to racing pair clicks (user clicked Pair 2-3 times), causing `GAP terminate connection` / `Client not disconnected, cannot connect` race. Auto-reconnect recovered cleanly within ~8 seconds.
+
+### Test 2.3: End-to-End Relay — PASS ✅
+
+- Beat connected to ESP32 (central role)
+- Echelon Fit app on P12 paired to `Echenon-7226` (peripheral role)
+- App displayed HR in 82–100 BPM range matching live readings
+- Serial confirmed continuous `GATT procedure initiated: notify; att_handle=16` at ~1 Hz (HRMRepeater → P12)
+- P12 peripheral connection: `7A:7E:7B:05:97:31`, MTU=185, interval=48.75ms
+- Full relay path verified: Beat → HRMClient → EventBus → HRMRepeater → P12 Echelon Fit
+
+### Test 2.4: Contact Loss — PASS ✅ (with observation F3)
+
+- Armband removed from skin at ~19:06:02
+- Outbound HR notifications (att_handle=16) stopped at t=764s (~2 seconds after removal)
+- Beat sends BPM=0 as off-skin signal; HRMClient receives it correctly
+- **Criterion met:** HR absent within 12 seconds — actual: ~2 seconds ✅
+
+**Observation F3:** `HRMRepeater::onHrEvent()` in `src/echenon/HRMRepeater.cpp` line 89 filters `bpm > 0`, suppressing BPM=0 relay to the downstream app. The Echelon Fit app remains frozen on the last valid BPM (e.g., 80) instead of showing 0. The Beat and Echelon app are designed to communicate BPM=0 as "off-skin" — the relay should be transparent. Fix: remove the `if (sample->bpm > 0)` guard.
+
+### Test 2.5: Auto-Sleep and Reconnect — FAIL ❌ (F4)
+
+- Beat auto-sleep: confirmed. After armband removal, Beat sends BPM=0 for ~3 minutes, then disconnects. Serial: `HRMClient: Disconnected (reason: Other)` at t=1510s.
+- Armband placed back on skin: Beat LED flashing green (advertising). ESP32 scan finds `EBEAT-0014941` at RSSI -91.
+- **Auto-reconnect did NOT fire.** The reconnect scheduler reported `phase: "Fast", suspended: false` but no connection attempt was made.
+- Root cause: `discovery: { active: true }` — the portal's discovery scan (triggered by a prior Pair click) persists and blocks the reconnect scheduler from executing its own scan-and-connect cycle. The BLE stack can only run one scan at a time.
+- Manual Pair via portal/API connects instantly, confirming the strap is available.
+
+**Finding F4 (Framework):** The discovery scan from a manual pair action persists or is retriggered, contending with the reconnect scheduler for the BLE scan resource. The reconnect scheduler cannot auto-reconnect while a discovery scan is active. This blocks the auto-reconnect feature entirely.
+
+**Test 2.6 (Factory Reset slowRetryMs) is BLOCKED** by F4 — it depends on auto-reconnect working to verify the reconnect timing.
+
+### Test 2.6: Factory Reset — BLOCKED ⛔ (by F4)
+
+Cannot verify `slowRetryMs` persistence after factory reset because auto-reconnect (Test 2.5) is non-functional due to F4.
+
+---
+
+### RFC §17.2 Re-Run Results
+
+#### RFC 4: WiFi + BLE Coexistence — PASS ✅
+
+10 rapid HTTP requests to `/api/system` while HR relaying (central + peripheral active):
+```
+Request 1: HTTP 200
+Request 2: HTTP 200
+Request 3: HTTP 200
+Request 4: HTTP 200
+Request 5: HTTP 200
+Request 6: HTTP 200
+Request 7: HTTP 200
+Request 8: HTTP 200
+Request 9: HTTP 200
+Request 10: HTTP 200
+```
+All 200 OK. HR notifications uninterrupted during requests. `droppedEvents: 0`.
+
+#### RFC 5: BLE Connect/Disconnect Cycling — PASS ✅
+
+3 forget/re-pair cycles via API (`/api/ble/forget` + `/api/ble/pair`):
+
+| Cycle | Forget | Re-pair | HR Resumed | Crash | droppedEvents |
+|---|---|---|---|---|---|
+| 1 | ✅ | ✅ | ✅ | No | 0 |
+| 2 | ✅ | ✅ | ✅ | No | 0 |
+| 3 | ✅ | ✅ | ✅ | No | 0 |
+
+P12 peripheral connection survived all 3 cycles. Heap after: `heap_min_free` = 77,376 B (threshold: 20,480 B). No leaked connections.
+
+#### RFC 6: DRAM Budget — PASS ✅ (first run, unchanged)
+
+Already passed in v0.1.0-dev.14. Re-confirmed: `heap_min_free` = 77,376 B after extended testing with both central and peripheral active.
+
+#### RFC 7: Boot Sequence — PASS ✅ (first run, unchanged)
+
+Already passed in v0.1.0-dev.14. Clean boot with `hr_client` + `hr_repeater` providers.
+
+#### RFC 8: Peripheral Re-advertising After Central Disconnect — PASS ✅
+
+- P12 Bluetooth toggled off → peripheral connection dropped
+- ESP32 re-advertised when connection count dropped
+- P12 Bluetooth toggled on → reconnected (new address `7A:7E:7B:05:97:31`, MTU=185)
+- HR notifications resumed at ~1 Hz
+- Central (Beat) connection remained stable throughout
+- `droppedEvents: 0`
+
+#### RFC 9: Central Reconnect Does Not Disrupt Peripheral — PASS ✅
+
+- While P12 connected and receiving HR, strap removed from skin
+- HR notifications stopped within ~1 second of removal
+- **P12 peripheral connection survived:** `connections: 1` maintained throughout
+- Beat auto-slept and disconnected; P12 still connected
+- `droppedEvents: 0`
+- Heap stable: `dram: 125,123 B`, no errors
+
+---
+
+### System State After All Tests
+
+```json
+{
+    "heap_free": 122535,
+    "heap_min_free": 77376,
+    "uptime": 3315,
+    "firmware_version": "0.1.0-dev.15",
+    "wifi_rssi": -63,
+    "status": "ok"
+}
+```
+
+### Out-of-Scope Findings (Re-Run)
+
+#### F3 (Consumer Code): BPM=0 Not Relayed
+
+`HRMRepeater::onHrEvent()` (line 89) filters `bpm > 0`, preventing BPM=0 relay. The Echelon Fit app stays frozen on the last valid BPM instead of showing contact loss. Fix: remove the `if (sample->bpm > 0)` guard.
+
+#### F4 (Framework): Discovery Scan Blocks Auto-Reconnect
+
+The portal's discovery scan persists after a manual Pair action and blocks the reconnect scheduler from executing. The BLE stack supports only one concurrent scan. The reconnect scheduler reports `phase: Fast, suspended: false` but cannot act while discovery holds the scan resource. This makes auto-reconnect non-functional when any discovery scan has been triggered.
+
+#### F5 (Portal UI): Stale State / Flaky Updates
+
+The BLE tab in the web portal exhibits several UI issues:
+- "Forgetting..." button hangs indefinitely even after the forget completes on the backend
+- "No device paired yet" shown while the device is actually connected
+- Status badge doesn't update from RECONNECTING to CONNECTED without manual page refresh
+- These are UI polling/refresh issues; the REST API returns correct state at all times
