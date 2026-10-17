@@ -76,7 +76,7 @@ Project name for branches: `hr-relay`. Linear stack from `main`. Proposed
 | **[x] [wo3c-ble-test-rig](wo3c-ble-test-rig/WORKORDER.md):** | Build BLE A/B test rig | `hr-relay/wo3c-ble-test-rig` (wo3b) | `standard` | Build automated test tooling under `tools/ble-test/`: (a) `pixel_runner.py` — adb/uiautomator-driven nRF Connect test runner; (b) `esp32_log.py` — serial capture with wall-clock timestamps; (c) `control-peripheral/` — standalone PlatformIO project (NimBLE HR, no WiFi, same BLE presentation as Echenon); (d) `snoop_parse.py` — btsnoop HCI log parser; (e) optional `mac_runner.py` (bleak). Dry run 5 attempts on current firmware. No changes to `src/`, `framework/`, `SPEC.md`, `PROGRAM*.md` or `reviews/*`. | — | ✅ Complete (`b454d5d`) |
 | **[x] [wo3d-ble-ab-run](wo3d-ble-ab-run/WORKORDER.md):** | Run A/B/A′ BLE experiment | `hr-relay/wo3d-ble-ab-run` (wo3c) | `interactive` | Automated A/B/A′ experiment using WO3c rig: Batch A (Echenon, WiFi STA connected, ~50 attempts), Batch B (control peripheral, no WiFi, ~50 attempts), Batch A′ (Echenon again). Decision rules pre-agreed with CA. **Result: Decision Rule 2 triggered — H-COEX ELIMINATED.** A=26%, B=32%, A′=28% (Δ within 10 pp). Failure is ESP32 NimBLE/controller scheduling, not WiFi coex. | — | ✅ Complete (`62984c6`) |
 | **[x] [wo4-hr-client](wo4-hr-client/WORKORDER.md):** | HR strap client | `hr-relay/wo4-hr-client` (wo3d) | `standard` | `HRMClient` (`IBLEClientProvider`). A pure `0x2A37` parser (uint8/uint16, contact flags, energy, RR, BPM = 0) with native tests. Three-state contact machine; 10 s stale timeout; battery `0x2A19`; publishes the HR event (no direct repeater call). `slowRetryMs = 15000` set through BLEManager config, with the mechanism verified and recorded | 2.4 logic (native) | ✅ Complete (`e40653f`) |
-| **[~] [wo5-strap-acceptance](wo5-strap-acceptance/WORKORDER.md):** | Strap and central acceptance | `hr-relay/wo5-strap-acceptance` (wo4) | `interactive` | Beat HW901, plus a second standard strap if available: portal scan and pair, end-to-end relay to the Echelon app, contact loss, auto-sleep and reconnect ≤ 20 s, factory reset. Also **RFC §17.2 items 4–9 as consumer evidence**. Evidence in `docs/measurements/phase2/`. The PA files an app-neutral upstream report | 2.2–2.6 | ⚠️ PARTIAL (`5264701`) — 2/11 pass (RFC 6+7), 9/11 were BLOCKED by framework F1 (MAC byte-order). **Fix landed** (`f366c16` bumps framework to `1e90ec68`). Re-run pending. |
+| **[~] [wo5-strap-acceptance](wo5-strap-acceptance/WORKORDER.md):** | Strap and central acceptance | `hr-relay/wo5-strap-acceptance` (wo4) | `interactive` | Beat HW901, plus a second standard strap if available: portal scan and pair, end-to-end relay to the Echelon app, contact loss, auto-sleep and reconnect ≤ 20 s, factory reset. Also **RFC §17.2 items 4–9 as consumer evidence**. Evidence in `docs/measurements/phase2/`. The PA files an app-neutral upstream report | 2.2–2.6 | ⚠️ MOSTLY PASS (`5866e3d`) — 9/11 pass, 2.5 FAIL (F4: discovery scan blocks auto-reconnect), 2.6 BLOCKED (by F4). F3: BPM=0 not relayed. F4/F5: framework findings. |
 | **[ ] [wo3e-side-swap-tests](wo3e-side-swap-tests/WORKORDER.md):** | Side-swap BLE interop tests | `hr-relay/wo3e-side-swap-tests` (wo5) | `interactive` | CA-directed: isolate whether the connection failure is ESP32-S3-specific or peripheral-generic. Apply CA corrections C1-C4 to the WO3d report. Using the existing rig, 50 attempts each: **X1** Pixel -> non-ESP32 peripheral (eBeat or nRF Connect advertiser); **X2** control peripheral rebuilt for classic ESP32 (esp32dev); **X3** P12 via nRF Connect rig; **X4** if available, non-Pixel Android + iPhone; **X5** only if X1/X2 point at ESP32-S3, escalate for sniffer. Do NOT sweep adv intervals or switch to Bluedroid. Upstream draft: withdraw (ii) power-save; keep (i)(iii)(iv). Escalate results to CA | — | ⬜ |
 | **[ ] [wo6-coexistence](wo6-coexistence/WORKORDER.md):** | P12 v1 topology coexistence | `hr-relay/wo6-coexistence` (wo3e) | `interactive` | **v1 topology on the P12:** HR strap (central) + P12 tablet + portal WebSocket at 2 Hz + HTTPS POST, 5-10 minutes. Measure HR gaps, connection drops, heap and DRAM. **Programme gate:** "v1 BLE topology proven on the P12". Android phone reliability (>= 95% single attempt, Pixel + one other Android) is a **PR-05 ENTRY gate**, not PR-03. **If WO6 fails, STOP and escalate to Chief Architect. Do not pick an architecture option.** | 2.7 | ⬜ |
 | **[ ] [wo7-doc-sync](wo7-doc-sync/WORKORDER.md):** | Docs | `hr-relay/wo7-doc-sync` (wo6) | `standard` | SPEC §3.5, §7.8, §8 and §13.5 match what was built; register row #12 final; the PR-03 PROJECT.md wrap-up | — | ⬜ |
@@ -116,7 +116,42 @@ Framework issues are written app-neutral, with no Echenon specifics.
   Chief Architect review; after that review, the owner merges.
 
 ## Status
-**Plan Status:** **ACTIVE** — WO1–WO4 ✅, WO5 ⚠️ PARTIAL (2/11, framework F1 now fixed — re-run pending), WO3e–WO7 pending.
+**Plan Status:** **ACTIVE** — WO1–WO4 ✅, WO5 ⚠️ MOSTLY PASS (9/11, F4 auto-reconnect blocker), WO3e–WO7 pending.
+
+### 2026-10-17: WO5 re-run MOSTLY PASS — 9/11 pass, F4 auto-reconnect blocker (PA session)
+- **Commit:** `5866e3d` on `hr-relay/wo5-strap-acceptance`.
+- **Tag:** `v0.1.0-dev.15` (framework at `1e90ec68`, MAC fix).
+- **Framework fix confirmed:** Central connections now target the correct MAC
+  address. Beat HW901 connects instantly via `NimBLEAddress(ble_addr_t)`.
+- **Results:**
+  - 2.2 (scan+pair) **PASS** — correct address, BSL=0x04, 0x2A37 subscribed.
+  - 2.3 (end-to-end relay) **PASS** — Beat→ESP32→P12 Echelon Fit, 82–100 BPM.
+  - 2.4 (contact loss) **PASS** — HR absent within ~2s (criterion ≤12s).
+  - 2.5 (auto-reconnect) **FAIL** — F4: discovery scan blocks reconnect scheduler.
+  - 2.6 (factory reset) **BLOCKED** — depends on 2.5.
+  - RFC 4 (coex) **PASS** — 10/10 HTTP 200 OK, HR uninterrupted.
+  - RFC 5 (cycling) **PASS** — 3 forget/re-pair cycles, no crash, `droppedEvents: 0`.
+  - RFC 6 (DRAM) **PASS** — `heap_min_free` = 77,376 B >> 20,480 B.
+  - RFC 7 (boot) **PASS** — clean boot, both providers.
+  - RFC 8 (peripheral re-adv) **PASS** — P12 BT toggle, HR resumed.
+  - RFC 9 (central vs peripheral) **PASS** — strap removed, P12 stayed.
+- **New findings:**
+  - F3 (consumer): `HRMRepeater.cpp:89` filters `bpm > 0`, suppressing BPM=0
+    relay. One-liner fix in consumer code.
+  - F4 (framework, MAJOR): Portal discovery scan persists and blocks the
+    reconnect scheduler's scan-and-connect cycle. Only one concurrent BLE scan
+    supported. Auto-reconnect non-functional after any manual Pair.
+  - F5 (portal UI): stale BLE status display (cosmetic).
+- **PA assessment:** F3 is a consumer code fix (one line, `HRMRepeater.cpp`).
+  F4 is a framework issue — the discovery scan not being torn down after
+  a manual pair contends with the reconnect scheduler. Tests 2.5/2.6 cannot
+  pass until F4 is fixed in the framework. However, F4 does NOT block WO6
+  (P12 coexistence gate) because WO6 tests steady-state relay with manual
+  pairing, not auto-reconnect. F4 also does NOT block PR-03 submission —
+  it is a pre-existing framework limitation, not a regression introduced by
+  PR-03. The PA will surface F4 as a framework issue draft.
+- **Upstream report:** Updated at `docs/upstream-central-acceptance-report.md`.
+- **Evidence:** `docs/measurements/phase2/wo5-strap-acceptance/evidence.md`.
 
 ### 2026-10-16: Framework submodule bumped — WO5 unblocked (PA session)
 - **Commit:** `f366c16` on `hr-relay/wo5-strap-acceptance`.
