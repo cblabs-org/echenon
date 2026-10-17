@@ -164,13 +164,33 @@ The session is complete when:
 ## Completion Report (written by the worker at task completion)
 
 ### Status
-_To be written._
+**COMPLETE** — 2026-10-17. Programme gate **PASS**.
 
 ### Test Results Summary
-_To be written._
+
+Test 2.7 (SPEC §13.5) — P12 v1 topology coexistence, executed 2026-10-17
+22:58–23:04 BST on firmware `v0.1.0-dev.15`.
+
+| Criterion | Result | Detail |
+|---|---|---|
+| **No HR gap > 2.5 s** | ✅ **PASS** | Max gap 1,200 ms (326 notifications over 325.3 s) |
+| Beat central survived 5 min | ✅ PASS | Connected throughout |
+| P12 peripheral survived 5 min | ✅ PASS | Connected throughout (handle 1, 48.75 ms interval) |
+| Portal WebSocket survived 5 min | ✅ PASS | Maintained with periodic interaction |
+| HTTP stress (30 requests) | ✅ PASS | 30/30 OK across 3 bursts |
+| `droppedEvents` | ✅ 0 | No BLE events lost |
+| Heap stable (no leak) | ✅ PASS | `heap_free` Δ = -712 B; `heap_min_free` = 81,080 B >> 20,480 B |
+
+HR gap distribution: 90.8% of gaps within 900–1,100 ms (expected ~1 Hz).
+Zero gaps > 1,500 ms. Maximum gap 1,200 ms — well within the 2,500 ms criterion.
 
 ### Gate Decision
-_To be written._
+
+**PASS** — PR-03 programme gate cleared. The v1 BLE topology (Beat HW901
+central + P12 Echelon Fit peripheral + WiFi portal WebSocket + HTTPS POST
+stress) is proven on the P12, sustained >5 minutes with zero HR gaps
+exceeding 2.5 s, zero dropped events, zero connection drops, and stable heap.
 
 ### Evidence
-_To be written._
+- [`docs/measurements/phase2/wo6-coexistence/evidence.md`](../../../../docs/measurements/phase2/wo6-coexistence/evidence.md) — full test report with timestamps, HR gap analysis, heap trajectory, and connection stability.
+- Serial log captured during test (1,131 lines, `att_handle=16` notifications at ~1 Hz).
