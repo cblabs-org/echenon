@@ -1584,7 +1584,7 @@ for the full GATT dump and comparative test results.
 | Sensor contact flags | Not supported (flags always `0x00`) | Firmware does not assume other devices lack them (§8.4) |
 | RR-intervals | Not present | Parser extracts them when present |
 | Energy expended | Not present | Field skipped when present |
-| Body Sensor Location | `0x04` (Hand) | `HRMRepeater` reports the device's actual value |
+| Body Sensor Location | `0x04` (Hand) | `HRMRepeater` reports `0x00` ("Other") until EventBus routing is added (known limitation, S4) |
 | Battery Service | `0x180F` with Read + Notify | Shown in the BLE portal tab when available |
 | Pairing | Not required (open connection) | Opportunistic bonding: bonds if the peer supports SMP |
 | Max connections | 1 Central only | The ESP32 holds the connection exclusively |
