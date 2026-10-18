@@ -78,7 +78,7 @@ Project name for branches: `hr-relay`. Linear stack from `main`. Proposed
 | **[x] [wo3c-ble-test-rig](wo3c-ble-test-rig/WORKORDER.md):** | Build BLE A/B test rig | `hr-relay/wo3c-ble-test-rig` (wo3b) | `standard` | Build automated test tooling under `tools/ble-test/`: (a) `pixel_runner.py` — adb/uiautomator-driven nRF Connect test runner; (b) `esp32_log.py` — serial capture with wall-clock timestamps; (c) `control-peripheral/` — standalone PlatformIO project (NimBLE HR, no WiFi, same BLE presentation as Echenon); (d) `snoop_parse.py` — btsnoop HCI log parser; (e) optional `mac_runner.py` (bleak). Dry run 5 attempts on current firmware. No changes to `src/`, `framework/`, `SPEC.md`, `PROGRAM*.md` or `reviews/*`. | — | ✅ Complete (`b454d5d`) |
 | **[x] [wo3d-ble-ab-run](wo3d-ble-ab-run/WORKORDER.md):** | Run A/B/A′ BLE experiment | `hr-relay/wo3d-ble-ab-run` (wo3c) | `interactive` | Automated A/B/A′ experiment using WO3c rig: Batch A (Echenon, WiFi STA connected, ~50 attempts), Batch B (control peripheral, no WiFi, ~50 attempts), Batch A′ (Echenon again). Decision rules pre-agreed with CA. **Result: Decision Rule 2 triggered — H-COEX ELIMINATED.** A=26%, B=32%, A′=28% (Δ within 10 pp). Failure is ESP32 NimBLE/controller scheduling, not WiFi coex. | — | ✅ Complete (`62984c6`) |
 | **[x] [wo4-hr-client](wo4-hr-client/WORKORDER.md):** | HR strap client | `hr-relay/wo4-hr-client` (wo3d) | `standard` | `HRMClient` (`IBLEClientProvider`). A pure `0x2A37` parser (uint8/uint16, contact flags, energy, RR, BPM = 0) with native tests. Three-state contact machine; 10 s stale timeout; battery `0x2A19`; publishes the HR event (no direct repeater call). `slowRetryMs = 15000` set through BLEManager config, with the mechanism verified and recorded | 2.4 logic (native) | ✅ Complete (`e40653f`) |
-| **[~] [wo5-strap-acceptance](wo5-strap-acceptance/WORKORDER.md):** | Strap and central acceptance | `hr-relay/wo5-strap-acceptance` (wo4) | `interactive` | Beat HW901, plus a second standard strap if available: portal scan and pair, end-to-end relay to the Echelon app, contact loss, auto-sleep and reconnect ≤ 20 s, factory reset. Also **RFC §17.2 items 4–9 as consumer evidence**. Evidence in `docs/measurements/phase2/`. The PA files an app-neutral upstream report | 2.2–2.6 | ⚠️ MOSTLY PASS (`5866e3d`) — 9/11 pass, 2.5 FAIL (F4: discovery scan blocks auto-reconnect), 2.6 BLOCKED (by F4). F3: BPM=0 not relayed. F4/F5: framework findings. |
+| **[x] [wo5-strap-acceptance](wo5-strap-acceptance/WORKORDER.md):** | Strap and central acceptance | `hr-relay/wo5-strap-acceptance` (wo4) | `interactive` | Beat HW901, plus a second standard strap if available: portal scan and pair, end-to-end relay to the Echelon app, contact loss, auto-sleep and reconnect ≤ 20 s, factory reset. Also **RFC §17.2 items 4–9 as consumer evidence**. Evidence in `docs/measurements/phase2/`. The PA files an app-neutral upstream report | 2.2–2.6 | ✅ PASS 11/11 (`5866e3d` + re-run with F4 fix on `v0.3.0-dev.1`). Tests 2.5 (~7s reconnect) and 2.6 (~15s reconnect post-factory-reset) verified after framework `v0.0.12-beta.3` (PR #301). |
 | **[-] [wo3e-side-swap-tests](wo3e-side-swap-tests/WORKORDER.md):** | Side-swap BLE interop tests | `hr-relay/wo3e-side-swap-tests` (wo5) | `interactive` | CA-directed: isolate whether the connection failure is ESP32-S3-specific or peripheral-generic. Apply CA corrections C1-C4 to the WO3d report. Using the existing rig, 50 attempts each: X1–X5. | — | ⏭️ DEFERRED — owner decision 2026-10-17. Android phone reliability is PR-05 entry gate, not PR-03. Sufficient data collected in WO3d. |
 | **[x] [wo6-coexistence](wo6-coexistence/WORKORDER.md):** | P12 v1 topology coexistence | `hr-relay/wo6-coexistence` (wo5) | `interactive` | **v1 topology on the P12:** HR strap (central) + P12 tablet + portal WebSocket at 2 Hz + HTTPS POST, 5-10 minutes. Measure HR gaps, connection drops, heap and DRAM. **Programme gate:** "v1 BLE topology proven on the P12". | 2.7 | ✅ PASS (`49a364f`) — **Programme gate cleared.** Max HR gap 1,200 ms (≤2,500 ms). 326 notifications / 325.3 s. 30/30 HTTP OK. Zero dropped events. Heap stable (min 81 KB). |
 | **[x] [wo7-doc-sync](wo7-doc-sync/WORKORDER.md):** | Docs + F3 fix | `hr-relay/wo7-doc-sync` (wo6) | `standard` | SPEC §3.5, §7.8, §8 and §13.5 match what was built; register row #12 final; fix F3 (BPM=0 relay); the PR-03 PROJECT.md wrap-up; CA review remediation (B3/B4/B5/S2/S4/S5/S8/S9) | — | ✅ Complete (`d3f6b32`) + CA remediation commits (`a174874`..`HEAD`) — F3 fixed, SPEC verified, 45/45 native tests, builds pass. |
@@ -118,7 +118,7 @@ Framework issues are written app-neutral, with no Echenon specifics.
   Chief Architect review; after that review, the owner merges.
 
 ## Status
-**Plan Status:** **CA REVIEW REMEDIATION COMPLETE** — WO1–WO4 ✅, WO5 ⚠️ MOSTLY PASS (9/11, tests 2.5/2.6 pending re-run), WO6 ✅ PROGRAMME GATE CLEARED, WO7 ✅, WO3e deferred. CA review items B2/B3/B4/B5/S1/S2/S4/S5/S8/S9 resolved; B1/S3 pending interactive/upstream action. PR #3 updated.
+**Plan Status:** **CA REVIEW REMEDIATION COMPLETE — READY FOR RE-REVIEW** — WO1–WO7 ✅, WO5 11/11 PASS (tests 2.5/2.6 re-run PASS with F4 fix), WO6 ✅ PROGRAMME GATE CLEARED, WO3e deferred. All CA blockers (B1–B5) and required should-fix (S1/S2/S8) resolved. Upstream issues filed (F2 #303, F5 #304). PR #3 updated and force-pushed.
 
 ### 2026-10-18: CA review remediation complete
 - CA review on PR #3 requested changes: 5 blockers (B1–B5), 9 should-fix (S1–S9)
@@ -133,7 +133,16 @@ Framework issues are written app-neutral, with no Echenon specifics.
 - S5: `slowRetryMs` override documented as SPEC-mandated (`789e673`)
 - S8: `main` merged into stack tip — clean merge, no conflicts
 - S9: Mock bugreport zip deleted (`34d1ce9`)
-- Remaining: tests 2.5/2.6 re-run (interactive, needs F4-fixed firmware), S3 (upstream issues for F2/F5)
+- S3: Upstream issues filed — F2 (#303: connectable field), F5 (#304: portal stale state). F4 was already #300 (fixed via PR #301).
+- **Remaining:** None — all CA blockers and required should-fix resolved. Ready for re-review.
+
+### 2026-10-18: Tests 2.5/2.6 re-run PASS — F4 fix verified (interactive session)
+- **Firmware:** `v0.3.0-dev.1` (framework `v0.0.12-beta.3` with F4 fix).
+- **Test 2.5 (auto-reconnect):** Beat removed from arm → auto-sleep disconnect after ~3 min → put back on → **reconnected in ~7s**. PASS (criterion ≤ 20s).
+- **Test 2.6 (factory reset + reconnect):** Factory reset via API → reconfigured WiFi → re-paired Beat via portal + API → removed from arm → auto-sleep disconnect → put back on → **reconnected in ~15s**. PASS (criterion ≤ 20s). `slowRetryMs = 15000` confirmed surviving factory reset.
+- **F4 fix confirmed:** `discovery.active: false` after `pair()` in both tests — the lingering discovery scan no longer blocks the reconnect scheduler.
+- **Evidence:** `docs/measurements/phase2/wo5-rerun-2.5-2.6-evidence.md`
+- **WO5 final score:** 11/11 PASS (was 9/11 before F4 fix).
 
 ### 2026-10-17: WO7 complete — F3 fixed, SPEC verified, PR-03 ready for submission (PA session)
 - **Commit:** `d3f6b32` on `hr-relay/wo7-doc-sync`.
