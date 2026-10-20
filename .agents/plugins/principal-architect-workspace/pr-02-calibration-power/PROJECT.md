@@ -35,9 +35,9 @@ work_orders:
   slug: wo3-calibration-ui
   title: CalibrationWizard + RecalibrationUI
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: b453a57
 - id: WO-02.4
   slug: wo4-ws-feed
   title: Live WebSocket Feed
