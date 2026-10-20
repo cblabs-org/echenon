@@ -5,6 +5,8 @@
 #include "echenon/ResistanceSensor.h"
 #include "echenon/LevelMapping.h"
 #include "echenon/PowerEngine.h"
+#include "echenon/CalibrationWizard.h"
+#include "echenon/RecalibrationUI.h"
 #ifdef WITH_SIGNAL_LOGGER
 #include "echenon/SignalLogger.h"
 #endif
@@ -50,7 +52,7 @@ public:
     void registerRoutes(PsychicHttpServer& server) override;
     void registerTabs(ITabRegistry& registry) override;
     const char* getApiPrefix() const override { return "/api/echenon"; }
-    size_t getMaxPostBody() const override { return 4096; }
+    size_t getMaxPostBody() const override { return 8192; }
 
     // --- Dependency Injection ---
     void setConfigManager(ConfigManager* cm) { _configManager = cm; }
@@ -75,6 +77,13 @@ public:
     const echenon::PowerEngine& powerEngine() const { return _powerEngine; }
     float getPowerWatts() const { return _powerEngine.getLastPower(); }
 
+    // --- Calibration Wizard & Recalibration ---
+    echenon::CalibrationWizard& calibrationWizard() { return _calibrationWizard; }
+    const echenon::CalibrationWizard& calibrationWizard() const { return _calibrationWizard; }
+
+    echenon::RecalibrationUI& recalibrationUI() { return _recalibrationUI; }
+    const echenon::RecalibrationUI& recalibrationUI() const { return _recalibrationUI; }
+
 #ifdef WITH_BLE
     HRMRepeater& hrmRepeater() { return _hrmRepeater; }
     HRMClient& hrmClient() { return _hrmClient; }
@@ -90,6 +99,8 @@ private:
     echenon::CadenceSensor _cadenceSensor;
     echenon::ResistanceSensor _resistanceSensor;
     echenon::PowerEngine _powerEngine;
+    echenon::CalibrationWizard _calibrationWizard;
+    echenon::RecalibrationUI _recalibrationUI;
 
 #ifdef WITH_SIGNAL_LOGGER
     SignalLogger _signalLogger;
