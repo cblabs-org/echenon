@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "ops": [
+    {
+      "type": "add",
+      "entry_id": "seed-23c800b6",
+      "dossier_scope": "hardware/ex3-waveshare-nano",
+      "timestamp": "2026-10-04T15:33:28+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": [
+          "platformio.ini",
+          "hardware/ex3-waveshare-nano/board.h",
+          "src/echenon/SignalLogger.cpp",
+          "src/main.cpp"
+        ],
+        "entry_type": "decision",
+        "text": "Used `#include \"EncoderModule/EncoderConfig.h\"` in `board.h` because `EncoderConfig.h` is located within `framework/modules/EncoderModule/` rather than the top-level include path."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-4d09f62f",
+      "dossier_scope": "hardware/ex3-waveshare-nano",
+      "timestamp": "2026-10-04T15:33:28+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": [
+          "platformio.ini",
+          "hardware/ex3-waveshare-nano/board.h",
+          "src/echenon/SignalLogger.cpp",
+          "src/main.cpp"
+        ],
+        "entry_type": "decision",
+        "text": "In `SignalLogger.cpp`, defined `adc_channels` at file scope so both `begin()` (for DMA pattern setup) and `tick()` (for `_currentRow` reset) cleanly share the exact channel scan map."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-6ea6a7ad",
+      "dossier_scope": "hardware/ex3-waveshare-nano",
+      "timestamp": "2026-10-04T15:33:28+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": [
+          "platformio.ini",
+          "hardware/ex3-waveshare-nano/board.h",
+          "src/echenon/SignalLogger.cpp",
+          "src/main.cpp"
+        ],
+        "entry_type": "ruled-out",
+        "text": "Initial build failed with missing `EncoderConfig.h` when including `#include \"EncoderConfig.h\"` verbatim from the work order instruction. Resolved by including `\"EncoderModule/EncoderConfig.h\"` consistent with CrowPanel and native board headers."
+      }
+    }
+  ],
+  "created_at": "2026-10-04T14:33:28Z",
+  "batch_id": "01M43NB1P0DNN0SY04MT3TXBJF"
+}

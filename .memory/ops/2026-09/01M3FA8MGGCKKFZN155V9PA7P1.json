@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "ops": [
+    {
+      "type": "add",
+      "entry_id": "seed-76541932",
+      "dossier_scope": "pr-01-signal-logger",
+      "timestamp": "2026-09-26T17:55:06+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "decision",
+        "text": "Reduced `kRideLogMaxRows` from 72,000 to 36,000 (30 min instead of 60 min) to fit within the ESP32-S3's 8MB PSRAM constraint."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-97a99977",
+      "dossier_scope": "pr-01-signal-logger",
+      "timestamp": "2026-09-26T17:55:06+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "decision",
+        "text": "Aligned `conv_frame_size` (1000) and `max_store_buf_size` (4000) strictly to multiples of the 40-byte multi-channel reading (10 channels * 4 bytes) to prevent ESP-IDF ADC driver panic."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-10325693",
+      "dossier_scope": "pr-01-signal-logger",
+      "timestamp": "2026-09-26T17:55:06+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "decision",
+        "text": "Set `pull_up_en = GPIO_PULLUP_ENABLE` on the cadence and encoder ISR pins during testing. The physical specification mandates no internal pulls (handled by series resistors), so this should be cleaned up to `GPIO_PULLUP_DISABLE` in a subsequent patch or WO3."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-0c314309",
+      "dossier_scope": "pr-01-signal-logger",
+      "timestamp": "2026-09-26T17:55:06+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "ruled-out",
+        "text": "`PsychicHttpServer` lacks `beginChunked()`. Migrated to `response-\u003esendChunk()` and `finishChunking()` for manual chunked data transfer."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-bf6f3683",
+      "dossier_scope": "pr-01-signal-logger",
+      "timestamp": "2026-09-26T17:55:06+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "ruled-out",
+        "text": "ArduinoJson v7 deprecation of `StaticJsonDocument` and `containsKey()` required using `JsonDocument` and `obj[\"key\"].is\u003cT\u003e()`."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-7f6150b5",
+      "dossier_scope": "pr-01-signal-logger",
+      "timestamp": "2026-09-26T17:55:06+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "ruled-out",
+        "text": "Attempting to pass `response` inside the `server.on` lambda caused variable shadowing warnings; variable was renamed to `res`."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-9b7f99d5",
+      "dossier_scope": "pr-01-signal-logger",
+      "timestamp": "2026-09-26T17:55:06+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "open-issue",
+        "text": "None at this time."
+      }
+    }
+  ],
+  "created_at": "2026-09-26T16:55:06Z",
+  "batch_id": "01M3FA8MGGCKKFZN155V9PA7P1"
+}

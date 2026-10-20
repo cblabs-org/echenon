@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "ops": [
+    {
+      "type": "add",
+      "entry_id": "seed-4a2ce965",
+      "dossier_scope": "pr-01-signal-logger",
+      "timestamp": "2026-10-04T16:13:12+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "decision",
+        "text": "Cadence series resistors changed from 22kΩ to 4.7kΩ + 100nF (signal too weak)"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-74fc1690",
+      "dossier_scope": "pr-01-signal-logger",
+      "timestamp": "2026-10-04T16:13:12+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "decision",
+        "text": "Encoder wire colours corrected: Black=A, Red=B, Orange=VCC"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-1e737217",
+      "dossier_scope": "pr-01-signal-logger",
+      "timestamp": "2026-10-04T16:13:12+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "decision",
+        "text": "GPIO 8/9 released from ADC scan for PCNT EncoderModule"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-e2040e76",
+      "dossier_scope": "pr-01-signal-logger",
+      "timestamp": "2026-10-04T16:13:12+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "decision",
+        "text": "`stepsPerDetent=4` confirmed correct for this encoder"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-78e9570c",
+      "dossier_scope": "pr-01-signal-logger",
+      "timestamp": "2026-10-04T16:13:12+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "decision",
+        "text": "256 internal resistance levels adopted for MITM design"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-4e532e7a",
+      "dossier_scope": "pr-01-signal-logger",
+      "timestamp": "2026-10-04T16:13:12+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "open-issue",
+        "text": "Eccentric cam produces 22× displacement variation across 32 levels — rider"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-584c1136",
+      "dossier_scope": "pr-01-signal-logger",
+      "timestamp": "2026-10-04T16:13:12+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "open-issue",
+        "text": "Console uses bang-bang motor control with 98% overshoot at mid/high levels."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "seed-1ab47516",
+      "dossier_scope": "pr-01-signal-logger",
+      "timestamp": "2026-10-04T16:13:12+01:00",
+      "source": "seed",
+      "fields": {
+        "anchors": null,
+        "entry_type": "open-issue",
+        "text": "Console fault tolerance must be tested before committing to MITM architecture"
+      }
+    }
+  ],
+  "created_at": "2026-10-04T15:13:12Z",
+  "batch_id": "01M43QKST0KVS4TYHT1M9ECKBB"
+}
