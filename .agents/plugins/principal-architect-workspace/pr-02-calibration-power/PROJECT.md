@@ -42,9 +42,9 @@ work_orders:
   slug: wo4-ws-feed
   title: Live WebSocket Feed
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 9209a09
 - id: WO-02.5
   slug: wo5-rig-firmware
   title: CalibrationRig Firmware Module
