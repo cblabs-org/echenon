@@ -53,6 +53,15 @@ template struct Rob<SignalLogger_eventLogCount, &SignalLogger::_eventLogCount>;
 
 void EchenonModule::tick(uint32_t currentMillis) {
     (void)currentMillis;
+
+    static bool s_sensorsStarted = false;
+    if (!s_sensorsStarted) {
+        _cadenceSensor.begin();
+        _resistanceSensor.begin();
+        s_sensorsStarted = true;
+    }
+    _cadenceSensor.tick(currentMillis);
+    _resistanceSensor.tick(currentMillis);
 #ifdef WITH_SIGNAL_LOGGER
     static bool s_eventBusWired = false;
     if (!s_eventBusWired) {

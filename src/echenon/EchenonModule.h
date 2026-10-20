@@ -1,6 +1,9 @@
 #pragma once
 
 #include "AppFoundation.h"
+#include "echenon/CadenceSensor.h"
+#include "echenon/ResistanceSensor.h"
+#include "echenon/LevelMapping.h"
 #ifdef WITH_SIGNAL_LOGGER
 #include "echenon/SignalLogger.h"
 #endif
@@ -54,6 +57,18 @@ public:
     void setEventBus(EventBus* eb) { _signalLogger.setEventBus(eb); }
 #endif
 
+    // --- Sensors & Level Mapping ---
+    echenon::CadenceSensor& cadenceSensor() { return _cadenceSensor; }
+    const echenon::CadenceSensor& cadenceSensor() const { return _cadenceSensor; }
+
+    echenon::ResistanceSensor& resistanceSensor() { return _resistanceSensor; }
+    const echenon::ResistanceSensor& resistanceSensor() const { return _resistanceSensor; }
+
+    float getCadenceRPM() const { return _cadenceSensor.getRPM(); }
+    uint8_t getEchelonLevel() const { return LevelMapping::wiperToEchelon(_resistanceSensor.getFilteredWiper()); }
+    uint8_t getInternalLevel() const { return LevelMapping::wiperToInternal(_resistanceSensor.getFilteredWiper()); }
+    uint16_t getFilteredWiper() const { return _resistanceSensor.getFilteredWiper(); }
+
 #ifdef WITH_BLE
     HRMRepeater& hrmRepeater() { return _hrmRepeater; }
     HRMClient& hrmClient() { return _hrmClient; }
@@ -65,6 +80,9 @@ public:
 
 private:
     ConfigManager* _configManager = nullptr;
+
+    echenon::CadenceSensor _cadenceSensor;
+    echenon::ResistanceSensor _resistanceSensor;
 
 #ifdef WITH_SIGNAL_LOGGER
     SignalLogger _signalLogger;
