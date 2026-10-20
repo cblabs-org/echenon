@@ -21,9 +21,9 @@ work_orders:
   slug: wo1-sensors
   title: CadenceSensor + ResistanceSensor + Level Mapping
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 6542790ea33a5008fae56e74fc8fa8fc088b0141
 - id: WO-02.2
   slug: wo2-power-engine
   title: PowerEngine + Default Table Structure
