@@ -28,9 +28,9 @@ work_orders:
   slug: wo2-power-engine
   title: PowerEngine + Default Table Structure
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 64c8b30150ac863cd137bd76602b0c7d6aa56a98
 - id: WO-02.3
   slug: wo3-calibration-ui
   title: CalibrationWizard + RecalibrationUI
