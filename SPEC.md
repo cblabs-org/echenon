@@ -1584,7 +1584,7 @@ for the full GATT dump and comparative test results.
 | Sensor contact flags | Not supported (flags always `0x00`) | Firmware does not assume other devices lack them (§8.4) |
 | RR-intervals | Not present | Parser extracts them when present |
 | Energy expended | Not present | Field skipped when present |
-| Body Sensor Location | `0x04` (Hand) | `HRMRepeater` reports the device's actual value |
+| Body Sensor Location | `0x04` (Hand) | `HRMRepeater` reports `0x00` ("Other") until EventBus routing is added (known limitation, S4) |
 | Battery Service | `0x180F` with Read + Notify | Shown in the BLE portal tab when available |
 | Pairing | Not required (open connection) | Opportunistic bonding: bonds if the peer supports SMP |
 | Max connections | 1 Central only | The ESP32 holds the connection exclusively |
@@ -1685,7 +1685,7 @@ void HRMClient::onNotification(const BLENotification& n) {
     // 2. BPM = 0 (Echelon Beat HW901 and many ODM armbands)
     if (bpm == 0 || (contactSupported && !contactDetected)) {
         _contactState = HRContactState::NO_CONTACT;
-        publishHr(0, _contactState, n.receivedAtMs);   // subscribers suppress HR
+        publishHr(0, _contactState, n.receivedAtMs);   // relay BPM = 0 to downstream
         return;
     }
 
@@ -1717,7 +1717,7 @@ void HRMClient::onNotification(const BLENotification& n) {
     │               └──────┬──────┘
     │                      │ BPM = 0 OR contact flags say off-skin
     │               ┌──────▼──────┐
-    │               │ NO_CONTACT  │  Suppress HR relay, keep connection alive
+    │               │ NO_CONTACT  │  Relay BPM = 0 (transparent pass-through)
     │  Contact back │             │  → armband may regain contact any moment
     ├──────────────►└──────┬──────┘
     │                      │ Connection lost (auto-sleep or out of range)
@@ -1800,7 +1800,7 @@ The tablet keeps two independent BLE connections:
 
 When no-contact is detected by either tier:
 
-- `HRMRepeater` stops notifying (or notifies 0 BPM)
+- `HRMRepeater` notifies 0 BPM (transparent pass-through of the no-contact signal)
 - the FTMS packet clears flag bit 9 (HR not present)
 - the session records HR = 0
 
@@ -2855,7 +2855,7 @@ fitted.
 | 2.1 | nRF Connect: scan. | `Echenon-XXXX` advertises the HR service (`0x180D`). |
 | 2.2 | BLE portal tab: scan and pair the HR armband. | Strap paired; portal shows HR and battery level. |
 | 2.3 | In the Echelon app, pair `Echenon-XXXX` as the heart-rate device. | Echelon app shows HR from the re-broadcast, not directly from the armband. |
-| 2.4 | Remove the armband from skin. | HR marked absent within 12 s (criterion a); re-broadcast suppressed. |
+| 2.4 | Remove the armband from skin. | HR marked absent within 12 s (criterion a); BPM = 0 relayed. |
 | 2.5 | Let the armband auto-sleep, then put it back on. | Reconnected ≤ 20 s after it starts advertising (criterion c); no give-up after any number of attempts. |
 | 2.6 | Factory reset, then repeat 2.5. | Slow retry is still 15 s. |
 | 2.7 | Progressive coexistence check: HR relay plus portal open plus a large HTTPS POST, 5 minutes. | No HR gap > 2.5 s while on-skin (criterion b). |

@@ -5,6 +5,15 @@
 #include "echenon/SignalLogger.h"
 #endif
 
+#ifdef WITH_BLE
+#include "echenon/HRMRepeater.h"
+#include "echenon/HRMClient.h"
+#endif
+
+#ifdef WITH_HR_SYNTHETIC
+#include "echenon/HRSynthetic.h"
+#endif
+
 class PsychicHttpServer;
 class ConfigManager;
 #ifdef WITH_SIGNAL_LOGGER
@@ -45,10 +54,28 @@ public:
     void setEventBus(EventBus* eb) { _signalLogger.setEventBus(eb); }
 #endif
 
+#ifdef WITH_BLE
+    HRMRepeater& hrmRepeater() { return _hrmRepeater; }
+    HRMClient& hrmClient() { return _hrmClient; }
+#endif
+
+#ifdef WITH_HR_SYNTHETIC
+    echenon::HRSynthetic& hrSynthetic() { return _hrSynthetic; }
+#endif
+
 private:
     ConfigManager* _configManager = nullptr;
 
 #ifdef WITH_SIGNAL_LOGGER
     SignalLogger _signalLogger;
+#endif
+
+#ifdef WITH_BLE
+    HRMRepeater _hrmRepeater;
+    HRMClient   _hrmClient;
+#endif
+
+#ifdef WITH_HR_SYNTHETIC
+    echenon::HRSynthetic _hrSynthetic;
 #endif
 };

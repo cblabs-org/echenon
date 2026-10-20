@@ -1,0 +1,37 @@
+# Control Peripheral - BLE-only (No WiFi) sdkconfig.defaults
+# Target: ESP32-S3
+
+# Main task stack
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# USB Console for ESP32-S3 USB Serial/JTAG
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# Bluetooth controller & NimBLE host
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_BT_NIMBLE_ROLE_PERIPHERAL=y
+CONFIG_BT_NIMBLE_ROLE_BROADCASTER=y
+
+# Memory allocation in internal DRAM
+CONFIG_BT_NIMBLE_MEM_ALLOC_MODE_INTERNAL=y
+
+# BLE connection budget (4 connections, 6 activity slots)
+CONFIG_BT_NIMBLE_MAX_CONNECTIONS=4
+CONFIG_BT_CTRL_BLE_MAX_ACT=6
+
+# ATT Preferred MTU 185
+CONFIG_BT_NIMBLE_ATT_PREFERRED_MTU=185
+
+# TX Power +9 dBm
+CONFIG_BT_CTRL_DFT_TX_POWER_LEVEL_P9=y
+
+# Connection reattempt mitigation
+CONFIG_BT_NIMBLE_ENABLE_CONN_REATTEMPT=y
+CONFIG_BT_NIMBLE_MAX_CONN_REATTEMPT=3
+
+# Modem sleep disabled for maximum responsiveness
+# CONFIG_BT_CTRL_MODEM_SLEEP is not set
+
+# Legacy advertising (BLE 4.x compatible)
+CONFIG_BT_NIMBLE_EXT_ADV=n

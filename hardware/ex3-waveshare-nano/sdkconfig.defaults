@@ -19,3 +19,8 @@ CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN=8192
 
 # USB Console for ESP32-S3 (USB-JTAG)
 CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# BLE connection budget (SPEC §7.8): 3 peripheral + 1 central = 4
+# Activity slots: 4 connections + advertising + scanning = 6
+CONFIG_BT_NIMBLE_MAX_CONNECTIONS=4
+CONFIG_BT_CTRL_BLE_MAX_ACT=6

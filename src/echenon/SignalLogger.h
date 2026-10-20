@@ -1,7 +1,9 @@
 #pragma once
+#if defined(WITH_SIGNAL_LOGGER) || defined(UNIT_TEST)
 #include <cstdint>
 #include <cstddef>
 #include <vector>
+#include <atomic>
 #if !defined(UNIT_TEST)
 #include <esp_adc/adc_continuous.h>
 #include <esp_adc/adc_cali.h>
@@ -25,6 +27,7 @@ public:
     bool startBurst(const char* trigger, uint32_t durationMs);
     bool isCapturing() const;
     bool isBurstActive() const;
+    bool isExportActive() const { return _exportActive.load(); }
     bool isRideLogWrapped() const { return _rideLogWrapped; }
     uint32_t getOverflowCount() const { return _overflowCount; }
     void incrementOverflowCount() { _overflowCount = _overflowCount + 1; }
@@ -50,6 +53,7 @@ private:
     bool _initialized = false;
     bool _capturing = false;
     bool _burstActive = false;
+    std::atomic<bool> _exportActive{false};
     uint32_t _burstStartMs = 0;
     uint64_t _burstStartUs = 0;
     uint32_t _burstDurationMs = kBurstDurationDefaultMs;
@@ -93,3 +97,5 @@ private:
     friend struct SignalLogger_currentRow;
     friend struct SignalLogger_eventLogCount;
 };
+
+#endif // WITH_SIGNAL_LOGGER || UNIT_TEST

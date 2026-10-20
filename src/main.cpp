@@ -2,6 +2,11 @@
 #include <Arduino.h>
 #include "echenon/EchenonModule.h"
 
+#ifdef WITH_BLE
+#include "BLEManager/BLEManager.hpp"
+static BLEManager bleManager;
+#endif
+
 #ifdef WITH_ENCODER
 #include "EncoderModule.hpp"
 #include "board.h"
@@ -14,6 +19,7 @@ EchenonModule echenonModule;
 void setup() {
     Serial.begin(115200);
     app.setAppName("Echenon");
+    app.getWifiManager().setDefaultHostname("echenon");
 
     // Wire dependencies
     echenonModule.setConfigManager(&app.getConfigManager());
@@ -29,8 +35,32 @@ void setup() {
     app.registerModule(&encoderModule);
 #endif
 
+#ifdef WITH_BLE
+    bleManager.setDefaultAdvertisedName("Echenon");
+    bleManager.registerServiceProvider(&echenonModule.hrmRepeater());
+    bleManager.registerClientProvider(&echenonModule.hrmClient());
+    app.registerModule(&bleManager);
+    app.registerModule(&echenonModule.hrmClient());
+#endif
+
+#ifdef WITH_HR_SYNTHETIC
+    echenonModule.hrSynthetic().setEventBus(&app.getEventBus());
+    app.registerModule(&echenonModule.hrSynthetic());
+#endif
+
     FrameworkConfig config;
     app.begin(config);
+
+#ifdef WITH_BLE
+    bleManager.begin(app);
+    // SPEC §8.4: slowRetryMs is fixed at 15000 ms (15 s). This is not
+    // user-configurable — it is applied unconditionally at every boot.
+    JsonDocument bleCfg;
+    bleCfg["slowRetryMs"] = 15000;
+    bleManager.applyConfig(bleCfg.as<JsonObject>());
+    echenonModule.hrmClient().setEventBus(&app.getEventBus());
+    echenonModule.hrmRepeater().subscribe(app.getEventBus());
+#endif
 }
 
 void loop() {
