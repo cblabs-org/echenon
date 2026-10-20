@@ -67,3 +67,42 @@
 | 2.6 Factory reset + reconnect | ⛔ BLOCKED (by F4) | ✅ **PASS** | ~15s |
 
 **F4 root cause confirmed fixed.** Framework PR #301 (`pair()` calls `stopDiscovery()`) resolves the lingering discovery scan that prevented the reconnect scheduler from operating.
+
+---
+
+## B3 Two-Subscriber Test
+
+**Date:** 2026-10-20
+**Firmware:** `v0.3.0-dev.3` (commit `8a4a072` on `hr-relay/wo7-doc-sync`)
+**Framework:** `v0.0.12-beta.4` (`337bd4b1`) — includes #309 fix (BLE re-advertise after peripheral connect)
+**Device:** Waveshare ESP32-S3-Nano, WiFi SSID `<REDACTED_SSID>`, IP `192.168.1.100`
+**Strap:** Echelon Beat HW901 (`E7:A7:DC:1C:4C:AD`, RandomStatic)
+**Tester:** Owner (interactive bench test, serial-monitored by agent)
+
+**Procedure:**
+
+1. Flashed `v0.3.0-dev.3` with `WITH_HR_RELAY` enabled
+2. ESP32 booted, connected to HR strap, HR relay service (0x180D) advertising
+3. **Pixel 12** connected to Echenon HR service, subscribed to 0x2A37 — HR values confirmed flowing
+4. **nRF Connect** (second device) connected, subscribed to 0x2A37 — HR values confirmed on **both** devices simultaneously
+5. **nRF Connect disconnected**
+6. **Pixel 12 continued receiving HR** without interruption
+
+**Serial evidence:**
+
+| Event | Timestamp (uptime) | Log |
+|---|---|---|
+| HR service registered | 7143 ms | `HRMRepeater: Heart Rate Service (0x180D) registered successfully` |
+| BLE advertising started | 7150 ms | `GAP procedure initiated: advertise; disc_mode=2` |
+| HR strap connected | 27827 ms | `HRMClient: Connected to HR device` |
+| Notifications flowing (both subscribers) | 128326–222058 ms | `GATT procedure initiated: notify; att_handle=16` (~1s intervals) |
+| nRF unsubscribed | 222058 ms | `HRMRepeater: HR Measurement subscription changed: UNSUBSCRIBED` |
+| Notifications continued (Pixel 12) | 222451+ ms | `GATT procedure initiated: notify; att_handle=16` (uninterrupted) |
+
+**Key observations:**
+1. Two simultaneous BLE peripheral connections handled correctly — both received HR notifications
+2. nRF disconnect did not disrupt Pixel 12's notification stream
+3. No crash, no advertising loss, no stack errors after disconnect
+4. Framework #309 fix (re-advertise after peripheral connect) confirmed working
+
+### Result: **PASS**
