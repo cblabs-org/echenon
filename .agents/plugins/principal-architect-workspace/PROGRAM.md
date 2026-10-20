@@ -29,7 +29,7 @@ provisional, decomposed after DR-2).
 |---|---|---|---|---|---|
 | v1 | PR-01 | 0 | Signal Logger (Observe) | `main` | ✅ Merged 2026-10-11 (PR #1, `5897f6f`) |
 | v1 | DR-1 | — | v1 Passive Design Freeze ([record](reviews/DR-1-design-freeze.md)) | PR-01 evidence + [DR-1 prep bench](pr-dr1-prep/PROJECT.md) | ✅ Approved with conditions 2026-10-12 |
-| v1 | PR-02 | 1 | Calibration + Power (+ live WS feed) | PR-01, **DR-1** | ⬜ Not started |
+| v1 | PR-02 | 1 | Calibration + Power (+ live WS feed) | PR-01, **DR-1** | 🔄 Approved, execution starting |
 | v1 | PR-03 | 2 | BLE Foundation + HR Relay | PR-01 ✅ | ✅ Merged 2026-10-20 (PR #3, `e930314`) |
 | v1 | PR-04a | 3 | Passive Tap Board (VIN + VIN/USB switch, manual OTA, UART0 reserved) | PR-02, DR-1 | ⬜ Not started |
 | v1 | PR-05 | 3 | FTMS Telemetry, **read-only** (Target Setting Features = 0) | PR-02, PR-03 | ⬜ Not started |
@@ -413,3 +413,18 @@ Decisions on the v1 Passive / v2 Active restructure:
   fails (`code_search` not found, #11). `self`-type workaround used throughout.
 - **PIO MCP server crash:** `NOISE_PORT_PATTERN` import error after restart;
   required rebuild. Owner authorized direct `pio` CLI as temporary workaround.
+
+### 2026-10-20: PR-02 WO plan approved; Peloton mapping deferred to PR-05
+
+- **Owner approved the 9-WO plan** (WO-02.1 through WO-02.9) for PR-02
+  Calibration + Power Engine. Charter locked, status → APPROVED.
+- **Owner decisions at approval:**
+  1. **Peloton 0–100 mapping deferred to PR-05.** The mapping is consumed by FTMS
+     telemetry; PR-02 implements only the Echelon 1–32 ↔ canonical 0–255 mapping.
+     WO1 and WO9 scope adjusted. SPEC §5.3 Peloton mapping becomes a PR-05
+     deliverable.
+  2. **`runaway_timeout_s` = 10 s** confirmed as the NVS default (WO8).
+- **GPIO 18 / GPIO 11 availability** remains open for the PA to confirm against
+  the Waveshare ESP32-S3-Nano header pinout in WO5.
+- **Next:** PA spins up to execute the 9-WO stack, beginning with WO-02.1
+  (CadenceSensor + ResistanceSensor + Level Mapping).
