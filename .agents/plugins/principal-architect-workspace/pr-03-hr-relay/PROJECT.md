@@ -13,7 +13,7 @@ charter:
   - framework/
   - platformio.ini
   charter_locked: false
-status: IN_PROGRESS
+status: COMPLETE
 work_orders:
 - id: WO-03.1
   slug: wo1-ble-enable

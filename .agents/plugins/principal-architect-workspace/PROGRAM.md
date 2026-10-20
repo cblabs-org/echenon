@@ -30,7 +30,7 @@ provisional, decomposed after DR-2).
 | v1 | PR-01 | 0 | Signal Logger (Observe) | `main` | ✅ Merged 2026-10-11 (PR #1, `5897f6f`) |
 | v1 | DR-1 | — | v1 Passive Design Freeze ([record](reviews/DR-1-design-freeze.md)) | PR-01 evidence + [DR-1 prep bench](pr-dr1-prep/PROJECT.md) | ✅ Approved with conditions 2026-10-12 |
 | v1 | PR-02 | 1 | Calibration + Power (+ live WS feed) | PR-01, **DR-1** | ⬜ Not started |
-| v1 | PR-03 | 2 | BLE Foundation + HR Relay | PR-01 ✅; gates proposed as in-PR go/no-go (WO3, WO5) | 📝 Planned: [7 WOs](pr-03-hr-relay/PROJECT.md), awaiting approval |
+| v1 | PR-03 | 2 | BLE Foundation + HR Relay | PR-01 ✅ | ✅ Merged 2026-10-20 (PR #3, `e930314`) |
 | v1 | PR-04a | 3 | Passive Tap Board (VIN + VIN/USB switch, manual OTA, UART0 reserved) | PR-02, DR-1 | ⬜ Not started |
 | v1 | PR-05 | 3 | FTMS Telemetry, **read-only** (Target Setting Features = 0) | PR-02, PR-03 | ⬜ Not started |
 | v1 | PR-06 | 4 | Session + TCX + Strava | PR-02 | ⬜ Not started |
@@ -58,8 +58,8 @@ provisional, decomposed after DR-2).
 | **DR-2: v2 Active Design Freeze** | **PR-07** (and all v2 PRs; no active-board soldering or interception before approval) | Chief Architect approves the [DR-2 record](reviews/DR-2-design-freeze.md) | NOT STARTED |
 | R3/R4/R5 standalone supplies | DR-2 (none in v1, DR-1 §2.9) | Pot-reference replica and switched supplies decided at DR-2 §2.2 / §2.9 | ✅ DECIDED for v1: none (DR-1 §2.9). OPEN for v2 (DR-2) |
 | Echelon-app HR spike | PR-03 WO3 go/no-go | Echelon app on the P12 pairs `Echenon-XXXX` and shows HR (register row #12) | ✅ PASSED (PR-03 WO3) |
-| **Framework central-role acceptance evidence** | PR-03 WO5 (in-PR, approved 2026-10-12) | RFC §17.2 items 4–9 against a real 0x180D peripheral on a framework tag containing the WO-8 use-after-free fix | **OPEN** |
-| **v1 BLE topology on the P12** | PR-03 merge (WO6) | HR strap (central) + P12 (HR peripheral) + portal WebSocket + HTTPS POST, sustained; no HR gaps > 2.5 s, no link drops | OPEN |
+| **Framework central-role acceptance evidence** | PR-03 WO5 (in-PR, approved 2026-10-12) | RFC §17.2 items 4–9 against a real 0x180D peripheral on a framework tag containing the WO-8 use-after-free fix | ✅ MET (PR-03 WO5, evidence in `docs/measurements/phase2/wo5-strap-acceptance/evidence.md`) |
+| **v1 BLE topology on the P12** | PR-03 merge (WO6) | HR strap (central) + P12 (HR peripheral) + portal WebSocket + HTTPS POST, sustained; no HR gaps > 2.5 s, no link drops | ✅ MET (PR-03 WO6, evidence in `docs/measurements/phase2/wo6-coexistence/evidence.md`) |
 | **BLE works without WiFi** (v1 requirement) | v1 release (PR-09); fix lands upstream in the framework | BLE advertising, strap reconnect and discovery continue at boot without STA and through a sustained STA outage | OPEN (framework issue draft (iii)) |
 | **Android phone connection reliability** | **PR-05 entry** | ≥ 95% single-attempt connect success (n ≥ 50, `tools/ble-test` rig) on the Pixel 10 Pro Fold and one other Android phone | OPEN: Pixel currently 26–32% (WO3d) |
 | Framework #226 (OTA check-on-boot deferral) | Removing Echenon's `autoCheck=false` enforcement | Upstream issue **closed**. PR-04a uses the framework option after the PR-03 WO1 bump (verify) | CLOSED upstream |
@@ -387,3 +387,29 @@ Decisions on the v1 Passive / v2 Active restructure:
   - PR-03 is **not blocked**: the P12 HR relay works.
 - WO4 (HRMClient) approved to proceed (rebased onto WO3d).
 - Strategy: [2026-10-14 WO3b test strategy](reviews/2026-10-14-wo3b-ble-test-strategy.md).
+
+
+### 2026-10-18 → 2026-10-20: PR-03 merged; PR-02 WO plan drafted
+
+- **PR-03 merged** as PR #3 (`e930314`, merge commit) after CA review and
+  re-review. All B1–B5 blockers and S1–S9 should-fix items verified.
+  - Tests 2.5 (auto-reconnect, ~7 s) and 2.6 (factory reset, ~15 s) PASS.
+  - B3 two-subscriber test PASS: P12 + nRF Connect both received HR; nRF
+    disconnected; P12 continued uninterrupted. Required framework fix #309.
+  - S4 SPEC §8.1 updated: BSL reports `0x00` ("Other") until EventBus routing.
+  - Framework bumped to `v0.0.12-beta.4` (includes #301 pair-stops-discovery
+    and #311 re-advertise after peripheral connect).
+  - Upstream issues filed and closed: #302, #303, #304, #309. Central
+    acceptance report approved for filing.
+- **Framework issue #309 filed and fixed.** BLE server did not re-advertise
+  after first peripheral connection — blocked multi-device topologies (FTMS +
+  HRM on separate devices). Fixed in PR #311 (`dbde7cc8`), tagged
+  `v0.0.12-beta.4`.
+- **PR-02 WO plan drafted** (9 WOs, uncommitted). Automated calibration rig
+  approach approved by owner. Three open owner decisions: (1) Peloton 0–100
+  mapping, (2) runaway timeout 10 s, (3) plan approval. The plan is in the
+  working tree, ready for review.
+- **PA plugin bug confirmed:** `pa-principal-architect` subagent type still
+  fails (`code_search` not found, #11). `self`-type workaround used throughout.
+- **PIO MCP server crash:** `NOISE_PORT_PATTERN` import error after restart;
+  required rebuild. Owner authorized direct `pio` CLI as temporary workaround.
