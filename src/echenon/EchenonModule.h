@@ -11,6 +11,10 @@
 #include "echenon/SignalLogger.h"
 #endif
 
+#ifndef UNIT_TEST
+#include "echenon/LiveFeed.h"
+#endif
+
 #ifdef WITH_BLE
 #include "echenon/HRMRepeater.h"
 #include "echenon/HRMClient.h"
@@ -84,6 +88,11 @@ public:
     echenon::RecalibrationUI& recalibrationUI() { return _recalibrationUI; }
     const echenon::RecalibrationUI& recalibrationUI() const { return _recalibrationUI; }
 
+#ifndef UNIT_TEST
+    echenon::LiveFeed& liveFeed() { return _liveFeed; }
+    const echenon::LiveFeed& liveFeed() const { return _liveFeed; }
+#endif
+
 #ifdef WITH_BLE
     HRMRepeater& hrmRepeater() { return _hrmRepeater; }
     HRMClient& hrmClient() { return _hrmClient; }
@@ -101,6 +110,10 @@ private:
     echenon::PowerEngine _powerEngine;
     echenon::CalibrationWizard _calibrationWizard;
     echenon::RecalibrationUI _recalibrationUI;
+
+#ifndef UNIT_TEST
+    echenon::LiveFeed _liveFeed;
+#endif
 
 #ifdef WITH_SIGNAL_LOGGER
     SignalLogger _signalLogger;

@@ -76,6 +76,16 @@ void EchenonModule::tick(uint32_t currentMillis) {
     }
     float continuousLevel = LevelMapping::wiperToLevel(_resistanceSensor.getFilteredWiper());
     _powerEngine.tick(continuousLevel, _cadenceSensor.getRPM());
+#ifndef UNIT_TEST
+    _liveFeed.tick(currentMillis,
+                   _cadenceSensor.getRPM(),
+                   getEchelonLevel(),
+                   getInternalLevel(),
+                   _powerEngine.getLastPower(),
+                   _resistanceSensor.getFilteredWiper(),
+                   0,
+                   0);
+#endif
 #ifdef WITH_SIGNAL_LOGGER
     static bool s_eventBusWired = false;
     if (!s_eventBusWired) {
@@ -175,6 +185,13 @@ void EchenonModule::resetConfig() {
 // =============================================================================
 
 void EchenonModule::registerRoutes(PsychicHttpServer& server) {
+#ifndef UNIT_TEST
+    // Create WS handler on the endpoint
+    static PsychicWebSocketHandler wsHandler;
+    server.on("/ws/echenon/live", &wsHandler);
+    _liveFeed.setHandler(&wsHandler);
+#endif
+
 #ifdef WITH_SIGNAL_LOGGER
     _signalLogger.registerRoutes(server);
 #endif
