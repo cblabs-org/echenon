@@ -4,6 +4,7 @@
 #include "echenon/CadenceSensor.h"
 #include "echenon/ResistanceSensor.h"
 #include "echenon/LevelMapping.h"
+#include "echenon/PowerEngine.h"
 #ifdef WITH_SIGNAL_LOGGER
 #include "echenon/SignalLogger.h"
 #endif
@@ -69,6 +70,11 @@ public:
     uint8_t getInternalLevel() const { return LevelMapping::wiperToInternal(_resistanceSensor.getFilteredWiper()); }
     uint16_t getFilteredWiper() const { return _resistanceSensor.getFilteredWiper(); }
 
+    // --- Power Engine ---
+    echenon::PowerEngine& powerEngine() { return _powerEngine; }
+    const echenon::PowerEngine& powerEngine() const { return _powerEngine; }
+    float getPowerWatts() const { return _powerEngine.getLastPower(); }
+
 #ifdef WITH_BLE
     HRMRepeater& hrmRepeater() { return _hrmRepeater; }
     HRMClient& hrmClient() { return _hrmClient; }
@@ -83,6 +89,7 @@ private:
 
     echenon::CadenceSensor _cadenceSensor;
     echenon::ResistanceSensor _resistanceSensor;
+    echenon::PowerEngine _powerEngine;
 
 #ifdef WITH_SIGNAL_LOGGER
     SignalLogger _signalLogger;

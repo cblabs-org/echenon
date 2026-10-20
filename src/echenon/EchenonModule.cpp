@@ -62,6 +62,14 @@ void EchenonModule::tick(uint32_t currentMillis) {
     }
     _cadenceSensor.tick(currentMillis);
     _resistanceSensor.tick(currentMillis);
+
+    static bool s_powerStarted = false;
+    if (!s_powerStarted) {
+        _powerEngine.loadDefault();
+        s_powerStarted = true;
+    }
+    float continuousLevel = LevelMapping::wiperToLevel(_resistanceSensor.getFilteredWiper());
+    _powerEngine.tick(continuousLevel, _cadenceSensor.getRPM());
 #ifdef WITH_SIGNAL_LOGGER
     static bool s_eventBusWired = false;
     if (!s_eventBusWired) {
