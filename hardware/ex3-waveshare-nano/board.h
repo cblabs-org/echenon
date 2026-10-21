@@ -40,5 +40,12 @@ constexpr size_t BOARD_ENCODER_COUNT =
 
 #define HAS_MOTOR_CONTROL    0               // MITM board only (Phase 5+)
 
+#ifdef WITH_CALIBRATION_RIG
+// Calibration rig output pins (owner decision 2026-10-18)
+constexpr int8_t PIN_RIG_ENC_A    = 17;  // D8  → console encoder Ch A
+constexpr int8_t PIN_RIG_ENC_B    = 18;  // D12 → console encoder Ch B
+constexpr int8_t PIN_RIG_CADENCE  = 11;  // D9  → cadence MOSFET gate
+#endif
+
 // No display pin block and no button block: WITH_DISPLAY_U8G2 and
 // WITH_BUTTONS are forbidden for this target (§12.3).

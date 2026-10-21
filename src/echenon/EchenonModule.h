@@ -24,6 +24,10 @@
 #include "echenon/HRSynthetic.h"
 #endif
 
+#ifdef WITH_CALIBRATION_RIG
+#include "echenon/CalibrationRig.h"
+#endif
+
 class PsychicHttpServer;
 class ConfigManager;
 #ifdef WITH_SIGNAL_LOGGER
@@ -102,6 +106,11 @@ public:
     echenon::HRSynthetic& hrSynthetic() { return _hrSynthetic; }
 #endif
 
+#ifdef WITH_CALIBRATION_RIG
+    echenon::CalibrationRig& calibrationRig() { return _calibrationRig; }
+    const echenon::CalibrationRig& calibrationRig() const { return _calibrationRig; }
+#endif
+
 private:
     ConfigManager* _configManager = nullptr;
 
@@ -126,5 +135,9 @@ private:
 
 #ifdef WITH_HR_SYNTHETIC
     echenon::HRSynthetic _hrSynthetic;
+#endif
+
+#ifdef WITH_CALIBRATION_RIG
+    echenon::CalibrationRig _calibrationRig;
 #endif
 };

@@ -4,6 +4,10 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <esp_log.h>
+#if !defined(UNIT_TEST) && defined(BOARD_HEADER)
+#include <cstddef>
+#include BOARD_HEADER
+#endif
 #include "utils/serveGzipAsset.hpp"
 #include "include/portal_assets/echenon-dashboard_js.hpp"
 #include "include/portal_assets/calibration-wizard_js.hpp"
@@ -95,6 +99,19 @@ void EchenonModule::tick(uint32_t currentMillis) {
     }
     _signalLogger.begin();
     _signalLogger.tick(currentMillis);
+#endif
+
+#ifdef WITH_CALIBRATION_RIG
+    static bool s_rigStarted = false;
+    if (!s_rigStarted) {
+#if defined(PIN_RIG_ENC_A) && defined(PIN_RIG_ENC_B) && defined(PIN_RIG_CADENCE)
+        _calibrationRig.begin(PIN_RIG_ENC_A, PIN_RIG_ENC_B, PIN_RIG_CADENCE);
+#else
+        _calibrationRig.begin(17, 18, 11);
+#endif
+        s_rigStarted = true;
+    }
+    _calibrationRig.tick(currentMillis, _resistanceSensor.getFilteredWiper());
 #endif
 
     // Initialize mDNS responder so echenon.local resolves
@@ -194,6 +211,14 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
 
 #ifdef WITH_SIGNAL_LOGGER
     _signalLogger.registerRoutes(server);
+#endif
+
+#ifdef WITH_CALIBRATION_RIG
+    server.on("/api/echenon/rig/status", HTTP_GET, [this](PsychicRequest* request, PsychicResponse* response) {
+        (void)request;
+        String status = _calibrationRig.handleStatus();
+        return response->send(200, "text/plain", status.c_str());
+    });
 #endif
 
     // Serve dashboard JavaScript
