@@ -80,6 +80,16 @@ void EchenonModule::tick(uint32_t currentMillis) {
     }
     float continuousLevel = LevelMapping::wiperToLevel(_resistanceSensor.getFilteredWiper());
     _powerEngine.tick(continuousLevel, _cadenceSensor.getRPM());
+
+    // Runaway detection
+    if (_runawayDetector.tick(currentMillis, _resistanceSensor.getFilteredWiper())) {
+        ESP_LOGW(TAG, "Runaway detected: wiper %u outside [%u, %u] for %u s",
+                 _resistanceSensor.getFilteredWiper(),
+                 RunawayDetector::RANGE_MIN,
+                 RunawayDetector::RANGE_MAX,
+                 _runawayDetector.getTimeoutSeconds());
+    }
+
 #ifndef UNIT_TEST
     _liveFeed.tick(currentMillis,
                    _cadenceSensor.getRPM(),
@@ -88,7 +98,8 @@ void EchenonModule::tick(uint32_t currentMillis) {
                    _powerEngine.getLastPower(),
                    _resistanceSensor.getFilteredWiper(),
                    0,
-                   0);
+                   0,
+                   _runawayDetector.isRunaway());
 #endif
 #ifdef WITH_SIGNAL_LOGGER
     static bool s_eventBusWired = false;
@@ -141,6 +152,9 @@ void EchenonModule::applyConfig(const JsonObject& config) {
     if (config["cal_pos_done"].is<bool>()) {
         _calibrationWizard.setPosDone(config["cal_pos_done"].as<bool>());
     }
+    if (config["runaway_timeout_s"].is<int>()) {
+        _runawayDetector.setTimeoutSeconds(config["runaway_timeout_s"].as<uint16_t>());
+    }
     if (config["cal_level_table"].is<JsonArrayConst>()) {
         JsonArrayConst tableArr = config["cal_level_table"].as<JsonArrayConst>();
         uint8_t lvl = 1;
@@ -170,6 +184,7 @@ void EchenonModule::applyConfig(const JsonObject& config) {
 
 void EchenonModule::serializeConfig(JsonObject& config) const {
     config["cal_pos_done"] = _calibrationWizard.isPosDone();
+    config["runaway_timeout_s"] = _runawayDetector.getTimeoutSeconds();
     JsonArray tableArr = config["cal_level_table"].to<JsonArray>();
     for (uint8_t l = 1; l <= 32; ++l) {
         tableArr.add(_calibrationWizard.getTableEntry(l));
@@ -192,6 +207,7 @@ void EchenonModule::serializeConfig(JsonObject& config) const {
 void EchenonModule::resetConfig() {
     _calibrationWizard.reset();
     _recalibrationUI.reset();
+    _runawayDetector.setTimeoutSeconds(RunawayDetector::DEFAULT_TIMEOUT_S);
 #ifdef WITH_SIGNAL_LOGGER
     _signalLogger.resetConfig();
 #endif

@@ -26,7 +26,8 @@ public:
               float powerWatts,
               uint16_t potAdc,
               int8_t motorDir = 0,     // -1, 0, +1 from motor sense (0 for v1)
-              int32_t encoderDelta = 0 // from EncoderModule events (0 if not tracked)
+              int32_t encoderDelta = 0, // from EncoderModule events (0 if not tracked)
+              bool runaway = false     // runaway detection state
               );
 
     // Configuration

@@ -193,6 +193,13 @@
     if (encoderEl && data.encoder_delta !== undefined) {
       encoderEl.textContent = data.encoder_delta;
     }
+
+    // Runaway alert banner
+    var runawayBanner = document.getElementById('echenon-runaway-banner');
+    if (runawayBanner && data.runaway !== undefined) {
+      runawayBanner.style.display = data.runaway ? 'block' : 'none';
+    }
+
     if (lastTsEl && data.timestamp_ms !== undefined) {
       lastTsEl.textContent = (data.timestamp_ms / 1000).toFixed(1) + 's';
     }
@@ -247,6 +254,9 @@
 
     var liveMetricsCard =
       '<div class="card" style="margin-bottom:1rem;">' +
+        '<div id="echenon-runaway-banner" style="display:none; background:var(--error); color:#fff; padding:0.75rem 1rem; border-radius:10px; margin-bottom:1rem; font-weight:700; text-align:center; font-size:0.95rem;">' +
+          '⚠️ Stock runaway detected — turn the knob back to a valid level' +
+        '</div>' +
         '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">' +
           '<h3 style="margin:0; font-size:1.15rem; font-weight:700;">Live Metrics</h3>' +
           '<div style="display:flex; align-items:center; gap:0.5rem;">' +
