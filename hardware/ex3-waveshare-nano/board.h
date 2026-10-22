@@ -42,9 +42,12 @@ constexpr size_t BOARD_ENCODER_COUNT =
 
 #ifdef WITH_CALIBRATION_RIG
 // Calibration rig output pins (owner decision 2026-10-18)
-constexpr int8_t PIN_RIG_ENC_A    = 17;  // D8  → console encoder Ch A
-constexpr int8_t PIN_RIG_ENC_B    = 18;  // D12 → console encoder Ch B
-constexpr int8_t PIN_RIG_CADENCE  = 11;  // D9  → cadence MOSFET gate
+// NOTE: Physical wires swapped at console connector — GPIO 17 lands on
+//       console Ch B, GPIO 18 on console Ch A. Constants stay as-is;
+//       the firmware direction mapping accounts for the swap.
+constexpr int8_t PIN_RIG_ENC_A    = 17;  // D8  → console encoder Ch B (swapped)
+constexpr int8_t PIN_RIG_ENC_B    = 18;  // D12 → console encoder Ch A (swapped)
+constexpr int8_t PIN_RIG_CADENCE  = 11;  // D9  → cadence NPN base via 1kΩ
 #endif
 
 // No display pin block and no button block: WITH_DISPLAY_U8G2 and

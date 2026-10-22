@@ -52,6 +52,7 @@ void CalibrationRig::handleSet(uint8_t targetLevel, uint16_t cadenceRPM) {
     }
     _cadencePinHigh = false;
 #ifndef UNIT_TEST
+    _lastCadenceToggle = millis();  // prevent burst on first tick
     if (_cadencePin >= 0) {
         digitalWrite(_cadencePin, LOW);  // NPN off = reed open (idle)
     }
@@ -59,12 +60,12 @@ void CalibrationRig::handleSet(uint8_t targetLevel, uint16_t cadenceRPM) {
 
     if (_targetLevel > _currentLevel) {
         _stepsRemaining = (_targetLevel - _currentLevel) * 16;
-        _stepDirection = QuadratureGenerator::Direction::DOWN;
+        _stepDirection = QuadratureGenerator::Direction::UP;
         _state = State::SEEKING;
         _settling = false;
     } else if (_targetLevel < _currentLevel) {
         _stepsRemaining = (_currentLevel - _targetLevel) * 16;
-        _stepDirection = QuadratureGenerator::Direction::UP;
+        _stepDirection = QuadratureGenerator::Direction::DOWN;
         _state = State::SEEKING;
         _settling = false;
     } else {
@@ -78,7 +79,7 @@ void CalibrationRig::handleHome() {
     _targetLevel = 1;
     // 31 levels * 16 steps = 496 reverse steps
     _stepsRemaining = 31 * 16;
-    _stepDirection = QuadratureGenerator::Direction::UP;
+    _stepDirection = QuadratureGenerator::Direction::DOWN;
     _state = State::SEEKING;
     _settling = false;
 }
