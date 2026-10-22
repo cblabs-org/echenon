@@ -17,10 +17,10 @@ void CalibrationRig::begin(int8_t encA, int8_t encB, int8_t cadencePin) {
 #ifndef UNIT_TEST
     if (_cadencePin >= 0) {
         pinMode(_cadencePin, OUTPUT);
-        digitalWrite(_cadencePin, HIGH);
+        digitalWrite(_cadencePin, LOW);   // NPN off = reed open (idle)
     }
 #endif
-    _cadencePinHigh = true;
+    _cadencePinHigh = false;
     _state = State::IDLE;
     _currentLevel = 1;
     _targetLevel = 1;
@@ -50,10 +50,10 @@ void CalibrationRig::handleSet(uint8_t targetLevel, uint16_t cadenceRPM) {
     } else {
         _cadencePeriodMs = 0;
     }
-    _cadencePinHigh = true;
+    _cadencePinHigh = false;
 #ifndef UNIT_TEST
     if (_cadencePin >= 0) {
-        digitalWrite(_cadencePin, HIGH);
+        digitalWrite(_cadencePin, LOW);  // NPN off = reed open (idle)
     }
 #endif
 
@@ -86,10 +86,10 @@ void CalibrationRig::handleHome() {
 void CalibrationRig::handleStop() {
     _cadenceRPM = 0;
     _cadencePeriodMs = 0;
-    _cadencePinHigh = true;
+    _cadencePinHigh = false;
 #ifndef UNIT_TEST
     if (_cadencePin >= 0) {
-        digitalWrite(_cadencePin, HIGH);
+        digitalWrite(_cadencePin, LOW);   // NPN off = reed open (idle)
     }
 #endif
     _stepsRemaining = 0;
@@ -189,36 +189,38 @@ void CalibrationRig::tick(uint32_t currentMillis, uint16_t potAdc) {
     // 1. Process serial commands
     processSerialInput();
 
-    // 2. Cadence simulation
+    // 2. Cadence simulation (NPN: LOW=idle/open, HIGH=pulse/closed)
     if (_cadenceRPM > 0 && _cadencePeriodMs > CADENCE_PULSE_MS) {
         uint32_t elapsed = currentMillis - _lastCadenceToggle;
-        if (_cadencePinHigh) {
+        if (!_cadencePinHigh) {
+            // Idle (LOW / reed open) — wait for next pulse
             if (elapsed >= (_cadencePeriodMs - CADENCE_PULSE_MS)) {
-                _cadencePinHigh = false;
-                _lastCadenceToggle = currentMillis;
-#ifndef UNIT_TEST
-                if (_cadencePin >= 0) {
-                    digitalWrite(_cadencePin, LOW);
-                }
-#endif
-            }
-        } else {
-            if (elapsed >= CADENCE_PULSE_MS) {
                 _cadencePinHigh = true;
                 _lastCadenceToggle = currentMillis;
 #ifndef UNIT_TEST
                 if (_cadencePin >= 0) {
-                    digitalWrite(_cadencePin, HIGH);
+                    digitalWrite(_cadencePin, HIGH);  // NPN on = reed closed
+                }
+#endif
+            }
+        } else {
+            // Pulse (HIGH / reed closed) — hold for CADENCE_PULSE_MS then release
+            if (elapsed >= CADENCE_PULSE_MS) {
+                _cadencePinHigh = false;
+                _lastCadenceToggle = currentMillis;
+#ifndef UNIT_TEST
+                if (_cadencePin >= 0) {
+                    digitalWrite(_cadencePin, LOW);   // NPN off = reed open
                 }
 #endif
             }
         }
     } else {
-        if (!_cadencePinHigh) {
-            _cadencePinHigh = true;
+        if (_cadencePinHigh) {
+            _cadencePinHigh = false;
 #ifndef UNIT_TEST
             if (_cadencePin >= 0) {
-                digitalWrite(_cadencePin, HIGH);
+                digitalWrite(_cadencePin, LOW);       // NPN off = reed open
             }
 #endif
         }
