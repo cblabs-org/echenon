@@ -26,7 +26,9 @@ void LiveFeed::tick(uint32_t currentMillis,
                     uint16_t potAdc,
                     int8_t motorDir,
                     int32_t encoderDelta,
-                    bool runaway) {
+                    bool runaway,
+                    uint8_t pelotonResistance,
+                    float speedKph) {
     if (_handler == nullptr) {
         return;
     }
@@ -42,9 +44,9 @@ void LiveFeed::tick(uint32_t currentMillis,
         return;
     }
 
-    char buf[256];
+    char buf[320];
     int len = snprintf(buf, sizeof(buf),
-        "{\"cadence_rpm\":%.1f,\"level_echelon\":%u,\"level_i\":%u,\"power_watts\":%.1f,\"pot_adc\":%u,\"motor_dir\":%d,\"encoder_delta\":%ld,\"runaway\":%s,\"timestamp_ms\":%lu}",
+        "{\"cadence_rpm\":%.1f,\"level_echelon\":%u,\"level_i\":%u,\"power_watts\":%.1f,\"pot_adc\":%u,\"motor_dir\":%d,\"encoder_delta\":%ld,\"runaway\":%s,\"peloton_resistance\":%u,\"speed_kph\":%.1f,\"timestamp_ms\":%lu}",
         (double)cadenceRPM,
         (unsigned int)echelonLevel,
         (unsigned int)internalLevel,
@@ -53,6 +55,8 @@ void LiveFeed::tick(uint32_t currentMillis,
         (int)motorDir,
         (long)encoderDelta,
         runaway ? "true" : "false",
+        (unsigned int)pelotonResistance,
+        (double)speedKph,
         (unsigned long)currentMillis);
 
     if (len > 0 && len < (int)sizeof(buf)) {

@@ -90,6 +90,29 @@ void EchenonModule::tick(uint32_t currentMillis) {
                  _runawayDetector.getTimeoutSeconds());
     }
 
+    // Compute Peloton resistance and virtual speed
+    uint8_t pelotonRes = _calibrationWizard.isPosDone()
+        ? echenon::PowerEngine::computePelotonResistance(continuousLevel)
+        : 0;
+    float speedKph = echenon::PowerEngine::computeVirtualSpeedKph(_powerEngine.getLastPower());
+
+#ifdef WITH_FTMS
+    // Phase-offset LiveFeed: seed 250 ms after FTMS epoch so BLE (t=500,1000,...)
+    // and WebSocket (t=750,1250,...) interleave every 250 ms.
+    static bool s_ftmsPhaseSeeded = false;
+    if (!s_ftmsPhaseSeeded && _ftmsServer) {
+#ifndef UNIT_TEST
+        _liveFeed.seedBroadcastTime(250);  // first LiveFeed fires at t=750 (250+500)
+#endif
+        s_ftmsPhaseSeeded = true;
+    }
+    if (_ftmsServer) {
+        _ftmsServer->updateTelemetry(speedKph, _cadenceSensor.getRPM(),
+                                      getInternalLevel(),
+                                      static_cast<int16_t>(_powerEngine.getLastPower()));
+    }
+#endif
+
 #ifndef UNIT_TEST
     _liveFeed.tick(currentMillis,
                    _cadenceSensor.getRPM(),
@@ -99,7 +122,9 @@ void EchenonModule::tick(uint32_t currentMillis) {
                    _resistanceSensor.getFilteredWiper(),
                    0,
                    0,
-                   _runawayDetector.isRunaway());
+                   _runawayDetector.isRunaway(),
+                   pelotonRes,
+                   speedKph);
 #endif
 #ifdef WITH_SIGNAL_LOGGER
     static bool s_eventBusWired = false;

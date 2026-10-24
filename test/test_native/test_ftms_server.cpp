@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "echenon/FTMSData.h"
+#include "echenon/PowerEngine.h"
 #include <cmath>
 
 // FTMSServer lifecycle test dependencies — native test pattern: include .cpp directly
@@ -473,4 +474,35 @@ TEST(FTMSServerTest, HRIncludedInPacket) {
     EXPECT_EQ(pkt[10], 142);
 
     server.end();
+}
+
+// =============================================================================
+// WO-05.3: Peloton Resistance & Virtual Speed Integration Tests
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// Peloton resistance is a pure function of cam position, not cadence.
+// It must produce non-zero, monotonically increasing values at 0 RPM.
+// ---------------------------------------------------------------------------
+
+TEST(PelotonResistanceTest, UpdatesAtZeroRPM) {
+    // Peloton resistance is purely a function of normalized position,
+    // NOT cadence. It should produce non-zero values even at 0 RPM.
+    uint8_t r1 = echenon::PowerEngine::computePelotonResistance(1.0f);
+    uint8_t r16 = echenon::PowerEngine::computePelotonResistance(16.0f);
+    uint8_t r32 = echenon::PowerEngine::computePelotonResistance(32.0f);
+    EXPECT_GT(r1, 0u);    // Level 1 should map to non-zero Peloton
+    EXPECT_GT(r16, r1);   // Monotonically increasing
+    EXPECT_GT(r32, r16);
+}
+
+TEST(PelotonResistanceTest, ZeroSpeedAtZeroPower) {
+    float speed = echenon::PowerEngine::computeVirtualSpeedKph(0.0f);
+    EXPECT_FLOAT_EQ(speed, 0.0f);
+}
+
+TEST(PelotonResistanceTest, PositiveSpeedAtPositivePower) {
+    float speed = echenon::PowerEngine::computeVirtualSpeedKph(200.0f);
+    EXPECT_GT(speed, 0.0f);
+    EXPECT_LT(speed, 100.0f);  // Sanity: 200 W should not exceed 100 km/h
 }

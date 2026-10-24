@@ -23,6 +23,7 @@ void setup() {
 
     // Wire dependencies
     echenonModule.setConfigManager(&app.getConfigManager());
+    echenonModule.setEventBus(&app.getEventBus());
 
     // Register — compile-time introspection detects implemented interfaces
     app.registerModule(&echenonModule);
@@ -35,12 +36,24 @@ void setup() {
     app.registerModule(&encoderModule);
 #endif
 
+#if defined(WITH_BLE) && defined(WITH_FTMS)
+    // Construct FTMSServer with EventBus reference and inject into EchenonModule
+    static echenon::FTMSServer ftmsServer(app.getEventBus());
+    echenonModule.setFTMSServer(&ftmsServer);
+#endif
+
 #ifdef WITH_BLE
     bleManager.setDefaultAdvertisedName("Echenon");
     bleManager.registerServiceProvider(&echenonModule.hrmRepeater());
     bleManager.registerClientProvider(&echenonModule.hrmClient());
+#ifdef WITH_FTMS
+    bleManager.registerServiceProvider(&echenonModule.getFTMSServer());
+#endif
     app.registerModule(&bleManager);
     app.registerModule(&echenonModule.hrmClient());
+#ifdef WITH_FTMS
+    app.registerModule(&echenonModule.getFTMSServer());
+#endif
 #endif
 
 #ifdef WITH_HR_SYNTHETIC
@@ -60,6 +73,10 @@ void setup() {
     bleManager.applyConfig(bleCfg.as<JsonObject>());
     echenonModule.hrmClient().setEventBus(&app.getEventBus());
     echenonModule.hrmRepeater().subscribe(app.getEventBus());
+#endif
+
+#if defined(WITH_BLE) && defined(WITH_FTMS)
+    ftmsServer.begin();  // Subscribes to HR EventBus topic
 #endif
 }
 

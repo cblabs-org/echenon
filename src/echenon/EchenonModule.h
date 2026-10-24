@@ -21,6 +21,10 @@
 #include "echenon/HRMClient.h"
 #endif
 
+#ifdef WITH_FTMS
+#include "echenon/FTMSServer.h"
+#endif
+
 #ifdef WITH_HR_SYNTHETIC
 #include "echenon/HRSynthetic.h"
 #endif
@@ -31,9 +35,7 @@
 
 class PsychicHttpServer;
 class ConfigManager;
-#ifdef WITH_SIGNAL_LOGGER
 class EventBus;
-#endif
 
 /**
  * @brief Echenon primary application module following the Service Module Pattern.
@@ -65,9 +67,12 @@ public:
 
     // --- Dependency Injection ---
     void setConfigManager(ConfigManager* cm) { _configManager = cm; }
+    void setEventBus(EventBus* eb) {
+        _eventBus = eb;
 #ifdef WITH_SIGNAL_LOGGER
-    void setEventBus(EventBus* eb) { _signalLogger.setEventBus(eb); }
+        _signalLogger.setEventBus(eb);
 #endif
+    }
 
     // --- Sensors & Level Mapping ---
     echenon::CadenceSensor& cadenceSensor() { return _cadenceSensor; }
@@ -106,6 +111,11 @@ public:
     HRMClient& hrmClient() { return _hrmClient; }
 #endif
 
+#ifdef WITH_FTMS
+    void setFTMSServer(echenon::FTMSServer* server) { _ftmsServer = server; }
+    echenon::FTMSServer& getFTMSServer() { return *_ftmsServer; }
+#endif
+
 #ifdef WITH_HR_SYNTHETIC
     echenon::HRSynthetic& hrSynthetic() { return _hrSynthetic; }
 #endif
@@ -117,6 +127,7 @@ public:
 
 private:
     ConfigManager* _configManager = nullptr;
+    EventBus*      _eventBus      = nullptr;
 
     echenon::CadenceSensor _cadenceSensor;
     echenon::ResistanceSensor _resistanceSensor;
@@ -136,6 +147,10 @@ private:
 #ifdef WITH_BLE
     HRMRepeater _hrmRepeater;
     HRMClient   _hrmClient;
+#endif
+
+#ifdef WITH_FTMS
+    echenon::FTMSServer* _ftmsServer = nullptr;
 #endif
 
 #ifdef WITH_HR_SYNTHETIC
