@@ -404,15 +404,18 @@ Every user-facing or protocol-facing resistance scale is a deterministic, monoto
 
 | Echelon Level $L_{\text{ech}}$ | Normalized $\tilde{p}$ | FTMS $R_{\text{ftms}}$ (`0–254`) | `Physics P3r` @ $80\text{ RPM}$ ($P(\tilde{p}, 80)$) | Equivalent Peloton Resistance $R_{\text{pel}}$ (`0–100`) |
 |---|---|---|---|---|
-| **1** | $0.000$ | `0` | $31.63\text{ W}$ | **`28`** |
-| **5** | $0.129$ | `33` | $33.83\text{ W}$ | **`29`** |
-| **10** | $0.290$ | `74` | $44.57\text{ W}$ | **`33`** |
-| **12** | $0.355$ | `90` | $52.53\text{ W}$ | **`36`** |
-| **16** | $0.484$ | `123` | $80.56\text{ W}$ | **`42`** |
-| **20** | $0.613$ | `156` | $132.61\text{ W}$ | **`51`** |
-| **24** | $0.742$ | `188` | $220.82\text{ W}$ | **`62`** |
-| **28** | $0.871$ | `221` | $347.50\text{ W}$ | **`74`** |
-| **32** | $1.000$ | `254` | $487.03\text{ W}$ | **`84`** |
+| **1** | $0.000$ | `0` | $31.63\text{ W}$ | **`13`** |
+| **5** | $0.129$ | `33` | $33.83\text{ W}$ | **`14`** |
+| **10** | $0.290$ | `74` | $44.57\text{ W}$ | **`16`** |
+| **12** | $0.355$ | `90` | $52.76\text{ W}$ | **`17`** |
+| **16** | $0.484$ | `123` | $80.56\text{ W}$ | **`21`** |
+| **20** | $0.613$ | `156` | $132.61\text{ W}$ | **`25`** |
+| **24** | $0.742$ | `188` | $220.82\text{ W}$ | **`31`** |
+| **28** | $0.871$ | `221` | $347.50\text{ W}$ | **`37`** |
+| **32** | $1.000$ | `254` | $487.03\text{ W}$ | **`42`** |
+
+> [!NOTE]
+> The Echelon EX-3's resistance range (`1–32`) maps to approximately **Peloton `13–42`** on the `0–100` scale, reflecting the EX-3's narrower eddy-current braking range compared to the Peloton Bike's higher-force permanent-magnet system. This is physically expected: at the standard `80 RPM` reference cadence, Echelon Level 32 ($487\text{ W}$) produces the same wattage as a Peloton set to resistance `42`.
 
 ### 8.3 Layer 3 — Virtual Road Speed $v(P)$ (`km/h`)
 
