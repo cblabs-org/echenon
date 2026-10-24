@@ -101,6 +101,18 @@ level ≈ (ADC_mean - 125) / 37.7 + 1
 level ≈ (voltage_mV - 100) / 30.4 + 1
 ```
 
+> [!WARNING]
+> **Superseded (2026-10-24):** The formula above has a systematic offset
+> (under-predicts by 34 ADC at level 1, over-predicts by 15 ADC at
+> level 32). Phase 3 automated characterization (C03) produced an improved
+> fit from 63 data points with ADB ground truth:
+>
+> ```
+> wiper_adc = 37.26 × level + 120.0   (R² = 0.9998)
+> ```
+>
+> See [`../phase3/C03-20261024-full-sweep-report.md`](../phase3/C03-20261024-full-sweep-report.md).
+
 ### Up/Down Hysteresis
 
 Where both ascending and descending values were captured, the spread is

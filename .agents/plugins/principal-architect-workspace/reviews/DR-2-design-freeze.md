@@ -10,24 +10,24 @@
 | **Gates** | PR-07 (and through it PR-10, PR-08, PR-11, PR-12, PR-13). No active-board soldering or motor/encoder interception before approval |
 | **Programme** | [PROGRAM.md](../PROGRAM.md) · [PROGRAM-PLAN.md](../PROGRAM-PLAN.md) |
 | **Predecessor** | [DR-1: v1 Passive Design Freeze](DR-1-design-freeze.md) (the v1 tap network, power path and pin map are inherited, not re-opened) |
-| **Design basis** | [`docs/mitm-encoder-design-notes.md`](../../../../docs/mitm-encoder-design-notes.md) §10 (architecture spectrum), §11 (console as signal source), §12 (console fault tolerance) |
+| **Design basis** | [`docs/mitm-encoder-design-notes.md`](../../../../docs/mitm-encoder-design-notes.md) §10–§12 · [`docs/digital-hardware-emulation-and-console-dynamics.md`](../../../../docs/digital-hardware-emulation-and-console-dynamics.md) · [`docs/power-physics-model.md`](../../../../docs/power-physics-model.md) |
 
 ---
 
 ## 1. Inputs: evidence
 
-DR-2 relies on the Phase 0 register (rows #1–#13, as used by DR-1) **plus** the
+DR-2 relies on the Phase 0 register (rows #1–#13, as used by DR-1), the **Phase 3 (`PR-02`) digital hardware emulation & console dynamics suite (`C01`–`C07`)**, **plus** the remaining
 active-design bench evidence gathered by [`pr-dr2-prep`](../pr-dr2-prep/PROJECT.md).
 Evidence lives under `docs/measurements/` with the register naming convention.
 
-| # | Evidence needed | Source | Feeds decision |
-|---|---|---|---|
-| P1 | Encoder-emulation timing toward the console: minimum quadrature pulse width and edge spacing the console accepts | DR-2 prep (split encoder loom, signal source) | §2.10, §2.12 |
-| P2 | Console behaviour when emulated clicks arrive during a motor seek | DR-2 prep (extends A09-20261012 #9) | §2.10, §2.12 |
-| P3 | Wiper behaviour in the dead zone and during the stock runaway (A09-20261012 #3) | DR-2 prep | §2.4, §2.5 |
-| P4 | H-bridge drive of the motor with the console disconnected: current, stall, coast, direction mapping | DR-2 prep | §2.3, §2.5 |
-| P5 | Pot-reference replica: a ≈ 4.7 kΩ / 4.7 kΩ divider from 3.3 V reproducing the console's 1.66 V / 2.4 kΩ source on Green | DR-2 prep | §2.2, §2.9 |
-| — | Register rows #1, #2, #3, #5, #6, #9, #10, #13 | Phase 0 register (PR-01, DR-1 prep) | as below |
+| # | Evidence needed | Source | Status | Feeds decision |
+|---|---|---|---|---|
+| P1 | Encoder-emulation timing toward the console: minimum quadrature pulse width, edge-to-level ratio (`8 edges = 1 level`), and edge spacing (`25–50 ms` or `100–200 ms`; **`75 ms` aliasing band forbidden**) | Phase 3 `C01`, `C02`, `C04c` ([`digital-hardware-emulation-and-console-dynamics.md`](../../../../docs/digital-hardware-emulation-and-console-dynamics.md) §3–§4) | **DONE (2026-10-24)** | §2.10, §2.12 |
+| P2 | Console behaviour when emulated clicks arrive during a motor seek (100% asynchronous queuing at `25–50 ms/edge`), plus level-dependent settle (`867 ms` L5, `2,806 ms` L15 with `90-count` overshoot, `1,561 ms` L25) and true directional hysteresis (`3.6 ADC counts` mean) | Phase 3 `C03`, `C04a`, `C04c`, `C07` ([`digital-hardware-emulation-and-console-dynamics.md`](../../../../docs/digital-hardware-emulation-and-console-dynamics.md) §4–§5) | **DONE (2026-10-24)** | §2.5, §2.10, §2.12 |
+| P3 | Wiper behaviour in the dead zone and during the stock runaway (A09-20261012 #3) *(Note: downward clamping at L1 and upward clamping at L32 verified for normal `25–200 ms` stepping in `C01`–`C06`)* | DR-2 prep | OPEN | §2.4, §2.5 |
+| P4 | H-bridge drive of the motor with the console disconnected: current, stall, coast, direction mapping | DR-2 prep | OPEN | §2.3, §2.5 |
+| P5 | Pot-reference replica: a ≈ 4.7 kΩ / 4.7 kΩ divider from 3.3 V reproducing the console's 1.66 V / 2.4 kΩ source on Green | DR-2 prep | OPEN | §2.2, §2.9 |
+| — | Register rows #1, #2, #3, #5, #6, #9, #10, #13 | Phase 0 register (PR-01, DR-1 prep) | DONE | as below |
 
 Row #10 (console rail with parallel supplies) was **waived at DR-1** for v1. It
 re-opens here if any v2 standalone network can connect to a console rail.
@@ -49,7 +49,7 @@ Section numbers are kept from DR-1 so cross-references stay stable.
 | 2.9 | **R3 / R4 / R5 replacement** for mode 2: the switched standalone network | H-02, E-01 | #6, #7, #10, P5 | `[DR-2]` | OPEN |
 | 2.10 | **Interception architecture**: mode 1 (relay/active: sensors and controls in as signals, H-bridge + PWM motor drive, encoder emulation toward the console) and mode 2 (console off) | H-05 (c), P-B | #8, #9, #13, P1, P2 | Owner direction 2026-10-12: console as signal source (design notes §11). Detail `[DR-2]` | DIRECTION SET |
 | 2.11 | **Resistance scale mapping (v2 part)**: FTMS `0x2AD6` step size and target mappings once the ESP32 owns the motor | P-A, P-C | #4 | `[DR-2]` | OPEN |
-| 2.12 | **Encoder emulation** toward the console: pulse timing, rate limit, behaviour during a seek | — | P1, P2 | `[DR-2]` | OPEN |
+| 2.12 | **Encoder emulation** toward the console: pulse timing, rate limit, behaviour during a seek | — | P1, P2 (`C01`, `C02`, `C04a`, `C04c`) | **8 edges (2 full Gray-code cycles) = 1 level** on GPIO 17/18 (`00->10->11->01` UP). Safe timing: **`35–50 ms/edge`** (fast burst) or **`120–150 ms/edge`** (paced); **`60–90 ms/edge` forbidden (`75 ms` polling alias)**. Console queues mid-seek bursts 100%; closed-loop wiper verification must wait **`≥ 3.0 s`** (or `400 ms` after motor drive `0 V`) to avoid chasing the `2.81 s` / `90-count` mid-cam overshoot. See [`digital-hardware-emulation-and-console-dynamics.md`](../../../../docs/digital-hardware-emulation-and-console-dynamics.md) §6.2 | **EVIDENCE COMPLETE (Ready for DR-2 sign-off)** |
 
 ---
 

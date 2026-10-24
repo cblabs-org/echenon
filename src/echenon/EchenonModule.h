@@ -1,8 +1,19 @@
 #pragma once
 
 #include "AppFoundation.h"
+#include "echenon/CadenceSensor.h"
+#include "echenon/ResistanceSensor.h"
+#include "echenon/LevelMapping.h"
+#include "echenon/PowerEngine.h"
+#include "echenon/CalibrationWizard.h"
+#include "echenon/RecalibrationUI.h"
+#include "echenon/RunawayDetector.h"
 #ifdef WITH_SIGNAL_LOGGER
 #include "echenon/SignalLogger.h"
+#endif
+
+#ifndef UNIT_TEST
+#include "echenon/LiveFeed.h"
 #endif
 
 #ifdef WITH_BLE
@@ -12,6 +23,10 @@
 
 #ifdef WITH_HR_SYNTHETIC
 #include "echenon/HRSynthetic.h"
+#endif
+
+#ifdef WITH_CALIBRATION_RIG
+#include "echenon/CalibrationRig.h"
 #endif
 
 class PsychicHttpServer;
@@ -46,12 +61,44 @@ public:
     void registerRoutes(PsychicHttpServer& server) override;
     void registerTabs(ITabRegistry& registry) override;
     const char* getApiPrefix() const override { return "/api/echenon"; }
-    size_t getMaxPostBody() const override { return 4096; }
+    size_t getMaxPostBody() const override { return 8192; }
 
     // --- Dependency Injection ---
     void setConfigManager(ConfigManager* cm) { _configManager = cm; }
 #ifdef WITH_SIGNAL_LOGGER
     void setEventBus(EventBus* eb) { _signalLogger.setEventBus(eb); }
+#endif
+
+    // --- Sensors & Level Mapping ---
+    echenon::CadenceSensor& cadenceSensor() { return _cadenceSensor; }
+    const echenon::CadenceSensor& cadenceSensor() const { return _cadenceSensor; }
+
+    echenon::ResistanceSensor& resistanceSensor() { return _resistanceSensor; }
+    const echenon::ResistanceSensor& resistanceSensor() const { return _resistanceSensor; }
+
+    float getCadenceRPM() const { return _cadenceSensor.getRPM(); }
+    uint8_t getEchelonLevel() const { return LevelMapping::wiperToEchelon(_resistanceSensor.getFilteredWiper()); }
+    uint8_t getInternalLevel() const { return LevelMapping::wiperToInternal(_resistanceSensor.getFilteredWiper()); }
+    uint16_t getFilteredWiper() const { return _resistanceSensor.getFilteredWiper(); }
+
+    // --- Power Engine ---
+    echenon::PowerEngine& powerEngine() { return _powerEngine; }
+    const echenon::PowerEngine& powerEngine() const { return _powerEngine; }
+    float getPowerWatts() const { return _powerEngine.getLastPower(); }
+
+    // --- Calibration Wizard & Recalibration ---
+    echenon::CalibrationWizard& calibrationWizard() { return _calibrationWizard; }
+    const echenon::CalibrationWizard& calibrationWizard() const { return _calibrationWizard; }
+
+    echenon::RecalibrationUI& recalibrationUI() { return _recalibrationUI; }
+    const echenon::RecalibrationUI& recalibrationUI() const { return _recalibrationUI; }
+
+    echenon::RunawayDetector& runawayDetector() { return _runawayDetector; }
+    const echenon::RunawayDetector& runawayDetector() const { return _runawayDetector; }
+
+#ifndef UNIT_TEST
+    echenon::LiveFeed& liveFeed() { return _liveFeed; }
+    const echenon::LiveFeed& liveFeed() const { return _liveFeed; }
 #endif
 
 #ifdef WITH_BLE
@@ -63,8 +110,24 @@ public:
     echenon::HRSynthetic& hrSynthetic() { return _hrSynthetic; }
 #endif
 
+#ifdef WITH_CALIBRATION_RIG
+    echenon::CalibrationRig& calibrationRig() { return _calibrationRig; }
+    const echenon::CalibrationRig& calibrationRig() const { return _calibrationRig; }
+#endif
+
 private:
     ConfigManager* _configManager = nullptr;
+
+    echenon::CadenceSensor _cadenceSensor;
+    echenon::ResistanceSensor _resistanceSensor;
+    echenon::PowerEngine _powerEngine;
+    echenon::CalibrationWizard _calibrationWizard;
+    echenon::RecalibrationUI _recalibrationUI;
+    echenon::RunawayDetector _runawayDetector;
+
+#ifndef UNIT_TEST
+    echenon::LiveFeed _liveFeed;
+#endif
 
 #ifdef WITH_SIGNAL_LOGGER
     SignalLogger _signalLogger;
@@ -77,5 +140,9 @@ private:
 
 #ifdef WITH_HR_SYNTHETIC
     echenon::HRSynthetic _hrSynthetic;
+#endif
+
+#ifdef WITH_CALIBRATION_RIG
+    echenon::CalibrationRig _calibrationRig;
 #endif
 };

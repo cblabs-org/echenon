@@ -1,6 +1,7 @@
 // web/echenon-dashboard.js
 // Echenon Signal Logger Live Dashboard
-// Displays live capture telemetry, decimated ADC channels, burst controls, and CSV export links.
+// Displays live capture telemetry, decimated ADC channels, burst controls, CSV export links,
+// and real-time WebSocket live feed (cadence, level, power, diagnostics).
 
 (function() {
   'use strict';
@@ -22,6 +23,14 @@
   var isTabActive = false;
   var pollTimer = null;
   var isBurstActive = false;
+
+  // --- WebSocket Feed State ---
+  var ws = null;
+  var wsReconnectTimer = null;
+  var wsReconnectDelay = 1000;
+  var MAX_RECONNECT_DELAY = 16000;
+  var recentSamples = [];
+  var MAX_RECENT_SAMPLES = 8;
 
   function formatUptime(ms) {
     if (!ms && ms !== 0) return '-';
@@ -54,6 +63,182 @@
     return rate + ' Sa/s';
   }
 
+  // --- WebSocket Live Feed Functions ---
+  function getWsUrl() {
+    var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return protocol + '//' + window.location.host + '/ws/echenon/live';
+  }
+
+  function updateWsStatus(state, text) {
+    var dot = document.getElementById('echenon-ws-dot');
+    var label = document.getElementById('echenon-ws-status');
+    if (!dot || !label) return;
+
+    dot.className = 'dot';
+    if (state === 'connected') {
+      dot.classList.add('dot--green');
+      label.textContent = text || 'Live (~3 Hz)';
+      label.style.color = 'var(--success)';
+    } else if (state === 'connecting' || state === 'reconnecting') {
+      dot.classList.add('dot--yellow');
+      label.textContent = text || 'Connecting...';
+      label.style.color = 'var(--warning)';
+    } else {
+      dot.classList.add('dot--red');
+      label.textContent = text || 'Disconnected';
+      label.style.color = 'var(--error)';
+    }
+  }
+
+  function connectWS() {
+    if (!isTabActive) return;
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+
+    if (wsReconnectTimer) {
+      clearTimeout(wsReconnectTimer);
+      wsReconnectTimer = null;
+    }
+
+    updateWsStatus('connecting', 'Connecting...');
+
+    try {
+      ws = new WebSocket(getWsUrl());
+    } catch (err) {
+      scheduleWsReconnect();
+      return;
+    }
+
+    ws.onopen = function() {
+      wsReconnectDelay = 1000;
+      updateWsStatus('connected', 'Live (~3 Hz)');
+    };
+
+    ws.onmessage = function(e) {
+      try {
+        var data = JSON.parse(e.data);
+        handleLiveFeedMessage(data);
+      } catch (err) {
+        console.error('Failed to parse live WS message', err);
+      }
+    };
+
+    ws.onerror = function() {
+      // Browser invokes onclose immediately after onerror
+    };
+
+    ws.onclose = function() {
+      ws = null;
+      if (isTabActive) {
+        scheduleWsReconnect();
+      } else {
+        updateWsStatus('disconnected', 'Disconnected');
+      }
+    };
+  }
+
+  function scheduleWsReconnect() {
+    if (!isTabActive || wsReconnectTimer) return;
+    updateWsStatus('reconnecting', 'Reconnecting (' + Math.round(wsReconnectDelay / 1000) + 's)...');
+    wsReconnectTimer = setTimeout(function() {
+      wsReconnectTimer = null;
+      connectWS();
+    }, wsReconnectDelay);
+    wsReconnectDelay = Math.min(wsReconnectDelay * 2, MAX_RECONNECT_DELAY);
+  }
+
+  function disconnectWS() {
+    if (wsReconnectTimer) {
+      clearTimeout(wsReconnectTimer);
+      wsReconnectTimer = null;
+    }
+    if (ws) {
+      ws.onclose = null;
+      ws.close();
+      ws = null;
+    }
+    updateWsStatus('disconnected', 'Disconnected');
+  }
+
+  function handleLiveFeedMessage(data) {
+    var cadenceEl = document.getElementById('echenon-live-cadence');
+    var levelEl = document.getElementById('echenon-live-level');
+    var powerEl = document.getElementById('echenon-live-power');
+    var potEl = document.getElementById('echenon-live-pot');
+    var levelIEl = document.getElementById('echenon-live-level-i');
+    var motorEl = document.getElementById('echenon-live-motor');
+    var encoderEl = document.getElementById('echenon-live-encoder');
+    var lastTsEl = document.getElementById('echenon-live-last-ts');
+
+    if (cadenceEl && data.cadence_rpm !== undefined) {
+      cadenceEl.textContent = Number(data.cadence_rpm).toFixed(1);
+    }
+    if (levelEl && data.level_echelon !== undefined) {
+      levelEl.textContent = data.level_echelon;
+    }
+    if (powerEl && data.power_watts !== undefined) {
+      powerEl.textContent = Number(data.power_watts).toFixed(1);
+    }
+    if (potEl && data.pot_adc !== undefined) {
+      potEl.textContent = data.pot_adc;
+    }
+    if (levelIEl && data.level_i !== undefined) {
+      levelIEl.textContent = data.level_i;
+    }
+    if (motorEl && data.motor_dir !== undefined) {
+      var dir = Number(data.motor_dir);
+      motorEl.textContent = dir > 0 ? '+1' : dir < 0 ? '-1' : '0';
+    }
+    if (encoderEl && data.encoder_delta !== undefined) {
+      encoderEl.textContent = data.encoder_delta;
+    }
+
+    // Runaway alert banner
+    var runawayBanner = document.getElementById('echenon-runaway-banner');
+    if (runawayBanner && data.runaway !== undefined) {
+      runawayBanner.style.display = data.runaway ? 'block' : 'none';
+    }
+
+    if (lastTsEl && data.timestamp_ms !== undefined) {
+      lastTsEl.textContent = (data.timestamp_ms / 1000).toFixed(1) + 's';
+    }
+
+    recentSamples.unshift(data);
+    if (recentSamples.length > MAX_RECENT_SAMPLES) {
+      recentSamples.pop();
+    }
+    renderLiveHistory();
+  }
+
+  function renderLiveHistory() {
+    var tbody = document.getElementById('echenon-live-history-body');
+    if (!tbody) return;
+    if (recentSamples.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:8px; color:var(--text-muted);">No feed data yet</td></tr>';
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < recentSamples.length; i++) {
+      var s = recentSamples[i];
+      var tSec = s.timestamp_ms !== undefined ? (s.timestamp_ms / 1000).toFixed(2) : '-';
+      var cad = s.cadence_rpm !== undefined ? Number(s.cadence_rpm).toFixed(1) : '-';
+      var lvl = s.level_echelon !== undefined ? s.level_echelon : '-';
+      var pwr = s.power_watts !== undefined ? Number(s.power_watts).toFixed(1) : '-';
+      var pot = s.pot_adc !== undefined ? s.pot_adc : '-';
+
+      html += '<tr style="border-bottom:1px solid var(--border); font-family:monospace;">' +
+        '<td style="padding:4px 6px;">' + tSec + '</td>' +
+        '<td style="padding:4px 6px; text-align:right; font-weight:700; color:var(--primary);">' + cad + '</td>' +
+        '<td style="padding:4px 6px; text-align:right; font-weight:700;">' + lvl + '</td>' +
+        '<td style="padding:4px 6px; text-align:right; font-weight:700; color:var(--success);">' + pwr + '</td>' +
+        '<td style="padding:4px 6px; text-align:right;">' + pot + '</td>' +
+        '</tr>';
+    }
+    tbody.innerHTML = html;
+  }
+
   function renderScaffold(container) {
     var channelRows = CHANNEL_MAP.map(function(ch) {
       return (
@@ -67,7 +252,79 @@
       );
     }).join('');
 
+    var liveMetricsCard =
+      '<div class="card" style="margin-bottom:1rem;">' +
+        '<div id="echenon-runaway-banner" style="display:none; background:var(--error); color:#fff; padding:0.75rem 1rem; border-radius:10px; margin-bottom:1rem; font-weight:700; text-align:center; font-size:0.95rem;">' +
+          '⚠️ Stock runaway detected — turn the knob back to a valid level' +
+        '</div>' +
+        '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">' +
+          '<h3 style="margin:0; font-size:1.15rem; font-weight:700;">Live Metrics</h3>' +
+          '<div style="display:flex; align-items:center; gap:0.5rem;">' +
+            '<span class="dot dot--yellow" id="echenon-ws-dot"></span>' +
+            '<span id="echenon-ws-status" style="font-size:0.85rem; font-weight:700; text-transform:uppercase;">Connecting...</span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:1rem; margin-bottom:1rem;">' +
+          '<div style="background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:1rem; text-align:center;">' +
+            '<div style="font-size:0.8rem; font-weight:600; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.25rem;">Cadence</div>' +
+            '<div style="font-size:2.25rem; font-weight:800; font-family:monospace; line-height:1.1; color:var(--primary);" id="echenon-live-cadence">--</div>' +
+            '<div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">RPM</div>' +
+          '</div>' +
+          '<div style="background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:1rem; text-align:center;">' +
+            '<div style="font-size:0.8rem; font-weight:600; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.25rem;">Resistance</div>' +
+            '<div style="font-size:2.25rem; font-weight:800; font-family:monospace; line-height:1.1; color:var(--primary);" id="echenon-live-level">--</div>' +
+            '<div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">Echelon (1–32)</div>' +
+          '</div>' +
+          '<div style="background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:1rem; text-align:center;">' +
+            '<div style="font-size:0.8rem; font-weight:600; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.25rem;">Power</div>' +
+            '<div style="font-size:2.25rem; font-weight:800; font-family:monospace; line-height:1.1; color:var(--primary);" id="echenon-live-power">--</div>' +
+            '<div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">Watts</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:0.5rem; font-size:0.85rem; border-top:1px solid var(--border); padding-top:0.75rem;">' +
+          '<div class="info-row" style="margin:0;">' +
+            '<span class="text-muted">Pot ADC</span>' +
+            '<span id="echenon-live-pot" style="font-family:monospace; font-weight:600;">-</span>' +
+          '</div>' +
+          '<div class="info-row" style="margin:0;">' +
+            '<span class="text-muted">Internal Level</span>' +
+            '<span id="echenon-live-level-i" style="font-family:monospace; font-weight:600;">-</span>' +
+          '</div>' +
+          '<div class="info-row" style="margin:0;">' +
+            '<span class="text-muted">Motor Dir</span>' +
+            '<span id="echenon-live-motor" style="font-family:monospace; font-weight:600;">-</span>' +
+          '</div>' +
+          '<div class="info-row" style="margin:0;">' +
+            '<span class="text-muted">Enc Delta</span>' +
+            '<span id="echenon-live-encoder" style="font-family:monospace; font-weight:600;">-</span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="margin-top:1rem; border-top:1px solid var(--border); padding-top:0.75rem;">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">' +
+            '<span style="font-size:0.85rem; font-weight:700;">Recent Feed Samples</span>' +
+            '<small class="text-muted" id="echenon-live-last-ts">Awaiting data</small>' +
+          '</div>' +
+          '<div style="overflow-x:auto;">' +
+            '<table style="width:100%; border-collapse:collapse; font-size:0.8rem;">' +
+              '<thead>' +
+                '<tr style="border-bottom:1px solid var(--border); color:var(--text-muted); text-align:left;">' +
+                  '<th style="padding:4px 6px;">Time (s)</th>' +
+                  '<th style="padding:4px 6px; text-align:right;">Cadence</th>' +
+                  '<th style="padding:4px 6px; text-align:right;">Level</th>' +
+                  '<th style="padding:4px 6px; text-align:right;">Power</th>' +
+                  '<th style="padding:4px 6px; text-align:right;">Pot ADC</th>' +
+                '</tr>' +
+              '</thead>' +
+              '<tbody id="echenon-live-history-body">' +
+                '<tr><td colspan="5" style="text-align:center; padding:8px; color:var(--text-muted);">No feed data yet</td></tr>' +
+              '</tbody>' +
+            '</table>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
     container.innerHTML =
+      liveMetricsCard +
       '<div class="card" style="margin-bottom:1rem;">' +
         '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">' +
           '<h3 style="margin:0; font-size:1.15rem; font-weight:700;">Capture Status</h3>' +
@@ -320,15 +577,20 @@
         renderScaffold(container);
       }
       startPolling();
+      connectWS();
     } else {
       isTabActive = false;
       stopPolling();
+      disconnectWS();
     }
   });
 
   document.addEventListener('visibilitychange', function() {
     if (document.visibilityState === 'visible' && isTabActive) {
       pollAll();
+      connectWS();
+    } else if (document.visibilityState === 'hidden') {
+      disconnectWS();
     }
   });
 
