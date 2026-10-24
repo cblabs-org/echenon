@@ -4,19 +4,21 @@ wo_id: WO-05.4
 pr_id: PR-05
 title: Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak
 complexity: interactive
-status: COMPLETED
+status: PENDING
 allowed_files:
 - docs/measurements/phase3/C08-20261024-ftms-verification.md
 - src/echenon/FTMSServer.h
 - src/echenon/FTMSServer.cpp
+- src/echenon/EchenonModule.cpp
+- test/test_native/test_ftms_server.cpp
 forbidden_files: []
 required_skills:
 - framework-expert
 - pio-manager
-verification_command: pio test -e native && pio run -e ex3-waveshare-nano
+verification_command: pio test -e native
 max_attempts: 5
 max_structural_failures: 2
-spec_hash: d887f5741c43f94233747e19a26ab7d3d2c2ecf73f194eae9c6a1096cc8e8d85
+spec_hash: 0bc01c5e104d5d0c50a820be5ad572793507bc750e351f7c781af89109f18e4d
 completion: null
 ---
 
@@ -41,34 +43,30 @@ Flash `ex3-waveshare-nano` onto the connected ESP32-S3-Nano bench unit, verify t
    - Run a 5-minute coexistence soak (FTMS client + HR relay + `/ws/echenon/live` WebSocket open simultaneously), verifying zero disconnects, zero watchdog resets, and stable free internal SRAM.
 4. **Evidence Report:**
    - Record all captures, GATT hex dumps, latency measurements, and coexistence metrics in `docs/measurements/phase3/C08-20261024-ftms-verification.md`.
+5. **Audit Round 1 Remediation (`AUDIT-round-1.md`):**
+   - **BLOCKING-1 (`src/echenon/EchenonModule.cpp` L109–L113):** Replace `getInternalLevel()` in `_ftmsServer->updateTelemetry(...)` with the unified `0..254` mapping gated by `_calibrationWizard.isPosDone()`:
+     ```cpp
+     uint8_t ftmsInternalRes = _calibrationWizard.isPosDone()
+         ? LevelMapping::normalizedToInternal(
+               LevelMapping::echelonContinuousToNormalized(continuousLevel))
+         : LevelMapping::INTERNAL_RESISTANCE_UNCALIBRATED;
+     ```
+     Add unit tests in `test/test_native/test_ftms_server.cpp` asserting that Echelon Level 32 maps to `internal_resistance = 254` (encoding `resistance = 254` in `0x2AD2`, not `0`) when calibrated, and `INTERNAL_RESISTANCE_UNCALIBRATED` (`255` -> `0`) when uncalibrated.
+   - **Non-Blocking Polish (`FTMSServer.h` / `FTMSServer.cpp`):**
+     - `NON-BLOCKING-1` & `NON-BLOCKING-2`: Change `getProviderId()` to `"ftms"`, update `contributeAdvertising()` to use `Priority::Required` for `0x1826`, `setAppearance(0x0485)` (`kIndoorBikeAppearance`), and `addServiceData16(0x1826, svcData, 3, Priority::Optional)`.
+     - `NON-BLOCKING-3`: Clarify `updateTelemetry()` doc comment in `FTMSServer.h` ("must be called from main loop").
+     - `NON-BLOCKING-4`: Add `onStackPaused()` / `onStackResumed()` overrides (pausing/resuming notifications during OTA) and add a `NimBLECharacteristicCallbacks` write handler inside `#if FTMS_STUB_CONTROL_POINT` on `0x2AD9`.
+6. **Live BLE (`bleak`) + Calibration Rig Verification:**
+   - Tag `v0.3.0-dev.18`, build & flash `ex3-waveshare-nano-rig` (to drive synthetic cadence + resistance via `/api/echenon/rig/command`), run a Python script in `tmp/` using `bleak` + `websockets` to:
+     - Read `0x2ACC` (`82 44 00 00 00 00 00 00`) over real BLE
+     - Subscribe to `0x2AD2` (`Indoor Bike Data`) and capture 2 Hz (`500 ms`) 11-byte notifications across multiple rig states (e.g. 0 RPM idle, 80 RPM at Levels 1, 16, 32) confirming Level 32 reports `resistance = 254`!
+     - Connect to `ws://192.168.1.100/ws/echenon/live` and capture live JSON frames containing `peloton_resistance` and `speed_kph`.
+   - Then build & flash production `ex3-waveshare-nano` (`v0.3.0-dev.18`), re-verify BLE `0x2ACC` and `0x2AD2` via `bleak`, update `docs/measurements/phase3/C08-20261024-ftms-verification.md`, and run `pa wo verify WO-05.4`.
 
 ## 3. Acceptance Criteria
-- Hardware verification report `docs/measurements/phase3/C08-20261024-ftms-verification.md` committed with passing results for GATT structure, 2 Hz `0x2AD2` payload decoding, client app pairing, and 5-minute coexistence soak on the Lenovo Tab P12.
-- `pio test -e native && pio run -e ex3-waveshare-nano` passes cleanly.
+- `BLOCKING-1` and non-blocking findings remediated with unit tests passing (`pio test -e native`).
+- Hardware verification report `docs/measurements/phase3/C08-20261024-ftms-verification.md` updated with real `bleak` GATT `0x2ACC` & `0x2AD2` captures (including Level 32 = 254), interval timing, and `/ws/echenon/live` WebSocket payloads.
+- `pio test -e native` passes cleanly.
 
 ## Completion Report
-
-**Status:** COMPLETED (Partial Pass — Automated Verification)
-**Completed:** 2026-10-24T22:57Z
-**Firmware:** `v0.3.0-dev.17` (commit `dc89fa6`)
-
-### Automated Verification Results (PASS)
-- 153/153 native tests pass
-- Firmware builds cleanly (RAM 17.2%, Flash 25.0%)
-- Flashed to ESP32-S3-Nano via `/dev/cu.usbmodem101`
-- Clean boot — both `HRMRepeater (0x180D)` and `FTMSServer (0x1826)` registered
-- BLE ADV payload `02010605030d182618` confirms both service UUIDs
-- `/api/system` reports `firmware_version: 0.3.0-dev.17`
-- `/api/ble/status` confirms `isAdvertising: true`, no faults
-- Memory stable: DRAM δ = -576 B over 2.5 min idle (< 1 KB threshold)
-- WebSocket `/ws/echenon/live` connects (HTTP 101 upgrade confirmed)
-
-### Deferred to Manual Bench Session
-- GATT `0x2ACC` read via nRF Connect
-- `0x2AD2` subscribe during active cycling (2 Hz, 11-byte packets)
-- WebSocket field verification (`peloton_resistance`, `speed_kph`) during cycling
-- Lenovo Tab P12 FTMS client pairing
-- 5-minute coexistence soak (FTMS + HR + WebSocket)
-
-### Evidence
-- [`C08-20261024-ftms-verification.md`](../../../../docs/measurements/phase3/C08-20261024-ftms-verification.md)
+*(To be populated by `pa-engineer` upon completion.)*

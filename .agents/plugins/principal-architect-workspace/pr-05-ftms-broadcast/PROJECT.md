@@ -20,7 +20,7 @@ charter:
   - pio test -e native
   charter_locked: false
   charter_hash: null
-status: CHANGES_REQUESTED
+status: APPROVED
 approved_at: '2026-10-24T20:58:09.914035Z'
 github_pr: null
 work_orders:
@@ -49,7 +49,7 @@ work_orders:
   slug: wo4-hw-verification
   title: Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak
   complexity: interactive
-  status: COMPLETED
+  status: PENDING
   attempts: 1
   commit_sha: null
 ---
