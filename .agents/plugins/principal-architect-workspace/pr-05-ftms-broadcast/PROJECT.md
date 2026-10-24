@@ -49,9 +49,9 @@ work_orders:
   slug: wo4-hw-verification
   title: Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak
   complexity: interactive
-  status: COMPLETED
+  status: IN_PROGRESS
   attempts: 1
-  commit_sha: 50d04796df73000af6ee7f222d87627f0c143bb8
+  commit_sha: null
 ---
 
 # PR-05: FTMS Telemetry, Read-Only (Phase 3, v1 Passive)

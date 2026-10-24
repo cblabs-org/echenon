@@ -4,7 +4,7 @@ wo_id: WO-05.4
 pr_id: PR-05
 title: Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak
 complexity: interactive
-status: COMPLETED
+status: IN_PROGRESS
 allowed_files:
 - docs/measurements/phase3/C08-20261024-ftms-verification.md
 - src/echenon/FTMSServer.h
@@ -20,7 +20,7 @@ max_attempts: 5
 max_structural_failures: 2
 spec_hash: 0bc01c5e104d5d0c50a820be5ad572793507bc750e351f7c781af89109f18e4d
 completion:
-  status: COMPLETED
+  status: IN_PROGRESS
   attempt_num: 1
   receipt_id: rcpt_d020fae6a730
   commit_sha: 50d04796df73000af6ee7f222d87627f0c143bb8
