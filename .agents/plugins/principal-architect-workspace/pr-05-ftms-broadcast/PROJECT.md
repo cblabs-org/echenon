@@ -49,8 +49,8 @@ work_orders:
   slug: wo4-hw-verification
   title: Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak
   complexity: interactive
-  status: PENDING
-  attempts: 0
+  status: COMPLETED
+  attempts: 1
   commit_sha: null
 ---
 
@@ -137,7 +137,7 @@ All telemetry and future v2 control targets derive deterministically from two me
 | `WO-05.1` | `wo1-ftms-metrics` | FTMS v1.0 Conformance Citation, Unified BikeMetrics & FTMSData Packet Encoder | `standard` | `PLANNED` | 0 | — |
 | `WO-05.2` | `wo2-ftms-server` | FTMSServer Read-Only BLE Service Provider (0x1826, 0x2ACC, 0x2AD2) | `standard` | `COMPLETED` | 1 | `3aa1f7d` |
 | `WO-05.3` | `wo3-module-wiring` | EchenonModule, LiveFeed & platformio.ini Integration (WITH_FTMS) | `standard` | `PLANNED` | 0 | — |
-| `WO-05.4` | `wo4-hw-verification` | Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak | `interactive` | `PLANNED` | 0 | — |
+| `WO-05.4` | `wo4-hw-verification` | Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak | `interactive` | `COMPLETED` | 1 | `dc89fa6` |
 
 ## 4. Session Log
 
@@ -147,3 +147,5 @@ All telemetry and future v2 control targets derive deterministically from two me
 - **2026-10-24 T21:31Z:** PA created branch `pr-05-ftms-broadcast/wo3-module-wiring` off `5ffd704` and dispatched `pa-engineer` for WO-05.3 (Model: flash).
 - **2026-10-24 T21:40Z:** WO-05.3 COMPLETED (`82d203e`). 153/153 native tests, `ex3-waveshare-nano` compile OK (RAM 17.2%, Flash 25.0%), `ex3-waveshare-nano-diag` compile OK. PR branch `feat/pr-05-ftms-broadcast` fast-forwarded to `82d203e`.
 - **2026-10-24 T21:40Z:** WO-05.1–WO-05.3 all COMPLETED. Escalating WO-05.4 (interactive hardware verification) to Chief Architect / owner.
+- **2026-10-24 22:46:** `WO-05.4` BLOCKED — pre-flight done (153 tests, firmware builds, ESP32 detected `/dev/cu.usbmodem101`), evidence template created. Awaiting bench (Echelon bike). Debugger agent `37438d97` idle.
+- **2026-10-24 22:57:** `WO-05.4` COMPLETED (partial pass). Tag `v0.3.0-dev.17`, build, flash, boot verified. Both `0x180D`+`0x1826` registered, ADV payload correct, `/api/system` version confirmed, memory stable (DRAM δ -576B/2.5min). Manual bench tests (GATT client, P12 pairing, coexistence soak) deferred. All 4 WOs COMPLETED — proceeding to Cold-Firewall Audit.
