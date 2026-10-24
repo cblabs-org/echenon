@@ -4,15 +4,16 @@
 
 namespace LevelMapping {
 
-    // Constants (SPEC §5.2, §5.3)
-    constexpr float B03_SLOPE = 39.1f;
-    constexpr float B03_INTERCEPT = 97.0f;
-    constexpr uint16_t WORKING_RANGE_MIN = 165;
-    constexpr uint16_t WORKING_RANGE_MAX = 1327;
+    // Constants — Phase 3 bench-verified fit (C03, R²=0.9998)
+    // Supersedes B03 fit (39.1, 97.0) per docs/measurements/phase3/C03
+    constexpr float B03_SLOPE = 37.26f;
+    constexpr float B03_INTERCEPT = 120.0f;
+    constexpr uint16_t WORKING_RANGE_MIN = 157;   // pot @ level 1
+    constexpr uint16_t WORKING_RANGE_MAX = 1313;  // pot @ level 32
 
     // Wiper → continuous level (float, clamped 1.0–32.0)
-    // Uses B03 default fit: wiper = 39.1 × level + 97
-    // level = (wiper - 97) / 39.1, clamped to [1, 32]
+    // Uses Phase 3 fit: wiper = 37.26 × level + 120
+    // level = (wiper - 120) / 37.26, clamped to [1, 32]
     float wiperToLevel(uint16_t wiper);
 
     // Continuous level → canonical internal scale i ∈ 0…255
