@@ -1,6 +1,7 @@
 #pragma once
 
 #include "echenon/PowerTable.h"
+#include <cmath>
 
 namespace echenon {
 
@@ -39,6 +40,37 @@ public:
     static constexpr float POT_MIN_DEFAULT = 171.0f;
     static constexpr float POT_MAX_DEFAULT = 1333.0f;
     static constexpr float MAX_WATTS       = 2000.0f;
+
+    // =========================================================================
+    // WO-05.1: Peloton 0–100 power-equivalence, virtual speed & inverse laws
+    // =========================================================================
+
+    /// Reference cadence for Peloton power-equivalence matching (RPM)
+    static constexpr float PELOTON_REF_CADENCE_RPM = 80.0f;
+
+    /// Compute Peloton 0–100 resistance from normalized cam position p̃ ∈ [0,1]
+    static uint8_t computePelotonResistanceFromNormalized(
+        float p_tilde,
+        const PowerPhysicsParams& params = PowerPhysicsParams{});
+
+    /// Compute Peloton 0–100 resistance from continuous Echelon level ∈ [1,32]
+    static uint8_t computePelotonResistance(
+        float continuous_level,
+        const PowerPhysicsParams& params = PowerPhysicsParams{});
+
+    /// Solve flat-road cycling equilibrium 0.245v³ + 3.53v = P for virtual speed (km/h)
+    static float computeVirtualSpeedKph(float power_watts);
+
+    /// Closed-form analytical inverse of Physics P3r: target watts → normalized cam position
+    static float targetPowerToNormalized(
+        float target_watts,
+        float cadence_rpm,
+        const PowerPhysicsParams& params = PowerPhysicsParams{});
+
+    /// Peloton 0–100 level → normalized cam position (via reference power inversion)
+    static float pelotonToNormalized(
+        float peloton_level,
+        const PowerPhysicsParams& params = PowerPhysicsParams{});
 
     PowerEngine();
 

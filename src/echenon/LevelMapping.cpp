@@ -1,4 +1,5 @@
 #include "echenon/LevelMapping.h"
+#include "echenon/PowerEngine.h"
 #include <cmath>
 #include <algorithm>
 
@@ -42,6 +43,12 @@ uint8_t wiperToEchelon(uint16_t wiper) {
 
 uint8_t wiperToInternal(uint16_t wiper) {
     return levelToInternal(wiperToLevel(wiper));
+}
+
+uint8_t internalToPeloton(uint8_t internal) {
+    if (internal == INTERNAL_RESISTANCE_UNCALIBRATED) return 0;
+    float p_tilde = static_cast<float>(internal) / 254.0f;
+    return echenon::PowerEngine::computePelotonResistanceFromNormalized(p_tilde);
 }
 
 } // namespace LevelMapping

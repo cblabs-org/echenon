@@ -394,3 +394,150 @@ TEST(PowerEngineTest, TickCachesLastPower) {
     engine.tick(20.0f, 0.0f);
     EXPECT_FLOAT_EQ(engine.getLastPower(), 0.0f);
 }
+
+
+// =============================================================================
+// WO-05.1: Peloton 0–100 Power-Equivalence
+// =============================================================================
+
+TEST(PowerEngineTest, ComputePelotonResistanceFromNormalized_BoundaryValues) {
+    // Actual formula results: R_pel = clamp(round(pow(max(P/106.66667-0.1,0)/0.000185, 1/2.7)), 0, 100)
+    EXPECT_EQ(PowerEngine::computePelotonResistanceFromNormalized(0.0f), 13u);     // L1: P=31.63W
+    EXPECT_EQ(PowerEngine::computePelotonResistanceFromNormalized(0.484f), 21u);   // ~L16: P=80.56W
+    EXPECT_EQ(PowerEngine::computePelotonResistanceFromNormalized(0.613f), 25u);   // ~L20: P=132.6W
+    EXPECT_EQ(PowerEngine::computePelotonResistanceFromNormalized(0.742f), 31u);   // ~L24: P=220.8W
+    EXPECT_EQ(PowerEngine::computePelotonResistanceFromNormalized(0.871f), 37u);   // ~L28: P=347.5W
+    EXPECT_EQ(PowerEngine::computePelotonResistanceFromNormalized(1.0f), 42u);     // L32: P=487.0W
+}
+
+TEST(PowerEngineTest, ComputePelotonResistance_BoundaryValues) {
+    // Continuous level → R_pel (formula-correct values)
+    EXPECT_EQ(PowerEngine::computePelotonResistance(1.0f), 13u);    // L1
+    EXPECT_EQ(PowerEngine::computePelotonResistance(16.0f), 21u);   // L16
+    EXPECT_EQ(PowerEngine::computePelotonResistance(20.0f), 25u);   // L20
+    EXPECT_EQ(PowerEngine::computePelotonResistance(24.0f), 31u);   // L24
+    EXPECT_EQ(PowerEngine::computePelotonResistance(28.0f), 37u);   // L28
+    EXPECT_EQ(PowerEngine::computePelotonResistance(32.0f), 42u);   // L32
+}
+
+TEST(PowerEngineTest, ComputePelotonResistance_EdgeCases) {
+    EXPECT_EQ(PowerEngine::computePelotonResistance(0.0f), 0u);      // Below range
+    EXPECT_EQ(PowerEngine::computePelotonResistance(-5.0f), 0u);     // Negative
+    EXPECT_EQ(PowerEngine::computePelotonResistance(NAN), 0u);       // NaN
+    EXPECT_EQ(PowerEngine::computePelotonResistance(INFINITY), 0u);  // Infinity
+}
+
+TEST(PowerEngineTest, ComputePelotonResistance_Monotonicity) {
+    uint8_t prev = 0;
+    for (float level = 1.0f; level <= 32.0f; level += 0.5f) {
+        uint8_t pel = PowerEngine::computePelotonResistance(level);
+        EXPECT_GE(pel, prev)
+            << "Peloton resistance must be monotonic at level " << level;
+        prev = pel;
+    }
+}
+
+// =============================================================================
+// WO-05.1: Virtual Road Speed v(P)
+// =============================================================================
+
+TEST(PowerEngineTest, ComputeVirtualSpeedKph_ReferencePoints) {
+    // 0 W → 0.0 km/h
+    EXPECT_FLOAT_EQ(PowerEngine::computeVirtualSpeedKph(0.0f), 0.0f);
+    EXPECT_FLOAT_EQ(PowerEngine::computeVirtualSpeedKph(-10.0f), 0.0f);
+
+    // Newton-Raphson solution of 0.245*v^3 + 3.53*v = P (v in m/s, result * 3.6)
+    // 100 W → ~24.4 km/h
+    EXPECT_NEAR(PowerEngine::computeVirtualSpeedKph(100.0f), 24.38f, 0.2f);
+
+    // 200 W → ~31.8 km/h
+    EXPECT_NEAR(PowerEngine::computeVirtualSpeedKph(200.0f), 31.80f, 0.2f);
+
+    // 500 W → ~44.3 km/h
+    EXPECT_NEAR(PowerEngine::computeVirtualSpeedKph(500.0f), 44.30f, 0.2f);
+}
+
+TEST(PowerEngineTest, ComputeVirtualSpeedKph_EdgeCases) {
+    EXPECT_FLOAT_EQ(PowerEngine::computeVirtualSpeedKph(NAN), 0.0f);
+    EXPECT_FLOAT_EQ(PowerEngine::computeVirtualSpeedKph(-INFINITY), 0.0f);
+    // Very small positive power should still return a positive speed
+    float v = PowerEngine::computeVirtualSpeedKph(1.0f);
+    EXPECT_GT(v, 0.0f);
+}
+
+TEST(PowerEngineTest, ComputeVirtualSpeedKph_RoundTrip) {
+    // Verify: 0.245*(v/3.6)^3 + 3.53*(v/3.6) ≈ P within 1e-3 W
+    float test_powers[] = {50.0f, 100.0f, 150.0f, 200.0f, 300.0f, 500.0f, 800.0f};
+    for (float P : test_powers) {
+        float v_kph = PowerEngine::computeVirtualSpeedKph(P);
+        float v_ms = v_kph / 3.6f;
+        float P_check = 0.245f * v_ms * v_ms * v_ms + 3.53f * v_ms;
+        EXPECT_NEAR(P_check, P, 0.01f)
+            << "Round-trip failed for P=" << P << " W, v=" << v_kph << " km/h";
+    }
+}
+
+// =============================================================================
+// WO-05.1: Closed-Form Inverse Control Laws
+// =============================================================================
+
+TEST(PowerEngineTest, TargetPowerToNormalized_RoundTrip) {
+    // For various levels, compute power at 80 RPM, then invert back to p_tilde
+    for (float level = 1.0f; level <= 32.0f; level += 1.0f) {
+        float p_tilde_original = std::clamp((level - 1.0f) / 31.0f, 0.0f, 1.0f);
+        float power = PowerEngine::computePowerPhysics(level, 80.0f);
+        float p_tilde_recovered = PowerEngine::targetPowerToNormalized(power, 80.0f);
+        EXPECT_NEAR(p_tilde_recovered, p_tilde_original, 0.005f)
+            << "Round-trip failed at level=" << level << " P=" << power << " W";
+    }
+}
+
+TEST(PowerEngineTest, TargetPowerToNormalized_DifferentCadences) {
+    // Test at various cadence values
+    float cadences[] = {60.0f, 80.0f, 100.0f, 120.0f};
+    for (float cad : cadences) {
+        for (float level = 5.0f; level <= 28.0f; level += 5.0f) {
+            float p_tilde_original = std::clamp((level - 1.0f) / 31.0f, 0.0f, 1.0f);
+            float power = PowerEngine::computePowerPhysics(level, cad);
+            float p_tilde_recovered = PowerEngine::targetPowerToNormalized(power, cad);
+            EXPECT_NEAR(p_tilde_recovered, p_tilde_original, 0.01f)
+                << "Round-trip failed at level=" << level << " cad=" << cad;
+        }
+    }
+}
+
+TEST(PowerEngineTest, TargetPowerToNormalized_EdgeCases) {
+    EXPECT_FLOAT_EQ(PowerEngine::targetPowerToNormalized(0.0f, 80.0f), 0.0f);
+    EXPECT_FLOAT_EQ(PowerEngine::targetPowerToNormalized(-10.0f, 80.0f), 0.0f);
+    EXPECT_FLOAT_EQ(PowerEngine::targetPowerToNormalized(100.0f, 0.0f), 0.0f);
+    EXPECT_FLOAT_EQ(PowerEngine::targetPowerToNormalized(100.0f, -10.0f), 0.0f);
+    EXPECT_FLOAT_EQ(PowerEngine::targetPowerToNormalized(NAN, 80.0f), 0.0f);
+    EXPECT_FLOAT_EQ(PowerEngine::targetPowerToNormalized(100.0f, NAN), 0.0f);
+}
+
+TEST(PowerEngineTest, PelotonToNormalized_RoundTrip) {
+    // For Peloton levels within the Echelon range (13..42), compute p_tilde,
+    // then compute Peloton back and check that the original level matches
+    for (int R = 15; R <= 40; R += 5) {
+        float p_tilde = PowerEngine::pelotonToNormalized(static_cast<float>(R));
+        uint8_t R_recovered = PowerEngine::computePelotonResistanceFromNormalized(p_tilde);
+        // Due to rounding, allow ±1
+        EXPECT_NEAR(static_cast<int>(R_recovered), R, 1)
+            << "Round-trip failed for Peloton R=" << R;
+    }
+}
+
+TEST(PowerEngineTest, PelotonToNormalized_BoundaryValues) {
+    // Peloton 0 → should give a small positive p_tilde (since P_ref > 0 for R=0)
+    float p0 = PowerEngine::pelotonToNormalized(0.0f);
+    EXPECT_GE(p0, 0.0f);
+
+    // Peloton 100 → should give p_tilde close to 1.0
+    float p100 = PowerEngine::pelotonToNormalized(100.0f);
+    EXPECT_GT(p100, 0.8f);
+    EXPECT_LE(p100, 1.0f);
+
+    // Negative clamps to 0
+    float p_neg = PowerEngine::pelotonToNormalized(-5.0f);
+    EXPECT_EQ(p_neg, p0); // Same as Peloton 0
+}
