@@ -2,6 +2,14 @@
 #include "echenon/FTMSData.h"
 #include <cmath>
 
+// FTMSServer lifecycle test dependencies — native test pattern: include .cpp directly
+// Native env has -I framework, so module paths must be prefixed with modules/
+#include "modules/EventBus/EventBus.hpp"
+#include "modules/EventBus/EventBus.cpp"
+#include "echenon/HREvents.h"
+#include "echenon/FTMSServer.h"
+#include "echenon/FTMSServer.cpp"
+
 using namespace echenon;
 
 // =============================================================================
@@ -236,4 +244,233 @@ TEST(FTMSDataTest, Constants) {
     EXPECT_EQ(FTMS_INDOOR_BIKE_FLAGS_V1, 0x0264);
     EXPECT_EQ(FTMS_FEATURE_PACKET_SIZE, 8u);
     EXPECT_EQ(FTMS_INDOOR_BIKE_PACKET_SIZE, 11u);
+}
+
+
+// =============================================================================
+// WO-05.2: FTMSServer Lifecycle Unit Tests
+// =============================================================================
+
+using namespace echenon;
+
+// ---------------------------------------------------------------------------
+// Construction & begin/end
+// ---------------------------------------------------------------------------
+
+TEST(FTMSServerTest, ConstructionAndBegin) {
+    EventBus bus;
+    bus.begin();
+
+    FTMSServer server(bus);
+    server.begin();
+
+    EXPECT_EQ(server.getNotifyCount(), 0u);
+
+    server.end();
+}
+
+// ---------------------------------------------------------------------------
+// updateTelemetry + tick encodes correct packet
+// ---------------------------------------------------------------------------
+
+TEST(FTMSServerTest, UpdateTelemetryEncodesPacket) {
+    EventBus bus;
+    bus.begin();
+
+    FTMSServer server(bus);
+    server.begin();
+
+    server.updateTelemetry(25.0f, 80.0f, 127, 200);
+    server.tick(1000);
+
+    uint8_t pkt[11] = {};
+    server.getLastPacket(pkt);
+
+    // Flags: 0x0264 → [0x64, 0x02]
+    EXPECT_EQ(pkt[0], 0x64);
+    EXPECT_EQ(pkt[1], 0x02);
+
+    // Speed: 25.0 × 100 = 2500 → [0xC4, 0x09]
+    EXPECT_EQ(pkt[2], 0xC4);
+    EXPECT_EQ(pkt[3], 0x09);
+
+    // Cadence: 80.0 × 2 = 160 → [0xA0, 0x00]
+    EXPECT_EQ(pkt[4], 0xA0);
+    EXPECT_EQ(pkt[5], 0x00);
+
+    // Resistance: 127 → [0x7F, 0x00]
+    EXPECT_EQ(pkt[6], 0x7F);
+    EXPECT_EQ(pkt[7], 0x00);
+
+    // Power: 200 → [0xC8, 0x00]
+    EXPECT_EQ(pkt[8], 0xC8);
+    EXPECT_EQ(pkt[9], 0x00);
+
+    // HR: 0 (no HR subscription event yet)
+    EXPECT_EQ(pkt[10], 0);
+
+    EXPECT_EQ(server.getNotifyCount(), 1u);
+
+    server.end();
+}
+
+// ---------------------------------------------------------------------------
+// HR EventBus delivery
+// ---------------------------------------------------------------------------
+
+TEST(FTMSServerTest, HREventBusDelivery) {
+    EventBus bus;
+    bus.begin();
+
+    FTMSServer server(bus);
+    server.begin();
+
+    HrSample sample{72, HRContactState::ACTIVE, 1000};
+    bus.publish(echenon::HR_TOPIC, &sample);
+
+    EXPECT_EQ(server.getEffectiveHrBpm(1000), 72);
+
+    server.end();
+}
+
+// ---------------------------------------------------------------------------
+// HR staleness timeout
+// ---------------------------------------------------------------------------
+
+TEST(FTMSServerTest, HRStalenessTimeout) {
+    EventBus bus;
+    bus.begin();
+
+    FTMSServer server(bus);
+    server.begin();
+
+    HrSample sample{72, HRContactState::ACTIVE, 1000};
+    bus.publish(echenon::HR_TOPIC, &sample);
+
+    // Still fresh at 5999 ms (5999 - 1000 = 4999 ≤ 5000)
+    EXPECT_EQ(server.getEffectiveHrBpm(5999), 72);
+
+    // Exactly at boundary (6000 - 1000 = 5000 ≤ 5000) — still valid
+    EXPECT_EQ(server.getEffectiveHrBpm(6000), 72);
+
+    // Stale at 6001 ms (6001 - 1000 = 5001 > 5000)
+    EXPECT_EQ(server.getEffectiveHrBpm(6001), 0);
+
+    server.end();
+}
+
+// ---------------------------------------------------------------------------
+// HR disconnection clears BPM
+// ---------------------------------------------------------------------------
+
+TEST(FTMSServerTest, HRDisconnection) {
+    EventBus bus;
+    bus.begin();
+
+    FTMSServer server(bus);
+    server.begin();
+
+    // First establish an active HR
+    HrSample active{72, HRContactState::ACTIVE, 1000};
+    bus.publish(echenon::HR_TOPIC, &active);
+    EXPECT_EQ(server.getEffectiveHrBpm(1000), 72);
+
+    // Now disconnect
+    HrSample disc{0, HRContactState::DISCONNECTED, 2000};
+    bus.publish(echenon::HR_TOPIC, &disc);
+    EXPECT_EQ(server.getEffectiveHrBpm(2000), 0);
+
+    server.end();
+}
+
+// ---------------------------------------------------------------------------
+// Notification cadence (500 ms)
+// ---------------------------------------------------------------------------
+
+TEST(FTMSServerTest, NotificationCadence) {
+    EventBus bus;
+    bus.begin();
+
+    FTMSServer server(bus);
+    server.begin();
+
+    server.updateTelemetry(20.0f, 70.0f, 100, 150);
+
+    // First tick at t=0 encodes packet (0 - 0 >= 500 is false if _lastNotifyMs starts at 0)
+    // Actually: currentMillis(0) - _lastNotifyMs(0) = 0 < 500 → skipped
+    // The first tick that fires must be at >= 500 ms OR on initial state
+    // Let's check: _lastNotifyMs starts at 0, so tick(0): 0 - 0 = 0, which is < 500 → skip
+    // tick(500): 500 - 0 = 500, which is >= 500 → fires!
+    server.tick(0);
+    EXPECT_EQ(server.getNotifyCount(), 0u);
+
+    server.tick(499);
+    EXPECT_EQ(server.getNotifyCount(), 0u);
+
+    server.tick(500);
+    EXPECT_EQ(server.getNotifyCount(), 1u);
+
+    // Next notification at 1000
+    server.tick(999);
+    EXPECT_EQ(server.getNotifyCount(), 1u);
+
+    server.tick(1000);
+    EXPECT_EQ(server.getNotifyCount(), 2u);
+
+    server.end();
+}
+
+// ---------------------------------------------------------------------------
+// end() unsubscription — HR events no longer reach the server
+// ---------------------------------------------------------------------------
+
+TEST(FTMSServerTest, EndUnsubscription) {
+    EventBus bus;
+    bus.begin();
+
+    FTMSServer server(bus);
+    server.begin();
+
+    // Establish HR
+    HrSample active{72, HRContactState::ACTIVE, 1000};
+    bus.publish(echenon::HR_TOPIC, &active);
+    EXPECT_EQ(server.getEffectiveHrBpm(1000), 72);
+
+    // Unsubscribe
+    server.end();
+
+    // Publish new HR — should NOT reach server
+    HrSample updated{120, HRContactState::ACTIVE, 2000};
+    bus.publish(echenon::HR_TOPIC, &updated);
+
+    // HR should still be 72 (not 120), and stale check still uses old timestamp
+    EXPECT_EQ(server.getEffectiveHrBpm(2000), 72);
+}
+
+// ---------------------------------------------------------------------------
+// HR included in packet when active
+// ---------------------------------------------------------------------------
+
+TEST(FTMSServerTest, HRIncludedInPacket) {
+    EventBus bus;
+    bus.begin();
+
+    FTMSServer server(bus);
+    server.begin();
+
+    // Set telemetry and HR
+    server.updateTelemetry(30.0f, 90.0f, 200, 300);
+    HrSample sample{142, HRContactState::ACTIVE, 500};
+    bus.publish(echenon::HR_TOPIC, &sample);
+
+    // Tick at 500 ms (should fire notification)
+    server.tick(500);
+
+    uint8_t pkt[11] = {};
+    server.getLastPacket(pkt);
+
+    // HR byte should be 142
+    EXPECT_EQ(pkt[10], 142);
+
+    server.end();
 }
