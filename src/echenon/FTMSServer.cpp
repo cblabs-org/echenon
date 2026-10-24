@@ -77,6 +77,8 @@ void FTMSServer::updateTelemetry(float speed_kph, float cadence_rpm,
 }
 
 void FTMSServer::tick(uint32_t currentMillis) {
+    if (_paused) return;
+    // Note: _lastNotifyMs starts at 0, so tick(0) is intentionally skipped (initial 500 ms settle window).
     if (currentMillis - _lastNotifyMs < NOTIFY_INTERVAL_MS) return;
     _lastNotifyMs = currentMillis;
 
@@ -142,13 +144,32 @@ bool FTMSServer::registerServices(NimBLEServer& server) {
     _bikeDataChar->setValue(zeroed, FTMS_INDOOR_BIKE_PACKET_SIZE);
 
 #if defined(FTMS_STUB_CONTROL_POINT) && FTMS_STUB_CONTROL_POINT
+    class StubControlPointCallbacks : public NimBLECharacteristicCallbacks {
+    public:
+        void onWrite(NimBLECharacteristic* chr, NimBLEConnInfo& info) override {
+            (void)info;
+            if (!chr) return;
+            NimBLEAttValue val = chr->getValue();
+            uint8_t req = (val.size() > 0) ? val.data()[0] : 0xFF;
+            // 0x00 (Request Control) -> 0x01 (Success); all other opcodes -> 0x02 (Op Code Not Supported)
+            uint8_t resp[3] = {
+                0x80,
+                req,
+                static_cast<uint8_t>(req == 0x00 ? 0x01 : 0x02)
+            };
+            chr->setValue(resp, sizeof(resp));
+            chr->indicate();
+        }
+    };
+    static StubControlPointCallbacks s_stubCpCallbacks;
+
     // 0x2AD9 — Fitness Machine Control Point (stub for clients that require discovery)
     NimBLECharacteristic* cpChar = pSvc->createCharacteristic(
         NimBLEUUID((uint16_t)0x2AD9),
         NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::INDICATE
     );
     if (cpChar) {
-        // Minimal stub callback handled externally if needed
+        cpChar->setCallbacks(&s_stubCpCallbacks);
         ESP_LOGI(FTMS_TAG, "Stub Control Point (0x2AD9) registered");
     }
 #endif
@@ -162,7 +183,10 @@ bool FTMSServer::registerServices(NimBLEServer& server) {
 }
 
 void FTMSServer::contributeAdvertising(BLEAdvertisingBuilder& adv) {
-    adv.addServiceUuid16(0x1826, BLEAdvertisingBuilder::Priority::Normal);
+    static const uint8_t svcData[3] = { 0x01 /*available*/, 0x20, 0x00 /*indoor bike*/ };
+    adv.addServiceUuid16(0x1826, BLEAdvertisingBuilder::Priority::Required);
+    adv.addServiceData16(0x1826, svcData, sizeof(svcData), BLEAdvertisingBuilder::Priority::Normal);
+    adv.setAppearance(kIndoorBikeAppearance);
 }
 
 #endif // WITH_BLE

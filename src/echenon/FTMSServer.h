@@ -22,6 +22,10 @@ class EventBus;
 class NimBLEServer;
 class NimBLECharacteristic;
 
+#ifndef FTMS_STUB_CONTROL_POINT
+#define FTMS_STUB_CONTROL_POINT 0
+#endif
+
 namespace echenon {
 
 class FTMSServer :
@@ -31,8 +35,9 @@ class FTMSServer :
     public ITickable
 {
 public:
-    static constexpr uint32_t NOTIFY_INTERVAL_MS  = 500;   // 2 Hz notification cadence
-    static constexpr uint32_t HR_STALE_TIMEOUT_MS = 5000;  // 5 s HR staleness threshold
+    static constexpr uint32_t NOTIFY_INTERVAL_MS     = 500;     // 2 Hz notification cadence
+    static constexpr uint32_t HR_STALE_TIMEOUT_MS    = 5000;    // 5 s HR staleness threshold
+    static constexpr uint16_t kIndoorBikeAppearance  = 0x0485;  // Bluetooth SIG Indoor Bike appearance
 
     explicit FTMSServer(EventBus& eventBus);
     ~FTMSServer() override;
@@ -41,7 +46,7 @@ public:
     void tick(uint32_t currentMillis) override;
     const char* getName() const { return "FTMSServer"; }
 
-    // --- Telemetry update (thread-safe store) ---
+    // --- Telemetry update (must be called from main loop) ---
     void updateTelemetry(float speed_kph, float cadence_rpm,
                          uint8_t internal_resistance, int16_t power_watts);
 
@@ -53,30 +58,38 @@ public:
     void getLastPacket(uint8_t out[11]) const;
     uint32_t getNotifyCount() const { return _notifyCount; }
     uint8_t getEffectiveHrBpm(uint32_t now_ms) const;
+    bool isPaused() const { return _paused; }
 
 #ifdef WITH_BLE
     // --- IBLEServiceProvider ---
-    const char* getProviderId() const override { return "ftms_server"; }
+    const char* getProviderId() const override { return "ftms"; }
     bool registerServices(NimBLEServer& server) override;
     void contributeAdvertising(BLEAdvertisingBuilder& adv) override;
+    void onStackPaused() override { _paused = true; }
+    void onStackResumed() override { _paused = false; }
+#else
+    const char* getProviderId() const { return "ftms"; }
+    void onStackPaused() { _paused = true; }
+    void onStackResumed() { _paused = false; }
 #endif
 
 private:
     EventBus& _eventBus;
 
     // Telemetry state
-    float    _speedKph          = 0.0f;
-    float    _cadenceRpm        = 0.0f;
+    float    _speedKph           = 0.0f;
+    float    _cadenceRpm         = 0.0f;
     uint8_t  _internalResistance = 0;
-    int16_t  _powerWatts        = 0;
+    int16_t  _powerWatts         = 0;
 
     // HR from EventBus
     uint8_t  _lastHrBpm  = 0;
     uint32_t _lastHrMs   = 0;
 
-    // Notification timing
+    // Notification timing & stack pause state
     uint32_t _lastNotifyMs = 0;
     uint32_t _notifyCount  = 0;
+    bool     _paused       = false;
     uint8_t  _lastPacket[11] = {};
 
 #ifdef WITH_BLE

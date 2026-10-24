@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "echenon/FTMSData.h"
+#include "echenon/LevelMapping.h"
 #include "echenon/PowerEngine.h"
 #include <cmath>
 
@@ -505,4 +506,73 @@ TEST(PelotonResistanceTest, PositiveSpeedAtPositivePower) {
     float speed = echenon::PowerEngine::computeVirtualSpeedKph(200.0f);
     EXPECT_GT(speed, 0.0f);
     EXPECT_LT(speed, 100.0f);  // Sanity: 200 W should not exceed 100 km/h
+}
+
+// =============================================================================
+// WO-05.4 Audit Round 1 Remediation Tests
+// =============================================================================
+
+TEST(FTMSServerTest, Level32MapsTo254AndEncodes254NotZero) {
+    EventBus bus;
+    bus.begin();
+
+    FTMSServer server(bus);
+    server.begin();
+
+    // BLOCKING-1 regression test:
+    // At Echelon Level 32.0, normalizedToInternal(echelonContinuousToNormalized(32.0f))
+    // must yield 254 (not 255 = INTERNAL_RESISTANCE_UNCALIBRATED), and FTMSServer
+    // must encode resistance = 254 (0x00FE) in 0x2AD2 rather than 0.
+    uint8_t calibratedL32 = LevelMapping::normalizedToInternal(
+        LevelMapping::echelonContinuousToNormalized(32.0f));
+    EXPECT_EQ(calibratedL32, 254u);
+    EXPECT_NE(calibratedL32, LevelMapping::INTERNAL_RESISTANCE_UNCALIBRATED);
+
+    server.updateTelemetry(35.0f, 90.0f, calibratedL32, 350);
+    server.tick(500);
+
+    uint8_t pkt[11] = {};
+    server.getLastPacket(pkt);
+    EXPECT_EQ(pkt[6], 0xFE);  // 254 little-endian low byte
+    EXPECT_EQ(pkt[7], 0x00);  // 254 little-endian high byte
+
+    // Uncalibrated sentinel (255) must encode resistance = 0 in 0x2AD2
+    server.updateTelemetry(35.0f, 90.0f, LevelMapping::INTERNAL_RESISTANCE_UNCALIBRATED, 350);
+    server.tick(1000);
+    server.getLastPacket(pkt);
+    EXPECT_EQ(pkt[6], 0x00);
+    EXPECT_EQ(pkt[7], 0x00);
+
+    server.end();
+}
+
+TEST(FTMSServerTest, ProviderIdAndStackPauseResume) {
+    EventBus bus;
+    bus.begin();
+
+    FTMSServer server(bus);
+    server.begin();
+
+    EXPECT_STREQ(server.getProviderId(), "ftms");
+    EXPECT_EQ(FTMSServer::kIndoorBikeAppearance, 0x0485);
+    EXPECT_FALSE(server.isPaused());
+
+    server.updateTelemetry(25.0f, 80.0f, 127, 200);
+    server.tick(500);
+    EXPECT_EQ(server.getNotifyCount(), 1u);
+
+    // Pause stack (e.g., during OTA) — tick must not emit notifications
+    server.onStackPaused();
+    EXPECT_TRUE(server.isPaused());
+    server.tick(1000);
+    server.tick(1500);
+    EXPECT_EQ(server.getNotifyCount(), 1u);
+
+    // Resume stack — next tick fires
+    server.onStackResumed();
+    EXPECT_FALSE(server.isPaused());
+    server.tick(2000);
+    EXPECT_EQ(server.getNotifyCount(), 2u);
+
+    server.end();
 }

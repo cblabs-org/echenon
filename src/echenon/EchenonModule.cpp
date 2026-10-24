@@ -107,8 +107,12 @@ void EchenonModule::tick(uint32_t currentMillis) {
         s_ftmsPhaseSeeded = true;
     }
     if (_ftmsServer) {
+        uint8_t ftmsInternalRes = _calibrationWizard.isPosDone()
+            ? LevelMapping::normalizedToInternal(
+                  LevelMapping::echelonContinuousToNormalized(continuousLevel))
+            : LevelMapping::INTERNAL_RESISTANCE_UNCALIBRATED;
         _ftmsServer->updateTelemetry(speedKph, _cadenceSensor.getRPM(),
-                                      getInternalLevel(),
+                                      ftmsInternalRes,
                                       static_cast<int16_t>(_powerEngine.getLastPower()));
     }
 #endif
