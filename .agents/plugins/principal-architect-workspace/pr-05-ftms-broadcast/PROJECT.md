@@ -42,9 +42,9 @@ work_orders:
   slug: wo3-module-wiring
   title: EchenonModule, LiveFeed & platformio.ini Integration (WITH_FTMS)
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 82d203e2dfd6abfc3260bea39e17f411d085ad8a
 - id: WO-05.4
   slug: wo4-hw-verification
   title: Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak
@@ -135,10 +135,15 @@ All telemetry and future v2 control targets derive deterministically from two me
 | WO ID | Slug | Title | Complexity | Status | Attempts | Commit SHA |
 |---|---|---|---|---|---|---|
 | `WO-05.1` | `wo1-ftms-metrics` | FTMS v1.0 Conformance Citation, Unified BikeMetrics & FTMSData Packet Encoder | `standard` | `PLANNED` | 0 | — |
-| `WO-05.2` | `wo2-ftms-server` | FTMSServer Read-Only BLE Service Provider (0x1826, 0x2ACC, 0x2AD2) | `standard` | `PLANNED` | 0 | — |
+| `WO-05.2` | `wo2-ftms-server` | FTMSServer Read-Only BLE Service Provider (0x1826, 0x2ACC, 0x2AD2) | `standard` | `COMPLETED` | 1 | `3aa1f7d` |
 | `WO-05.3` | `wo3-module-wiring` | EchenonModule, LiveFeed & platformio.ini Integration (WITH_FTMS) | `standard` | `PLANNED` | 0 | — |
 | `WO-05.4` | `wo4-hw-verification` | Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak | `interactive` | `PLANNED` | 0 | — |
 
 ## 4. Session Log
 
 - **2026-10-24:** Chief Architect drafted and locked `PR-05` Charter and 4-WO decomposition (`WO-05.1` through `WO-05.4`) incorporating the Unified First-Principles Metric & Conversion Architecture (`docs/power-physics-model.md` §8) and Lenovo Tab P12 target scope.
+- **2026-10-24 22:23:** `WO-05.1` COMPLETED (`add8d3a`). 142/142 native tests. Boundary expanded (+`.cpp` files).
+- **2026-10-24 22:30:** `WO-05.2` COMPLETED (`3aa1f7d`). 150/150 native tests. Dispatching `WO-05.3`.
+- **2026-10-24 T21:31Z:** PA created branch `pr-05-ftms-broadcast/wo3-module-wiring` off `5ffd704` and dispatched `pa-engineer` for WO-05.3 (Model: flash).
+- **2026-10-24 T21:40Z:** WO-05.3 COMPLETED (`82d203e`). 153/153 native tests, `ex3-waveshare-nano` compile OK (RAM 17.2%, Flash 25.0%), `ex3-waveshare-nano-diag` compile OK. PR branch `feat/pr-05-ftms-broadcast` fast-forwarded to `82d203e`.
+- **2026-10-24 T21:40Z:** WO-05.1–WO-05.3 all COMPLETED. Escalating WO-05.4 (interactive hardware verification) to Chief Architect / owner.
