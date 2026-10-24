@@ -4,7 +4,7 @@ wo_id: WO-05.4
 pr_id: PR-05
 title: Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak
 complexity: interactive
-status: IN_PROGRESS
+status: COMPLETED
 allowed_files:
 - docs/measurements/phase3/C08-20261024-ftms-verification.md
 - src/echenon/FTMSServer.h
@@ -20,16 +20,12 @@ max_attempts: 5
 max_structural_failures: 2
 spec_hash: 0bc01c5e104d5d0c50a820be5ad572793507bc750e351f7c781af89109f18e4d
 completion:
-  status: IN_PROGRESS
+  status: COMPLETED
   attempt_num: 1
-  receipt_id: rcpt_d020fae6a730
-  commit_sha: 50d04796df73000af6ee7f222d87627f0c143bb8
+  receipt_id: rcpt_31e6fb476dd9
+  commit_sha: aa2d1f57859dcb703e0ee8d1d8d64fe159b616bc
   files_modified:
   - docs/measurements/phase3/C08-20261024-ftms-verification.md
-  - src/echenon/EchenonModule.cpp
-  - src/echenon/FTMSServer.cpp
-  - src/echenon/FTMSServer.h
-  - test/test_native/test_ftms_server.cpp
   verification_summary: 'pio test -e native: ================ 155 test cases: 155
     succeeded in 00:00:01.168 ================'
   out_of_scope_findings: []
