@@ -7,6 +7,7 @@
 #include "echenon/PowerEngine.h"
 #include "echenon/CalibrationWizard.h"
 #include "echenon/RecalibrationUI.h"
+#include "echenon/RunawayDetector.h"
 #ifdef WITH_SIGNAL_LOGGER
 #include "echenon/SignalLogger.h"
 #endif
@@ -92,6 +93,9 @@ public:
     echenon::RecalibrationUI& recalibrationUI() { return _recalibrationUI; }
     const echenon::RecalibrationUI& recalibrationUI() const { return _recalibrationUI; }
 
+    echenon::RunawayDetector& runawayDetector() { return _runawayDetector; }
+    const echenon::RunawayDetector& runawayDetector() const { return _runawayDetector; }
+
 #ifndef UNIT_TEST
     echenon::LiveFeed& liveFeed() { return _liveFeed; }
     const echenon::LiveFeed& liveFeed() const { return _liveFeed; }
@@ -119,6 +123,7 @@ private:
     echenon::PowerEngine _powerEngine;
     echenon::CalibrationWizard _calibrationWizard;
     echenon::RecalibrationUI _recalibrationUI;
+    echenon::RunawayDetector _runawayDetector;
 
 #ifndef UNIT_TEST
     echenon::LiveFeed _liveFeed;

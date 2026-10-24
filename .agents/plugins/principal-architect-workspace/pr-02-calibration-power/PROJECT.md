@@ -49,9 +49,9 @@ work_orders:
   slug: wo5-rig-firmware
   title: CalibrationRig Firmware Module
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 2
+  commit_sha: 4db55f8
 - id: WO-02.6
   slug: wo6-rig-host
   title: Host Script + Preflight
