@@ -1,4 +1,5 @@
 #include "echenon/PowerEngine.h"
+#include "echenon/PowerTableDefault.h"
 #include <cmath>
 #include <cstring>
 #include <algorithm>
@@ -22,15 +23,12 @@ void PowerEngine::loadDefault() {
     std::strncpy(_table.id, "ex3-default", sizeof(_table.id) - 1);
     _table.id[sizeof(_table.id) - 1] = '\0';
 
-    // Physics heuristic: P ≈ k × level × RPM² (SPEC §6.3 Tier 1 placeholder)
-    // k = 0.0012 gives ~123 W at level 16 / 80 RPM (within ~100–200 W range)
-    constexpr float k = 0.0012f;
+    // Empirical table from 320-point calibration sweep (2026-10-24).
+    // 32 levels × 10 cadence steps (40–130 RPM), interpolated to 31 RPM bins.
+    // Replaces the former physics heuristic P ≈ k × level × RPM².
     for (int l = 0; l < POWER_TABLE_LEVELS; ++l) {
-        float level = static_cast<float>(l + 1); // 1 to 32
         for (int r = 0; r < POWER_TABLE_RPM_BINS; ++r) {
-            float rpm = static_cast<float>(r) * POWER_TABLE_RPM_STEP; // 0, 5, ..., 150
-            float p = k * level * rpm * rpm;
-            _table.watts[l][r] = static_cast<int16_t>(std::round(p));
+            _table.watts[l][r] = defaults::EX3_DEFAULT_POWER_TABLE[l][r];
         }
     }
 }

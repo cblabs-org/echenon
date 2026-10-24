@@ -904,7 +904,7 @@ One active-low pulse per pedal revolution. Cadence comes from the inter-pulse
 interval.
 
 - GPIO 5 (D2): `INPUT` with no internal pull, hardware interrupt on `FALLING`
-  (or the ADC software-threshold event path proven in PR-01; PR-02 chooses)
+  (chosen in PR-02 `CadenceSensor` over the ADC software-threshold path)
 - Software debounce lockout: **25 ms**
 - RPM: $\text{RPM} = 60{,}000{,}000 \div \Delta t_{\mu s}$
 - Timeout: 3 s with no pulse → cadence = 0
@@ -930,10 +930,12 @@ the console's working range.
   (a gap crossing of ~5°) and two non-working plateaus. The console works on
   one ramp from **165 counts (level 1) to 1327 counts (level 32)**, about 151°
   of shaft travel, with hysteresis < 15 counts.
-- **v1 level model (DR-1 §2.5/§2.11):** the wiper is linear in level over the
-  working range, `wiper = 39.1 × level + 97` (ADC counts at the GPIO through
-  the 22 kΩ tap, R² = 0.9989, B03). v1 needs no cam-angle tracking. §5.3 maps
-  the wiper to the internal scale.
+- **v1 level model (DR-1 §2.5/§2.11, refined in PR-02 Phase 3):** the wiper is
+  linear in level over the working range. Phase 0 fit: `wiper = 39.1 × level + 97`
+  over 165–1327 counts (R² = 0.9989, B03). Phase 3 automated sweep refinement
+  (C03-20261024): `wiper = 37.26 × level + 120.0` over 157–1313 counts
+  (R² = 0.9998), used as the `LevelMapping` default. v1 needs no cam-angle
+  tracking. §5.3 maps the wiper to the internal scale.
 - **Display path** (v1 and v2): EMA at 20 Hz with α = 0.15
   ($\text{filtered} = 0.15 \times \text{sample} + 0.85 \times \text{filtered}$),
   used for the display level, the internal scale and runaway detection.
@@ -958,8 +960,10 @@ runaway detection); it never acts on the motor in v1.
 **Stock-runaway detection (v1, PR-02; known limitation).** A fast knob spin
 past level 32 can leave the stock console's motor turning continuously
 (A09-20261012 #3). A passive board **cannot prevent** this. v1 detects it: when
-the display-path wiper stays **outside 165–1327 counts for more than
-`[PR-02: N]` s**, Echenon publishes a runaway event on the EventBus and raises
+the display-path wiper stays **outside the working range (165–1327 counts, or
+157–1313 counts with 20-count tolerance on the Phase 3 fit) for more than
+10 s** (`runaway_timeout_s` default = 10 s), Echenon publishes a
+`runaway.detected` event on the EventBus and raises
 a portal alert (PR-14 persists and surfaces it). The motor-sense taps showing
 continuous drive corroborate the event. Prevention is a v2 item (DR-2 §2.4).
 
@@ -970,8 +974,8 @@ Resistance is represented internally by `i ∈ 0…255` (`uint8_t`). Every
 external scale is a mapping from `i`.
 
 **v1: wiper → internal scale.** The continuous level is
-$\ell = \text{clamp}\big((w - 97) / 39.1,\ 1,\ 32\big)$ for display-path wiper
-counts $w$, and $i = \text{round}\big((\ell - 1) \times 255 / 31\big)$. The B03
+$\ell = \text{clamp}\big((w - 120.0) / 37.26,\ 1,\ 32\big)$ for display-path wiper
+counts $w$ (Phase 3 C03 refinement of the B03 fit $(w - 97) / 39.1$), and $i = \text{round}\big((\ell - 1) \times 255 / 31\big)$. The linear
 fit is the default; PR-02's passive calibration (§6.3) replaces it with this
 unit's measured 32-entry wiper table, interpolated linearly, which absorbs the
 fit's error near level 1 (+27 counts, A04-20261012).
@@ -981,7 +985,7 @@ fit's error near level 1 (+27 counts, A04-20261012).
 | Consumer | Scale | Mapping |
 |---|---|---|
 | **Echelon** (console, app, portal) | Level `L ∈ 1…32` | $L = \text{round}(i \times 31 / 255) + 1$ and $i = \text{round}\big((L - 1) \times 255 / 31\big)$; exact endpoints 0 ↔ 1 and 255 ↔ 32 |
-| **Peloton** | Resistance `R ∈ 0…100` | **By power equivalence:** $R$ is the Peloton resistance whose power on the published Peloton power curve equals Echenon's power for `i` at the same cadence (§6.2 table), clamped to 0…100. Evaluated at the live cadence; at zero cadence a reference cadence `[PR-02]` is used. Implemented in PR-02, or later if the source of the Peloton curve needs review (provenance, licence, accuracy) |
+| **Peloton** | Resistance `R ∈ 0…100` | **By power equivalence:** $R$ is the Peloton resistance whose power on the published Peloton power curve equals Echenon's power for `i` at the same cadence (§6.2 table), clamped to 0…100. Evaluated at the live cadence; at zero cadence a reference cadence `[PR-05]` is used. **Deferred to PR-05** (owner decision 2026-10-20) alongside FTMS telemetry |
 | **FTMS** (Indoor Bike Data) | Resistance-level field | Carries `L` (1…32); encoding in §7.5. v1 reports only and accepts **no targets** (PR-05) |
 | **Garmin, Zwift, Strava** | Power, cadence, HR | Power (§6), cadence (§5.1) and HR (§8) over BLE (FTMS Indoor Bike Data, HR service) and in the TCX file (§9.4); no resistance mapping is needed |
 | **Internal** (power table, logs) | `i ∈ 0…255` | Identity |
@@ -1007,15 +1011,18 @@ The red resistance knob is an incremental quadrature encoder on a separate
   `board.h` supplies a `BoardEncoder` descriptor `{ id, pinA, pinB,
   stepsPerDetent, reversed, accel }` with pins 8 and 9, `stepsPerDetent = 4`
   (confirmed in B04) and `reversed = false`. There are **4 detents per level
-  (16 PCNT steps per level)** (B03, confirmed by A08-20261012), giving 512
-  encoder steps over the full range (32 levels). The console's own response
-  is less regular going down (6–10 detents per level observed, A08-20261012),
+  (16 PCNT steps per level)** on manual knob turns (B03, confirmed by
+  A08-20261012), giving 512 encoder steps over the full range (32 levels); in
+  synthesized quadrature (`CalibrationRig`, C01-20261024), **8 quadrature edges
+  (2 full Gray-code cycles) = 1 console level** with 100% reliability at 150 ms
+  per edge. The console's own response
+  is less regular going down on manual turns (6–10 detents per level observed, A08-20261012),
   so the level always comes from the wiper (§5.3), never from counting clicks.
   `EncoderModule` publishes `EncoderEvent` payloads on the EventBus topic
   `encoder.rotate`.
 - **Encoder VCC** is monitored on GPIO 10 in v1 (steady 3.3 V, 4095 counts).
-- PR-02 verifies that the PCNT pin configuration enables no internal pulls on
-  GPIO 8 and 9; PR-07 re-verifies on the v2 board.
+- PR-02 verified that the PCNT pin configuration enables no internal pulls on
+  GPIO 8 and 9 (`EncoderModule` leaves internal pulls disabled); PR-07 re-verifies on the v2 board.
 
 **In v1** (and in v2 Intercept Mode before PR-10 adds encoder emulation) the
 encoder signals pass through to the console, which drives the motor. Echenon
@@ -1254,7 +1261,12 @@ coarsest to most precise for this unit.
 
 #### Tier 1 — Default Table
 
-The table compiled into the firmware. A built-in table ships only if it is
+The table compiled into the firmware (`ex3-default` in `src/echenon/PowerTableDefault.h`
+and `tools/calibration-rig/ex3-default-power-table.csv`). Populated in PR-02 from
+Echenon's own 320-point empirical automated calibration sweep (32 levels × 10
+cadence steps, 40–130 RPM in 10 RPM increments) captured on 2026-10-24
+(`docs/measurements/phase3/evidence/sweep_20261024.csv`), interpolated and
+extrapolated onto the 32 × 31 firmware grid (0–150 RPM in 5 RPM steps). A built-in table ships only if it is
 derived from Echenon's own measurements or from a source whose licence permits
 redistribution. Tables compiled from third-party datasets (including community
 Echelon tables) may carry database rights in the UK and EU, so they are not
@@ -1311,8 +1323,13 @@ The **recalibration UI** (PR-02) is the primary acquisition path:
 3. The firmware correlates the entry with its live readings over the same
    window (display-path wiper → `i`, cadence) and stores the point.
 4. Repeating this over a grid of level × cadence points builds the table; each
-   new point updates the table around it. The grid, the averaging window, the
-   update rule and the maximum number of stored points are `[PR-02]`.
+   new point updates the table around it. The grid is **32 levels (1–32) × 31
+   cadence bins (0–150 RPM in 5 RPM steps)**, the correlation averaging window
+   is **5000 ms (5 s)** (`RecalibrationUI::AVERAGING_WINDOW_MS`), the update rule
+   is **nearest-bin cell replacement** (`applyToPowerTable` updates
+   `watts[level - 1][rpmBin]` and replaces any prior entry at the same level and
+   5 RPM bin), and the maximum number of stored points is **100**
+   (`RecalibrationUI::MAX_POINTS = 100`).
 
 A level entry that disagrees with the wiper-derived level is flagged, and can
 also be used to refine the wiper table (§6.3 passive calibration). The rider can
@@ -1333,8 +1350,8 @@ keys are frozen at DR-1.
 | `cal_matrix_id` | string | `""` | Selected built-in matrix (tier 2) |
 | `cal_matrix_custom` | blob | — | Custom CSV matrix uploaded via the portal (tier 2) |
 | `cal_power_table` | blob (32 × N watts) | copy of the active table | Working table updated by recalibration (tier 3) |
-| `cal_recal_points` | array of {level, watts, rpm, i, time} | empty | Recalibration entries, bounded to `[PR-02]` points |
-| `runaway_timeout_s` | uint16 | `[PR-02: N]` | Stock-runaway detection time outside 165–1327 counts (§5.2) |
+| `cal_recal_points` | array of {level, watts, rpm, i, time} | empty | Recalibration entries, bounded to `100` points (`RecalibrationUI::MAX_POINTS`) |
+| `runaway_timeout_s` | uint16 | `10` | Stock-runaway detection time (seconds) outside 165–1327 counts (§5.2) |
 | `cal_level_table_sa` | array[32] | empty | **v2:** standalone-referenced level table (PR-07) |
 | `cam_theta_min` | float | `[DR-2]` | **v2:** cam-min angle from the motor-driven sweep (PR-07) |
 | `cam_theta_max` | float | `[DR-2]` | **v2:** cam-max angle from the motor-driven sweep (PR-07) |
@@ -2842,8 +2859,8 @@ fitted.
 | 1.5 | Power-data acquisition WO: Echelon app power entered through the recalibration UI over a level × cadence grid. | Grid recorded as PR-02 evidence; the recalibrated table is active. |
 | 1.6 | Compare computed power with the Echelon app's displayed power. | Within ±15 %. |
 | 1.7 | Reboot. | Calibration and recalibrated table persist. |
-| 1.8 | Hold the wiper outside 165–1327 counts for longer than `[PR-02: N]` s (bench simulation; do not provoke a real runaway). | Runaway event on the EventBus and a portal alert. |
-| 1.9 | Peloton mapping (if implemented in PR-02). | 0…100 value matches the published Peloton curve at equal power and cadence. |
+| 1.8 | Hold the wiper outside 165–1327 counts for longer than `10` s (`runaway_timeout_s` default; bench simulation; do not provoke a real runaway). | Runaway event on the EventBus and a portal alert. |
+| 1.9 | Peloton mapping (deferred to PR-05 per owner decision 2026-10-20). | 0…100 value matches the published Peloton curve at equal power and cadence (validated in PR-05). |
 
 ### 13.5 PR-03 — Phase 2: HR Relay (UC1 HR path)
 

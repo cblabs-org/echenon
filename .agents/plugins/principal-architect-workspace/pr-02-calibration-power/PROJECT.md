@@ -56,30 +56,30 @@ work_orders:
   slug: wo6-rig-host
   title: Host Script + Preflight
   complexity: interactive
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 3df4df9
 - id: WO-02.7
   slug: wo7-rig-sweep
   title: Rig Sweep (90-min)
   complexity: interactive
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 4ae2a9f
 - id: WO-02.8
   slug: wo8-runaway
   title: Runaway Detection
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 718f3b5
 - id: WO-02.9
   slug: wo9-doc-sync
   title: Doc Sync + Integration
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 9477ab9
 ---
 
 ## 2. Scope
@@ -263,15 +263,15 @@ Proposed 2026-10-18; **approved by owner 2026-10-20.**
 
 | WO | Title | Branch (base) | Complexity | Charter §§ | Tests (§13.4) | Status |
 |---|---|---|---|---|---|---|
-| **WO-02.1** | CadenceSensor + ResistanceSensor + Level Mapping | `calibration-power/wo1-sensors` (`main`) | `standard` | §1, §2, §3 | 1.1, 1.3, 1.4, (native) | ⬜ |
-| **WO-02.2** | PowerEngine + Default Table Structure | `calibration-power/wo2-power-engine` (wo1) | `standard` | §4 | 1.6 logic (native) | ⬜ |
-| **WO-02.3** | CalibrationWizard + RecalibrationUI | `calibration-power/wo3-calibration-ui` (wo2) | `standard` | §5, §6 | 1.2, 1.5 (portal) | ⬜ |
-| **WO-02.4** | Live WebSocket Feed | `calibration-power/wo4-ws-feed` (wo3) | `standard` | §7 | — (visual) | ⬜ |
-| **WO-02.5** | CalibrationRig Firmware Module | `calibration-power/wo5-rig-firmware` (wo4) | `standard` | §8 (firmware) | (native: quadrature gen) | ⬜ |
-| **WO-02.6** | Host Script + Preflight | `calibration-power/wo6-rig-host` (wo5) | `interactive` | §8 (host + preflight) | — (bench) | ⬜ |
-| **WO-02.7** | Rig Sweep (90-min) | `calibration-power/wo7-rig-sweep` (wo6) | `interactive` | §8 (sweep) | 1.1, 1.3, 1.4, 1.6 | ⬜ |
-| **WO-02.8** | Runaway Detection | `calibration-power/wo8-runaway` (wo7) | `standard` | §9 | 1.8 (native + bench sim) | ⬜ |
-| **WO-02.9** | Doc Sync + Integration | `calibration-power/wo9-doc-sync` (wo7 or wo8) | `standard` | — | 1.7, 1.9 | ⬜ |
+| **WO-02.1** | CadenceSensor + ResistanceSensor + Level Mapping | `calibration-power/wo1-sensors` (`main`) | `standard` | §1, §2, §3 | 1.1, 1.3, 1.4, (native) | ✅ (`6542790`) |
+| **WO-02.2** | PowerEngine + Default Table Structure | `calibration-power/wo2-power-engine` (wo1) | `standard` | §4 | 1.6 logic (native) | ✅ (`64c8b30`) |
+| **WO-02.3** | CalibrationWizard + RecalibrationUI | `calibration-power/wo3-calibration-ui` (wo2) | `standard` | §5, §6 | 1.2, 1.5 (portal) | ✅ (`b453a57`) |
+| **WO-02.4** | Live WebSocket Feed | `calibration-power/wo4-ws-feed` (wo3) | `standard` | §7 | — (visual) | ✅ (`9209a09`) |
+| **WO-02.5** | CalibrationRig Firmware Module | `calibration-power/wo5-rig-firmware` (wo4) | `standard` | §8 (firmware) | (native: quadrature gen) | ✅ (`4db55f8`) |
+| **WO-02.6** | Host Script + Preflight | `calibration-power/wo6-rig-host` (wo5) | `interactive` | §8 (host + preflight) | — (bench) | ✅ (`3df4df9`) |
+| **WO-02.7** | Rig Sweep (90-min) | `calibration-power/wo7-rig-sweep` (wo6) | `interactive` | §8 (sweep) | 1.1, 1.3, 1.4, 1.6 | ✅ (`4ae2a9f`) |
+| **WO-02.8** | Runaway Detection | `calibration-power/wo8-runaway` (wo7) | `standard` | §9 | 1.8 (native + bench sim) | ✅ (`718f3b5`) |
+| **WO-02.9** | Doc Sync + Integration | `calibration-power/wo9-doc-sync` (wo7 + wo8) | `standard` | — | 1.7, 1.9 | ✅ |
 
 ### WO-02.1 — CadenceSensor + ResistanceSensor + Level Mapping
 
@@ -705,5 +705,17 @@ evidence index, rebase if PR-03 merged first, and run the persistence test.
      additive nature of PR-02's changes (new members, new tick calls).
 - **Awaiting:** PA to begin execution.
 
+### 2026-10-20 to 2026-10-24: Execution & Completion (WO-02.1 – WO-02.9)
+
+- **WO-02.1 (`6542790`):** Implemented `CadenceSensor` (hardware `FALLING` ISR on GPIO 5, 25 ms debounce, 3 s timeout), `ResistanceSensor` (20 Hz EMA α = 0.15), and `LevelMapping` (`0..255` internal scale and Echelon `1..32` round-trip). Verified `EncoderModule` PCNT uses no internal pull-ups on GPIO 8/9.
+- **WO-02.2 (`64c8b30`):** Implemented `PowerEngine` and `PowerTable` (32 levels × 31 cadence bins, 0–150 RPM in 5 RPM steps, bilinear interpolation, CSV parser, NVS persistence).
+- **WO-02.3 (`b453a57`):** Implemented `CalibrationWizard` (passive 32-level wiper table recording) and `RecalibrationUI` (Tier 3 individual point corrections, `MAX_POINTS = 100`, `AVERAGING_WINDOW_MS = 5000`, nearest-bin cell replacement) plus portal endpoints and UI assets.
+- **WO-02.4 (`9209a09`):** Added `LiveFeed` WebSocket broadcaster (`/ws/echenon/live` at 4 Hz) and dashboard live metrics / strip chart.
+- **WO-02.5 (`4db55f8`):** Implemented `CalibrationRig` and `QuadratureGenerator` behind `WITH_CALIBRATION_RIG` (`ex3-waveshare-nano-rig` environment).
+- **WO-02.6 (`3df4df9`):** Completed bench characterization (`docs/measurements/phase3/C01`–`C04`): confirmed 8 quadrature edges = 1 console level (2 full Gray-code cycles), HTTP rig control endpoints (`/api/echenon/rig/status`, `/api/echenon/rig/command`), NPN cadence polarity fix, and Phase 3 linear wiper fit `pot = 37.26 × level + 120.0` (157–1313 counts, R² = 0.9998).
+- **WO-02.7 (`4ae2a9f`):** Executed full 320-point automated calibration sweep (`docs/measurements/phase3/evidence/sweep_20261024.csv`, 32 levels × 10 cadences 40–130 RPM) in 74 minutes with zero HTTP/ADB errors; updated `LevelMapping` constants to Phase 3 fit.
+- **WO-02.8 (`718f3b5`):** Implemented `RunawayDetector` (10 s default timeout outside working range, `runaway.detected` EventBus event, NVS `runaway_timeout_s`, dashboard alert banner, 11 unit tests).
+- **WO-02.9:** Merged `calibration-power/wo8-runaway` into `calibration-power/wo9-doc-sync`, generated the empirical 32 × 31 default power table (`src/echenon/PowerTableDefault.h`, `tools/calibration-rig/ex3-default-power-table.csv`) from `sweep_20261024.csv` (smoothing 3 single-point ADB display-lag glitches), updated `PowerEngine::loadDefault()`, resolved all `[PR-02]` placeholders in `SPEC.md`, indexed Phase 3 evidence (`C01`–`C07`), and verified 109/109 native unit tests pass.
+
 ## Status
-**Plan Status:** APPROVED (owner 2026-10-20). Execution may begin.
+**Plan Status:** COMPLETED (all 9 WOs implemented and verified, 2026-10-24).

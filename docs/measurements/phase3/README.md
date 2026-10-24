@@ -22,8 +22,8 @@ response via ADC (pot wiper) and ADB (Echelon Fit app screen scraping).
 C<test>-20261024-<short-description>.<ext>
 ```
 
-- `C<test>` denotes the characterization test number (`C01`…`C04`)
-- `<ext>` is `.csv` for data, `.py` for test scripts, `.md` for reports
+- `C<test>` denotes the characterization test number (`C01`…`C07`)
+- `<ext>` is `.csv` / `.xlsx` for data, `.py` for test scripts, `.md` for reports
 
 ## Register
 
@@ -31,5 +31,7 @@ C<test>-20261024-<short-description>.<ext>
 |---|---|---|---|---|
 | C01 | Edges per level | Verify how many quadrature edges = 1 console level change | `C01-20261024-edges-per-level-report.md`, `evidence/chartest1_edges_per_level.csv` | **8 edges = 1 level** (100% match across 4 levels) |
 | C02 | Step interval | Find reliable inter-edge timing for synthesized quadrature | (inline in C01 report) | **150ms reliable** (100ms, 150ms, 200ms all work) |
-| C03 | Full profile sweep | Complete 1→32→1 automated sweep with ADB verification | `C03-20261024-full-sweep-report.md`, `evidence/chartest3_full_sweep.csv` | **100% ADB match** both directions, 63 data points |
-| C04 | Settle time + pulse width | Bang-bang settle profiling and minimum pulse width | `C04-20261024-settle-pulse-report.md`, `evidence/chartest4_settle_time.csv`, `evidence/char_test4_settle_time.py`, `evidence/char_test4c_pulse_width.py` | **2.8s max settle** (level 15), **25–50ms min pulse width**, 75ms anomaly (drops 1 level, 3/3 reproducible) |
+| C03 | Full profile sweep | Complete 1→32→1 automated sweep with ADB verification | `C03-20261024-full-sweep-report.md`, `evidence/chartest3_full_sweep.csv` | **100% ADB match** both directions, 63 data points (`pot_adc = 37.26 × level + 120.0`, R² = 0.9998) |
+| C04 | Settle time + pulse width | Bang-bang settle profiling and minimum pulse width | `C04-20261024-settle-pulse-report.md`, `evidence/chartest4_settle_time.csv`, `evidence/char_test4_settle_time.py`, `evidence/char_test4b_burst.py`, `evidence/char_test4c_pulse_width.py` | **2.8s max settle** (level 15), **25–50ms min pulse width**, 75ms anomaly (drops 1 level, 3/3 reproducible) |
+| C06 | 320-point power sweep | Full 32 levels × 10 cadence steps (40–130 RPM) automated calibration sweep | `evidence/sweep_20261024.csv`, `tools/calibration-rig/ex3-default-power-table.csv`, `src/echenon/PowerTableDefault.h` | **320/320 points captured** (3 ADB screen-lag glitches smoothed); populates `ex3-default` firmware power table |
+| C07 | Power regression analysis | Statistical / physics regression modelling of the 320-point empirical sweep | `C07-20261024-power-regression-analysis.md`, `evidence/power_regression_analysis.xlsx` | Empirical lookup table + regression model evaluation across the 32 × 10 grid |

@@ -247,25 +247,27 @@ TEST(PowerEngineTest, DefaultTableSanity) {
     EXPECT_EQ(table.tier, PowerTableTier::DEFAULT);
     EXPECT_STREQ(table.id, "ex3-default");
 
-    // Level 16 / 80 RPM sanity check (~100–200 W range, specifically ~123 W)
+    // Level 16 / 80 RPM sanity check (empirical sweep: 80 W)
     float p16_80 = engine.computePower(16.0f, 80.0f);
     EXPECT_GE(p16_80, 50.0f);
     EXPECT_LE(p16_80, 200.0f);
-    EXPECT_NEAR(p16_80, 123.0f, 5.0f);
+    EXPECT_NEAR(p16_80, 80.0f, 5.0f);
 
-    // Monotonicity across levels at 80 RPM
+    // Monotonicity across levels at 80 RPM (non-decreasing; low levels may be
+    // equal within the Echelon app's display resolution)
     float prevPower = 0.0f;
     for (int lvl = 1; lvl <= 32; ++lvl) {
         float p = engine.computePower(static_cast<float>(lvl), 80.0f);
-        EXPECT_GT(p, prevPower) << "Power must increase with level at 80 RPM (level " << lvl << ")";
+        EXPECT_GE(p, prevPower) << "Power must not decrease with level at 80 RPM (level " << lvl << ")";
         prevPower = p;
     }
 
-    // Monotonicity across cadence at level 16
+    // Monotonicity across cadence at level 16 (non-decreasing; extrapolated
+    // low-RPM bins may be equal within rounding)
     prevPower = 0.0f;
     for (float rpm = 20.0f; rpm <= 150.0f; rpm += 10.0f) {
         float p = engine.computePower(16.0f, rpm);
-        EXPECT_GT(p, prevPower) << "Power must increase with cadence at level 16 (rpm " << rpm << ")";
+        EXPECT_GE(p, prevPower) << "Power must not decrease with cadence at level 16 (rpm " << rpm << ")";
         prevPower = p;
     }
 }
