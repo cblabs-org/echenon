@@ -285,9 +285,9 @@ Proposed 2026-10-18; **approved by owner 2026-10-20.**
 | **WO-02.4** | Live WebSocket Feed | `calibration-power/wo4-ws-feed` (wo3) | `standard` | §7 | — (visual) | ✅ (`9209a09`) |
 | **WO-02.5** | CalibrationRig Firmware Module | `calibration-power/wo5-rig-firmware` (wo4) | `standard` | §8 (firmware) | (native: quadrature gen) | ✅ (`4db55f8`) |
 | **WO-02.6** | Host Script + Preflight | `calibration-power/wo6-rig-host` (wo5) | `interactive` | §8 (host + preflight) | — (bench) | ✅ (`3df4df9`) |
-| **WO-02.7** | Rig Sweep (90-min) | `calibration-power/wo7-rig-sweep` (wo6) | `interactive` | §8 (sweep) | 1.1, 1.3, 1.4, 1.6 | ✅ (`4ae2a9f`) |
-| **WO-02.8** | Runaway Detection | `calibration-power/wo8-runaway` (wo7) | `standard` | §9 | 1.8 (native + bench sim) | ✅ (`718f3b5`) |
-| **WO-02.9** | Doc Sync + Integration | `calibration-power/wo9-doc-sync` (wo7 + wo8) | `standard` | — | 1.7, 1.9 | ✅ |
+| **WO-02.7** | Rig Sweep (90-min) | `calibration-power/wo7-rig-sweep` (wo6) | `interactive` | §8 (sweep) | 1.1, 1.3, 1.4, 1.6 | DONE (`4ae2a9f`) |
+| **WO-02.8** | Runaway Detection | `calibration-power/wo8-runaway` (wo7) | `standard` | §9 | 1.8 (native + bench sim) | DONE (`718f3b5`) |
+| **WO-02.9** | Doc Sync + Integration | `calibration-power/wo9-doc-sync` (wo7 + wo8) | `standard` | — | 1.7, 1.9 | DONE (`711ac78`) |
 
 ### WO-02.1 — CadenceSensor + ResistanceSensor + Level Mapping
 
