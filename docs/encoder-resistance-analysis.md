@@ -464,3 +464,80 @@ For a full MITM encoder path:
 | Peak displacement rate | Level 19 (θ = 90°) | Mid-range feels steepest |
 | Displacement ratio (max/min) | 22× | Levels 1–5 feel "dead" |
 | Resistance curve | Sinusoidal (not linear) | Rider feels uneven steps |
+
+---
+
+## 10. Phase 3 Addendum — Automated Rig Characterization (2026-10-24)
+
+> [!NOTE]
+> Phase 3 measurements use the ESP32 CalibrationRig firmware to synthesize
+> quadrature encoder signals and verify console response via ADB screen
+> scraping of the Echelon Fit app. Full reports in
+> [`measurements/phase3/`](measurements/phase3/README.md).
+
+### 10.1 Updated Calibration Formula
+
+The Phase 0 linear fit (B03: `wiper = 39.1 × level + 97.0`, R² = 0.9989)
+has been superseded by an automated 63-point sweep (C03):
+
+```
+wiper_adc = 37.26 × level + 120.0       (R² = 0.9998)
+```
+
+| Parameter | B03 (Phase 0) | C03 (Phase 3) | Change |
+|---|---|---|---|
+| Slope | 39.1 | 37.26 | −1.84 ADC/level |
+| Intercept | 97.0 | 120.0 | +23.0 ADC |
+| R² | 0.9989 | 0.9998 | +0.0009 |
+| Hysteresis (max) | < 15 ADC | **< 5 ADC** | 3× improvement |
+
+The B03 formula had a systematic offset: under-predicting by 34 ADC at
+level 1 and over-predicting by 15 ADC at level 32. The C03 formula should
+be used for all firmware operations.
+
+### 10.2 Console Encoder Decoder Characterization
+
+The console's encoder decoder was directly characterized for the first time:
+
+| Parameter | Value | Method |
+|---|---|---|
+| **Edges per level** | 8 quadrature edges | C01: GPIO synthesis + ADB verification |
+| **Counting mode** | 2× (both edges of one channel) | Reconciled with PCNT 4× = 16 steps |
+| **Minimum pulse width** | 25–50 ms | C04c: validated sweep with HOME between trials |
+| **Reliable sustained burst** | ≥ 50 ms per edge | 72 edges, 100% registration |
+| **75 ms anomaly** | Drops exactly 8 edges (1 level) | 3/3 reproducible — console aliasing bug |
+
+This resolves the ambiguity from Phase 0: the "4 detents per level" (A08)
+maps to 8 console decoder edges (2 edges per detent) and 16 PCNT steps
+(4 steps per detent in 4× mode).
+
+The 75 ms anomaly is noteworthy: slower edges are *less* reliable than
+faster ones at sustained burst, suggesting the console's polling timer
+aliases at this specific interval.
+
+### 10.3 Settle Time Profile
+
+The bang-bang motor controller's settle time varies with resistance level:
+
+| Target Level | Settle Time | Behaviour |
+|---|---|---|
+| 5 (low) | 867 ms | Clean, no overshoot |
+| 15 (mid — steepest cam zone) | 2,806 ms | Overshoot + correct (90 ADC undershoot) |
+| 25 (high) | 1,561 ms | Moderate, past steepest zone |
+
+Level 15 is worst because the eccentric cam displacement rate peaks near
+level 19 (θ ≈ 90°). The motor builds maximum momentum traversing this
+steepest zone, causing the largest overshoot.
+
+### 10.4 Updated Summary Table
+
+| Finding | Phase 0 Value | Phase 3 Value | Notes |
+|---|---|---|---|
+| Pot-to-level slope | 39.1 ADC/level | **37.26** ADC/level | C03, 63 points |
+| Pot-to-level intercept | 97.0 ADC | **120.0** ADC | C03 |
+| Pot linearity R² | 0.9989 | **0.9998** | Automated > manual |
+| Hysteresis | < 15 ADC | **< 5 ADC** | Controlled settle time |
+| Console edges/level | (inferred: 4 detents) | **8 edges** | C01, direct measurement |
+| Console min pulse width | (not measured) | **25–50 ms** | C04c, 75 ms anomaly at sustained burst |
+| Max settle time | (qualitative: "2–3s") | **2,806 ms** | C04a, level 15 |
+| Motor overshoot (mid/high) | 98% | Confirmed | C03 DOWN sweep ⚠ |

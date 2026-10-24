@@ -216,6 +216,62 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
 #ifdef WITH_CALIBRATION_RIG
     server.on("/api/echenon/rig/status", HTTP_GET, [this](PsychicRequest* request, PsychicResponse* response) {
         (void)request;
+        // JSON diagnostic status with GPIO readback
+        JsonDocument doc;
+
+        // State machine
+        const char* stateStr = "IDLE";
+        switch (_calibrationRig.getState()) {
+            case echenon::CalibrationRig::State::IDLE:    stateStr = "IDLE"; break;
+            case echenon::CalibrationRig::State::SEEKING: stateStr = "SEEKING"; break;
+            case echenon::CalibrationRig::State::SETTLED: stateStr = "SETTLED"; break;
+            case echenon::CalibrationRig::State::ERROR:   stateStr = "ERROR"; break;
+        }
+        doc["state"] = stateStr;
+        doc["level"] = _calibrationRig.getCurrentLevel();
+        doc["target"] = _calibrationRig.getTargetLevel();
+        doc["cadence"] = _calibrationRig.getCadenceRPM();
+        doc["steps_remaining"] = _calibrationRig.getStepsRemaining();
+        doc["settle_timeout"] = _calibrationRig.didSettleTimeout();
+
+        // Pot ADC (filtered via ResistanceSensor)
+        uint16_t potFilt = _resistanceSensor.getFilteredWiper();
+        doc["pot"] = potFilt;
+        doc["derived_level"] = LevelMapping::wiperToEchelon(potFilt);
+
+        // GPIO readback of OUTPUT pins
+        JsonObject gpio = doc["gpio"].to<JsonObject>();
+#ifdef WITH_CALIBRATION_RIG
+        gpio["enc_a_pin"] = PIN_RIG_ENC_A;
+        gpio["enc_a_val"] = digitalRead(PIN_RIG_ENC_A);
+        gpio["enc_b_pin"] = PIN_RIG_ENC_B;
+        gpio["enc_b_val"] = digitalRead(PIN_RIG_ENC_B);
+        gpio["cad_pin"] = PIN_RIG_CADENCE;
+        gpio["cad_val"] = digitalRead(PIN_RIG_CADENCE);
+#endif
+
+        // Passive ADC sensors
+        JsonObject adc = doc["adc"].to<JsonObject>();
+        adc["pot_raw"] = analogRead(PIN_POT_WIPER);
+        adc["cad_sense"] = analogRead(PIN_CADENCE);
+        adc["enc_vcc"] = analogRead(PIN_KNOB_ENC_VCC);
+        adc["enc_a_sense"] = analogRead(PIN_KNOB_ENC_A);
+        adc["enc_b_sense"] = analogRead(PIN_KNOB_ENC_B);
+
+        String res;
+        serializeJson(doc, res);
+        return response->send(200, "application/json", res.c_str());
+    });
+
+    // HTTP command endpoint — allows sending rig commands over WiFi when serial is dead
+    server.on("/api/echenon/rig/command", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) {
+        String body = request->body();
+        body.trim();
+        if (body.isEmpty()) {
+            return response->send(400, "text/plain", "ERROR empty command");
+        }
+        _calibrationRig.handleCommand(body);
+        // Return current status as JSON response
         String status = _calibrationRig.handleStatus();
         return response->send(200, "text/plain", status.c_str());
     });

@@ -13,6 +13,8 @@ CalibrationRig::CalibrationRig()
 
 void CalibrationRig::begin(int8_t encA, int8_t encB, int8_t cadencePin) {
     _cadencePin = cadencePin;
+    _encPinA = encA;
+    _encPinB = encB;
     _encoder.begin(encA, encB);
 #ifndef UNIT_TEST
     if (_cadencePin >= 0) {
@@ -30,6 +32,8 @@ void CalibrationRig::begin(int8_t encA, int8_t encB, int8_t cadencePin) {
     _lastCadenceToggle = 0;
     _lastStepMs = 0;
     _settling = false;
+    _settleTimedOut = false;
+    _settlePhaseStartMs = 0;
     _serialBuffer = "";
 }
 
@@ -59,29 +63,37 @@ void CalibrationRig::handleSet(uint8_t targetLevel, uint16_t cadenceRPM) {
 #endif
 
     if (_targetLevel > _currentLevel) {
-        _stepsRemaining = (_targetLevel - _currentLevel) * 16;
-        _stepDirection = QuadratureGenerator::Direction::UP;
+        _stepsRemaining = (_targetLevel - _currentLevel) * STEPS_PER_LEVEL;
+        _stepDirection = QuadratureGenerator::Direction::UP;    // UP = increase (bench-verified: pot rises with UP steps)
         _state = State::SEEKING;
         _settling = false;
+        _settleTimedOut = false;
+        _settlePhaseStartMs = 0;
     } else if (_targetLevel < _currentLevel) {
-        _stepsRemaining = (_currentLevel - _targetLevel) * 16;
-        _stepDirection = QuadratureGenerator::Direction::DOWN;
+        _stepsRemaining = (_currentLevel - _targetLevel) * STEPS_PER_LEVEL;
+        _stepDirection = QuadratureGenerator::Direction::DOWN;  // DOWN = decrease (bench-verified: pot falls with DOWN steps)
         _state = State::SEEKING;
         _settling = false;
+        _settleTimedOut = false;
+        _settlePhaseStartMs = 0;
     } else {
         _stepsRemaining = 0;
         _state = State::SEEKING;
         _settling = false;
+        _settleTimedOut = false;
+        _settlePhaseStartMs = 0;
     }
 }
 
 void CalibrationRig::handleHome() {
     _targetLevel = 1;
-    // 31 levels * 16 steps = 496 reverse steps
-    _stepsRemaining = 31 * 16;
-    _stepDirection = QuadratureGenerator::Direction::DOWN;
+    // 31 levels × STEPS_PER_LEVEL = guaranteed full sweep to level 1
+    _stepsRemaining = 31 * STEPS_PER_LEVEL;
+    _stepDirection = QuadratureGenerator::Direction::DOWN;  // DOWN = decrease to level 1 (bench-verified)
     _state = State::SEEKING;
     _settling = false;
+    _settleTimedOut = false;
+    _settlePhaseStartMs = 0;
 }
 
 void CalibrationRig::handleStop() {
@@ -95,6 +107,8 @@ void CalibrationRig::handleStop() {
 #endif
     _stepsRemaining = 0;
     _settling = false;
+    _settleTimedOut = false;
+    _settlePhaseStartMs = 0;
     _state = State::IDLE;
 }
 
@@ -157,6 +171,90 @@ void CalibrationRig::handleCommand(const String& cmd) {
         handleStop();
 #ifndef UNIT_TEST
         Serial.println("OK STOP");
+#endif
+    } else if (line.equalsIgnoreCase("DIAG")) {
+#ifndef UNIT_TEST
+        // Read back output pin states via digitalRead
+        int encA_read = (_encPinA >= 0) ? digitalRead(_encPinA) : -1;
+        int encB_read = (_encPinB >= 0) ? digitalRead(_encPinB) : -1;
+        int cad_read  = (_cadencePin >= 0) ? digitalRead(_cadencePin) : -1;
+
+        // Read passive ADC sensors: pot wiper (GPIO 1), cadence (GPIO 5), enc_vcc (GPIO 10)
+        int pot_raw  = analogRead(1);   // ADC1_CH0 — pot wiper
+        int cad_adc  = analogRead(5);   // ADC1_CH4 — cadence wire
+        int enc_vcc  = analogRead(10);  // ADC1_CH9 — encoder VCC
+        int encA_adc = analogRead(8);   // ADC1_CH7 — encoder A sense
+        int encB_adc = analogRead(9);   // ADC1_CH8 — encoder B sense
+
+        Serial.printf("DIAG enc_pinA=%d(%s) enc_pinB=%d(%s) cad_pin=%d(%s) "
+                       "qstate=%u steps=%ld "
+                       "pot_raw=%d cad_adc=%d enc_vcc=%d encA_adc=%d encB_adc=%d "
+                       "pot_filt=%u\n",
+                       _encPinA, (encA_read == 1 ? "HIGH" : encA_read == 0 ? "LOW" : "NC"),
+                       _encPinB, (encB_read == 1 ? "HIGH" : encB_read == 0 ? "LOW" : "NC"),
+                       _cadencePin, (cad_read == 1 ? "HIGH" : cad_read == 0 ? "LOW" : "NC"),
+                       _encoder.getState(), (long)_encoder.getTotalSteps(),
+                       pot_raw, cad_adc, enc_vcc, encA_adc, encB_adc,
+                       _lastPotAdc);
+#endif
+    } else if (line.startsWith("STEP") || line.startsWith("step")) {
+#ifndef UNIT_TEST
+        // Manual stepping: STEP UP [count] [delay_us]
+        // count: number of edges (default 1, max 1024)
+        // delay_us: microseconds between edges (default 0, max 100000)
+        // e.g. "STEP UP 192 1000" = 192 edges with 1ms between each
+        String rest = line.substring(4);
+        rest.trim();
+        QuadratureGenerator::Direction dir = QuadratureGenerator::Direction::DOWN;
+        int count = 1;
+        int delay_us = 0;
+
+        // Parse direction
+        String afterDir;
+        if (rest.startsWith("UP") || rest.startsWith("up")) {
+            dir = QuadratureGenerator::Direction::UP;
+            afterDir = rest.substring(2);
+        } else if (rest.startsWith("DOWN") || rest.startsWith("down")) {
+            dir = QuadratureGenerator::Direction::DOWN;
+            afterDir = rest.substring(4);
+        }
+        afterDir.trim();
+
+        // Parse count and optional delay_us
+        if (afterDir.length() > 0) {
+            int spaceIdx = afterDir.indexOf(' ');
+            if (spaceIdx > 0) {
+                // Two numbers: count delay_us
+                int parsed = afterDir.substring(0, spaceIdx).toInt();
+                if (parsed > 0 && parsed <= 1024) count = parsed;
+                String delayStr = afterDir.substring(spaceIdx + 1);
+                delayStr.trim();
+                int parsedDelay = delayStr.toInt();
+                if (parsedDelay >= 0 && parsedDelay <= 100000) delay_us = parsedDelay;
+            } else {
+                // Single number: count
+                int parsed = afterDir.toInt();
+                if (parsed > 0 && parsed <= 1024) count = parsed;
+            }
+        }
+
+        uint32_t stepStart = micros();
+        for (int i = 0; i < count; i++) {
+            _encoder.step(dir);
+            if (delay_us > 0 && i < count - 1) {
+                delayMicroseconds(delay_us);
+            }
+        }
+        uint32_t stepDuration = micros() - stepStart;
+
+        int encA_read = (_encPinA >= 0) ? digitalRead(_encPinA) : -1;
+        int encB_read = (_encPinB >= 0) ? digitalRead(_encPinB) : -1;
+        Serial.printf("STEP dir=%s count=%d delay_us=%d duration_us=%u qstate=%u steps=%ld pinA=%d(%s) pinB=%d(%s)\n",
+                       (dir == QuadratureGenerator::Direction::UP ? "UP" : "DOWN"),
+                       count, delay_us, stepDuration,
+                       _encoder.getState(), (long)_encoder.getTotalSteps(),
+                       _encPinA, (encA_read == 1 ? "HIGH" : encA_read == 0 ? "LOW" : "NC"),
+                       _encPinB, (encB_read == 1 ? "HIGH" : encB_read == 0 ? "LOW" : "NC"));
 #endif
     } else {
 #ifndef UNIT_TEST
@@ -244,6 +342,21 @@ void CalibrationRig::tick(uint32_t currentMillis, uint16_t potAdc) {
             }
         } else {
             // Encoder stepping complete: monitor pot settle
+            if (!_settling && _settlePhaseStartMs == 0) {
+                _settlePhaseStartMs = currentMillis;  // mark when settle phase began
+            }
+
+            // Check for settle timeout (30s)
+            if (_settlePhaseStartMs > 0 && (currentMillis - _settlePhaseStartMs >= SETTLE_TIMEOUT_MS)) {
+                _state = State::SETTLED;
+                _settling = false;
+                _settleTimedOut = true;
+#ifndef UNIT_TEST
+                Serial.printf("SETTLED level=%u pot=%u cadence=%u TIMEOUT\n", _currentLevel, potAdc, _cadenceRPM);
+#endif
+                return;  // early return — don't check pot
+            }
+
             uint16_t exp = expectedPot(_targetLevel);
             int32_t diff = std::abs(static_cast<int32_t>(potAdc) - static_cast<int32_t>(exp));
             if (diff <= SETTLE_TOLERANCE) {

@@ -120,3 +120,11 @@ now understood to be a **measurement artifact**:
   on encoder resynthesis timing.
 - **The motor stutter on reverse should be characterised further** if the
   MITM design needs to detect seek-complete by monitoring motor cessation.
+
+> [!NOTE]
+> **Phase 3 update (2026-10-24):** The CalibrationRig firmware (PR-02)
+> directly characterized the console's encoder decoder, confirming **8
+> quadrature edges = 1 level** (2× counting mode: 4 detents × 2 edges
+> each). The console's minimum pulse width is ~50 ms. See
+> [`../phase3/C01-20261024-edges-per-level-report.md`](../phase3/C01-20261024-edges-per-level-report.md)
+> and [`../phase3/C04-20261024-settle-pulse-report.md`](../phase3/C04-20261024-settle-pulse-report.md).

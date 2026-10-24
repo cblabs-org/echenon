@@ -3,15 +3,15 @@
 Echelon Calibration Sweep — Host Script
 ========================================
 
-Drives the ESP32 CalibrationRig firmware over serial to sweep all 32 resistance
+Drives the ESP32 CalibrationRig firmware over HTTP to sweep all 32 resistance
 levels at each of 10 cadence steps (40–130 RPM), capturing the power reading
 from the Echelon Fit Android app via ADB.
 
 Produces a CSV:  level, cadence_rpm, power_watts, pot_adc, timestamp
 
 Usage:
-    python3 calibration_sweep.py --port /dev/ttyACM0
-    python3 calibration_sweep.py --dry-run          # serial only, no ADB
+    python3 calibration_sweep.py --host 192.168.1.100
+    python3 calibration_sweep.py --dry-run          # HTTP only, no ADB
     python3 calibration_sweep.py --help
 """
 
@@ -29,6 +29,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from xml.etree import ElementTree
 
+try:
+    import requests
+except ImportError:
+    # Fallback to urllib if requests not installed
+    requests = None
+    import urllib.request
+    import urllib.error
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -37,16 +45,17 @@ LEVELS = list(range(1, 33))                          # 1 … 32
 CADENCE_STEPS = list(range(40, 131, 10))             # 40, 50, … 130
 CSV_HEADER = ["level", "cadence_rpm", "power_watts", "pot_adc", "timestamp"]
 
-DEFAULT_PORT = "/dev/ttyACM0"
-DEFAULT_BAUD = 115200
+DEFAULT_HOST = "192.168.1.100"
 DEFAULT_OUTPUT = "sweep_output.csv"
 DEFAULT_SETTLE_WAIT = 4.0   # seconds after SETTLED before ADB read
 DEFAULT_READ_DELAY = 1.0    # seconds between consecutive ADB reads
 DEFAULT_TIMEOUT = 60        # seconds to wait for SETTLED before retry
-STATUS_POLL_INTERVAL = 0.5  # seconds between STATUS polls
+STATUS_POLL_INTERVAL = 0.5  # seconds between status polls
 
 ADB_RETRY_COUNT = 3
 ADB_RETRY_BACKOFF = 2.0     # seconds
+
+ADB_PATH = os.environ.get("ADB_PATH", "adb")
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -66,88 +75,101 @@ def _setup_logging() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Serial helpers
+# HTTP helpers
 # ---------------------------------------------------------------------------
 
-class RigSerial:
-    """Thin wrapper around pyserial for the CalibrationRig protocol."""
+class RigHTTP:
+    """HTTP client for the CalibrationRig firmware endpoints."""
 
-    def __init__(self, port: str, baud: int, timeout: float = 2.0):
-        import serial  # pyserial
-        self._ser = serial.Serial(port, baud, timeout=timeout)
-        # Drain any boot messages
-        time.sleep(0.5)
-        self._ser.reset_input_buffer()
-        log.info("Serial opened: %s @ %d", port, baud)
+    def __init__(self, host: str, timeout: float = 10.0):
+        self._base = f"http://{host}"
+        self._cmd_url = f"{self._base}/api/echenon/rig/command"
+        self._status_url = f"{self._base}/api/echenon/rig/status"
+        self._timeout = timeout
+        log.info("Rig HTTP: %s", self._base)
 
-    def send(self, command: str) -> None:
-        """Send a command string (newline-terminated) to the rig."""
-        line = command.strip() + "\n"
-        self._ser.write(line.encode("ascii"))
-        self._ser.flush()
+    def send_command(self, command: str) -> str:
+        """Send a command to the rig and return the response text."""
         log.info("TX → %s", command.strip())
+        if requests:
+            resp = requests.post(
+                self._cmd_url,
+                data=command.strip(),
+                timeout=self._timeout,
+            )
+            resp.raise_for_status()
+            return resp.text.strip()
+        else:
+            req = urllib.request.Request(
+                self._cmd_url,
+                data=command.strip().encode("ascii"),
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=self._timeout) as resp:
+                return resp.read().decode("ascii").strip()
 
-    def readline(self, timeout: float | None = None) -> str:
-        """Read one line from the rig.  Returns stripped text or ''."""
-        old_timeout = self._ser.timeout
-        if timeout is not None:
-            self._ser.timeout = timeout
-        try:
-            raw = self._ser.readline()
-        finally:
-            self._ser.timeout = old_timeout
-        text = raw.decode("ascii", errors="replace").strip()
-        if text:
-            log.debug("RX ← %s", text)
-        return text
+    def get_status_json(self) -> dict:
+        """GET the full JSON status from the rig."""
+        if requests:
+            resp = requests.get(self._status_url, timeout=self._timeout)
+            resp.raise_for_status()
+            return resp.json()
+        else:
+            req = urllib.request.Request(self._status_url)
+            with urllib.request.urlopen(req, timeout=self._timeout) as resp:
+                import json
+                return json.loads(resp.read().decode("ascii"))
 
-    def close(self) -> None:
-        self._ser.close()
-        log.info("Serial closed.")
+    def get_status_line(self) -> str:
+        """Send STATUS command and return the text status line."""
+        return self.send_command("STATUS")
 
 
 def _wait_for_settled(
-    rig: RigSerial,
+    rig: RigHTTP,
     timeout: float,
 ) -> tuple[bool, int, str]:
     """
-    Poll until a SETTLED response or *timeout* seconds elapse.
+    Poll until rig reports SETTLED or *timeout* seconds elapse.
 
     Returns:
         (settled, pot_adc, raw_line)
         settled is False on timeout or ERROR.
     """
     deadline = time.monotonic() + timeout
-    last_status_time = 0.0
 
     while time.monotonic() < deadline:
-        line = rig.readline(timeout=STATUS_POLL_INTERVAL)
-        if not line:
-            # Nothing received — send a STATUS query periodically
-            now = time.monotonic()
-            if now - last_status_time >= STATUS_POLL_INTERVAL:
-                rig.send("STATUS")
-                last_status_time = now
+        try:
+            line = rig.get_status_line()
+        except Exception as exc:
+            log.warning("Status poll failed: %s", exc)
+            time.sleep(STATUS_POLL_INTERVAL)
             continue
 
-        if line.startswith("SETTLED"):
+        if not line:
+            time.sleep(STATUS_POLL_INTERVAL)
+            continue
+
+        if "state=SETTLED" in line:
             pot = _parse_pot(line)
+            log.debug("  SETTLED: %s", line)
             return True, pot, line
 
-        if line.startswith("ERROR"):
+        if "state=ERROR" in line:
             log.error("Rig error: %s", line)
             return False, 0, line
 
-        # SEEKING or other informational lines — keep waiting
-        if line.startswith("SEEKING"):
-            log.info("  %s", line)
+        if "state=SEEKING" in line:
+            log.debug("  SEEKING: %s", line)
+
+        time.sleep(STATUS_POLL_INTERVAL)
 
     log.warning("Timeout waiting for SETTLED (%ds)", timeout)
     return False, 0, ""
 
 
 def _parse_pot(line: str) -> int:
-    """Extract pot=NNN from a SETTLED or SEEKING line."""
+    """Extract pot=NNN from a status line."""
     m = re.search(r"pot=(\d+)", line)
     return int(m.group(1)) if m else 0
 
@@ -156,6 +178,41 @@ def _parse_pot(line: str) -> int:
 # ADB helpers
 # ---------------------------------------------------------------------------
 
+def _find_adb() -> str:
+    """Find the adb binary, checking common macOS SDK locations."""
+    # Check if adb is on PATH
+    try:
+        result = subprocess.run(
+            ["which", "adb"], capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0:
+            return "adb"
+    except Exception:
+        pass
+
+    # Check common macOS SDK locations
+    sdk_paths = [
+        os.path.expanduser("~/Library/Android/sdk/platform-tools/adb"),
+        "/usr/local/bin/adb",
+    ]
+    for p in sdk_paths:
+        if os.path.isfile(p) and os.access(p, os.X_OK):
+            return p
+
+    return ADB_PATH  # Fall back to env var or default
+
+
+_adb_binary: str | None = None
+
+
+def _adb_cmd() -> str:
+    global _adb_binary
+    if _adb_binary is None:
+        _adb_binary = _find_adb()
+        log.info("ADB binary: %s", _adb_binary)
+    return _adb_binary
+
+
 def _adb_read_power_uiautomator() -> str:
     """
     Use ``adb shell uiautomator dump`` to capture the Echelon Fit UI tree,
@@ -163,13 +220,14 @@ def _adb_read_power_uiautomator() -> str:
 
     Returns the power string (e.g. ``"145"``) or a sentinel on failure.
     """
+    adb = _adb_cmd()
     try:
         subprocess.run(
-            ["adb", "shell", "uiautomator", "dump", "/sdcard/window_dump.xml"],
+            [adb, "shell", "uiautomator", "dump", "/sdcard/window_dump.xml"],
             capture_output=True, text=True, timeout=15, check=True,
         )
-        result = subprocess.run(
-            ["adb", "pull", "/sdcard/window_dump.xml", "/tmp/window_dump.xml"],
+        subprocess.run(
+            [adb, "pull", "/sdcard/window_dump.xml", "/tmp/window_dump.xml"],
             capture_output=True, text=True, timeout=15, check=True,
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
@@ -242,13 +300,14 @@ def _adb_read_power_screencap() -> str:
             "Install with:  pip install pytesseract Pillow"
         ) from exc
 
+    adb = _adb_cmd()
     try:
         subprocess.run(
-            ["adb", "shell", "screencap", "-p", "/sdcard/screenshot.png"],
+            [adb, "shell", "screencap", "-p", "/sdcard/screenshot.png"],
             capture_output=True, text=True, timeout=15, check=True,
         )
         subprocess.run(
-            ["adb", "pull", "/sdcard/screenshot.png", "/tmp/screenshot.png"],
+            [adb, "pull", "/sdcard/screenshot.png", "/tmp/screenshot.png"],
             capture_output=True, text=True, timeout=15, check=True,
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
@@ -321,6 +380,49 @@ def read_power(adb_method: str, read_delay: float, dry_run: bool) -> str:
 
 
 # ---------------------------------------------------------------------------
+# ADB helpers — read resistance and cadence
+# ---------------------------------------------------------------------------
+
+def _adb_read_resistance() -> str:
+    """Read the resistance value from the Echelon Fit app via uiautomator."""
+    adb = _adb_cmd()
+    try:
+        subprocess.run(
+            [adb, "shell", "uiautomator", "dump", "/sdcard/window_dump.xml"],
+            capture_output=True, text=True, timeout=15, check=True,
+        )
+        subprocess.run(
+            [adb, "pull", "/sdcard/window_dump.xml", "/tmp/window_dump.xml"],
+            capture_output=True, text=True, timeout=15, check=True,
+        )
+    except Exception as exc:
+        log.warning("ADB resistance read failed: %s", exc)
+        return "ADB_ERROR"
+
+    try:
+        tree = ElementTree.parse("/tmp/window_dump.xml")
+    except ElementTree.ParseError:
+        return "PARSE_ERROR"
+
+    root = tree.getroot()
+    all_texts: list[str] = []
+    for node in root.iter("node"):
+        text = node.get("text", "").strip()
+        if text:
+            all_texts.append(text)
+
+    # Look for "Resistance" label followed by a number
+    for i, text in enumerate(all_texts):
+        if "resist" in text.lower():
+            for j in range(i + 1, min(i + 4, len(all_texts))):
+                candidate = all_texts[j].strip()
+                if re.fullmatch(r"\d+", candidate):
+                    return candidate
+
+    return "PARSE_ERROR"
+
+
+# ---------------------------------------------------------------------------
 # CSV I/O
 # ---------------------------------------------------------------------------
 
@@ -373,7 +475,7 @@ def open_csv_writer(
 # ---------------------------------------------------------------------------
 
 def run_sweep(
-    rig: RigSerial,
+    rig: RigHTTP,
     output_path: Path,
     dry_run: bool,
     settle_wait: float,
@@ -397,7 +499,7 @@ def run_sweep(
             )
 
             # HOME between cadence changes
-            rig.send("HOME")
+            rig.send_command("HOME")
             _wait_for_settled(rig, timeout=30)
             time.sleep(1.0)
 
@@ -434,7 +536,7 @@ def run_sweep(
 
 
 def _run_single_point(
-    rig: RigSerial,
+    rig: RigHTTP,
     level: int,
     cadence: int,
     timeout: float,
@@ -448,17 +550,17 @@ def _run_single_point(
 
     Returns (power_str, pot_adc).
     """
-    rig.send(f"SET level={level} cadence={cadence}")
+    rig.send_command(f"SET level={level} cadence={cadence}")
     settled, pot_adc, raw = _wait_for_settled(rig, timeout)
 
     if not settled:
         # Retry once: HOME → re-seek
         log.warning("  Retrying level=%d cadence=%d (HOME + re-seek)", level, cadence)
-        rig.send("HOME")
+        rig.send_command("HOME")
         _wait_for_settled(rig, timeout=20)
         time.sleep(1.0)
 
-        rig.send(f"SET level={level} cadence={cadence}")
+        rig.send_command(f"SET level={level} cadence={cadence}")
         settled, pot_adc, raw = _wait_for_settled(rig, timeout)
 
         if not settled:
@@ -480,17 +582,13 @@ def _run_single_point(
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Echelon Calibration Sweep — drive the CalibrationRig over serial "
+            "Echelon Calibration Sweep — drive the CalibrationRig over HTTP "
             "and capture power readings from the Echelon Fit app via ADB."
         ),
     )
     parser.add_argument(
-        "--port", default=DEFAULT_PORT,
-        help=f"Serial port (default: {DEFAULT_PORT})",
-    )
-    parser.add_argument(
-        "--baud", type=int, default=DEFAULT_BAUD,
-        help=f"Baud rate (default: {DEFAULT_BAUD})",
+        "--host", default=DEFAULT_HOST,
+        help=f"ESP32 hostname or IP (default: {DEFAULT_HOST})",
     )
     parser.add_argument(
         "--output", default=DEFAULT_OUTPUT,
@@ -498,7 +596,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--dry-run", action="store_true",
-        help='Serial commands only, no ADB. Records "DRY_RUN" for power.',
+        help='HTTP commands only, no ADB. Records "DRY_RUN" for power.',
     )
     parser.add_argument(
         "--settle-wait", type=float, default=DEFAULT_SETTLE_WAIT,
@@ -520,6 +618,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="uiautomator",
         help="ADB screen reading method (default: uiautomator)",
     )
+    parser.add_argument(
+        "--http-timeout", type=float, default=10.0,
+        metavar="SECONDS",
+        help="HTTP request timeout (default: 10.0)",
+    )
     return parser.parse_args(argv)
 
 
@@ -530,18 +633,27 @@ def main(argv: list[str] | None = None) -> int:
     output_path = Path(args.output)
 
     log.info("Echelon Calibration Sweep")
-    log.info("  Port:         %s", args.port)
-    log.info("  Baud:         %d", args.baud)
+    log.info("  Host:         %s", args.host)
     log.info("  Output:       %s", output_path)
     log.info("  Dry-run:      %s", args.dry_run)
     log.info("  ADB method:   %s", args.adb_method)
     log.info("  Settle wait:  %.1fs", args.settle_wait)
     log.info("  Read delay:   %.1fs", args.read_delay)
     log.info("  Timeout:      %.0fs", args.timeout)
+    log.info("  HTTP timeout: %.1fs", args.http_timeout)
     log.info("  Matrix:       %d levels × %d cadences = %d points",
              len(LEVELS), len(CADENCE_STEPS), len(LEVELS) * len(CADENCE_STEPS))
 
-    rig = RigSerial(args.port, args.baud)
+    rig = RigHTTP(args.host, timeout=args.http_timeout)
+
+    # Pre-flight: verify connectivity
+    try:
+        status = rig.get_status_line()
+        log.info("Pre-flight OK: %s", status)
+    except Exception as exc:
+        log.error("Cannot reach rig at %s: %s", args.host, exc)
+        return 1
+
     try:
         run_sweep(
             rig=rig,
@@ -554,9 +666,10 @@ def main(argv: list[str] | None = None) -> int:
         )
     except KeyboardInterrupt:
         log.warning("Keyboard interrupt — stopping rig.")
-        rig.send("STOP")
-    finally:
-        rig.close()
+        try:
+            rig.send_command("STOP")
+        except Exception:
+            pass
 
     return 0
 

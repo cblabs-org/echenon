@@ -46,8 +46,8 @@ constexpr size_t BOARD_ENCODER_COUNT =
 //       console Ch B, GPIO 18 on console Ch A. Constants stay as-is;
 //       the firmware direction mapping accounts for the swap.
 constexpr int8_t PIN_RIG_ENC_A    = 17;  // D8  → console encoder Ch B (swapped)
-constexpr int8_t PIN_RIG_ENC_B    = 18;  // D12 → console encoder Ch A (swapped)
-constexpr int8_t PIN_RIG_CADENCE  = 11;  // D9  → cadence NPN base via 1kΩ
+constexpr int8_t PIN_RIG_ENC_B    = 18;  // D9  → console encoder Ch A (swapped)
+constexpr int8_t PIN_RIG_CADENCE  = 11;  // A4  → cadence NPN base via 1kΩ
 #endif
 
 // No display pin block and no button block: WITH_DISPLAY_U8G2 and
