@@ -20,7 +20,7 @@ charter:
   - pio test -e native
   charter_locked: false
   charter_hash: null
-status: APPROVED
+status: AUDIT_APPROVED
 approved_at: '2026-10-24T20:58:09.914035Z'
 github_pr: null
 work_orders:
