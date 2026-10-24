@@ -4,7 +4,7 @@ wo_id: WO-05.2
 pr_id: PR-05
 title: FTMSServer Read-Only BLE Service Provider (0x1826, 0x2ACC, 0x2AD2)
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/FTMSServer.h
 - src/echenon/FTMSServer.cpp
@@ -17,7 +17,22 @@ verification_command: pio test -e native
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 0108b6c2d99d62143b20f8804a12dd1229e51e75a341c5db6f2d2fc4eb084a13
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_a2e99d5dd752
+  commit_sha: 5ffd704799920ef0df2a11c447a761bf9cd6d259
+  files_modified:
+  - src/echenon/FTMSData.h
+  - src/echenon/FTMSServer.cpp
+  - src/echenon/FTMSServer.h
+  - test/test_native/test_ftms_server.cpp
+  verification_summary: 'pio test -e native: ================ 150 test cases: 150
+    succeeded in 00:00:00.314 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-05.2: FTMSServer Read-Only BLE Service Provider (0x1826, 0x2ACC, 0x2AD2)

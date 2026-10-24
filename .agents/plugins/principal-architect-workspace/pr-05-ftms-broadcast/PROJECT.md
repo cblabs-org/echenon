@@ -35,9 +35,9 @@ work_orders:
   slug: wo2-ftms-server
   title: FTMSServer Read-Only BLE Service Provider (0x1826, 0x2ACC, 0x2AD2)
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 5ffd704799920ef0df2a11c447a761bf9cd6d259
 - id: WO-05.3
   slug: wo3-module-wiring
   title: EchenonModule, LiveFeed & platformio.ini Integration (WITH_FTMS)
