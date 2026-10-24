@@ -29,11 +29,11 @@ provisional, decomposed after DR-2).
 |---|---|---|---|---|---|
 | v1 | PR-01 | 0 | Signal Logger (Observe) | `main` | ✅ Merged 2026-10-11 (PR #1, `5897f6f`) |
 | v1 | DR-1 | — | v1 Passive Design Freeze ([record](reviews/DR-1-design-freeze.md)) | PR-01 evidence + [DR-1 prep bench](pr-dr1-prep/PROJECT.md) | ✅ Approved with conditions 2026-10-12 |
-| v1 | PR-02 | 1 | Calibration + Power (+ live WS feed) | PR-01, **DR-1** | ✅ Complete & Audited 2026-10-24 (`calibration-power/wo9-doc-sync` @ `cec2171`) |
+| v1 | PR-02 | 1 | Calibration + Power (+ live WS feed) | PR-01, **DR-1** | ✅ Merged 2026-10-24 (`8ccccb6`) |
 | v1 | PR-03 | 2 | BLE Foundation + HR Relay | PR-01 ✅ | ✅ Merged 2026-10-20 (PR #3, `e930314`) |
-| v1 | PR-04a | 3 | Passive Tap Board (VIN + VIN/USB switch, manual OTA, UART0 reserved) | PR-02, DR-1 | ⬜ Not started |
-| v1 | PR-05 | 3 | FTMS Telemetry, **read-only** (Target Setting Features = 0) | PR-02, PR-03 | ⬜ Not started |
-| v1 | PR-06 | 4 | Session + TCX + Strava | PR-02 | ⬜ Not started |
+| v1 | PR-04a | 3 | Passive Tap Board (VIN + VIN/USB switch, manual OTA, UART0 reserved) | PR-02, DR-1 | ⬜ Deferred to pre-PR-09 (bench stays on USB-C during PR-05/06) |
+| v1 | PR-05 | 3 | FTMS Telemetry, **read-only** (Target Setting Features = 0) | PR-02, PR-03 | 📋 Planned & Approved 2026-10-24 (`WO-05.1`–`WO-05.4`) |
+| v1 | PR-06 | 4 | Session + TCX + Strava | PR-02 | 📋 Planned & Approved 2026-10-24 (`WO-06.1`–`WO-06.6`, stacked after `PR-05`) |
 | v1 | PR-14 | 4 | Diagnostics & Run-Data Persistence ([stub](pr-14-diagnostics/PROJECT.md)) | PR-06 | ⬜ Not started |
 | v1 | PR-09 | 7 | v1 Integration & Release (UC1–UC3) | PR-04a, PR-05, PR-14 | ⬜ Not started |
 | v2 | DR-2 prep | — | Active-design bench evidence ([project](pr-dr2-prep/PROJECT.md)) | DR-1 (timing: owner) | ⬜ Provisional |
@@ -61,7 +61,7 @@ provisional, decomposed after DR-2).
 | **Framework central-role acceptance evidence** | PR-03 WO5 (in-PR, approved 2026-10-12) | RFC §17.2 items 4–9 against a real 0x180D peripheral on a framework tag containing the WO-8 use-after-free fix | ✅ MET (PR-03 WO5, evidence in `docs/measurements/phase2/wo5-strap-acceptance/evidence.md`) |
 | **v1 BLE topology on the P12** | PR-03 merge (WO6) | HR strap (central) + P12 (HR peripheral) + portal WebSocket + HTTPS POST, sustained; no HR gaps > 2.5 s, no link drops | ✅ MET (PR-03 WO6, evidence in `docs/measurements/phase2/wo6-coexistence/evidence.md`) |
 | **BLE works without WiFi** (v1 requirement) | v1 release (PR-09); fix lands upstream in the framework | BLE advertising, strap reconnect and discovery continue at boot without STA and through a sustained STA outage | OPEN (framework issue draft (iii)) |
-| **Android phone connection reliability** | **PR-05 entry** | ≥ 95% single-attempt connect success (n ≥ 50, `tools/ble-test` rig) on the Pixel 10 Pro Fold and one other Android phone | OPEN: Pixel currently 26–32% (WO3d) |
+| **FTMS client connection reliability (Lenovo Tab P12 + macOS/iOS)** | **PR-05 WO-05.4** | Clean FTMS + HR coexistence and app acceptance on Lenovo Tab P12 (primary target) and macOS/iOS; Pixel 10 Pro Fold excluded per owner decision 2026-10-24 | ✅ SCOPED TO P12 (2026-10-24 owner decision) |
 | Framework #226 (OTA check-on-boot deferral) | Removing Echenon's `autoCheck=false` enforcement | Upstream issue **closed**. PR-04a uses the framework option after the PR-03 WO1 bump (verify) | CLOSED upstream |
 
 ### Parallelism
@@ -444,3 +444,22 @@ Decisions on the v1 Passive / v2 Active restructure:
   - `RunawayDetector` (`10 s` default timeout outside `[155, 1345]` ADC window while motor active) and `/ws/echenon/live` 2 Hz telemetry + portal dashboard/calibration UI (`WO-02.4`, `WO-02.8`).
 - **Step 6A Cold-Firewall Audit (`pa-auditor`):** **PASS (`APPROVED`)** with `0` blocking findings.
 - **Unblocks:** `PR-04a` (Passive Tap Board), `PR-05` (FTMS Telemetry read-only), and `PR-06` (Session + TCX + Strava).
+
+### 2026-10-24 (Session 2): PR-02 merged (`8ccccb6`); PR-05 & PR-06 Unified Metric Architecture & Charters approved
+
+- **PR-02 merged to `main` (`8ccccb6`).**
+- **Owner decisions for `PR-05` and `PR-06`:**
+  1. **Sequential Execution Order:** Execute `PR-05` (`feat/pr-05-ftms-broadcast`) first, merge to `main`, then execute `PR-06` (`feat/pr-06-session-upload`) cleanly on top to eliminate merge conflicts on `EchenonModule.*`, `src/main.cpp`, `platformio.ini`, and `web/`.
+  2. **Unified First-Principles Metric & Conversion Architecture (`docs/power-physics-model.md` §8):**
+     - **Layer 0 (Hardware Fundamentals):** Potentiometer wiper ADC $\to$ normalized cam coordinate $\tilde{p} \in [0.0, 1.0]$; crank reed switch $\Delta t \to \text{cad} \ge 0\text{ RPM}$.
+     - **Layer 1 (Physical Continuum):** `Physics P3r` mechanical torque $\tau(\tilde{p}, \text{cad})$ and power $P(\tilde{p}, \text{cad})$.
+     - **Layer 2 (Forward Resistance Scales):** Echelon `1–32`, FTMS `0–254`, and **Peloton `0–100` ($R_{\text{pel}}(\tilde{p})$)** matched by braking-curve power equivalence at the standard reference cadence $\text{cad}_{\text{ref}} = 80\text{ RPM}$ (making $R_{\text{pel}}(\tilde{p})$ a pure, monotonic, 1-to-1 function of knob position $\tilde{p}$ that works at `0 RPM` and never drifts with cadence).
+     - **Layer 3 (Virtual Road Speed $v(P)$):** Computed from mechanical power $P$ via flat-road aerodynamic + rolling resistance equilibrium ($0.245\,v^3 + 3.53\,v = P$, $v$ in $\text{m/s}$, $v_{\text{km/h}} = 3.6\,v$, with $v(0) = 0.0\text{ km/h}$), populating both FTMS `0x2AD2` `Instantaneous Speed` (`0.01 km/h` resolution) and `/ws/echenon/live` (`speed_kph`).
+     - **Layer 4 (v2 Closed-Loop Inverse Control Laws):** Closed-form analytical inverses (`echelonToNormalized`, `pelotonToNormalized`, `targetPowerToNormalized`) shipped and unit-tested in `PR-05` (`WO-05.1`) ready for `PR-08` / `PR-11`.
+  3. **FTMS v1.0 Read-Only Conformance (`PR-05`):** Expose `0x2ACC` (`Fitness Machine Feature = 0x00004482`, `Target Setting Features = 0x00000000`) and `0x2AD2` (`Indoor Bike Data`, 11-byte notification at 2 Hz with `Flags = 0x0264`). Exclude `0x2AD6`, `0x2AD8`, `0x2ADA`; omit `0x2AD9` by default with compile-time `#if FTMS_STUB_CONTROL_POINT` fallback ready if any client app requires `Request Control`.
+  4. **Target BLE Device (`PR-05`):** Scope `PR-05` client testing and coexistence acceptance to **Lenovo Tab P12** (plus macOS/iOS); skip flaky Pixel 10 Pro Fold.
+  5. **Session Auto-Start & Manual UI Control (`PR-06`):** Default auto-start threshold set to **`5 seconds`** of continuous `cadence > 0 RPM` (`autoStartDelaySec = 5`, configurable `1–60 s`) plus a new **`autoStartEnabled` (`bool`, default `true`)** config toggle so the rider can switch off auto-start and start/end sessions strictly from the portal UI.
+  6. **Framework Submodule:** Synced to `v0.0.12-beta.4` (`337bd4b1a9a6c727688a2526a0e766bc9b9825e4`).
+- **Charters & Work-Order Decompositions locked:**
+  - `PR-05`: `WO-05.1` (`wo1-ftms-metrics`), `WO-05.2` (`wo2-ftms-server`), `WO-05.3` (`wo3-module-wiring`), `WO-05.4` (`wo4-hw-verification`).
+  - `PR-06`: `WO-06.1` (`wo1-session-ridestore`), `WO-06.2` (`wo2-tcx-generator`), `WO-06.3` (`wo3-upload-queue`), `WO-06.4` (`wo4-strava-uploader`), `WO-06.5` (`wo5-portal-wiring`), `WO-06.6` (`wo6-hw-verification`).

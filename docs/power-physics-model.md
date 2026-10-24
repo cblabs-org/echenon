@@ -330,3 +330,121 @@ For verification and unit testing (`test/test_native/test_power_engine.cpp`), th
 | **32** | $1.000$ | $151.0^\circ$ | $1.875$ | $21.25\times$ | $313.26\text{ W}$ ($306\text{ W}$) | $487.03\text{ W}$ ($486\text{ W}$) | $573.19\text{ W}$ ($567\text{ W}$) | $656.40\text{ W}$ ($657\text{ W}$) | $809.88\text{ W}$ ($788\text{ W}$) |
 
 *(Note: $\dagger$ In C07, raw `pot_adc` at Level 5 was $\sim 306$ ($\tilde{p} = 0.116$); $\ddagger$ at Level 32, $\tilde{p}$ based on actual C07 wiper reading `pot_adc` $= 1331$ vs linear level mapping shifts the top end-stop by $\sim 0.8\text{ level}$).*
+
+---
+
+## 8. Unified First-Principles Metric Hierarchy, Forward Scales & v2 Inverse Control Laws
+
+Approved 2026-10-24 for `PR-05` (`FTMS Telemetry`) and v2 closed-loop control (`PR-08` / `PR-11`). Rather than treating resistance scales (`Echelon 1–32`, `FTMS 0–254`, `Peloton 0–100`), power ($P$), and virtual road speed ($v$) as disconnected lookup tables, Echenon organizes all bike telemetry and control targets into a **4-layer physical hierarchy** rooted in two hardware fundamentals:
+
+```mermaid
+flowchart TD
+    subgraph L0["Layer 0: Hardware Fundamentals (Measured Directly)"]
+        POT["Potentiometer Wiper ADC (pot_adc)<br/>Normalized Cam Position: p̃ ∈ [0.0, 1.0]"]
+        REED["Crank Reed Switch ISR (Δt_crank)<br/>Angular Cadence: cad (RPM) / ω_crank (rad/s)"]
+    end
+
+    subgraph L1["Layer 1: Physical Continuum (First-Principles Physics P3r)"]
+        CAM["151° Cam Follower Advance<br/>u(p̃) = 1 - cos(2.635447·p̃) ∈ [0, 1.87462]"]
+        FLUX["Air-Gap Magnetic Braking Factor<br/>B²(p̃) ∝ exp(1.630327·u(p̃)) ∈ [1.0×, 21.25×]"]
+        TAU["Mechanical Crank Torque (N·m)<br/>τ(p̃, cad) = (60/2π)·[A·B²(p̃)·cad/(1+(cad/128.15)²) + c_fric]"]
+        PWR["Mechanical Crank Power (Watts)<br/>P(p̃, cad) = τ(p̃, cad) · (2π·cad / 60)"]
+    end
+
+    subgraph L2["Layer 2: Discretized Resistance Scales (Projections of p̃)"]
+        ECH["Echelon Scale (1–32)<br/>ℓ_ech = 1 + 31·p̃  |  L_ech = round(ℓ_ech)"]
+        FTMS_R["FTMS Internal Scale (0–254)<br/>R_ftms = round(254·p̃)"]
+        PELO["Peloton Scale (0–100)<br/>Matched by braking curve B²(p̃) at cad_ref = 80 RPM<br/>R_pel(p̃) ∈ [0, 100] (monotonic 1-to-1 with knob)"]
+    end
+
+    subgraph L3["Layer 3: Second-Order Kinematic & Energy Metrics"]
+        SPD["Virtual Road Speed v(P) (km/h)<br/>Flat-road aero + rolling equilibrium:<br/>0.245·v³ + 3.53·v = P  (v in m/s)"]
+        KCAL["Cumulative Work / Energy<br/>E(t) = ∫ P(t) dt (Joules / kcal)"]
+    end
+
+    POT --> CAM --> FLUX
+    FLUX --> TAU
+    REED --> TAU
+    TAU --> PWR
+    POT --> ECH
+    POT --> FTMS_R
+    FLUX --> PELO
+    PWR --> SPD
+    PWR --> KCAL
+```
+
+### 8.1 Layer 0 — Hardware Fundamentals (`pot_adc` $\to \tilde{p}$, $\Delta t \to \text{cad}$)
+
+1. **Normalized Cam/Wiper Position ($\tilde{p} \in [0.0, 1.0]$):**
+   - From calibrated continuous level $\ell \in [1.0, 32.0]$ (`ResistanceSensor`):
+     $$\tilde{p} = \text{clamp}\!\left(\frac{\ell - 1.0}{31.0},\; 0.0,\; 1.0\right)$$
+   - Or directly from calibrated potentiometer wiper bounds $[\text{pot}_{\min}, \text{pot}_{\max}]$:
+     $$\tilde{p} = \text{clamp}\!\left(\frac{\text{pot\_adc} - \text{pot}_{\min}}{\text{pot}_{\max} - \text{pot}_{\min}},\; 0.0,\; 1.0\right)$$
+2. **Crank Angular Velocity ($\text{cad} \ge 0\text{ RPM}$):**
+   - Measured from reed-switch period $\Delta t_{\text{crank}}$ on `GPIO 5` (`CadenceSensor`, $30\text{ ms}$ debounce, $3\text{ s}$ zero timeout):
+     $$\text{cad} = \frac{60}{\Delta t_{\text{crank}}}, \qquad \omega_{\text{crank}} = \frac{2\pi\,\text{cad}}{60}\text{ rad/s}$$
+
+### 8.2 Layer 2 — Forward Resistance Scale Projections from $\tilde{p}$
+
+Every user-facing or protocol-facing resistance scale is a deterministic, monotonic projection of $\tilde{p} \in [0.0, 1.0]$:
+
+1. **Echelon Scale (`1–32`):**
+   $$\ell_{\text{ech}}(\tilde{p}) = 1.0 + 31.0\,\tilde{p} \in [1.0, 32.0], \qquad L_{\text{ech}}(\tilde{p}) = \text{round}(\ell_{\text{ech}}(\tilde{p})) \in \{1..32\}$$
+2. **FTMS / Canonical Internal Scale (`0–254`, `255 = UNCALIBRATED`):**
+   $$R_{\text{ftms}}(\tilde{p}) = \text{round}(254.0\,\tilde{p}) \in \{0..254\}$$
+3. **Peloton `0–100` Power-Equivalence Scale ($R_{\text{pel}}(\tilde{p}) \in \{0..100\}$):**
+   - Per `SPEC.md` §5.3, the standard published Peloton Bike power curve is:
+     $$P_{\text{pel}}(R_{\text{pel}}, \text{cad}) = \left(0.000185 \cdot R_{\text{pel}}^{2.7} + 0.1\right) \times \left(\frac{\text{cad}}{60}\right)^2 \times 60$$
+   - Because Peloton's equation is separable in resistance and cadence, evaluating `Physics P3r` at the standard reference cadence **$\text{cad}_{\text{ref}} = 80\text{ RPM}$** ($\left(\frac{80}{60}\right)^2 \times 60 = 106.6667$) and inverting $P_{\text{pel}}(R_{\text{pel}}, 80) = P(\tilde{p}, 80)$ yields a **pure, cadence-independent, monotonic 1-to-1 function of knob position $\tilde{p}$**:
+     $$R_{\text{pel}}(\tilde{p}) = \text{clamp}\!\left(\text{round}\!\left(\left[\frac{\max\!\left(\frac{P(\tilde{p},\, 80.0)}{106.6667} - 0.1,\; 0.0\right)}{0.000185}\right]^{\!1 / 2.7}\right),\; 0,\; 100\right)$$
+   - Why evaluating at $\text{cad}_{\text{ref}} = 80\text{ RPM}$ is essential:
+     - **Works at `0 RPM`:** A rider setting up for a Peloton Digital class can turn the knob before pedalling and see the exact Peloton `0–100` resistance callout (`peloton_resistance` in `/ws/echenon/live`).
+     - **Zero cadence cross-talk:** Changing pedalling speed never causes the displayed Peloton resistance number to drift while the physical knob is stationary.
+     - **Exact power equivalence at standard cadence:** At $80\text{ RPM}$, riding at Echelon position $\tilde{p}$ produces the exact same mechanical wattage as a Peloton Bike set to $R_{\text{pel}}(\tilde{p})$.
+
+| Echelon Level $L_{\text{ech}}$ | Normalized $\tilde{p}$ | FTMS $R_{\text{ftms}}$ (`0–254`) | `Physics P3r` @ $80\text{ RPM}$ ($P(\tilde{p}, 80)$) | Equivalent Peloton Resistance $R_{\text{pel}}$ (`0–100`) |
+|---|---|---|---|---|
+| **1** | $0.000$ | `0` | $31.63\text{ W}$ | **`28`** |
+| **5** | $0.129$ | `33` | $33.83\text{ W}$ | **`29`** |
+| **10** | $0.290$ | `74` | $44.57\text{ W}$ | **`33`** |
+| **12** | $0.355$ | `90` | $52.53\text{ W}$ | **`36`** |
+| **16** | $0.484$ | `123` | $80.56\text{ W}$ | **`42`** |
+| **20** | $0.613$ | `156` | $132.61\text{ W}$ | **`51`** |
+| **24** | $0.742$ | `188` | $220.82\text{ W}$ | **`62`** |
+| **28** | $0.871$ | `221` | $347.50\text{ W}$ | **`74`** |
+| **32** | $1.000$ | `254` | $487.03\text{ W}$ | **`84`** |
+
+### 8.3 Layer 3 — Virtual Road Speed $v(P)$ (`km/h`)
+
+A stationary spin bike has no road wheel or variable bicycle gearing; a naive fixed-gear formula ($v \propto \text{cad}$) would report the same speed at Level 1 ($30\text{ W}$) and Level 32 ($500\text{ W}$). Furthermore, FTMS v1.0 §4.9.1.1 defines bit 0 of `Indoor Bike Data (0x2AD2)` with inverted semantics (`0 = Instantaneous Speed present`, `1 = More Data / Speed omitted`), meaning the 2-byte `Instantaneous Speed` (`uint16`, resolution `0.01 km/h`) field is always present in standard single-frame `0x2AD2` notifications (`Flags = 0x0264`).
+
+To report physically meaningful speed in both FTMS `0x2AD2` and `/ws/echenon/live`, Echenon computes **Virtual Flat-Road Speed $v(P)$** from mechanical power $P$ via standard cycling road-load equilibrium ($75\text{ kg}$ rider + $9\text{ kg}$ bike = $84\text{ kg}$ on flat asphalt, $C_d A = 0.40\text{ m}^2$, $\rho = 1.225\text{ kg/m}^3$, $C_{rr} = 0.004$):
+
+$$\boxed{P_{\text{road}}(v) = \frac{1}{2}\rho C_d A \, v^3 + m g C_{rr} \, v = 0.245\,v^3 + 3.53\,v = P(\tilde{p}, \text{cad})}$$
+
+where $v$ is in $\text{m/s}$ and $v_{\text{km/h}} = 3.6 \cdot v$:
+- **Zero-Power Guard:** For $P \le 0\text{ W}$ (or $\text{cad} \le 0\text{ RPM}$), $v = 0.0\text{ km/h}$ (`0x0000`).
+- **Closed-Form / Newton-Raphson Solution:** Because $f(v) = 0.245\,v^3 + 3.53\,v - P$ is strictly convex and monotonic for $v \ge 0$ ($f'(v) = 0.735\,v^2 + 3.53 \ge 3.53$), 4 iterations of Newton-Raphson starting from $v_0 = (P / 0.245)^{1/3}$ (or Cardano's depressed cubic formula) converge to machine precision ($< 10^{-6}\text{ m/s}$) in $< 1\text{ }\mu\text{s}$:
+  - $P = 50\text{ W} \implies v = 17.6\text{ km/h}$
+  - $P = 100\text{ W} \implies v = 23.6\text{ km/h}$
+  - $P = 150\text{ W} \implies v = 27.9\text{ km/h}$
+  - $P = 200\text{ W} \implies v = 31.2\text{ km/h}$
+  - $P = 300\text{ W} \implies v = 36.4\text{ km/h}$
+  - $P = 500\text{ W} \implies v = 43.8\text{ km/h}$
+
+### 8.4 Layer 4 — v2 Closed-Loop Inverse Control Laws ($\text{Target} \to \tilde{p}_{\text{target}}$)
+
+In v2 (`PR-08` ERG / Resistance Control and `PR-11` HR-Zone Control), every external or internal target mode reduces to solving for a single canonical setpoint **$\tilde{p}_{\text{target}} \in [0.0, 1.0]$**:
+
+1. **Target Echelon Level ($\ell_{\text{target}} \in [1.0, 32.0]$):**
+   $$\tilde{p}_{\text{target}} = \text{clamp}\!\left(\frac{\ell_{\text{target}} - 1.0}{31.0},\; 0.0,\; 1.0\right)$$
+2. **Target Peloton Level ($R_{\text{pel}} \in [0.0, 100.0]$):**
+   - Evaluate target Peloton wattage at $\text{cad}_{\text{ref}} = 80\text{ RPM}$:
+     $$P_{\text{ref}} = \left(0.000185 \cdot R_{\text{pel}}^{2.7} + 0.1\right) \times 106.6667$$
+   - Pass $(P_{\text{ref}},\, \text{cad} = 80.0)$ into the exact `Physics P3r` inverse below to obtain $\tilde{p}_{\text{target}}$.
+3. **Target ERG Power ($P_{\text{target}}$ at live cadence $\text{cad} > 0\text{ RPM}$):**
+   $$P_{\text{eddy}} = \max\!\big(P_{\text{target}} - c_{\text{fric}} \cdot \text{cad},\; 0.0\big)$$
+   $$E = \text{clamp}\!\left(\frac{P_{\text{eddy}} \cdot \big(1.0 + (\text{cad} / \text{cad}_c)^2\big)}{A \cdot \text{cad}^2},\; 1.0,\; \exp(1.87462\,\beta)\right)$$
+   $$u_{\text{target}} = \frac{\ln(E)}{\beta}, \qquad \tilde{p}_{\text{target}} = \text{clamp}\!\left(\frac{\arccos(1.0 - u_{\text{target}})}{2.635447},\; 0.0,\; 1.0\right)$$
+   *(If $\text{cad} \le 0\text{ RPM}$, return current $\tilde{p}$ or $0.0\text{f}$ so the motor never hunts while the cranks are stationary).*
+
