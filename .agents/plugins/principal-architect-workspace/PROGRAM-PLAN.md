@@ -210,18 +210,13 @@ Hardware and bench WOs are `complexity: interactive`.
 
 ---
 
-## PR-02: Calibration + Power Engine (Phase 1 — Calibrate) — v1
+## PR-02: Calibration + Power Engine (Phase 1 — Calibrate) — v1 ✅ complete
 
 **Base:** `main` after PR-01 merged and DR-1 approved
-**Scope:** `CadenceSensor`, `ResistanceSensor` (angle-based level table from DR-1),
-`PowerEngine` (indexed by cam angle), `CalibrationWizard` (**passive calibration**:
-the rider steps through 32 console levels while wiper and angle are logged), live WS
-feed, interactive power-data WO.
-**Validation:** Against the calibrated passive table, not a linear 1–32 assumption.
-**Overlap:** Shares `EchenonModule.*`, `platformio.ini`, `main.cpp` with PR-03; the
-second to merge rebases.
-**Runaway detection** (owner decision 2026-10-12): flag the stock-console runaway when the wiper stays outside the working range (165–1327 counts) for more than `[PR-02: N]` s. Raise an event and an alert; a passive board cannot stop it (known v1 limitation).
+**Scope:** `CadenceSensor`, `ResistanceSensor` (32-level C03 wiper table $\text{pot\_adc} = 37.26\,\ell + 120.0$, $R^2 = 0.9998$),
+`PowerEngine` (Tier 1 analytical 4-parameter first-principles electromechanical model `Physics P3r`, $R^2 = 0.9995$, plus Tier 2/3 32×10 bilinear table interpolation from the `C06` 320-point empirical sweep), `CalibrationWizard` (passive 32-level wizard + Tier 3 spot-check recalibration), `CalibrationRig` + `QuadratureGenerator` (`WITH_CALIBRATION_RIG` compile-time gated hardware emulation), live `/ws/echenon/live` 2 Hz feed, and `RunawayDetector` (`10 s` default timeout outside `[155, 1345]` ADC counts).
 **Mandate:** [pr-02-calibration-power/PROJECT.md](pr-02-calibration-power/PROJECT.md)
+**Key References:** [`docs/power-physics-model.md`](../../../docs/power-physics-model.md) · [`docs/digital-hardware-emulation-and-console-dynamics.md`](../../../docs/digital-hardware-emulation-and-console-dynamics.md)
 
 ---
 

@@ -29,7 +29,7 @@ provisional, decomposed after DR-2).
 |---|---|---|---|---|---|
 | v1 | PR-01 | 0 | Signal Logger (Observe) | `main` | ✅ Merged 2026-10-11 (PR #1, `5897f6f`) |
 | v1 | DR-1 | — | v1 Passive Design Freeze ([record](reviews/DR-1-design-freeze.md)) | PR-01 evidence + [DR-1 prep bench](pr-dr1-prep/PROJECT.md) | ✅ Approved with conditions 2026-10-12 |
-| v1 | PR-02 | 1 | Calibration + Power (+ live WS feed) | PR-01, **DR-1** | 🔄 Approved, execution starting |
+| v1 | PR-02 | 1 | Calibration + Power (+ live WS feed) | PR-01, **DR-1** | ✅ Complete & Audited 2026-10-24 (`calibration-power/wo9-doc-sync` @ `cec2171`) |
 | v1 | PR-03 | 2 | BLE Foundation + HR Relay | PR-01 ✅ | ✅ Merged 2026-10-20 (PR #3, `e930314`) |
 | v1 | PR-04a | 3 | Passive Tap Board (VIN + VIN/USB switch, manual OTA, UART0 reserved) | PR-02, DR-1 | ⬜ Not started |
 | v1 | PR-05 | 3 | FTMS Telemetry, **read-only** (Target Setting Features = 0) | PR-02, PR-03 | ⬜ Not started |
@@ -428,3 +428,19 @@ Decisions on the v1 Passive / v2 Active restructure:
   the Waveshare ESP32-S3-Nano header pinout in WO5.
 - **Next:** PA spins up to execute the 9-WO stack, beginning with WO-02.1
   (CadenceSensor + ResistanceSensor + Level Mapping).
+
+### 2026-10-24: PR-02 (`WO-02.1`–`WO-02.9`) complete & Cold-Firewall audited (`PASS`)
+
+- **All 9 Work Orders (`WO-02.1` through `WO-02.9`) completed and verified:**
+  - `CadenceSensor` (`GPIO 1` ISR, `30 ms` debounce, `3 s` timeout) and `ResistanceSensor` (`GPIO 4` 16-sample moving average, 32-level calibration table lookup).
+  - `CalibrationRig` + `QuadratureGenerator` (`WITH_CALIBRATION_RIG` compile-time gated on `GPIO 11` NPN open-collector cadence synthesis and `GPIO 17/18` Gray-code quadrature synthesis).
+  - **Phase 3 characterization suite (`C01`–`C07`) completed in `docs/measurements/phase3/`:**
+    - `C01`/`C02`: Proved **8 quadrature state transitions (2 full Gray-code cycles) = 1 Echelon console level** (`2x` console edge decoding) and deterministic homing to Level 1 via clamped over-stepping (`248+` edges `DOWN`).
+    - `C03`: Full 32-level bidirectional sweep (`100%` ADB match across 62 transitions), establishing linear wiper transfer function $\text{pot\_adc} = 37.26\,\ell + 120.0$ ($R^2 = 0.9998$, range `170.5–1333.0 counts`) and `3.6 ADC count` mean directional hysteresis.
+    - `C04`: Profiled bang-bang motor settle times (`867 ms` at L5, **`2,806 ms` with `90-count` overshoot-and-reversal at L15**, `1,561 ms` at L25), proved `100%` asynchronous mid-seek burst queuing at `25–50 ms/edge`, and isolated the **`75 ms/edge` timer-polling aliasing anomaly** (drops `1 level` per 72-edge burst in `3/3` trials). Documented in [`docs/digital-hardware-emulation-and-console-dynamics.md`](../../../docs/digital-hardware-emulation-and-console-dynamics.md), closing `DR-2` pre-work items **P1** and **P2**.
+    - `C06`: Full 90-minute automated 320-point `(level 1..32 × cadence 40..130 RPM)` empirical power sweep (`C06-20261024-power-matrix-32x10.csv` & `PowerTableDefault.h`).
+    - `C07`: Multivariable regression & first-principles electromechanical reverse-engineering ([`docs/power-physics-model.md`](../../../docs/power-physics-model.md)). Derived the 4-parameter physical model (`Physics P3r`: $151^\circ$ cam-driven exponential flux linkage $\exp(\beta(1-\cos\theta))$ + induction-machine eddy-current slip brake $\text{cad}^2/(1+(\text{cad}/\text{cad}_{\text{crit}})^2)$ + linear drivetrain friction $c_{\text{fric}}\,\text{cad}$), achieving **$R^2 = 0.999522$ (`3.77 W` RMSE) on raw `pot_adc`** and **$R^2 = 0.999627$ (`3.33 W` RMSE) on continuous level $\tilde{p}$**.
+  - `PowerEngine` updated to evaluate `Physics P3r` analytically in Tier 1 (`DEFAULT` / `"ex3-default"`) while preserving bilinear lookup table interpolation (`computePowerTable`) for Tier 2/3 custom tables (`112/112` native unit tests pass; `ex3-waveshare-nano` firmware builds cleanly).
+  - `RunawayDetector` (`10 s` default timeout outside `[155, 1345]` ADC window while motor active) and `/ws/echenon/live` 2 Hz telemetry + portal dashboard/calibration UI (`WO-02.4`, `WO-02.8`).
+- **Step 6A Cold-Firewall Audit (`pa-auditor`):** **PASS (`APPROVED`)** with `0` blocking findings.
+- **Unblocks:** `PR-04a` (Passive Tap Board), `PR-05` (FTMS Telemetry read-only), and `PR-06` (Session + TCX + Strava).
