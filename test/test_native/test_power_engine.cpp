@@ -247,29 +247,136 @@ TEST(PowerEngineTest, DefaultTableSanity) {
     EXPECT_EQ(table.tier, PowerTableTier::DEFAULT);
     EXPECT_STREQ(table.id, "ex3-default");
 
-    // Level 16 / 80 RPM sanity check (empirical sweep: 80 W)
+    // Level 16 / 80 RPM sanity check (Physics P3r: 80.56 W, empirical sweep: 80 W)
     float p16_80 = engine.computePower(16.0f, 80.0f);
     EXPECT_GE(p16_80, 50.0f);
     EXPECT_LE(p16_80, 200.0f);
-    EXPECT_NEAR(p16_80, 80.0f, 5.0f);
+    EXPECT_NEAR(p16_80, 80.56f, 0.1f);
 
-    // Monotonicity across levels at 80 RPM (non-decreasing; low levels may be
-    // equal within the Echelon app's display resolution)
+    // Strict monotonicity across levels at 80 RPM under continuous Physics P3r
     float prevPower = 0.0f;
     for (int lvl = 1; lvl <= 32; ++lvl) {
         float p = engine.computePower(static_cast<float>(lvl), 80.0f);
-        EXPECT_GE(p, prevPower) << "Power must not decrease with level at 80 RPM (level " << lvl << ")";
+        EXPECT_GT(p, prevPower) << "Power must strictly increase with level at 80 RPM (level " << lvl << ")";
         prevPower = p;
     }
 
-    // Monotonicity across cadence at level 16 (non-decreasing; extrapolated
-    // low-RPM bins may be equal within rounding)
+    // Strict monotonicity across cadence at level 16 under continuous Physics P3r
     prevPower = 0.0f;
     for (float rpm = 20.0f; rpm <= 150.0f; rpm += 10.0f) {
         float p = engine.computePower(16.0f, rpm);
-        EXPECT_GE(p, prevPower) << "Power must not decrease with cadence at level 16 (rpm " << rpm << ")";
+        EXPECT_GT(p, prevPower) << "Power must strictly increase with cadence at level 16 (rpm " << rpm << ")";
         prevPower = p;
     }
+}
+
+TEST(PowerEngineTest, PhysicsP3rReferenceEnvelope) {
+    // Verify reference points from docs/power-physics-model.md §7
+    // Level 1 (p_norm = 0.0)
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(1.0f, 60.0f), 21.28f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(1.0f, 80.0f), 31.63f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(1.0f, 90.0f), 36.78f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(1.0f, 100.0f), 41.78f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(1.0f, 120.0f), 51.18f, 0.05f);
+
+    // Level 5 (p_norm = 4/31)
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(5.0f, 60.0f), 22.69f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(5.0f, 80.0f), 33.83f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(5.0f, 100.0f), 44.75f, 0.05f);
+
+    // Level 10 (p_norm = 9/31)
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(10.0f, 60.0f), 29.57f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(10.0f, 80.0f), 44.57f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(10.0f, 90.0f), 52.01f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(10.0f, 100.0f), 59.24f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(10.0f, 120.0f), 72.74f, 0.05f);
+
+    // Level 16 (p_norm = 15/31)
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(16.0f, 60.0f), 52.65f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(16.0f, 80.0f), 80.56f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(16.0f, 90.0f), 94.41f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(16.0f, 100.0f), 107.81f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(16.0f, 120.0f), 132.70f, 0.05f);
+
+    // Level 20 (p_norm = 19/31)
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(20.0f, 60.0f), 86.02f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(20.0f, 80.0f), 132.61f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(20.0f, 90.0f), 155.71f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(20.0f, 100.0f), 178.06f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(20.0f, 120.0f), 219.41f, 0.05f);
+
+    // Level 24 (p_norm = 23/31)
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(24.0f, 60.0f), 142.57f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(24.0f, 80.0f), 220.82f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(24.0f, 90.0f), 259.61f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(24.0f, 100.0f), 297.11f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(24.0f, 120.0f), 366.36f, 0.05f);
+
+    // Level 28 (p_norm = 27/31)
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(28.0f, 60.0f), 223.80f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(28.0f, 80.0f), 347.50f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(28.0f, 90.0f), 408.83f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(28.0f, 100.0f), 468.08f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(28.0f, 120.0f), 577.42f, 0.05f);
+
+    // Level 32 (p_norm = 1.0)
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(32.0f, 60.0f), 313.26f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(32.0f, 80.0f), 487.03f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(32.0f, 90.0f), 573.19f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(32.0f, 100.0f), 656.40f, 0.05f);
+    EXPECT_NEAR(PowerEngine::computePowerPhysics(32.0f, 120.0f), 809.88f, 0.05f);
+}
+
+TEST(PowerEngineTest, PhysicsP3rPotentiometerMapping) {
+    // At POT_MIN_DEFAULT (171.0) -> matches Level 1.0
+    EXPECT_FLOAT_EQ(
+        PowerEngine::computePowerFromPot(171.0f, 80.0f),
+        PowerEngine::computePowerPhysics(1.0f, 80.0f));
+
+    // At POT_MAX_DEFAULT (1333.0) -> matches Level 32.0
+    EXPECT_FLOAT_EQ(
+        PowerEngine::computePowerFromPot(1333.0f, 90.0f),
+        PowerEngine::computePowerPhysics(32.0f, 90.0f));
+
+    // Midpoint ADC (752.0 -> p_norm = 0.5 -> continuous level = 16.5)
+    EXPECT_NEAR(
+        PowerEngine::computePowerFromPot(752.0f, 85.0f),
+        PowerEngine::computePowerPhysics(16.5f, 85.0f),
+        0.001f);
+
+    // Edge cases: zero cadence, negative cadence, invalid pot range
+    EXPECT_FLOAT_EQ(PowerEngine::computePowerFromPot(752.0f, 0.0f), 0.0f);
+    EXPECT_FLOAT_EQ(PowerEngine::computePowerFromPot(752.0f, -10.0f), 0.0f);
+    EXPECT_FLOAT_EQ(PowerEngine::computePowerFromPot(752.0f, 80.0f, 1000.0f, 500.0f), 0.0f);
+    EXPECT_FLOAT_EQ(PowerEngine::computePowerPhysics(NAN, 80.0f), 0.0f);
+    EXPECT_FLOAT_EQ(PowerEngine::computePowerPhysics(16.0f, NAN), 0.0f);
+}
+
+TEST(PowerEngineTest, TierOverrideSwitchesBetweenPhysicsAndTable) {
+    PowerEngine engine;
+    engine.loadDefault();
+
+    // Tier 1 DEFAULT evaluates Physics P3r (~80.56 W at L16 / 80 RPM)
+    EXPECT_NEAR(engine.computePower(16.0f, 80.0f), 80.56f, 0.05f);
+
+    // Tier 2 SELECTED custom table override uses bilinear interpolation
+    PowerTable custom;
+    custom.clear();
+    custom.tier = PowerTableTier::SELECTED;
+    std::strncpy(custom.id, "custom-test", sizeof(custom.id) - 1);
+    custom.watts[15][16] = 222;
+    engine.setTable(custom);
+    EXPECT_FLOAT_EQ(engine.computePower(16.0f, 80.0f), 222.0f);
+
+    // Tier 3 RECALIBRATED override uses bilinear interpolation on recalibrated grid
+    custom.tier = PowerTableTier::RECALIBRATED;
+    custom.watts[15][16] = 245;
+    engine.setTable(custom);
+    EXPECT_FLOAT_EQ(engine.computePower(16.0f, 80.0f), 245.0f);
+
+    // Restoring default re-enables Physics P3r evaluation
+    engine.loadDefault();
+    EXPECT_NEAR(engine.computePower(16.0f, 80.0f), 80.56f, 0.05f);
 }
 
 TEST(PowerEngineTest, TickCachesLastPower) {

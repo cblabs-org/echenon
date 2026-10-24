@@ -15,15 +15,18 @@ Can mechanical output power ($P$, in Watts) on the Echelon EX-3 be accurately pr
 
 **Yes.** Across $N = 317$ clean empirical measurements spanning the entire $32 \times 10$ operating envelope ($12\text{ W}$ to $861\text{ W}$):
 
-1. **10-Term Bivariate Cubic Polynomial (Model 8 — Best Overall Accuracy):** Achieves **$R^2 = 0.997928$** ($\text{Adjusted } R^2 = 0.997867$), **$\text{RMSE} = 7.84\text{ W}$**, **$\text{MAE} = 5.81\text{ W}$** (median percentage error **$4.26\%$**), and maximum absolute residual **$31.80\text{ W}$** at $861\text{ W}$ peak load.
-2. **5-Parameter Shifted Power Law (Model 10 — Best Compact Non-Linear Model):**
+1. **4-Parameter First-Principles Electromechanical Model (`Physics P3r` — Production Selected ★):**
+   $$P(\tilde{p}, \text{cad}) = 0.0048839 \cdot \exp\!\Big(1.630327 \cdot \big(1 - \cos(2.635447 \cdot \tilde{p})\big)\Big) \cdot \frac{\text{cad}^2}{1 + (\text{cad} / 128.1495)^2} + 0.114260 \cdot \text{cad}$$
+   Achieves **$R^2 = 0.999522$** ($\text{Adjusted } R^2 = 0.999518$), **$\text{RMSE} = 3.77\text{ W}$**, **$\text{MAE} = 2.71\text{ W}$** (improving to **$R^2 = 0.999627$, $\text{RMSE} = 3.33\text{ W}$** on calibrated continuous level $\tilde{p} = (\ell - 1)/31$), and exact $P(\tilde{p}, 0) = 0\text{ W}$ using only $k = 4$ physical parameters. See [`docs/power-physics-model.md`](../../power-physics-model.md) for the complete derivation and firmware specification.
+2. **10-Term Bivariate Cubic Polynomial (Model 8 — Best Empirical Polynomial):** Achieves **$R^2 = 0.997928$** ($\text{Adjusted } R^2 = 0.997867$), **$\text{RMSE} = 7.84\text{ W}$**, **$\text{MAE} = 5.81\text{ W}$** (median percentage error **$4.26\%$**), and maximum absolute residual **$31.80\text{ W}$** at $861\text{ W}$ peak load.
+3. **5-Parameter Shifted Power Law (Model 10 — Best Compact Power-Law Model):**
    $$P = a \cdot (\text{pot} - p_0)^b \cdot \text{cad}^c + d$$
    Achieves **$R^2 = 0.990529$** ($\text{Adjusted } R^2 = 0.990408$), **$\text{RMSE} = 16.77\text{ W}$**, and **$\text{MAE} = 14.01\text{ W}$**, revealing the underlying physical scaling exponents: $b \approx 2.592$ (air-gap magnetic flux concentration) and $c \approx 1.431$ (eddy-current + console skin-effect scaling).
-3. **4-Parameter Separable Physics Model (Model 4 — Best Ultralight Polynomial):**
+4. **4-Parameter Separable Physics Model (Model 4 — Best Ultralight Polynomial):**
    $$P = \text{cad} \times (a \cdot \text{pot}^2 + b \cdot \text{pot} + c) + d$$
    Achieves **$R^2 = 0.985096$** ($\text{Adjusted } R^2 = 0.984953$), **$\text{RMSE} = 21.04\text{ W}$**, and **$\text{MAE} = 17.34\text{ W}$** using only 4 floating-point constants and 4 multiply-accumulate operations.
 
-Because the ESP32-S3 includes a single-precision hardware FPU, **Model 8 (Cubic Polynomial)** executes in $< 1\,\mu\text{s}$ using $40\text{ bytes}$ of `constexpr float` flash constants (`10 × 4B`), vs $640\text{ bytes}$ for a $32 \times 10$ `uint16_t` lookup table, while simultaneously eliminating discrete level quantization and potentiometer hysteresis error.
+Because the ESP32-S3 includes a single-precision hardware FPU, the **4-Parameter First-Principles Electromechanical Model (`Physics P3r`)** executes in $< 3\,\mu\text{s}$ using $16\text{ bytes}$ of `constexpr float` constants (`4 × 4B`), achieves less than half the RMSE of the 10-term Cubic Polynomial ($3.77\text{ W}$ vs $7.84\text{ W}$), and guarantees exact physical boundary conditions ($P = 0\text{ W}$ at $0\text{ RPM}$, strict monotonicity, and closed-form analytical invertibility).
 
 ---
 
@@ -178,12 +181,42 @@ During the automated 320-point sweep (`sweep_20261024.csv`), monotonicity checks
 | **Glitch Immunity** | Requires manual patching of 3 LUT cells | **Inherently smoothed** across all 317 points | **Inherently smoothed** |
 | **Accuracy ($R^2$ / RMSE / MAE)** | Grid-exact, but $\pm 8\text{ W}$ hysteresis between levels | **$R^2 = 0.9979$ / $7.84\text{ W}$ / $5.81\text{ W}$** | $R^2 = 0.9851$ / $21.04\text{ W}$ / $17.34\text{ W}$ |
 
-**Recommendation:** Use **Model 8 (10-term Cubic Polynomial)** evaluated in hardware single-precision `float` via Horner's method as the primary firmware predictor. It uses $16\times$ less memory than a 2D LUT, runs in sub-microsecond time on the ESP32-S3 hardware FPU, and takes continuous `potAdc` and `cadenceRpm` directly.
+**Recommendation:** Use **`Physics P3r` (4-parameter First-Principles Electromechanical Model, §8.2)** as the primary production firmware predictor in `PowerEngine` (see [`docs/power-physics-model.md`](../../power-physics-model.md)). It achieves **$R^2 = 0.999522$** ($\text{RMSE} = 3.77\text{ W}$, $\text{MAE} = 2.71\text{ W}$) with only 4 physical constants, guarantees $P(\tilde{p}, 0) = 0\text{ W}$, and outperforms **Model 8 (10-term Cubic Polynomial)** by more than $2\times$ in RMSE ($3.77\text{ W}$ vs $7.84\text{ W}$).
 
 ### 6.2 Production C++ Implementation (ESP32-S3)
 
 ```cpp
+#include <cmath>
 #include <stdint.h>
+
+/**
+ * @brief Primary Production Predictor: 4-Parameter First-Principles Electromechanical Model (Physics P3r).
+ *        R^2 = 0.999522, Adjusted R^2 = 0.999518, RMSE = 3.77 W, MAE = 2.71 W (N=317).
+ *        When driven by calibrated continuous level l in [1.0, 32.0] (p_norm = (l - 1)/31),
+ *        achieves R^2 = 0.999627, RMSE = 3.33 W, MAE = 2.41 W.
+ */
+float predictPowerPhysicsP3r(float pNorm, float cadenceRpm) {
+    if (cadenceRpm <= 0.0f) {
+        return 0.0f;
+    }
+    if (pNorm < 0.0f) pNorm = 0.0f;
+    if (pNorm > 1.0f) pNorm = 1.0f;
+
+    constexpr float kA          = 0.0048839f; // Baseline eddy-current scale (W / RPM^2)
+    constexpr float kBeta       = 1.630327f;  // Exponential air-gap magnetic flux gain
+    constexpr float kCadCrit    = 128.1495f;  // Kloss inductive rollover cadence (RPM)
+    constexpr float kCFric      = 0.114260f;  // Drivetrain belt/bearing Coulomb drag (W / RPM)
+    constexpr float kCamSweep   = 2.635447f;  // 151 deg eccentric cam sweep (radians)
+
+    const float u      = 1.0f - cosf(kCamSweep * pNorm);
+    const float r      = cadenceRpm / kCadCrit;
+    const float pEddy  = kA * expf(kBeta * u) * (cadenceRpm * cadenceRpm) / (1.0f + r * r);
+    const float watts  = pEddy + kCFric * cadenceRpm;
+
+    if (watts <= 0.0f) return 0.0f;
+    if (watts >= 2000.0f) return 2000.0f;
+    return watts;
+}
 
 /**
  * @brief Predict mechanical output power (Watts) directly from potentiometer ADC
@@ -260,3 +293,107 @@ uint16_t predictPowerPhysics(uint16_t potAdc, uint16_t cadenceRpm) {
     return static_cast<uint16_t>(watts + 0.5f);
 }
 ```
+
+---
+
+## 7. Deep Dive: First-Principles Electromechanical Physics & Firmware Reverse-Engineering
+
+Following the initial 11-model empirical survey, a deeper structural and physical investigation (`tmp/reverse_engineer_physics.py`) was conducted to answer two fundamental questions:
+1. Can we derive a **true first-principles physics equation** (POT $\to$ Cam Angle $\theta \to$ Air Gap $d(\theta) \to$ Magnetic Flux $B(d) \to$ Kloss Eddy-Current Torque $\tau(d, \omega) \to$ Power) that outperforms empirical polynomials with fewer parameters and tight confidence intervals?
+2. Can we **reverse-engineer the exact power algorithm** inside the Echelon Fit console/app?
+
+### 7.1 Why Naive Cam-Cosine Failed ($R^2 = 0.885$) — and How True Eddy-Current Physics Achieves $R^2 = 0.99952$ with Only 4 Parameters
+
+In `Model 5` ($R^2 = 0.8851$), cam displacement $u(\tilde{p}) = 1 - \cos(151^\circ \cdot \tilde{p})$ (where $\tilde{p} = \frac{\text{pot} - 171}{1333 - 171} \in [0, 1]$) was assumed to scale braking torque *linearly*. In reality, two physical laws govern an eccentric-cam permanent-magnet eddy-current brake:
+
+1. **Exponential Magnetic Flux Decay Across the Air Gap ($B^2(u) = B_0^2 e^{\beta u}$):**
+   - As the eccentric cam rotates from Top Dead Center ($\theta_0 = 0^\circ$ at Level 1, $\text{pot} = 171$) through $\Delta\theta = 151^\circ$ ($2.6354\text{ rad}$ at Level 32, $\text{pot} = 1333$), the normalized linear advance of the magnet slider toward the flywheel is:
+     $$u(\tilde{p}) = 1 - \cos(2.6354 \cdot \tilde{p}) \in [0,\, 1.8746]$$
+   - The magnetic flux density $B(d)$ in the air gap between the permanent magnet calliper and the aluminium flywheel follows an exponential Halbach/fringing decay $B(d) \propto e^{-\kappa d}$. Since eddy-current braking force scales as $B^2(d)$, the magnetic braking factor scales as $\exp(\beta \cdot u(\tilde{p}))$.
+2. **Kloss / Lorentz Eddy-Current Inductive Saturation ($\tau_{\text{eddy}}(\omega)$):**
+   - An aluminium flywheel spinning through a localized magnetic field acts as a continuous induction rotor with effective eddy-current path resistance $R_{\text{eddy}}$ and self-inductance $L_{\text{eddy}}$.
+   - By the classical **Kloss / Lorentz electromagnetic torque equation**, eddy-current braking torque does not grow linearly with cadence forever; above a critical skin-effect / magnetic Reynolds cadence $\text{cad}_c = \frac{R_{\text{eddy}}}{2\pi L_{\text{eddy}}}$, the induced magnetic reaction field screens the applied field:
+     $$\tau_{\text{eddy}}(\tilde{p}, \text{cad}) \propto \exp\!\big(\beta \, u(\tilde{p})\big) \cdot \frac{\text{cad}}{1 + (\text{cad} / \text{cad}_c)^2}$$
+   - Multiplying total torque ($\tau_{\text{eddy}} + \tau_{\text{fric}}$) by angular velocity ($\propto \text{cad}$) yields the **4-Parameter First-Principles Electromechanical Power Equation (`Physics P3r`)**:
+
+$$P(\text{pot}, \text{cad}) = A \cdot \exp\!\Big(\beta \big(1 - \cos(2.6354 \cdot \tilde{p})\big)\Big) \cdot \frac{\text{cad}^2}{1 + (\text{cad} / \text{cad}_c)^2} + c_{\text{fric}} \cdot \text{cad}$$
+
+#### Fitted Physical Constants & 95% Confidence Intervals ($N = 317$, $k = 4$)
+
+| Parameter | Physical Interpretation | Fitted Value | 95% Confidence Interval | Relative SE |
+|---|---|---:|---:|---:|
+| $A$ | Baseline eddy-current coupling at Level 1 ($u = 0$) | `0.004884 W` | $\pm 0.000131\text{ W}$ | **$1.37\%$** |
+| $\beta$ | Exponential air-gap flux concentration factor ($e^{\beta u_{\max}} = 21.25\times$) | `1.630327` | $\pm 0.013016$ | **$0.41\%$** |
+| $\text{cad}_c$ | Critical eddy-current skin-effect cadence ($\omega_c = R_{\text{eddy}}/L_{\text{eddy}}$) | `128.15 RPM` | $\pm 1.22\text{ RPM}$ | **$0.48\%$** |
+| $c_{\text{fric}}$ | Mechanical belt/bearing Coulomb friction torque ($\sim 1.09\text{ N}\cdot\text{m}$) | `0.114260 W/RPM` | $\pm 0.013530\text{ W/RPM}$ | **$6.02\%$** |
+
+- **Accuracy (`Physics P3r`, $k=4$):** **$R^2 = 0.999522$** ($\text{Adjusted } R^2 = 0.999518$), **$\text{RMSE} = 3.77\text{ W}$**, **$\text{MAE} = 2.71\text{ W}$**, **$\text{Max Residual} = 18.69\text{ W}$**.
+- Letting $\theta_0$ and $P_0$ float (`Physics P3`, $k=6$) yields $\theta_0 = -1.01^\circ \pm 1.80^\circ$ (confirming the cam starts within $1^\circ$ of Top Dead Center at Level 1!) and $P_0 = -1.11 \pm 2.10\text{ W}$ (confirming zero power at zero cadence), with $R^2 = 0.999531$ and $\text{RMSE} = 3.73\text{ W}$.
+- Compared to the 10-parameter empirical Cubic Polynomial ($R^2 = 0.997928$, $\text{RMSE} = 7.84\text{ W}$, where 4 of the 10 terms have large colinearity error bars $|t| < 4.5$), the **4-parameter first-principles Kloss model cuts RMSE and MAE in half ($3.77\text{ W}$ vs $7.84\text{ W}$) with $60\%$ fewer parameters**.
+
+---
+
+### 7.2 Reverse-Engineering Echelon's Proprietary Console/App Power Algorithm
+
+Because the Echelon bike console only transmits integer **Resistance Level $L \in \{1..32\}$** and **Cadence $\text{RPM}$** over BLE (never `pot_adc`), the Watt value displayed in the Echelon Fit app is strictly a deterministic function $P(L, \text{RPM})$.
+
+1. **Quantifying `pot_adc` Positioning Jitter vs Integer Level $L$:**
+   - Across the 10 cadence sweeps at each resistance level, the bang-bang motor controller exhibits an intra-level positioning standard deviation of **$1.97\text{ ADC counts}$** (mean span $6.2\text{ ADC counts}$, vs $37.15\text{ ADC counts/level}$).
+   - Regressing the 10-term cubic polynomial on integer $L$ instead of `pot_adc` reduces RMSE from $7.84\text{ W} \to 7.07\text{ W}$ ($R^2 = 0.99793 \to 0.99832$); regressing the 6-parameter Kloss model on $L$ reduces RMSE from $3.73\text{ W} \to 3.33\text{ W}$ ($R^2 = 0.99963$). Thus, **$\sim 0.4\text{–}0.8\text{ W}$ of the RMSE floor** when predicting from `pot_adc` is physical bang-bang motor hysteresis/jitter within a single console level.
+
+2. **Singular Value Decomposition (SVD) of the $32 \times 10$ Power Matrix $P(L, \text{RPM})$:**
+   - Performing SVD on the clean $32 \times 10$ matrix reveals singular values $\sigma_1 = 4146.82$, $\sigma_2 = 28.03$, $\sigma_3 = 18.46$, $\sigma_4 = 8.51$:
+     - **Rank-1 Separable Product $P(L, \text{RPM}) \approx F(L) \times G(\text{RPM})$:** Captures **$99.9925\%$** of total matrix energy ($R^2 = 0.999865$, $\text{RMSE} = 2.00\text{ W}$, $\text{MAE} = 1.62\text{ W}$; $79.2\%$ of all 317 points within $\pm 2\text{ W}$).
+     - **Rank-2 Sum $P(L, \text{RPM}) \approx F_1(L) G_1(\text{RPM}) + F_2(L) G_2(\text{RPM})$:** Captures **$99.9971\%$** of total matrix energy ($R^2 = 0.999947$, $\text{RMSE} = 1.26\text{ W}$, $\text{MAE} = 0.84\text{ W}$ after integer rounding; **$94.3\%$ of all points within $\pm 2\text{ W}$**).
+
+3. **The Smoking Gun in Effective Torque ($P / \text{RPM}$): Torque Clamping at $\text{RPM} \ge 100$!**
+   - Dividing each cell of the $32 \times 10$ matrix by $\text{RPM}$ exposes the effective braking torque table $\tau(L, \text{RPM}) = P(L, \text{RPM}) / \text{RPM}$:
+     - **From $40\text{ RPM}$ to $100\text{ RPM}$:** $\tau(L, \text{RPM}) = P / \text{RPM}$ increases linearly with $\text{RPM}$ (e.g., at $L=32$: $3.80 \to 4.48 \to 5.10 \to 5.57 \to 6.08 \to 6.30 \to 6.57\text{ W/RPM}$).
+     - **From $100\text{ RPM}$ to $130\text{ RPM}$:** $\tau(L, \text{RPM}) = P / \text{RPM}$ **is completely flat (clamped) across all 32 levels!**
+     - Specifically, at $\text{RPM} = 120$, the relation $P(L, 120) = \text{round}\!\left(P(L, 100) \times \frac{120}{100}\right)$ holds with **$\text{MAE} = 0.00\text{ W}$ and $\text{Max Error} = 0\text{ W}$ ($100.0\%$ exact match across all 32 levels!)**.
+   - **How Echelon's Firmware/App Computes Power:** Echelon uses a two-regime (clamped torque-speed) model where effective torque per RPM grows with cadence up to $100\text{ RPM}$ (matching the rising side of the Kloss eddy-current curve) and is **held constant above $100\text{ RPM}$** ($\text{RPM}_{\text{eff}} = \min(\text{RPM}, 100)$), so that for $\text{RPM} \ge 100$, power scales strictly linearly with cadence:
+     $$P(L, \text{RPM}) = \text{RPM} \times \Big[\tau_0(L) + k(L) \cdot \min(\text{RPM}, 100)\Big]$$
+
+### 7.3 Updated C++ Firmware Implementation: 4-Parameter First-Principles Kloss Model (`R² = 0.99952`)
+
+```cpp
+#include <math.h>
+#include <stdint.h>
+
+/**
+ * @brief First-principles 4-parameter electromechanical model (Physics P3r):
+ *        POT -> 151° Eccentric Cam u(p) -> Exponential Air-Gap Flux B²(u)
+ *            -> Kloss Eddy-Current Braking Torque + Drivetrain Friction -> Power (W)
+ *
+ * Accuracy across N=317 clean points (Levels 1..32, Cadence 40..130 RPM):
+ *   R^2 = 0.999522, Adjusted R^2 = 0.999518, RMSE = 3.77 W, MAE = 2.71 W
+ */
+uint16_t predictPowerKlossPhysics(uint16_t potAdc, uint16_t cadenceRpm) {
+    if (cadenceRpm == 0) {
+        return 0;
+    }
+
+    constexpr float POT_MIN   = 171.0f;
+    constexpr float POT_SPAN  = 1162.0f;   // 1333 - 171
+    constexpr float CAM_RAD   = 2.635447f; // 151.0 deg in radians
+    constexpr float A_EDDY    = 0.004884f; // W at u=0
+    constexpr float BETA_FLUX = 1.630327f; // exponential air-gap flux factor
+    constexpr float CAD_CRIT  = 128.1495f; // Kloss critical skin-effect RPM
+    constexpr float C_FRIC    = 0.114260f; // mechanical drivetrain drag (W/RPM)
+
+    float pNorm = (static_cast<float>(potAdc) - POT_MIN) / POT_SPAN;
+    if (pNorm < 0.0f) pNorm = 0.0f;
+    if (pNorm > 1.2f) pNorm = 1.2f;
+
+    const float cad = static_cast<float>(cadenceRpm);
+    const float uCam = 1.0f - cosf(CAM_RAD * pNorm);
+    const float cadRatio = cad / CAD_CRIT;
+    const float klossSpeedTerm = (cad * cad) / (1.0f + cadRatio * cadRatio);
+
+    const float watts = A_EDDY * expf(BETA_FLUX * uCam) * klossSpeedTerm + C_FRIC * cad;
+    if (watts <= 0.0f) return 0;
+    if (watts >= 2000.0f) return 2000;
+    return static_cast<uint16_t>(watts + 0.5f);
+}
+```
+

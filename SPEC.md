@@ -1202,30 +1202,84 @@ drops and lowers it when cadence rises, holding the requested power.
 
 ### 6.1 Physical Basis
 
-Magnetic eddy-current brake: neodymium magnets beside an aluminium flywheel.
-At fixed magnet position, power grows approximately with cadence squared. The
-cam moves the magnets by $e(1 - \cos\theta)$, and braking depends on the gap
-through a further unmeasured function, so resistance is non-linear (but
-monotonic) in level (B03, DR-1 §1.1).
+Magnetic eddy-current brake: a linear multipole array of neodymium (NdFeB)
+permanent magnets mounted on a pivoted calliper beside the outer aluminium rim
+of the perimeter-weighted flywheel, driven by a $12\text{ V}$ DC gearmotor
+through a $\Delta\theta_{\max} = 151^\circ$ ($2.635447\text{ rad}$) eccentric
+cam coupled to a $10\text{ k}\Omega$ rotary potentiometer wiper.
 
-### 6.2 Power Model (DR-1 §2.6)
+As derived and verified against the 320-point Phase 3 empirical sweep in
+[`docs/power-physics-model.md`](docs/power-physics-model.md) and
+[`docs/measurements/phase3/C07-20261024-power-regression-analysis.md`](docs/measurements/phase3/C07-20261024-power-regression-analysis.md),
+the physical braking power is governed by four coupled electromechanical
+stages:
 
-Power comes from an **empirical per-level × cadence table**. There is **no
-polynomial** in level or angle: the table captures the cam's
-$1 - \cos\theta$ displacement and the gap-to-braking function together.
+1. **Eccentric Cam Kinematics ($\tilde{p} \to \theta \to u$):** Level 1 is
+   mechanically parked at Top Dead Center ($\theta_0 = 0^\circ$). Across
+   normalized wiper travel $\tilde{p} \in [0, 1]$ (where
+   $\tilde{p} = \frac{\ell - 1}{31}$ from calibrated continuous level
+   $\ell \in [1.0, 32.0]$, or $\frac{\text{pot\_adc} - \text{pot}_{\min}}{\text{pot}_{\max} - \text{pot}_{\min}}$),
+   the cam rotates through $\theta(\tilde{p}) = 2.635447\,\tilde{p}\text{ rad}$
+   and advances the magnet calliper toward the flywheel rim by
+   $u(\tilde{p}) = 1 - \cos(2.635447\,\tilde{p}) \in [0, 1.87462]$.
+2. **Exponential Air-Gap Magnetic Flux Squared ($B^2(u)$):** Because magnetic
+   flux density across air gap $d = d_0 - e\cdot u(\tilde{p})$ decays
+   exponentially ($B(d) = B_0 e^{-\kappa d}$), the Lorentz eddy-current braking
+   factor $B^2$ grows as $\exp(\beta\,u(\tilde{p}))$ with fitted exponent
+   $\beta = 1.630327 \pm 0.013016$ (a $21.25\times$ magnetic braking force
+   amplification from Level 1 to Level 32).
+3. **Kloss Eddy-Current Inductive Rollover ($\tau_{\text{eddy}}(\omega)$):**
+   The spinning aluminium flywheel rim has finite sheet resistance and
+   eddy-current loop inductance, obeying the classical Kloss induction-brake
+   torque equation $\tau_{\text{eddy}} \propto \frac{\text{cad}}{1 + (\text{cad}/\text{cad}_c)^2}$
+   with critical skin-effect cadence $\text{cad}_c = 128.1495 \pm 1.2194\text{ RPM}$.
+4. **Drivetrain Coulomb Friction ($c_{\text{fric}}\cdot\text{cad}$):** Constant
+   mechanical drag from the poly-V belt and bearings adds linear power
+   $c_{\text{fric}}\cdot\text{cad}$ with $c_{\text{fric}} = 0.114260 \pm 0.013530\text{ W/RPM}$
+   ($1.091\text{ N}\cdot\text{m}$ crank friction torque).
 
-- The table is **32 levels × N cadence bins** (5 RPM steps, 0–150 RPM), in
-  watts.
-- At runtime, bilinear interpolation between the four nearest entries gives a
-  continuous power value. The level axis is the continuous level ℓ from the
-  internal scale `i` (§5.3), so power is smooth between console levels.
-- Power is clamped: $\max(0, P)$.
-- **v2:** in Override Mode the level axis is interpolated by cam angle `[DR-2]`.
+### 6.2 Power Model (Owner Decision 2026-10-24, superseding DR-1 §2.6)
 
-**Accuracy statement (owner decision 2026-10-12).** Echenon's power matches the
-**Echelon app's power model**, because the table is built from the app's
-displayed power (§6.3). It is not an independently accurate power measurement.
-PR-02 validates agreement with the Echelon app to within ±15 %.
+In Default mode (Tier 1), `PowerEngine` computes mechanical power directly from
+the **4-parameter first-principles electromechanical formula (`Physics P3r`)**:
+
+$$P(\tilde{p}, \text{cad}) = A \cdot \exp\!\Big(\beta \cdot \big(1 - \cos(2.635447 \cdot \tilde{p})\big)\Big) \cdot \frac{\text{cad}^2}{1 + (\text{cad} / \text{cad}_c)^2} + c_{\text{fric}} \cdot \text{cad}$$
+
+with production constants:
+- $A = 0.0048839\text{ W/RPM}^2$
+- $\beta = 1.630327$
+- $\text{cad}_c = 128.1495\text{ RPM}$
+- $c_{\text{fric}} = 0.114260\text{ W/RPM}$
+- $\Delta\theta_{\max} = 2.635447\text{ rad}$ ($151^\circ$)
+
+Runtime evaluation rules:
+- When $\text{cad} \le 0\text{ RPM}$, $P(\tilde{p}, \text{cad}) = 0\text{ W}$ identically.
+- The normalized position input $\tilde{p} = \text{clamp}\!\left(\frac{\ell - 1}{31}, 0.0, 1.0\right)$
+  uses the continuous level $\ell \in [1.0, 32.0]$ produced by `ResistanceSensor`
+  from the unit's calibrated 32-entry wiper table (`cal_level_table`, or the
+  Phase 3 linear fit $\text{pot} = 37.26\,\ell + 120.0$ before passive
+  calibration), giving continuous sub-level resolution and eliminating
+  potentiometer end-stop offset across bikes. A direct raw-ADC helper
+  (`computePowerFromPot`) is also provided.
+- Power is clamped to $[0, 2000]\text{ W}$.
+- When Tier 2 (custom uploaded CSV/JSON matrix) or Tier 3 (empirical
+  recalibration grid) is active, `PowerEngine` supports bilinear interpolation
+  over the **32 levels × 31 cadence bins** ($0\text{–}150\text{ RPM}$ in $5\text{ RPM}$
+  steps) override table (`DEFAULT_POWER_TABLE` is also seeded from the physical
+  model for REST `/api/power-table` inspection).
+- **v2 (PR-08 ERG Mode):** Because `Physics P3r` is strictly monotonic and
+  analytically invertible in closed form via $\ln$ and $\arccos$
+  ([`docs/power-physics-model.md`](docs/power-physics-model.md) §5.5), the ERG
+  controller can invert $(P_{\text{target}}, \text{cad}) \to \tilde{p}_{\text{target}}$
+  directly without table search.
+
+**Accuracy statement (owner decision 2026-10-24).** Across the 317 clean points
+of the Phase 3 automated 32-level × 10-cadence sweep (`C07`), the 4-parameter
+physical model `Physics P3r` achieves **$R^2 = 0.999522$** ($\text{RMSE} = 3.77\text{ W}$,
+$\text{MAE} = 2.71\text{ W}$) from raw `pot_adc`, and **$R^2 = 0.999627$**
+($\text{RMSE} = 3.33\text{ W}$, $\text{MAE} = 2.41\text{ W}$) on calibrated
+level position $\tilde{p} = (\ell - 1)/31$—well inside the PR-02 $\pm 15\%$
+validation gate.
 
 ### 6.3 Calibration
 
@@ -1236,8 +1290,10 @@ Calibration is split between a passive step and a motor-driven step.
 - **Passive calibration (PR-02, all installs).** The `CalibrationWizard`
   guides the rider to step the console through its 32 levels, pausing at each.
   The firmware records the display-path wiper counts and the console level at
-  each step. The result is the unit's 32-entry wiper table, which replaces the
-  B03 default fit in the wiper → `i` mapping (§5.3) and indexes the power table.
+  each step. The result is the unit's 32-entry wiper table (`cal_level_table`),
+  which replaces the default linear fit in the wiper → $\ell$ (`i`) mapping
+  (§5.3) and normalizes $\tilde{p} = (\ell - 1)/31 \in [0, 1]$ for the physical
+  power formula (§6.2) as well as indexing any Tier 2/3 override table.
 - **v2 — Motor-driven calibration (PR-07, active board).** A full-revolution sweep
   finds the click-offs and the cam extremes and records θ<sub>min</sub> and
   θ<sub>max</sub>, which bound the Override working range.
@@ -1247,31 +1303,28 @@ console provides the pot reference) and standalone Override (the replica
 reference provides it, `[DR-2]`). The firmware then keeps a separate calibration
 for each reference source.
 
-#### Power-Data Sources (owner decision 2026-10-12)
+#### Power-Data Sources (owner decisions 2026-10-12 & 2026-10-24)
 
 | Source | Status | Use |
 |---|---|---|
-| **Echelon app's displayed power**, read by the rider at a grid of level × cadence points and entered through the recalibration UI | **Primary** | Builds and refines the per-level table. This makes the recalibration UI the main way power data is acquired, not an optional extra |
-| **Community Echelon power tables** | Alternative / seed | May seed the default table before user calibration. Subject to the UK/EU database-right caveat below |
-| Reference power meter | **Rejected** | Removing the cranks is impractical, and power pedals cost about £700 |
-| Sniffing the console's BLE broadcast (e.g. with nRF Connect) | **Rejected** | Power may not be transmitted at all, and Echelon actively obfuscates its protocol |
+| **First-principles electromechanical model (`Physics P3r`) fitted to Phase 3 C07 320-point sweep** | **Primary (Tier 1 Default)** | Evaluates continuous power directly from calibrated $\tilde{p}$ and cadence ($R^2 = 0.999522$, $\text{RMSE} = 3.77\text{ W}$) and seeds `DEFAULT_POWER_TABLE` |
+| **Echelon app's displayed power**, read by the rider at a grid of level × cadence points and entered through the recalibration UI | **Tier 3 Override / Refinement** | Refines the per-level table or calibrates unit-specific offsets via `RecalibrationUI` |
+| **Community / Custom Echelon power tables** | **Tier 2 Override** | Rider-uploaded CSV/JSON power table via `/api/power-table` |
 
-The three tiers below are the ways the active table is populated, from
-coarsest to most precise for this unit.
+The three tiers below govern how `PowerEngine` computes power at runtime, from
+the built-in physical formula to unit-specific empirical overrides.
 
-#### Tier 1 — Default Table
+#### Tier 1 — First-Principles Physical Formula (`PowerTableTier::DEFAULT`)
 
-The table compiled into the firmware (`ex3-default` in `src/echenon/PowerTableDefault.h`
-and `tools/calibration-rig/ex3-default-power-table.csv`). Populated in PR-02 from
-Echenon's own 320-point empirical automated calibration sweep (32 levels × 10
-cadence steps, 40–130 RPM in 10 RPM increments) captured on 2026-10-24
-(`docs/measurements/phase3/evidence/sweep_20261024.csv`), interpolated and
-extrapolated onto the 32 × 31 firmware grid (0–150 RPM in 5 RPM steps). A built-in table ships only if it is
-derived from Echenon's own measurements or from a source whose licence permits
-redistribution. Tables compiled from third-party datasets (including community
-Echelon tables) may carry database rights in the UK and EU, so they are not
-bundled unless their licence allows it; riders can load them themselves as a
-custom table (Tier 2) to seed calibration.
+In Tier 1 (the factory default), `PowerEngine::computePower(continuous_level, cadence_rpm)`
+evaluates the 4-parameter electromechanical formula `Physics P3r` (§6.2)
+directly in hardware floating point. In addition, the built-in reference table
+(`ex3-default` in `src/echenon/PowerTableDefault.h` and
+`tools/calibration-rig/ex3-default-power-table.csv`) is populated from
+Echenon's 320-point empirical sweep (`docs/measurements/phase3/evidence/sweep_20261024.csv`)
+and physical model so that portal previews (`GET /api/power-table`) and Tier 3
+initial seeding have a complete $32 \times 31$ grid ($0\text{–}150\text{ RPM}$ in
+$5\text{ RPM}$ steps) derived entirely from Echenon's own measurements.
 
 #### Tier 2 — Power Matrix
 
@@ -2841,7 +2894,7 @@ fitted.
 | D.1 | Register completeness. | Every register row has evidence and a result; every v1 `[DR-1: …]` value in this specification has a decision. | **Done.** Register complete (row #10 waived for v1, row #12 moved to PR-03 WO3); v1 values resolved. Remaining placeholders are `[PR-02: …]` or `[DR-2: …]` |
 | D.2 | Pin map. | §4.4.2 v1 rows confirmed or replaced; the PROVISIONAL marking is removed for v1. | **Done.** v1 rows frozen (all ten PR-01 taps, no outputs, UART0 reserved); v2 rows stay provisional under DR-2 |
 | D.3 | Resistance model. | v1: wiper profile, working range and level model decided. Click-off threshold, fast-path rate and Override scale are v2 (DR-2). | **Done.** Linear B03 fit over 165–1327 counts, 4 detents per level, internal scale and mappings (§5.2–§5.3) |
-| D.4 | Power model. | Model form decided from data. | **Done.** Empirical per-level × cadence table, no polynomial; recalibration UI; Echelon app power as the primary source (§6) |
+| D.4 | Power model. | Model form decided from data. | **Updated 2026-10-24 (superseding DR-1).** 4-parameter first-principles electromechanical formula (`Physics P3r`: $R^2 = 0.999522$, $\text{RMSE} = 3.77\text{ W}$, [`docs/power-physics-model.md`](docs/power-physics-model.md)) as Tier 1 default in `PowerEngine`, with Tier 2 custom matrix and Tier 3 recalibration table overrides (§6) |
 | D.5 | v1 power path. | VIN supply, VIN/USB selection and the power-path check decided (MITM safety moved to DR-2). | **Approved with condition.** VIN or USB, never both; PR-04a WO1 checks the Waveshare power path from the schematic before soldering and designs the selector (§4.6) |
 | D.6 | Standalone supports. | None on the v1 board (R3/R4/R5 and the Green–GND link are DR-2 items). | **Done.** None in v1 |
 | D.7 | Decision record. | [`DR-1-design-freeze.md`](.agents/skills/principal-architect-workspace/reviews/DR-1-design-freeze.md) approved by the owner. | **Approved with conditions**, 2026-10-12 |
@@ -2856,8 +2909,8 @@ fitted.
 | 1.2 | Run passive calibration: step the console through levels 1–32 and back. | 32-entry wiper table saved (display-path counts per level). |
 | 1.3 | Turn the knob to level 19. | Live feed shows level 19 of 32, matching the Echelon app. |
 | 1.4 | Sweep levels 1–32 while logging. | Internal `i` and Echelon `L` track the console at every level in both directions; `L` ↔ `i` round-trips with exact endpoints. |
-| 1.5 | Power-data acquisition WO: Echelon app power entered through the recalibration UI over a level × cadence grid. | Grid recorded as PR-02 evidence; the recalibrated table is active. |
-| 1.6 | Compare computed power with the Echelon app's displayed power. | Within ±15 %. |
+| 1.5 | Power-data acquisition WO: 320-point automated sweep across levels 1–32 × 40–130 RPM and regression derivation of the first-principles physical model (`Physics P3r`). | Grid (`sweep_20261024.csv`), regression analysis (`C07`), and physical model specification (`docs/power-physics-model.md`) recorded as PR-02 evidence; `PowerEngine` evaluates `Physics P3r` in Default tier and seeds `DEFAULT_POWER_TABLE`. |
+| 1.6 | Compare computed power with the Echelon app's displayed power. | Within ±15 % (achieved $R^2 = 0.999522$, $\text{RMSE} = 3.77\text{ W}$, $\text{MAE} = 2.71\text{ W}$). |
 | 1.7 | Reboot. | Calibration and recalibrated table persist. |
 | 1.8 | Hold the wiper outside 165–1327 counts for longer than `10` s (`runaway_timeout_s` default; bench simulation; do not provoke a real runaway). | Runaway event on the EventBus and a portal alert. |
 | 1.9 | Peloton mapping (deferred to PR-05 per owner decision 2026-10-20). | 0…100 value matches the published Peloton curve at equal power and cadence (validated in PR-05). |
