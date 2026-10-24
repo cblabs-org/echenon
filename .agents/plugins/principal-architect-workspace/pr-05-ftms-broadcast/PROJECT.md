@@ -28,9 +28,9 @@ work_orders:
   slug: wo1-ftms-metrics
   title: FTMS v1.0 Conformance Citation, Unified BikeMetrics & FTMSData Packet Encoder
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 9b7e5fef77dc2da98ba8917dbf0c2308a61b6e8c
 - id: WO-05.2
   slug: wo2-ftms-server
   title: FTMSServer Read-Only BLE Service Provider (0x1826, 0x2ACC, 0x2AD2)

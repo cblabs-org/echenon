@@ -4,7 +4,7 @@ wo_id: WO-05.1
 pr_id: PR-05
 title: FTMS v1.0 Conformance Citation, Unified BikeMetrics & FTMSData Packet Encoder
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/LevelMapping.h
 - src/echenon/LevelMapping.cpp
@@ -22,7 +22,27 @@ verification_command: pio test -e native
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: aa9a454413d7ae4074da14fd2a063618207d0dbbb062e5a94f4d3f9484cd9f46
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_89357444404f
+  commit_sha: 9b7e5fef77dc2da98ba8917dbf0c2308a61b6e8c
+  files_modified:
+  - docs/power-physics-model.md
+  - src/echenon/FTMSData.h
+  - src/echenon/LevelMapping.cpp
+  - src/echenon/LevelMapping.h
+  - src/echenon/PowerEngine.cpp
+  - src/echenon/PowerEngine.h
+  - test/test_native/test_ftms_server.cpp
+  - test/test_native/test_level_mapping.cpp
+  - test/test_native/test_power_engine.cpp
+  verification_summary: 'pio test -e native: ================ 142 test cases: 142
+    succeeded in 00:00:00.309 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-05.1: FTMS v1.0 Conformance Citation, Unified BikeMetrics & FTMSData Packet Encoder
