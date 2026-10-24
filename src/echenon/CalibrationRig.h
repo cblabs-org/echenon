@@ -54,7 +54,7 @@ private:
     static constexpr uint32_t CADENCE_PULSE_MS = 30;  // LOW pulse width
 
     // Pot settle monitoring
-    static constexpr uint16_t SETTLE_TOLERANCE = 15;   // ADC counts
+    static constexpr uint16_t SETTLE_TOLERANCE = 20;   // ADC counts (Phase 3: level spacing ~37 ADC)
     static constexpr uint32_t SETTLE_DURATION_MS = 500; // must be stable for 500 ms
     static constexpr uint32_t SETTLE_TIMEOUT_MS = 30000; // 30s timeout → SETTLED with warning
     uint32_t _settleStartMs = 0;
