@@ -134,10 +134,10 @@ All telemetry and future v2 control targets derive deterministically from two me
 
 | WO ID | Slug | Title | Complexity | Status | Attempts | Commit SHA |
 |---|---|---|---|---|---|---|
-| `WO-05.1` | `wo1-ftms-metrics` | FTMS v1.0 Conformance Citation, Unified BikeMetrics & FTMSData Packet Encoder | `standard` | `PLANNED` | 0 | — |
+| `WO-05.1` | `wo1-ftms-metrics` | FTMS v1.0 Conformance Citation, Unified BikeMetrics & FTMSData Packet Encoder | `standard` | `COMPLETED` | 1 | `add8d3a` |
 | `WO-05.2` | `wo2-ftms-server` | FTMSServer Read-Only BLE Service Provider (0x1826, 0x2ACC, 0x2AD2) | `standard` | `COMPLETED` | 1 | `3aa1f7d` |
-| `WO-05.3` | `wo3-module-wiring` | EchenonModule, LiveFeed & platformio.ini Integration (WITH_FTMS) | `standard` | `PLANNED` | 0 | — |
-| `WO-05.4` | `wo4-hw-verification` | Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak | `interactive` | `COMPLETED` | 1 | `dc89fa6` |
+| `WO-05.3` | `wo3-module-wiring` | EchenonModule, LiveFeed & platformio.ini Integration (WITH_FTMS) | `standard` | `COMPLETED` | 1 | `fa4bfab` |
+| `WO-05.4` | `wo4-hw-verification` | Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak | `interactive` | `COMPLETED` | 2 | `6593bbd` |
 
 ## 4. Session Log
 
@@ -149,3 +149,5 @@ All telemetry and future v2 control targets derive deterministically from two me
 - **2026-10-24 T21:40Z:** WO-05.1–WO-05.3 all COMPLETED. Escalating WO-05.4 (interactive hardware verification) to Chief Architect / owner.
 - **2026-10-24 22:46:** `WO-05.4` BLOCKED — pre-flight done (153 tests, firmware builds, ESP32 detected `/dev/cu.usbmodem101`), evidence template created. Awaiting bench (Echelon bike). Debugger agent `37438d97` idle.
 - **2026-10-24 22:57:** `WO-05.4` COMPLETED (partial pass). Tag `v0.3.0-dev.17`, build, flash, boot verified. Both `0x180D`+`0x1826` registered, ADV payload correct, `/api/system` version confirmed, memory stable (DRAM δ -576B/2.5min). Manual bench tests (GATT client, P12 pairing, coexistence soak) deferred. All 4 WOs COMPLETED — proceeding to Cold-Firewall Audit.
+- **2026-10-24 23:09:** Cold-Firewall Audit Round 1 (`e0e3975`): `CHANGES_REQUESTED` — `BLOCKING-1` (Level 32 internal resistance `255` sentinel collision with `INTERNAL_RESISTANCE_UNCALIBRATED`) + 6 non-blocking `SPEC.md` §7.3 polish items.
+- **2026-10-24 23:34:** `WO-05.4` COMPLETED (`6593bbd`, `rcpt_31e6fb476dd9`). Remediated `BLOCKING-1` + non-blocking items (155/155 native tests pass), flashed `v0.3.0-dev.18` (`ex3-waveshare-nano-rig`), and verified over-the-air via `bleak` + Calibration Rig across Levels 1, 16, and 32 (`resistance = 254` at Level 32, `0x2ACC` = `82 44 00 00 00 00 00 00`, `0x2AD2` mean interval `500.04 ms` / `2.00 Hz`, `/ws/echenon/live` `peloton_resistance` + `speed_kph`). Dispatching Cold-Firewall Audit Round 2.
