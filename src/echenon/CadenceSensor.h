@@ -18,7 +18,6 @@ namespace echenon {
 class CadenceSensor {
 public:
     static constexpr uint32_t DEBOUNCE_LOCKOUT_US = 25000;   // 25 ms
-    static constexpr uint32_t CONFIRM_LOW_US      = 5000;    // 5 ms post-edge LOW confirmation
     static constexpr uint32_t REARM_HIGH_US       = 50000;   // 50 ms continuous HIGH open-release hysteresis
     static constexpr uint32_t MIN_HW_INTERVAL_US  = 250000;  // 250 ms (240 RPM) hardware lockout
     static constexpr uint32_t TIMEOUT_US          = 3000000; // 3 s (3,000,000 µs)
@@ -36,7 +35,7 @@ public:
     bool isActive() const { return _rpm > 0.0f; }
     int8_t getPin() const { return _pin; }
 
-    // Hardware two-state closed-hold confirmation + open-release hysteresis state machine
+    // Hardware immediate leading-edge commit + 250 ms lockout + open-release hysteresis state machine
     void onFallingEdgeISR(uint32_t nowMicros);
     void processHardwareState(uint32_t currentMicros, bool pinIsLow);
 
@@ -58,8 +57,6 @@ private:
     volatile uint32_t _lastIntervalUs = 0;
     volatile bool _newPulse = false;
     volatile bool _hasFirstPulse = false;
-    volatile uint32_t _pendingPulseMicros = 0;
-    volatile bool _hasPendingPulse = false;
     volatile bool _waitingForOpen = false;
     bool _highTimingActive = false;
     uint32_t _highStableStartMicros = 0;

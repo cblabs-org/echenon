@@ -135,17 +135,15 @@ TEST(CadenceSensorTest, ResumeAfterTimeoutDoesNotProduceSpuriousRPM) {
 TEST(CadenceSensorTest, HardwareReedSwitchRejectsOpeningEdgeGlitch) {
     CadenceSensor sensor(5);
 
-    // Revolution 1: falling edge at t = 1,000,000 µs (1.0 s)
+    // Revolution 1: falling edge at t = 1,000,000 µs (1.0 s) — commits immediately
     sensor.onFallingEdgeISR(1000000);
-    // Confirmed LOW at +5 ms (1,005,000 µs)
-    sensor.processHardwareState(1005000, true);
-    sensor.tick(1005);
+    sensor.tick(1000);
     EXPECT_FLOAT_EQ(sensor.getRPM(), 0.0f);
 
     // Reed switch stays closed (LOW) for 150 ms; at t = 1,150,000 µs it opens (LOW -> HIGH)
     // and RC ramp threshold oscillation triggers a spurious FALLING interrupt
     sensor.processHardwareState(1100000, true);
-    sensor.onFallingEdgeISR(1150000); // Spurious opening-edge ISR while still _waitingForOpen
+    sensor.onFallingEdgeISR(1150000); // Spurious opening-edge ISR blocked by _waitingForOpen and MIN_HW_INTERVAL_US
     sensor.processHardwareState(1155000, false); // Line is now HIGH
     sensor.tick(1155);
     // Must NOT compute a 200 RPM spike!
@@ -157,8 +155,7 @@ TEST(CadenceSensorTest, HardwareReedSwitchRejectsOpeningEdgeGlitch) {
 
     // Revolution 2: falling edge at t = 2,460,000 µs (dt = 1,460,000 µs -> 41.0959 RPM)
     sensor.onFallingEdgeISR(2460000);
-    sensor.processHardwareState(2465000, true);
-    sensor.tick(2465);
+    sensor.tick(2460);
     EXPECT_NEAR(sensor.getRPM(), 41.10f, 0.01f);
     EXPECT_EQ(sensor.getLastPulseInterval(), 1460000u);
 
@@ -171,22 +168,34 @@ TEST(CadenceSensorTest, HardwareReedSwitchRejectsOpeningEdgeGlitch) {
     EXPECT_EQ(sensor.getLastPulseInterval(), 1460000u);
 }
 
-TEST(CadenceSensorTest, HardwareRejectsTransientNoiseSpike) {
+TEST(CadenceSensorTest, HardwareSustainedClosureBlocksOpeningGlitchBeyond250ms) {
     CadenceSensor sensor(5);
 
-    // Spurious falling edge at t = 1,000,000 µs, but pin is back HIGH at +5 ms
+    // Revolution 1: falling edge at t = 1,000,000 µs (1.0 s)
     sensor.onFallingEdgeISR(1000000);
-    sensor.processHardwareState(1005000, false);
-    sensor.tick(1005);
+    sensor.tick(1000);
     EXPECT_FLOAT_EQ(sensor.getRPM(), 0.0f);
-    EXPECT_FALSE(sensor.isActive());
 
-    // Genuine pulse at t = 1,500,000 µs should be treated as the VERY FIRST pulse (no RPM yet)
-    sensor.onFallingEdgeISR(1500000);
-    sensor.processHardwareState(1505000, true);
-    sensor.tick(1505);
+    // Very slow pedalling: reed switch stays closed (LOW) for 350 ms (> 250 ms MIN_HW_INTERVAL_US)
+    sensor.processHardwareState(1200000, true);
+    sensor.processHardwareState(1340000, true);
+
+    // Opening-edge RC glitch at t = 1,350,000 µs (dt = 350 ms >= 250 ms, but _waitingForOpen is still true)
+    sensor.onFallingEdgeISR(1350000);
+    sensor.processHardwareState(1355000, false); // Line opens HIGH
+    sensor.tick(1355);
+    // Must be rejected by _waitingForOpen!
     EXPECT_FLOAT_EQ(sensor.getRPM(), 0.0f);
     EXPECT_EQ(sensor.getLastPulseInterval(), 0u);
+
+    // Line stays HIGH for >= 50 ms -> re-arms at t = 1,405,000 µs
+    sensor.processHardwareState(1405000, false);
+
+    // Genuine second revolution at t = 3,000,000 µs (dt = 2,000,000 µs -> 30.0 RPM)
+    sensor.onFallingEdgeISR(3000000);
+    sensor.tick(3000);
+    EXPECT_EQ(sensor.getLastPulseInterval(), 2000000u);
+    EXPECT_NEAR(sensor.getRPM(), 30.0f, 0.01f);
 }
 
 TEST(CadenceSensorTest, HardwareClosureBouncePreservesLeadingEdgeTimestamp) {
@@ -196,8 +205,7 @@ TEST(CadenceSensorTest, HardwareClosureBouncePreservesLeadingEdgeTimestamp) {
     sensor.onFallingEdgeISR(1000000);
     sensor.onFallingEdgeISR(1001000);
     sensor.onFallingEdgeISR(1002000);
-    sensor.processHardwareState(1005000, true);
-    sensor.tick(1005);
+    sensor.tick(1002);
 
     // Release and re-arm (50 ms HIGH)
     sensor.processHardwareState(1100000, false);
@@ -207,8 +215,7 @@ TEST(CadenceSensorTest, HardwareClosureBouncePreservesLeadingEdgeTimestamp) {
     sensor.onFallingEdgeISR(2000000);
     sensor.onFallingEdgeISR(2001000);
     sensor.onFallingEdgeISR(2002000);
-    sensor.processHardwareState(2005000, true);
-    sensor.tick(2005);
+    sensor.tick(2002);
 
     // Exact leading-edge interval: 2,000,000 - 1,000,000 = 1,000,000 µs (60.0 RPM)
     EXPECT_EQ(sensor.getLastPulseInterval(), 1000000u);
@@ -219,17 +226,15 @@ TEST(CadenceSensorTest, HardwareCalibrationRig30msPulseCompatibility) {
     CadenceSensor sensor(5);
 
     // CalibrationRig drives a 30 ms LOW pulse every 750,000 µs (80.0 RPM)
-    // Pulse 1 at t = 1,000,000 µs
+    // Pulse 1 at t = 1,000,000 µs (commits immediately on falling edge)
     sensor.onFallingEdgeISR(1000000);
-    sensor.processHardwareState(1005000, true);  // +5 ms: still LOW (confirmed)
-    sensor.tick(1005);
+    sensor.tick(1000);
     sensor.processHardwareState(1030000, false); // +30 ms: rig releases pin HIGH
     sensor.processHardwareState(1080000, false); // +80 ms (50 ms HIGH): re-armed
 
     // Pulse 2 at t = 1,750,000 µs (+750 ms)
     sensor.onFallingEdgeISR(1750000);
-    sensor.processHardwareState(1755000, true);  // +5 ms: confirmed
-    sensor.tick(1755);
+    sensor.tick(1750);
 
     EXPECT_EQ(sensor.getLastPulseInterval(), 750000u);
     EXPECT_NEAR(sensor.getRPM(), 80.0f, 0.01f);
@@ -240,8 +245,7 @@ TEST(CadenceSensorTest, HardwareMinInterval250msLockout) {
 
     // Pulse 1 at t = 1,000,000 µs
     sensor.onFallingEdgeISR(1000000);
-    sensor.processHardwareState(1005000, true);
-    sensor.tick(1005);
+    sensor.tick(1000);
 
     // Short 10 ms LOW pulse, then 50 ms HIGH -> re-armed at t = 1,060,000 µs
     sensor.processHardwareState(1010000, false);
@@ -249,15 +253,13 @@ TEST(CadenceSensorTest, HardwareMinInterval250msLockout) {
 
     // Falling edge at t = 1,150,000 µs (dt = 150 ms < 250 ms MIN_HW_INTERVAL_US) -> rejected!
     sensor.onFallingEdgeISR(1150000);
-    sensor.processHardwareState(1155000, true);
-    sensor.tick(1155);
+    sensor.tick(1150);
     EXPECT_FLOAT_EQ(sensor.getRPM(), 0.0f);
     EXPECT_EQ(sensor.getLastPulseInterval(), 0u);
 
     // Valid second pulse at t = 1,500,000 µs (dt = 500 ms -> 120.0 RPM)
     sensor.onFallingEdgeISR(1500000);
-    sensor.processHardwareState(1505000, true);
-    sensor.tick(1505);
+    sensor.tick(1500);
     EXPECT_EQ(sensor.getLastPulseInterval(), 500000u);
     EXPECT_NEAR(sensor.getRPM(), 120.0f, 0.01f);
 }

@@ -64,30 +64,19 @@ void IRAM_ATTR CadenceSensor::onFallingEdgeISR(uint32_t nowMicros) {
 #else
 void CadenceSensor::onFallingEdgeISR(uint32_t nowMicros) {
 #endif
-    if (_waitingForOpen || _hasPendingPulse) {
+    if (_waitingForOpen) {
         return;
     }
     if (_hasFirstPulse && static_cast<uint32_t>(nowMicros - _lastPulseMicros) < MIN_HW_INTERVAL_US) {
         return;
     }
-    _pendingPulseMicros = nowMicros;
-    _hasPendingPulse = true;
+    _waitingForOpen = true;
+    _highTimingActive = false;
+    _highStableStartMicros = 0;
+    handlePulse(nowMicros);
 }
 
 void CadenceSensor::processHardwareState(uint32_t currentMicros, bool pinIsLow) {
-    // 1. Pending Pulse Confirmation (5 ms post-edge LOW hold)
-    if (_hasPendingPulse && static_cast<uint32_t>(currentMicros - _pendingPulseMicros) >= CONFIRM_LOW_US) {
-        _hasPendingPulse = false;
-        if (pinIsLow) {
-            _waitingForOpen = true;
-            _highTimingActive = false;
-            _highStableStartMicros = 0;
-            handlePulse(_pendingPulseMicros);
-        }
-        // Else: transient glitch or rising-edge RC threshold oscillation — discard
-    }
-
-    // 2. Open-State Release Hysteresis (50 ms continuous HIGH before re-arming)
     if (_waitingForOpen) {
         if (pinIsLow) {
             _highTimingActive = false;
@@ -103,7 +92,11 @@ void CadenceSensor::processHardwareState(uint32_t currentMicros, bool pinIsLow) 
     }
 }
 
+#if !defined(UNIT_TEST) && defined(ARDUINO)
+void IRAM_ATTR CadenceSensor::handlePulse(uint32_t pulseMicros) {
+#else
 void CadenceSensor::handlePulse(uint32_t pulseMicros) {
+#endif
     if (_hasFirstPulse) {
         uint32_t dt = pulseMicros - _lastPulseMicros;
         if (dt < DEBOUNCE_LOCKOUT_US) {
@@ -153,8 +146,6 @@ void CadenceSensor::reset() {
     _lastIntervalUs = 0;
     _newPulse = false;
     _hasFirstPulse = false;
-    _pendingPulseMicros = 0;
-    _hasPendingPulse = false;
     _waitingForOpen = false;
     _highTimingActive = false;
     _highStableStartMicros = 0;
