@@ -21,7 +21,7 @@ required_skills:
 verification_command: pio test -e native
 max_attempts: 5
 max_structural_failures: 2
-spec_hash: 0bc01c5e104d5d0c50a820be5ad572793507bc750e351f7c781af89109f18e4d
+spec_hash: 0c02ed7d835f36d76ec305475c676ebcf403a5719b94e2d45fd8eff8684da7fb
 completion: null
 ---
 
@@ -81,25 +81,18 @@ Flash `ex3-waveshare-nano` onto the connected ESP32-S3-Nano bench unit, verify t
          }
          ```
        - In `CadenceSensor::~CadenceSensor()`, disable and delete `_glitchFilter` if non-null (`gpio_glitch_filter_disable(_glitchFilter); gpio_del_glitch_filter(_glitchFilter); _glitchFilter = nullptr;`). Store `void* _glitchFilter = nullptr;` (or `gpio_glitch_filter_handle_t` under `#if !defined(UNIT_TEST) && defined(ARDUINO)`) on `CadenceSensor`.
-     - **Layer B — Two-State Closed-Hold Confirmation + Open-Release Rearm Hysteresis:**
+     - **Layer B — Immediate Leading-Edge Commit + `250 ms` Minimum Interval Lockout + Open-Release Rearm Hysteresis:**
        - Constants on `CadenceSensor`:
-         - `CONFIRM_LOW_US = 5000` (`5 ms` post-falling-edge `LOW` confirmation window — compatible with both the physical reed switch `20–200 ms` closure and `CalibrationRig` `30 ms` `LOW` pulse).
          - `REARM_HIGH_US = 50000` (`50 ms` continuous `HIGH` open-state rearm hysteresis after closure before accepting the next falling edge).
-         - `MIN_HW_INTERVAL_US = 250000` (`250 ms` = `240 RPM` minimum revolution interval between confirmed hardware pulses).
+         - `MIN_HW_INTERVAL_US = 250000` (`250 ms` = `240 RPM` minimum revolution interval between hardware pulses — suppresses all reed-switch opening-edge bounces/RC ramp threshold oscillations occurring `20–200 ms` after closure without requiring a delayed main-loop `LOW` poll that can miss short closures).
        - Hardware ISR & State Machine methods (public so they can be unit-tested in `test_cadence_sensor.cpp`):
          - `void onFallingEdgeISR(uint32_t nowMicros)`:
            - Called from `handleISR()` on `FALLING` interrupt.
-           - If `_waitingForOpen` is `true` or `_hasPendingPulse` is `true`, return immediately.
+           - If `_waitingForOpen` is `true`, return immediately.
            - If `_hasFirstPulse` is `true` and `(uint32_t)(nowMicros - _lastPulseMicros) < MIN_HW_INTERVAL_US`, return immediately.
-           - Latch `_pendingPulseMicros = nowMicros; _hasPendingPulse = true;` (capturing the exact leading-edge microsecond timestamp).
+           - Commit the pulse immediately via `handlePulse(nowMicros)` (capturing the exact leading-edge microsecond timestamp without waiting for a main-loop `LOW` poll) and set `_waitingForOpen = true; _highTimingActive = false; _highStableStartMicros = 0;`.
          - `void processHardwareState(uint32_t currentMicros, bool pinIsLow)`:
            - Called at the top of `tick(uint32_t currentMillis)` when `#if !defined(UNIT_TEST) && defined(ARDUINO)` and `_pin >= 0` (passing `static_cast<uint32_t>(micros())` and `digitalRead(_pin) == LOW`).
-           - **Pending Pulse Confirmation:** If `_hasPendingPulse` is `true` and `(uint32_t)(currentMicros - _pendingPulseMicros) >= CONFIRM_LOW_US`:
-             - `_hasPendingPulse = false;`
-             - If `pinIsLow` is `true`:
-               - Confirmed genuine closure! Set `_waitingForOpen = true; _highTimingActive = false; _highStableStartMicros = 0;` and call `handlePulse(_pendingPulseMicros);`.
-             - Else (`pinIsLow == false`):
-               - Transient glitch or rising-edge RC threshold oscillation (`LOW -> HIGH` ramp is already `HIGH` 5 ms later) — discard without calling `handlePulse()`.
            - **Open-State Release Hysteresis:** If `_waitingForOpen` is `true`:
              - If `pinIsLow` is `true`:
                - Still closed; reset `_highTimingActive = false;`.
@@ -108,13 +101,13 @@ Flash `ex3-waveshare-nano` onto the connected ESP32-S3-Nano bench unit, verify t
                  - `_highTimingActive = true; _highStableStartMicros = currentMicros;`
                - Else if `(uint32_t)(currentMicros - _highStableStartMicros) >= REARM_HIGH_US`:
                  - Line has been continuously `HIGH` for `50 ms` — re-arm: `_waitingForOpen = false; _highTimingActive = false;`.
-         - Ensure `reset()` also resets `_hasPendingPulse = false`, `_pendingPulseMicros = 0`, `_waitingForOpen = false`, `_highTimingActive = false`, and `_highStableStartMicros = 0`.
+         - Ensure `reset()` also resets `_waitingForOpen = false`, `_highTimingActive = false`, and `_highStableStartMicros = 0`.
      - Add comprehensive native unit tests in `test/test_native/test_cadence_sensor.cpp` covering:
        1. Physical reed-switch revolution with rising-edge `FALLING` glitch at `+150 ms` (confirming the `+150 ms` opening-edge glitch is rejected and two revolutions `1460 ms` apart produce `41.10 RPM` with zero `200.0 RPM` spikes).
-       2. Transient noise spike (`onFallingEdgeISR` where `pinIsLow` is `false` at `+5 ms` -> ignored).
-       3. Contact bounce on closure (`onFallingEdgeISR` at `0 ms`, `1 ms`, `2 ms` -> confirms at `+5 ms` with exact `0 ms` leading-edge timestamp).
-       4. `CalibrationRig` `30 ms` `LOW` pulse compatibility at `80 RPM` (`750 ms` period).
-       5. Sub-250 ms (`MIN_HW_INTERVAL_US`) hardware lockout.
+       2. Contact bounce on closure (`onFallingEdgeISR` at `0 ms`, `1 ms`, `2 ms` -> commits immediately on the `0 ms` leading-edge timestamp and ignores subsequent bounces).
+       3. `CalibrationRig` `30 ms` `LOW` pulse compatibility at `80 RPM` (`750 ms` period).
+       4. Sub-250 ms (`MIN_HW_INTERVAL_US`) hardware lockout (even after `50 ms` `HIGH` rearm, any pulse with `dt < 250 ms` is suppressed).
+       5. Sustained closure (> 250 ms at very slow pedalling) where `_waitingForOpen` blocks the opening-edge glitch even when `dt >= 250 ms`.
 
 ## 3. Acceptance Criteria
 - `BLOCKING-1` and non-blocking findings remediated with unit tests passing (`pio test -e native`).
