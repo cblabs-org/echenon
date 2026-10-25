@@ -20,7 +20,7 @@ charter:
   - pio test -e native
   charter_locked: false
   charter_hash: null
-status: AUDIT_APPROVED
+status: GRADUATED
 approved_at: '2026-10-24T20:58:09.914035Z'
 github_pr: null
 work_orders:
@@ -151,3 +151,18 @@ All telemetry and future v2 control targets derive deterministically from two me
 - **2026-10-24 22:57:** `WO-05.4` COMPLETED (partial pass). Tag `v0.3.0-dev.17`, build, flash, boot verified. Both `0x180D`+`0x1826` registered, ADV payload correct, `/api/system` version confirmed, memory stable (DRAM δ -576B/2.5min). Manual bench tests (GATT client, P12 pairing, coexistence soak) deferred. All 4 WOs COMPLETED — proceeding to Cold-Firewall Audit.
 - **2026-10-24 23:09:** Cold-Firewall Audit Round 1 (`e0e3975`): `CHANGES_REQUESTED` — `BLOCKING-1` (Level 32 internal resistance `255` sentinel collision with `INTERNAL_RESISTANCE_UNCALIBRATED`) + 6 non-blocking `SPEC.md` §7.3 polish items.
 - **2026-10-24 23:34:** `WO-05.4` COMPLETED (`6593bbd`, `rcpt_31e6fb476dd9`). Remediated `BLOCKING-1` + non-blocking items (155/155 native tests pass), flashed `v0.3.0-dev.18` (`ex3-waveshare-nano-rig`), and verified over-the-air via `bleak` + Calibration Rig across Levels 1, 16, and 32 (`resistance = 254` at Level 32, `0x2ACC` = `82 44 00 00 00 00 00 00`, `0x2AD2` mean interval `500.04 ms` / `2.00 Hz`, `/ws/echenon/live` `peloton_resistance` + `speed_kph`). Dispatching Cold-Firewall Audit Round 2.
+
+<!-- pa:graduation-summary start -->
+### Graduation Summary (`PR-05` / `pr-05-ftms-broadcast` — `GRADUATED`)
+
+- **Completed Date:** 2026-10-24
+- **Graduation Mode:** `external`
+- **Latest Audit:** Round 2 — `APPROVED` (`1ee282482c1b`)
+
+| WO-ID | Status | Attempts | Commit SHA |
+|---|---|---|---|
+| WO-05.1 | COMPLETED | 1 | `9b7e5fef77dc` |
+| WO-05.2 | COMPLETED | 1 | `5ffd70479992` |
+| WO-05.3 | COMPLETED | 1 | `82d203e2dfd6` |
+| WO-05.4 | COMPLETED | 1 | `aa2d1f57859d` |
+<!-- pa:graduation-summary end -->
