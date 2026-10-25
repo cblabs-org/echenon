@@ -2,12 +2,16 @@
 
 #if !defined(UNIT_TEST) && defined(ARDUINO)
 #include <Arduino.h>
+#include <soc/soc_caps.h>
+#if defined(SOC_GPIO_SUPPORT_PIN_GLITCH_FILTER) && SOC_GPIO_SUPPORT_PIN_GLITCH_FILTER
+#include <driver/gpio_filter.h>
+#endif
 
 static echenon::CadenceSensor* s_cadenceInstance = nullptr;
 
 void IRAM_ATTR echenon::CadenceSensor::handleISR() {
     if (s_cadenceInstance) {
-        s_cadenceInstance->handlePulse(static_cast<uint32_t>(micros()));
+        s_cadenceInstance->onFallingEdgeISR(static_cast<uint32_t>(micros()));
     }
 }
 #endif
@@ -23,6 +27,14 @@ CadenceSensor::~CadenceSensor() {
         detachInterrupt(digitalPinToInterrupt(_pin));
         s_cadenceInstance = nullptr;
     }
+#if defined(SOC_GPIO_SUPPORT_PIN_GLITCH_FILTER) && SOC_GPIO_SUPPORT_PIN_GLITCH_FILTER
+    if (_glitchFilter != nullptr) {
+        auto handle = static_cast<gpio_glitch_filter_handle_t>(_glitchFilter);
+        gpio_glitch_filter_disable(handle);
+        gpio_del_glitch_filter(handle);
+        _glitchFilter = nullptr;
+    }
+#endif
 #endif
 }
 
@@ -30,10 +42,65 @@ void CadenceSensor::begin() {
 #if !defined(UNIT_TEST) && defined(ARDUINO)
     if (_pin >= 0) {
         pinMode(_pin, INPUT);
+#if defined(SOC_GPIO_SUPPORT_PIN_GLITCH_FILTER) && SOC_GPIO_SUPPORT_PIN_GLITCH_FILTER
+        gpio_pin_glitch_filter_config_t filterCfg = {
+            .clk_src = GLITCH_FILTER_CLK_SRC_DEFAULT,
+            .gpio_num = static_cast<gpio_num_t>(_pin),
+        };
+        gpio_glitch_filter_handle_t handle = nullptr;
+        if (gpio_new_pin_glitch_filter(&filterCfg, &handle) == ESP_OK && handle) {
+            gpio_glitch_filter_enable(handle);
+            _glitchFilter = static_cast<void*>(handle);
+        }
+#endif
         s_cadenceInstance = this;
         attachInterrupt(digitalPinToInterrupt(_pin), &CadenceSensor::handleISR, FALLING);
     }
 #endif
+}
+
+#if !defined(UNIT_TEST) && defined(ARDUINO)
+void IRAM_ATTR CadenceSensor::onFallingEdgeISR(uint32_t nowMicros) {
+#else
+void CadenceSensor::onFallingEdgeISR(uint32_t nowMicros) {
+#endif
+    if (_waitingForOpen || _hasPendingPulse) {
+        return;
+    }
+    if (_hasFirstPulse && static_cast<uint32_t>(nowMicros - _lastPulseMicros) < MIN_HW_INTERVAL_US) {
+        return;
+    }
+    _pendingPulseMicros = nowMicros;
+    _hasPendingPulse = true;
+}
+
+void CadenceSensor::processHardwareState(uint32_t currentMicros, bool pinIsLow) {
+    // 1. Pending Pulse Confirmation (5 ms post-edge LOW hold)
+    if (_hasPendingPulse && static_cast<uint32_t>(currentMicros - _pendingPulseMicros) >= CONFIRM_LOW_US) {
+        _hasPendingPulse = false;
+        if (pinIsLow) {
+            _waitingForOpen = true;
+            _highTimingActive = false;
+            _highStableStartMicros = 0;
+            handlePulse(_pendingPulseMicros);
+        }
+        // Else: transient glitch or rising-edge RC threshold oscillation — discard
+    }
+
+    // 2. Open-State Release Hysteresis (50 ms continuous HIGH before re-arming)
+    if (_waitingForOpen) {
+        if (pinIsLow) {
+            _highTimingActive = false;
+        } else {
+            if (!_highTimingActive) {
+                _highTimingActive = true;
+                _highStableStartMicros = currentMicros;
+            } else if (static_cast<uint32_t>(currentMicros - _highStableStartMicros) >= REARM_HIGH_US) {
+                _waitingForOpen = false;
+                _highTimingActive = false;
+            }
+        }
+    }
 }
 
 void CadenceSensor::handlePulse(uint32_t pulseMicros) {
@@ -53,6 +120,11 @@ void CadenceSensor::handlePulse(uint32_t pulseMicros) {
 }
 
 void CadenceSensor::tick(uint32_t currentMillis) {
+#if !defined(UNIT_TEST) && defined(ARDUINO)
+    if (_pin >= 0) {
+        processHardwareState(static_cast<uint32_t>(micros()), digitalRead(_pin) == LOW);
+    }
+#endif
     if (_hasFirstPulse && (currentMillis - _lastPulseMs >= TIMEOUT_MS)) {
         // Timed out: 3 seconds without a pulse
         _rpm = 0.0f;
@@ -81,6 +153,11 @@ void CadenceSensor::reset() {
     _lastIntervalUs = 0;
     _newPulse = false;
     _hasFirstPulse = false;
+    _pendingPulseMicros = 0;
+    _hasPendingPulse = false;
+    _waitingForOpen = false;
+    _highTimingActive = false;
+    _highStableStartMicros = 0;
     _rpm = 0.0f;
 }
 
