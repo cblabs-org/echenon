@@ -20,7 +20,7 @@ charter:
   - pio test -e native
   charter_locked: false
   charter_hash: null
-status: GRADUATED
+status: IN_PROGRESS
 approved_at: '2026-10-24T20:58:09.914035Z'
 github_pr: null
 work_orders:
@@ -49,9 +49,9 @@ work_orders:
   slug: wo4-hw-verification
   title: Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak
   complexity: interactive
-  status: COMPLETED
-  attempts: 1
-  commit_sha: aa2d1f57859dcb703e0ee8d1d8d64fe159b616bc
+  status: IN_PROGRESS
+  attempts: 2
+  commit_sha: null
 ---
 
 # PR-05: FTMS Telemetry, Read-Only (Phase 3, v1 Passive)
@@ -110,6 +110,7 @@ All telemetry and future v2 control targets derive deterministically from two me
 ## 2. Scope
 
 ### Allowed Files & Modules
+- `src/echenon/CadenceSensor.h`, `src/echenon/CadenceSensor.cpp` (Two-state closed-hold confirmation + open-release hysteresis debounce for physical reed switch on `PIN_CADENCE`)
 - `src/echenon/LevelMapping.h` (Unified `BikeMetrics` forward/inverse scale conversions, Peloton `0–100`)
 - `src/echenon/PowerEngine.h` (Virtual flat-road speed `computeVirtualSpeedKph`, closed-form inverse `targetPowerToNormalized` & `pelotonToNormalized`)
 - `src/echenon/FTMSData.h` (`IndoorBikeDataPacket` struct and 11-byte little-endian `encodeIndoorBikeData()` encoder + `encodeFitnessMachineFeature()`)
@@ -118,7 +119,7 @@ All telemetry and future v2 control targets derive deterministically from two me
 - `src/echenon/EchenonModule.h`, `src/echenon/EchenonModule.cpp` (Wire `FTMSServer` under `#ifdef WITH_FTMS` with 250 ms timer phase offset relative to `LiveFeed`)
 - `src/main.cpp` (Register `FTMSServer` with `BLEManager::registerServiceProvider()` and `app.registerModule()` under `#if defined(WITH_BLE) && defined(WITH_FTMS)`)
 - `platformio.ini` (Add `-DWITH_FTMS` to `[env:ex3-waveshare-nano]`)
-- `test/test_native/test_level_mapping.cpp`, `test/test_native/test_power_engine.cpp`, `test/test_native/test_ftms_server.cpp`
+- `test/test_native/test_cadence_sensor.cpp`, `test/test_native/test_level_mapping.cpp`, `test/test_native/test_power_engine.cpp`, `test/test_native/test_ftms_server.cpp`
 - `docs/power-physics-model.md`, `docs/measurements/phase3/` (FTMS conformance note & `WO-05.4` hardware verification evidence)
 
 ### Out of Scope
