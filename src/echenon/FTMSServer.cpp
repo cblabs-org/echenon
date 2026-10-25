@@ -64,7 +64,7 @@ void FTMSServer::onHrEvent(const char* topic, const void* payload, void* ctx) {
 
 uint8_t FTMSServer::getEffectiveHrBpm(uint32_t now_ms) const {
     if (_lastHrBpm == 0) return 0;
-    if (now_ms - _lastHrMs > HR_STALE_TIMEOUT_MS) return 0;
+    if (static_cast<int32_t>(now_ms - _lastHrMs) > static_cast<int32_t>(HR_STALE_TIMEOUT_MS)) return 0;
     return _lastHrBpm;
 }
 

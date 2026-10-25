@@ -118,12 +118,9 @@ void CadenceSensor::tick(uint32_t currentMillis) {
         processHardwareState(static_cast<uint32_t>(micros()), digitalRead(_pin) == LOW);
     }
 #endif
-    if (_hasFirstPulse && (currentMillis - _lastPulseMs >= TIMEOUT_MS)) {
-        // Timed out: 3 seconds without a pulse
-        _rpm = 0.0f;
+    if (_newPulse) {
         _newPulse = false;
-    } else if (_newPulse) {
-        _newPulse = false;
+        _lastPulseMs = currentMillis;
         if (_lastIntervalUs > 0) {
             float calculatedRpm = 60000000.0f / static_cast<float>(_lastIntervalUs);
             if (calculatedRpm > MAX_RPM) {
@@ -133,6 +130,10 @@ void CadenceSensor::tick(uint32_t currentMillis) {
             }
             _rpm = calculatedRpm;
         }
+    } else if (_hasFirstPulse && static_cast<int32_t>(currentMillis - _lastPulseMs) >= static_cast<int32_t>(TIMEOUT_MS)) {
+        // Timed out: 3 seconds without a pulse
+        _rpm = 0.0f;
+        _newPulse = false;
     }
 }
 

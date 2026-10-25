@@ -11,6 +11,8 @@ allowed_files:
 - src/echenon/CadenceSensor.cpp
 - src/echenon/FTMSServer.h
 - src/echenon/FTMSServer.cpp
+- src/echenon/HRMClient.h
+- src/echenon/HRMClient.cpp
 - src/echenon/EchenonModule.cpp
 - test/test_native/test_cadence_sensor.cpp
 - test/test_native/test_ftms_server.cpp
@@ -21,7 +23,7 @@ required_skills:
 verification_command: pio test -e native
 max_attempts: 5
 max_structural_failures: 2
-spec_hash: 0c02ed7d835f36d76ec305475c676ebcf403a5719b94e2d45fd8eff8684da7fb
+spec_hash: 09434e5bacdae35200e0de1497e3ef5c5e0e432dc5e57654ef57c9c59629a5b8
 completion: null
 ---
 
@@ -108,6 +110,22 @@ Flash `ex3-waveshare-nano` onto the connected ESP32-S3-Nano bench unit, verify t
        3. `CalibrationRig` `30 ms` `LOW` pulse compatibility at `80 RPM` (`750 ms` period).
        4. Sub-250 ms (`MIN_HW_INTERVAL_US`) hardware lockout (even after `50 ms` `HIGH` rearm, any pulse with `dt < 250 ms` is suppressed).
        5. Sustained closure (> 250 ms at very slow pedalling) where `_waitingForOpen` blocks the opening-edge glitch even when `dt >= 250 ms`.
+8. **Timestamp Wraparound & Cross-Task `millis()` Underflow Fixes (`src/echenon/CadenceSensor.cpp`, `src/echenon/HRMClient.cpp`, `src/echenon/FTMSServer.cpp`, `test/test_native/test_cadence_sensor.cpp`, `test/test_native/test_ftms_server.cpp`):**
+   - **Fix 8a (`CadenceSensor::tick(uint32_t currentMillis)` in `src/echenon/CadenceSensor.cpp`):**
+     - `pulseMicros` wraps at `2^32 µs` (`4,294,967 ms` = `71.58 min`), so `_lastPulseMs = pulseMicros / 1000` in `handlePulse()` cannot be compared against `currentMillis` (`millis()`) once uptime exceeds 71.58 minutes.
+     - In `CadenceSensor::tick(uint32_t currentMillis)`, process `if (_newPulse)` **first**:
+       - Compute `_rpm` from `deltaMicros` (pure `uint32_t` microsecond difference), latch `_lastPulseMs = currentMillis` (in the `millis()` clock domain), and clear `_newPulse = false`.
+     - Check `else if (_hasFirstPulse && static_cast<int32_t>(currentMillis - _lastPulseMs) >= static_cast<int32_t>(TIMEOUT_MS))` **second**:
+       - Zero `_rpm = 0.0f` and `_newPulse = false` only when no new pulse has arrived for `>= TIMEOUT_MS` (`3000 ms`) in the `currentMillis` clock domain.
+   - **Fix 8b (`HRMClient::tick()` in `src/echenon/HRMClient.cpp` and `FTMSServer::getEffectiveHrBpm()` in `src/echenon/FTMSServer.cpp`):**
+     - When the NimBLE host task receives an HR notification 1–2 ms after `Application::tick()` samples `currentMillis = millis()`, `n.receivedAtMs` is `currentMillis + 1` (or `+ 2`), causing unsigned `currentMillis - _lastValidHrMs` in `HRMClient::tick(currentMillis)` and `now_ms - _lastHrMs` in `FTMSServer::getEffectiveHrBpm(now_ms)` to underflow to `0xFFFFFFFF` (`4,294,967,295`) and fire an immediate false stale timeout (`0 BPM`) in the same tick.
+     - Change `HRMClient::tick(uint32_t currentMillis)` to use signed elapsed-time comparison:
+       `if (static_cast<int32_t>(currentMillis - _lastValidHrMs) >= 10000)`
+     - Change `FTMSServer::getEffectiveHrBpm(uint32_t now_ms)` to use signed elapsed-time comparison:
+       `if (static_cast<int32_t>(now_ms - _lastHrMs) > static_cast<int32_t>(HR_STALE_TIMEOUT_MS)) return 0;`
+   - **Unit Tests:**
+     - In `test/test_native/test_cadence_sensor.cpp`, add a test verifying that `CadenceSensor` continues computing accurate RPM (`> 0`) and timing out properly when `currentMillis` is past multiple 71.58-minute `micros()` wraparounds (e.g., `currentMillis = 9237153` ms while `pulseMicros` wrapped to `647218000` µs).
+     - In `test/test_native/test_ftms_server.cpp`, add a test verifying that `FTMSServer::getEffectiveHrBpm(now_ms)` retains the valid HR BPM (does not underflow to `0`) when `sample.receivedAtMs` is 1–5 ms ahead of `now_ms` (`now_ms = 1000`, `sample.receivedAtMs = 1002`).
 
 ## 3. Acceptance Criteria
 - `BLOCKING-1` and non-blocking findings remediated with unit tests passing (`pio test -e native`).

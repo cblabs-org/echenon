@@ -264,6 +264,35 @@ TEST(CadenceSensorTest, HardwareMinInterval250msLockout) {
     EXPECT_NEAR(sensor.getRPM(), 120.0f, 0.01f);
 }
 
+TEST(CadenceSensorTest, MicrosWraparoundAfter71MinutesPreservesRPMAndTimeout) {
+    CadenceSensor sensor(5);
+
+    // Simulate uptime = 9,237,153 ms (~2.56 hours, past two 71.58-minute uint32_t micros() wraparounds),
+    // where uint32_t pulseMicros has wrapped around to 647,218,000 µs (~647.2 s).
+    sensor.onFallingEdgeISR(647218000u);
+    sensor.tick(9237153u);
+    sensor.processHardwareState(647248000u, false); // +30 ms HIGH
+    sensor.processHardwareState(647298000u, false); // +80 ms (50 ms HIGH): re-armed
+
+    // Second pulse 750,000 µs later (80.0 RPM) at currentMillis = 9,237,903 ms
+    sensor.onFallingEdgeISR(647968000u);
+    sensor.tick(9237903u);
+    EXPECT_EQ(sensor.getLastPulseInterval(), 750000u);
+    EXPECT_NEAR(sensor.getRPM(), 80.0f, 0.01f);
+    EXPECT_TRUE(sensor.isActive());
+
+    // Subsequent main-loop ticks 500 ms and 2900 ms later must NOT false-timeout
+    sensor.tick(9238403u);
+    EXPECT_NEAR(sensor.getRPM(), 80.0f, 0.01f);
+    sensor.tick(9240803u);
+    EXPECT_NEAR(sensor.getRPM(), 80.0f, 0.01f);
+
+    // Genuine 3000 ms timeout at currentMillis = 9,240,903 ms
+    sensor.tick(9240903u);
+    EXPECT_FLOAT_EQ(sensor.getRPM(), 0.0f);
+    EXPECT_FALSE(sensor.isActive());
+}
+
 // =============================================================================
 // ResistanceSensor Unit Tests
 // =============================================================================

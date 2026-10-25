@@ -576,3 +576,28 @@ TEST(FTMSServerTest, ProviderIdAndStackPauseResume) {
 
     server.end();
 }
+
+TEST(FTMSServerTest, CrossTaskFutureTimestampDoesNotUnderflowStaleCheck) {
+    EventBus bus;
+    bus.begin();
+
+    FTMSServer server(bus);
+    server.begin();
+
+    // When NimBLE host task receives HR notification 2 ms after Application::tick()
+    // latches currentMillis = 1000, sample.receivedAtMs is 1002.
+    HrSample sample{135, HRContactState::ACTIVE, 1002};
+    bus.publish(echenon::HR_TOPIC, &sample);
+
+    // Must NOT underflow (1000 - 1002) to 0xFFFFFFFE and falsely zero BPM!
+    EXPECT_EQ(server.getEffectiveHrBpm(1000), 135u);
+
+    server.updateTelemetry(28.0f, 80.0f, 120, 180);
+    server.tick(1000);
+
+    uint8_t pkt[11] = {};
+    server.getLastPacket(pkt);
+    EXPECT_EQ(pkt[10], 135u);
+
+    server.end();
+}
