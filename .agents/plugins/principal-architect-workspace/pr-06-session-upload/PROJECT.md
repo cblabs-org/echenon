@@ -76,16 +76,16 @@ work_orders:
   slug: wo7-psram-gzip
   title: Move StreamingGzipEncoder to PSRAM Heap Allocation + EventBus Payload Safety
   complexity: standard
-  status: PLANNED
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 05a6ca6
 - id: WO-06.8
   slug: wo8-house-style
   title: File Headers, std::function Deviation Comments & CSS Design Tokens
   complexity: standard
-  status: PLANNED
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: a497649
 ---
 
 # PR-06: Session Recording, TCX Export & Strava Upload (Phase 4, v1 Passive)
@@ -181,8 +181,8 @@ Implement full ride session recording, crash-resilient PSRAM/LittleFS storage, s
 | `WO-06.4` | `wo4-strava-uploader` | StravaUploader BYOA OAuth 2.0, KeyManager NVS, Rotated Token Persistence & Redactor | `standard` | `COMPLETED` | 1 | `72eaabf` |
 | `WO-06.5` | `wo5-portal-wiring` | SessionOverlay REST API, Authenticated TCX Download, Portal Tabs & Module Wiring | `standard` | `COMPLETED` | 1 | `9556e9c` |
 | `WO-06.6` | `wo6-hw-verification` | Hardware Session Lifecycle, Crash Recovery, TCX Download & Live Strava Upload Verification | `interactive` | `COMPLETED` | 1 | `c5d85a0` |
-| `WO-06.7` | `wo7-psram-gzip` | Move StreamingGzipEncoder to PSRAM Heap Allocation + EventBus Payload Safety | `standard` | `PLANNED` | 0 | — |
-| `WO-06.8` | `wo8-house-style` | File Headers, std::function Deviation Comments & CSS Design Tokens | `standard` | `PLANNED` | 0 | — |
+| `WO-06.7` | `wo7-psram-gzip` | Move StreamingGzipEncoder to PSRAM Heap Allocation + EventBus Payload Safety | `standard` | `COMPLETED` | 1 | `05a6ca6` |
+| `WO-06.8` | `wo8-house-style` | File Headers, std::function Deviation Comments & CSS Design Tokens | `standard` | `COMPLETED` | 1 | `a497649` |
 
 ## 4. Session Log
 
@@ -190,3 +190,4 @@ Implement full ride session recording, crash-resilient PSRAM/LittleFS storage, s
 - **2026-10-26:** Chief Architect conducted a critical post-`PR-05` review of `PR-06` and updated `docs/power-physics-model.md`, `SPEC.md`, `PROGRAM.md`, `PROJECT.md`, and `WO-06.1`–`WO-06.6`: (1) replaced discrete `1..32` `resistance_level` in `RideRecord` with canonical `0..254` `internal_resistance` (`round(254 * pTilde)`, `255 = UNCALIBRATED`), (2) specified `2 Hz` (`500 ms`) sampling averaged into `1 Hz` `RideRecord` entries in lockstep with `PowerEngine` and `FTMSServer`, (3) mandated wraparound-safe signed `int32_t` `millis()` deltas and mid-ride NTP wall-clock back-computation, (4) wired `PowerEngine::computeVirtualSpeedKph(P)/3.6` (`0.245 v^3 + 3.53 v = P`) and Xert MPA 1 Hz coasting continuity into `TCXGenerator`, (5) aligned `inactivityTimeoutSec = 180 s`, 5-ride storage cap, `Redactor::registerSecret()` return-value check, `POST /api/session/discard`, and portal tab orders `80`/`90`.
 - **2026-10-26:** Principal Architect executed `WO-06.1` through `WO-06.6` sequentially on stacked branches (`ab4525e` -> `4e988fe` -> `172aa9a` -> `72eaabf` -> `9556e9c` -> `c5d85a0`), verified `199/199` native unit/integration tests and clean firmware builds (`ex3-waveshare-nano` at `52.5%` Flash / `21.7%` RAM and `ex3-waveshare-nano-diag` at `53.1%` Flash / `21.9%` RAM), and fast-forwarded `feat/pr-06-session-upload` for Step 6A Cold-Firewall Audit.
 - **2026-10-26:** Cold-Firewall Audit Round 1: **APPROVED** (0 blocking, 0 non-blocking). Full 10-dimension framework release audit found 3 advisory + 1 deferred D4 measurement. Chief Architect approved 2-WO remediation pass (`WO-06.7`, `WO-06.8`) to address: (1) D4 — `StreamingGzipEncoder` ~5 KB hash tables + output buffer on stack moved to PSRAM heap; (2) D3 — `SessionManager` EventBus payload migrated from stack-local to class member; (3) D1 — `.cpp` file headers; (4) D2 — `std::function` deviation comments; (5) D6 — CSS `var()` design tokens replacing hardcoded hex colours. Audit report corrected: `HASH_SIZE=512` not `4096`, actual stack footprint ~5 KB not 16 KB.
+- **2026-10-26:** Principal Architect executed remediation WOs `WO-06.7` (`05a6ca6`) and `WO-06.8` (`a497649`) sequentially on `feat/pr-06-session-upload`. WO-06.7: `StreamingGzipEncoder` moved from stack to PSRAM heap via `heap_caps_malloc(MALLOC_CAP_SPIRAM)` + `std::unique_ptr` with custom deleter (ESP32) / `new(std::nothrow)` (native); `SessionManager::publishStateChange()` EventBus payload migrated to class member `_lastEvent`. WO-06.8: 10 `.cpp` file headers added, 7 `std::function` GRAVE-05 deviation comments documented, CSS `var()` design tokens replaced hardcoded hex in `session.js` + `upload_settings.js`. Final verification: **200/200** native tests passing, clean working tree. All 8 WOs now `COMPLETED`.
