@@ -5,7 +5,7 @@ pr_id: PR-06
 title: Hardware Session Lifecycle, Crash Recovery, TCX Download & Live Strava Upload
   Verification
 complexity: interactive
-status: PENDING
+status: COMPLETED
 allowed_files:
 - docs/measurements/phase4/C09-20261026-session-strava-verification.md
 - docs/measurements/phase4/C09-20261024-session-strava-verification.md
@@ -20,7 +20,20 @@ verification_command: pio test -e native && pio run -e ex3-waveshare-nano
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: fc0ae592db7d90e6f4a36d0b4d012c253056fc2a6081db104c6f684c18579c60
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_d2aca55079bc
+  commit_sha: 9556e9c414fc6a6adc78d4a5fa076cd5b200a94e
+  files_modified:
+  - docs/measurements/phase4/C09-20261026-session-strava-verification.md
+  - src/echenon/SessionManager.cpp
+  verification_summary: 'pio test -e native && pio run -e ex3-waveshare-nano: =========================
+    1 succeeded in 00:00:58.234 ========================='
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-06.6: Hardware Session Lifecycle, Crash Recovery, TCX Download & Live Strava Upload Verification

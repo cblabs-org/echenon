@@ -69,9 +69,9 @@ work_orders:
   title: Hardware Session Lifecycle, Crash Recovery, TCX Download & Live Strava Upload
     Verification
   complexity: interactive
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 9556e9c414fc6a6adc78d4a5fa076cd5b200a94e
 ---
 
 # PR-06: Session Recording, TCX Export & Strava Upload (Phase 4, v1 Passive)

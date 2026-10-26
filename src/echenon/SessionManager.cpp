@@ -458,7 +458,8 @@ void SessionManager::tick(uint32_t currentMillis) {
 #endif
 
     switch (_state) {
-        case SessionState::IDLE: {
+        case SessionState::IDLE:
+        case SessionState::ENDED: {
             if (_autoStartEnabled && _cadenceRpm > 0.0f) {
                 if (!_cadenceNonZeroTracking) {
                     _cadenceNonZeroTracking = true;
@@ -509,7 +510,6 @@ void SessionManager::tick(uint32_t currentMillis) {
             break;
         }
 
-        case SessionState::ENDED:
         default:
             break;
     }
