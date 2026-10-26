@@ -479,8 +479,8 @@ void SessionManager::tick(uint32_t currentMillis) {
                     _cadenceZeroTracking = true;
                     _cadenceZeroStartMs  = currentMillis;
                 } else if (static_cast<int32_t>(currentMillis - _cadenceZeroStartMs) >=
-                           static_cast<int32_t>(AUTO_PAUSE_DELAY_MS)) {
-                    pauseSession(currentMillis);
+                           static_cast<int32_t>(getInactivityTimeoutMs())) {
+                    endSession(currentMillis);
                     return;
                 }
             } else {
@@ -501,10 +501,6 @@ void SessionManager::tick(uint32_t currentMillis) {
         }
 
         case SessionState::PAUSED: {
-            if (_cadenceRpm > 0.0f) {
-                resumeSession(currentMillis);
-                return;
-            }
             if (static_cast<int32_t>(currentMillis - _pauseStartMs) >=
                 static_cast<int32_t>(getInactivityTimeoutMs())) {
                 endSession(currentMillis);

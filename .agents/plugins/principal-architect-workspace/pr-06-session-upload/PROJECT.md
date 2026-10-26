@@ -33,7 +33,7 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 4ddcc829074dc2a9db2c6dd2ed28f6a1d2e0bb5d
+  commit_sha: 1d171df13958918d2395414d06a3e9c2a4bddcc7
 - id: WO-06.2
   slug: wo2-tcx-generator
   title: Streaming 1 Hz TCX.gz Generator (4 KB Scratch Buffer, Coasting & Pause Gaps)

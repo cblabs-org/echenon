@@ -237,36 +237,29 @@ TEST(SessionManagerTest, FullLifecycleTransitionsPauseBoundaryAndEventBus) {
     EXPECT_EQ(store.getRecordCount(), 5u);
     EXPECT_EQ(store.getRecords()[4].timestamp_offset_s, 4u);
 
-    // 2. Stop pedalling at t = 10500 ms; after 10,000 ms (t = 20500 ms) -> PAUSED
-    mgr.updateTelemetry(0.0f, 0.0f, 140, true, 128, true);
-    mgr.tick(10500); // latches zero-cadence start at 10500
-    for (uint32_t t = 11000; t <= 20000; t += 500) {
-        mgr.tick(t);
-        EXPECT_EQ(mgr.getState(), SessionState::ACTIVE);
-    }
-    // At t = 20500 (10,000 ms of zero cadence), transitions ACTIVE -> PAUSED
-    mgr.tick(20500);
+    // 2. Manual UI pause at t = 10000 ms -> PAUSED
+    ASSERT_TRUE(mgr.pauseSession(10000));
     EXPECT_EQ(mgr.getState(), SessionState::PAUSED);
 
     size_t countAtPause = store.getRecordCount();
     uint16_t offsetBeforePause = mgr.getNextTimestampOffsetS();
 
-    // While PAUSED for 45 seconds (t = 20500 -> 65500), no records are written
-    for (uint32_t t = 25500; t <= 60500; t += 5000) {
+    // While PAUSED for 45 seconds (t = 10000 -> 55000), no records are written even if telemetry updates
+    for (uint32_t t = 15000; t <= 50000; t += 5000) {
         mgr.tick(t);
         EXPECT_EQ(mgr.getState(), SessionState::PAUSED);
         EXPECT_EQ(store.getRecordCount(), countAtPause);
     }
 
-    // 3. Resume pedalling at t = 65500 (45 s pause gap) -> PAUSED -> ACTIVE
+    // 3. Manual UI resume at t = 55000 (45 s pause gap) -> PAUSED -> ACTIVE
     mgr.updateTelemetry(200.0f, 90.0f, 150, true, 140, true);
-    mgr.tick(65500);
+    ASSERT_TRUE(mgr.resumeSession(55000));
     EXPECT_EQ(mgr.getState(), SessionState::ACTIVE);
     EXPECT_EQ(mgr.getNextTimestampOffsetS(), static_cast<uint16_t>(offsetBeforePause + 45u));
 
-    // Emit first resumed 1 Hz record (t = 66000, 66500)
-    mgr.tick(66000);
-    mgr.tick(66500);
+    // Emit first resumed 1 Hz record (t = 55500, 56000)
+    mgr.tick(55500);
+    mgr.tick(56000);
     ASSERT_EQ(store.getRecordCount(), countAtPause + 1u);
     const RideRecord& resumedRec = store.getRecords()[countAtPause];
     EXPECT_TRUE(resumedRec.isPauseBoundary());
@@ -274,27 +267,42 @@ TEST(SessionManagerTest, FullLifecycleTransitionsPauseBoundaryAndEventBus) {
     EXPECT_EQ(resumedRec.power_watts, 200u);
     EXPECT_EQ(resumedRec.cadence_rpm, 90u);
 
-    // Emit second resumed 1 Hz record (t = 67000, 67500) — pause boundary flag cleared
-    mgr.tick(67000);
-    mgr.tick(67500);
+    // Emit second resumed 1 Hz record (t = 56500, 57000) — pause boundary flag cleared
+    mgr.tick(56500);
+    mgr.tick(57000);
     ASSERT_EQ(store.getRecordCount(), countAtPause + 2u);
     EXPECT_FALSE(store.getRecords()[countAtPause + 1].isPauseBoundary());
     EXPECT_EQ(store.getRecords()[countAtPause + 1].timestamp_offset_s,
               static_cast<uint16_t>(offsetBeforePause + 46u));
 
-    // 4. Pause again and wait 180,000 ms inactivity timeout -> PAUSED -> ENDED
+    // 4. Stop pedalling while ACTIVE at t = 57500 ms:
+    //    Stays ACTIVE and records 1 Hz zero-cadence samples continuously during coasting,
+    //    then auto-ends at 180,000 ms (t = 237500 ms) and trims all trailing zero-cadence records!
     mgr.updateTelemetry(0.0f, 0.0f, 130, true, 140, true);
-    mgr.tick(68000); // zero cadence starts at 68000
-    mgr.tick(78000); // pauses at 78000
-    ASSERT_EQ(mgr.getState(), SessionState::PAUSED);
+    for (uint32_t t = 57500; t <= 237000; t += 500) {
+        mgr.tick(t);
+        EXPECT_EQ(mgr.getState(), SessionState::ACTIVE);
+    }
+    // 180 seconds of 1 Hz zero-cadence samples were recorded prior to auto-end (7 active + 179 zero-cadence = 186)
+    EXPECT_GT(store.getRecordCount(), 180u);
 
-    mgr.tick(78000 + 179999);
-    EXPECT_EQ(mgr.getState(), SessionState::PAUSED);
-    mgr.tick(78000 + 180000);
+    // At t = 237500 ms (exactly 180,000 ms since zero cadence started at 57500 ms) -> ACTIVE -> ENDED
+    mgr.tick(237500);
     EXPECT_EQ(mgr.getState(), SessionState::ENDED);
 
-    // Verify EventBus received IDLE->ACTIVE, ACTIVE->PAUSED, PAUSED->ACTIVE, ACTIVE->PAUSED, PAUSED->ENDED
-    ASSERT_EQ(recorder.events.size(), 5u);
+    // Verify all trailing zero-cadence records were stripped and excluded from summary metrics:
+    // Only the 7 active pedalling records remain (5 records @ 180 W/85 RPM + 2 records @ 200 W/90 RPM)
+    const RideSummary& summary = mgr.getLastSummary();
+    EXPECT_EQ(summary.record_count, 7u);
+    EXPECT_EQ(summary.duration_s, 7u);
+    EXPECT_EQ(summary.active_duration_s, 7u);
+    // Average power = round((5*180 + 2*200) / 7) = round(1300 / 7) = 186 W
+    EXPECT_EQ(summary.avg_power_w, 186u);
+    // Average cadence = round((5*85 + 2*90) / 7) = round(605 / 7) = 86 RPM
+    EXPECT_EQ(summary.avg_cadence_rpm, 86u);
+
+    // Verify EventBus received IDLE->ACTIVE, ACTIVE->PAUSED, PAUSED->ACTIVE, ACTIVE->ENDED
+    ASSERT_EQ(recorder.events.size(), 4u);
     EXPECT_EQ(recorder.events[0].oldState, SessionState::IDLE);
     EXPECT_EQ(recorder.events[0].newState, SessionState::ACTIVE);
     EXPECT_EQ(recorder.events[1].oldState, SessionState::ACTIVE);
@@ -302,9 +310,7 @@ TEST(SessionManagerTest, FullLifecycleTransitionsPauseBoundaryAndEventBus) {
     EXPECT_EQ(recorder.events[2].oldState, SessionState::PAUSED);
     EXPECT_EQ(recorder.events[2].newState, SessionState::ACTIVE);
     EXPECT_EQ(recorder.events[3].oldState, SessionState::ACTIVE);
-    EXPECT_EQ(recorder.events[3].newState, SessionState::PAUSED);
-    EXPECT_EQ(recorder.events[4].oldState, SessionState::PAUSED);
-    EXPECT_EQ(recorder.events[4].newState, SessionState::ENDED);
+    EXPECT_EQ(recorder.events[3].newState, SessionState::ENDED);
 
     bus.unsubscribe(EVENT_SESSION_STATE, EventRecorder::onEvent, &recorder);
 }
@@ -369,23 +375,26 @@ TEST(SessionManagerTest, Millis32BitWraparoundAcrossZeroBoundary) {
     mgr.tick(tActive);
     EXPECT_EQ(mgr.getState(), SessionState::ACTIVE);
 
-    // Now test auto-pause across another rollover boundary
-    const uint32_t tZeroStart = 0xFFFFFFFCu;
+    // Manual pause and resume across rollover boundary
+    const uint32_t tPause = 0xFFFFFFFCu;
+    ASSERT_TRUE(mgr.pauseSession(tPause));
+    EXPECT_EQ(mgr.getState(), SessionState::PAUSED);
+
+    const uint32_t tResume = tPause + 10000u; // wraps past 0xFFFFFFFF
+    ASSERT_TRUE(mgr.resumeSession(tResume));
+    EXPECT_EQ(mgr.getState(), SessionState::ACTIVE);
+    EXPECT_EQ(mgr.getNextTimestampOffsetS(), 10u);
+
+    // Test ACTIVE 180 s inactivity auto-end across another rollover boundary
+    const uint32_t tZeroStart = 0xFFFFFFF0u;
     mgr.updateTelemetry(0.0f, 0.0f, 135, true, 100, true);
     mgr.tick(tZeroStart);
     EXPECT_EQ(mgr.getState(), SessionState::ACTIVE);
 
-    mgr.tick(tZeroStart + 9999u);
+    mgr.tick(tZeroStart + 179999u);
     EXPECT_EQ(mgr.getState(), SessionState::ACTIVE);
 
-    const uint32_t tPaused = tZeroStart + 10000u;
-    mgr.tick(tPaused);
-    EXPECT_EQ(mgr.getState(), SessionState::PAUSED);
-
-    // Now test inactivity timeout across rollover
-    mgr.tick(tPaused + 179999u);
-    EXPECT_EQ(mgr.getState(), SessionState::PAUSED);
-    mgr.tick(tPaused + 180000u);
+    mgr.tick(tZeroStart + 180000u);
     EXPECT_EQ(mgr.getState(), SessionState::ENDED);
 }
 
@@ -461,49 +470,49 @@ TEST(SessionManagerTest, ActiveCoastingPreservedInMiddleWhileTrailingZerosStripp
     }
     EXPECT_EQ(store.getRecordCount(), 5u);
 
-    // 2. Coast (0 RPM, 0 W) for 5 seconds (< 10 s auto-pause threshold, t = 5500 .. 10000 ms)
+    // 2. Coast (0 RPM, 0 W) for 30 seconds (t = 5500 .. 35000 ms) — stays ACTIVE and records 30 1 Hz zero samples
     mgr.updateTelemetry(0.0f, 0.0f, 140, true, 100, true);
-    for (uint32_t t = 5500; t <= 10000; t += 500) {
+    for (uint32_t t = 5500; t <= 35000; t += 500) {
         mgr.tick(t);
+        EXPECT_EQ(mgr.getState(), SessionState::ACTIVE);
     }
-    EXPECT_EQ(mgr.getState(), SessionState::ACTIVE);
-    EXPECT_EQ(store.getRecordCount(), 10u);
-    for (size_t i = 5; i < 10; ++i) {
+    EXPECT_EQ(store.getRecordCount(), 35u);
+    for (size_t i = 5; i < 35; ++i) {
         EXPECT_EQ(store.getRecords()[i].power_watts, 0u);
         EXPECT_EQ(store.getRecords()[i].cadence_rpm, 0u);
     }
 
-    // 3. Resume pedalling for 5 seconds (t = 10500 .. 15000 ms) -> 5 records (200 W, 85 RPM)
+    // 3. Resume pedalling for 5 seconds (t = 35500 .. 40000 ms) -> 5 records (200 W, 85 RPM)
     mgr.updateTelemetry(200.0f, 85.0f, 148, true, 100, true);
-    for (uint32_t t = 10500; t <= 15000; t += 500) {
+    for (uint32_t t = 35500; t <= 40000; t += 500) {
         mgr.tick(t);
     }
-    EXPECT_EQ(store.getRecordCount(), 15u);
+    EXPECT_EQ(store.getRecordCount(), 40u);
 
-    // 4. Stop pedalling at the end for 4 seconds (t = 15500 .. 19000 ms) -> 4 trailing zero records
+    // 4. Stop pedalling at the end for 4 seconds (t = 40500 .. 44000 ms) -> 4 trailing zero records
     mgr.updateTelemetry(0.0f, 0.0f, 138, true, 100, true);
-    for (uint32_t t = 15500; t <= 19000; t += 500) {
+    for (uint32_t t = 40500; t <= 44000; t += 500) {
         mgr.tick(t);
     }
-    EXPECT_EQ(store.getRecordCount(), 19u);
+    EXPECT_EQ(store.getRecordCount(), 44u);
 
-    // 5. End session: trailing 4 zero-cadence records are stripped, but the 5 mid-ride coasting records remain!
-    ASSERT_TRUE(mgr.endSession(19500));
-    EXPECT_EQ(mgr.getLastSummary().duration_s, 15u);
+    // 5. End session: trailing 4 zero-cadence records are stripped, but the 30 mid-ride coasting records remain!
+    ASSERT_TRUE(mgr.endSession(44500));
+    EXPECT_EQ(mgr.getLastSummary().duration_s, 40u);
 
     std::vector<RideRecord> savedRecords;
     RideSummary loadedSummary{};
     ASSERT_TRUE(store.loadStoredRide(mgr.getLastSummary().session_id, loadedSummary, savedRecords));
-    ASSERT_EQ(savedRecords.size(), 15u);
+    ASSERT_EQ(savedRecords.size(), 40u);
     for (size_t i = 0; i < 5; ++i) {
         EXPECT_EQ(savedRecords[i].cadence_rpm, 85u);
         EXPECT_EQ(savedRecords[i].power_watts, 200u);
     }
-    for (size_t i = 5; i < 10; ++i) {
+    for (size_t i = 5; i < 35; ++i) {
         EXPECT_EQ(savedRecords[i].cadence_rpm, 0u);
         EXPECT_EQ(savedRecords[i].power_watts, 0u);
     }
-    for (size_t i = 10; i < 15; ++i) {
+    for (size_t i = 35; i < 40; ++i) {
         EXPECT_EQ(savedRecords[i].cadence_rpm, 85u);
         EXPECT_EQ(savedRecords[i].power_watts, 200u);
     }

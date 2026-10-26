@@ -61,7 +61,6 @@ public:
     static constexpr uint16_t MIN_INACTIVITY_TIMEOUT_SEC     = 30;
     static constexpr uint16_t MAX_INACTIVITY_TIMEOUT_SEC     = 3600;
 
-    static constexpr uint32_t AUTO_PAUSE_DELAY_MS            = 10000; // 10 s zero cadence -> PAUSED
     static constexpr uint32_t SAMPLE_INTERVAL_MS             = 500;   // 2 Hz fundamental sampling
     static constexpr uint32_t HR_STALE_TIMEOUT_MS            = 5000;  // 5 s HR staleness timeout
 
