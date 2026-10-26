@@ -33,6 +33,10 @@
 #include "echenon/CalibrationRig.h"
 #endif
 
+#ifdef WITH_SESSION
+#include "echenon/SessionManager.h"
+#endif
+
 class PsychicHttpServer;
 class ConfigManager;
 class EventBus;
@@ -141,6 +145,11 @@ public:
     const echenon::CalibrationRig& calibrationRig() const { return _calibrationRig; }
 #endif
 
+#ifdef WITH_SESSION
+    void setSessionManager(echenon::SessionManager* sm) { _sessionManager = sm; }
+    echenon::SessionManager* getSessionManager() const { return _sessionManager; }
+#endif
+
 private:
     void syncPhysicsCalibration();
 
@@ -177,5 +186,9 @@ private:
 
 #ifdef WITH_CALIBRATION_RIG
     echenon::CalibrationRig _calibrationRig;
+#endif
+
+#ifdef WITH_SESSION
+    echenon::SessionManager* _sessionManager = nullptr;
 #endif
 };

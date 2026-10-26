@@ -6,6 +6,11 @@
 #include "echenon/RideStore.cpp"
 #include "echenon/SessionManager.h"
 #include "echenon/SessionManager.cpp"
+#include "echenon/TCXGenerator.h"
+#include "echenon/UploadQueue.h"
+#include "echenon/StravaUploader.h"
+#include "echenon/SessionOverlay.h"
+#include "echenon/SessionOverlay.cpp"
 
 #include <vector>
 
@@ -637,4 +642,226 @@ TEST(RideStoreTest, FiveRideFifoEvictionOnSixthCompletedRide) {
     EXPECT_FALSE(fs.exists(RideStore::formatRidePath(1)));
     EXPECT_TRUE(fs.exists(RideStore::formatRidePath(2)));
     EXPECT_TRUE(fs.exists(RideStore::formatRidePath(6)));
+}
+
+// =============================================================================
+// 7. SessionOverlay REST Handlers, Tab Registration & LiveFeed 13-Field JSON
+// =============================================================================
+
+namespace {
+
+class MockTabRegistry : public ITabRegistry {
+public:
+    std::vector<TabEntry> tabs;
+    void addTab(const char* name,
+                const char* parent,
+                int order = 100,
+                const char* icon = nullptr,
+                const char* script = nullptr) override {
+        tabs.push_back(TabEntry{name, parent, order, icon, script});
+    }
+};
+
+class OverlayMockHttpClient : public IHttpClient {
+public:
+    echenon::HttpResponse postForm(const std::string& /*url*/,
+                                   const std::string& /*form_body*/,
+                                   uint32_t /*timeout_ms*/) override {
+        echenon::HttpResponse r;
+        r.status_code = 200;
+        r.body = "{\"access_token\":\"acc_tok_xyz\",\"refresh_token\":\"ref_tok_xyz\","
+                 "\"expires_at\":1800000000,\"athlete\":{\"firstname\":\"Ada\",\"lastname\":\"Lovelace\"}}";
+        return r;
+    }
+
+    echenon::HttpResponse postMultipart(const MultipartUploadRequest& /*req*/,
+                                        uint32_t /*timeout_ms*/) override {
+        return echenon::HttpResponse{201, "{\"id_str\":\"1001\"}", ""};
+    }
+
+    echenon::HttpResponse getJson(const std::string& /*url*/,
+                                  const std::string& /*bearer_token*/,
+                                  uint32_t /*timeout_ms*/) override {
+        return echenon::HttpResponse{200, "{\"id_str\":\"1001\",\"activity_id\":9001}", ""};
+    }
+};
+
+} // namespace
+
+TEST(SessionOverlayTest, LifecycleStatusConfigHistoryDownloadAndUploadEndpoints) {
+    InMemoryRideFileSystem fs;
+    RideStore store(&fs);
+    ASSERT_TRUE(store.begin());
+
+    SessionManager mgr(store);
+    mgr.begin();
+
+    UploadQueue queue(store);
+    ASSERT_TRUE(queue.begin());
+
+    InMemorySecretStore secretStore;
+    OverlayMockHttpClient httpClient;
+    StravaUploader strava(&secretStore, &httpClient);
+    ASSERT_TRUE(strava.begin());
+
+    SessionOverlay overlay(&mgr, &store, &queue, &strava);
+
+    // 1. Initial status is IDLE
+    auto statusResp = overlay.handleGetStatus();
+    EXPECT_EQ(statusResp.status_code, 200);
+    {
+        JsonDocument doc;
+        ASSERT_FALSE(deserializeJson(doc, statusResp.body));
+        EXPECT_STREQ(doc["state"].as<const char*>(), "IDLE");
+        EXPECT_EQ(doc["session_id"].as<uint32_t>(), 0u);
+    }
+
+    // 2. Invalid pause while IDLE returns 409
+    EXPECT_EQ(overlay.handlePause(1000).status_code, 409);
+
+    // 3. Start -> Active -> 2s samples -> Pause -> Resume -> End
+    auto startResp = overlay.handleStart(1710000000u, 1000u);
+    EXPECT_EQ(startResp.status_code, 200);
+    EXPECT_EQ(overlay.handleStart(1710000000u, 1100u).status_code, 409); // already active
+
+    mgr.updateTelemetry(240.0f, 90.0f, 150, true, 100, true);
+    mgr.tick(1500);
+    mgr.tick(2000);
+    mgr.tick(2500);
+    mgr.tick(3000);
+
+    auto pauseResp = overlay.handlePause(3000u);
+    EXPECT_EQ(pauseResp.status_code, 200);
+    EXPECT_EQ(mgr.getState(), SessionState::PAUSED);
+
+    auto resumeResp = overlay.handleResume(5000u);
+    EXPECT_EQ(resumeResp.status_code, 200);
+    EXPECT_EQ(mgr.getState(), SessionState::ACTIVE);
+
+    auto endResp = overlay.handleEnd(5000u);
+    EXPECT_EQ(endResp.status_code, 200);
+    {
+        JsonDocument doc;
+        ASSERT_FALSE(deserializeJson(doc, endResp.body));
+        EXPECT_TRUE(doc["ok"].as<bool>());
+        EXPECT_EQ(doc["session_id"].as<uint32_t>(), 1u);
+        EXPECT_EQ(doc["avg_power_w"].as<uint16_t>(), 240u);
+    }
+
+    // 4. History includes completed ride #1 and auto-enqueued PENDING upload job
+    auto histResp = overlay.handleGetHistory();
+    EXPECT_EQ(histResp.status_code, 200);
+    {
+        JsonDocument doc;
+        ASSERT_FALSE(deserializeJson(doc, histResp.body));
+        JsonArray rides = doc["rides"].as<JsonArray>();
+        ASSERT_EQ(rides.size(), 1u);
+        EXPECT_EQ(rides[0]["session_id"].as<uint32_t>(), 1u);
+        EXPECT_STREQ(rides[0]["upload_state"].as<const char*>(), "PENDING");
+    }
+
+    // 5. Download uncompressed TCX and compressed TCX.gz
+    auto dlXml = overlay.handleDownload(1u, false);
+    EXPECT_EQ(dlXml.status_code, 200);
+    EXPECT_EQ(dlXml.content_type, "application/vnd.garmin.tcx+xml");
+    EXPECT_NE(dlXml.body.find("<TrainingCenterDatabase"), std::string::npos);
+    EXPECT_NE(dlXml.body.find("<ns3:Watts>240</ns3:Watts>"), std::string::npos);
+
+    auto dlGz = overlay.handleDownload(1u, true);
+    EXPECT_EQ(dlGz.status_code, 200);
+    EXPECT_EQ(dlGz.content_type, "application/gzip");
+    ASSERT_GE(dlGz.body.size(), 18u);
+    EXPECT_EQ(static_cast<uint8_t>(dlGz.body[0]), 0x1Fu);
+    EXPECT_EQ(static_cast<uint8_t>(dlGz.body[1]), 0x8Bu);
+
+    EXPECT_EQ(overlay.handleDownload(999u, false).status_code, 404);
+
+    // 6. Manual upload trigger and config update
+    EXPECT_EQ(overlay.handleUpload(1u, 6000u).status_code, 200);
+    EXPECT_EQ(overlay.handleUpload(999u, 6000u).status_code, 404);
+
+    auto cfgResp = overlay.handleConfig(
+        "{\"auto_start_enabled\":false,\"auto_start_delay_sec\":5,"
+        "\"inactivity_timeout_sec\":120,\"auto_upload_enabled\":false}");
+    EXPECT_EQ(cfgResp.status_code, 200);
+    EXPECT_FALSE(mgr.isAutoStartEnabled());
+    EXPECT_EQ(mgr.getAutoStartDelaySec(), 5u);
+    EXPECT_EQ(mgr.getInactivityTimeoutSec(), 120u);
+    EXPECT_FALSE(queue.isAutoUploadEnabled());
+
+    EXPECT_EQ(overlay.handleConfig("not-json").status_code, 400);
+
+    // 7. Discard stored ride #1
+    auto discResp = overlay.handleDiscard(1u, 7000u);
+    EXPECT_EQ(discResp.status_code, 200);
+    EXPECT_EQ(store.findStoredRide(1u), nullptr);
+    EXPECT_EQ(overlay.handleDiscard(1u, 7000u).status_code, 404);
+}
+
+TEST(SessionOverlayTest, StravaCredentialsOAuthFlowTabsAndLiveFeedJson) {
+    InMemoryRideFileSystem fs;
+    RideStore store(&fs);
+    ASSERT_TRUE(store.begin());
+    SessionManager mgr(store);
+    UploadQueue queue(store);
+    InMemorySecretStore secretStore;
+    OverlayMockHttpClient httpClient;
+    StravaUploader strava(&secretStore, &httpClient);
+    ASSERT_TRUE(strava.begin());
+
+    SessionOverlay overlay(&mgr, &store, &queue, &strava);
+
+    // 1. Save credentials (write-only secret never echoed)
+    EXPECT_EQ(overlay.handleSaveStravaCredentials("{}").status_code, 400);
+    auto saveResp = overlay.handleSaveStravaCredentials(
+        "{\"client_id\":\"54321\",\"client_secret\":\"super_secret_val\"}");
+    EXPECT_EQ(saveResp.status_code, 200);
+    EXPECT_EQ(saveResp.body.find("super_secret_val"), std::string::npos);
+
+    auto stResp = overlay.handleGetStravaStatus(1710000000u);
+    EXPECT_EQ(stResp.status_code, 200);
+    EXPECT_EQ(stResp.body.find("super_secret_val"), std::string::npos);
+
+    // 2. Build OAuth authorize URL and validate CSRF state callback
+    auto authUrlResp = overlay.handleGetStravaAuthUrl("http://echenon.local/api/strava/callback", 1000u);
+    EXPECT_EQ(authUrlResp.status_code, 200);
+    std::string stateToken = strava.getPendingState();
+    ASSERT_FALSE(stateToken.empty());
+
+    // Wrong state rejected with 400
+    EXPECT_EQ(overlay.handleStravaCallback("code123", "bad_state", 2000u).status_code, 400);
+
+    // Valid state exchanges code and authenticates athlete
+    auto authUrlResp2 = overlay.handleGetStravaAuthUrl("http://echenon.local/api/strava/callback", 3000u);
+    EXPECT_EQ(authUrlResp2.status_code, 200);
+    stateToken = strava.getPendingState();
+    auto cbResp = overlay.handleStravaCallback("valid_code_abc", stateToken, 4000u);
+    EXPECT_EQ(cbResp.status_code, 200);
+    EXPECT_TRUE(strava.isAuthenticated());
+    EXPECT_EQ(strava.getAthleteName(), "Ada Lovelace");
+
+    // Disconnect clears tokens
+    auto discStrava = overlay.handleStravaDisconnect();
+    EXPECT_EQ(discStrava.status_code, 200);
+    EXPECT_FALSE(strava.isAuthenticated());
+
+    // 3. Verify portal tab registrations
+    MockTabRegistry tabReg;
+    overlay.registerTabs(tabReg);
+    ASSERT_EQ(tabReg.tabs.size(), 2u);
+    EXPECT_STREQ(tabReg.tabs[0].name, "Session");
+    EXPECT_EQ(tabReg.tabs[0].order, 80);
+    EXPECT_STREQ(tabReg.tabs[0].script, "/session.js");
+    EXPECT_STREQ(tabReg.tabs[1].name, "Upload Services");
+    EXPECT_EQ(tabReg.tabs[1].order, 90);
+    EXPECT_STREQ(tabReg.tabs[1].script, "/upload_settings.js");
+
+    // 4. Verify 13-field LiveFeed JSON includes session_state and session_elapsed_s
+    std::string liveJson = SessionOverlay::formatLiveFeedJson(
+        85.5f, 16, 100, 215.0f, 1450, 0, 0, false, 45, 31.2f, "ACTIVE", 125u, 98765u);
+    JsonDocument liveDoc;
+    ASSERT_FALSE(deserializeJson(liveDoc, liveJson));
+    EXPECT_STREQ(liveDoc["session_state"].as<const char*>(), "ACTIVE");
+    EXPECT_EQ(liveDoc["session_elapsed_s"].as<uint32_t>(), 125u);
+    EXPECT_EQ(liveDoc["timestamp_ms"].as<uint32_t>(), 98765u);
 }

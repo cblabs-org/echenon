@@ -61,9 +61,9 @@ work_orders:
   title: SessionOverlay REST API, Authenticated TCX Download, Portal Tabs & Module
     Wiring
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 72eaabfbc0b40a5895d0f977d5636dd21555ea2f
 - id: WO-06.6
   slug: wo6-hw-verification
   title: Hardware Session Lifecycle, Crash Recovery, TCX Download & Live Strava Upload

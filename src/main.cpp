@@ -13,8 +13,30 @@ static BLEManager bleManager;
 EncoderModule encoderModule;
 #endif
 
+#ifdef WITH_SESSION
+#include "echenon/RideStore.h"
+#include "echenon/SessionManager.h"
+#include "echenon/UploadQueue.h"
+#include "echenon/SessionOverlay.h"
+#endif
+
+#ifdef WITH_STRAVA
+#include "echenon/StravaUploader.h"
+#endif
+
 Application app;
 EchenonModule echenonModule;
+
+#ifdef WITH_SESSION
+static echenon::RideStore rideStore;
+static echenon::SessionManager sessionManager(rideStore);
+static echenon::UploadQueue uploadQueue(rideStore);
+static echenon::SessionOverlay sessionOverlay;
+#endif
+
+#ifdef WITH_STRAVA
+static echenon::StravaUploader stravaUploader;
+#endif
 
 void setup() {
     Serial.begin(115200);
@@ -61,6 +83,33 @@ void setup() {
     app.registerModule(&echenonModule.hrSynthetic());
 #endif
 
+#ifdef WITH_SESSION
+    sessionManager.setEventBus(&app.getEventBus());
+    uploadQueue.setEventBus(&app.getEventBus());
+    echenonModule.setSessionManager(&sessionManager);
+#ifdef WITH_BLE
+    uploadQueue.setBLEManager(&bleManager);
+#endif
+#ifdef WITH_STRAVA
+    stravaUploader.setKeyManager(&app.getKeyManager());
+    stravaUploader.setMetadataSaveCallback([](uint32_t, const std::string&) {
+        return app.getConfigManager().saveModuleConfig(&stravaUploader);
+    });
+    uploadQueue.setUploader(&stravaUploader);
+    sessionOverlay.setStravaUploader(&stravaUploader);
+    app.registerModule(&stravaUploader);
+#endif
+    sessionOverlay.setSessionManager(&sessionManager);
+    sessionOverlay.setRideStore(&rideStore);
+    sessionOverlay.setUploadQueue(&uploadQueue);
+    sessionOverlay.setAuthManager(&app.getAuthManager());
+    sessionOverlay.setConfigManager(&app.getConfigManager());
+
+    app.registerModule(&sessionManager);
+    app.registerModule(&uploadQueue);
+    app.registerModule(&sessionOverlay);
+#endif
+
     FrameworkConfig config;
     app.begin(config);
 
@@ -77,6 +126,26 @@ void setup() {
 
 #if defined(WITH_BLE) && defined(WITH_FTMS)
     ftmsServer.begin();  // Subscribes to HR EventBus topic
+#endif
+
+#ifdef WITH_SESSION
+    rideStore.begin();
+    rideStore.recoverInterruptedSession();
+    sessionManager.begin();
+#ifdef WITH_STRAVA
+    stravaUploader.begin();
+#endif
+    uploadQueue.begin();
+    app.getEventBus().subscribe(
+        echenon::EVENT_SESSION_TOPIC,
+        [](const char*, const void* data, void*) {
+            if (data == nullptr) return;
+            const auto* ev = static_cast<const echenon::SessionStateChangeEvent*>(data);
+            if (ev->newState == echenon::SessionState::ENDED &&
+                ev->sessionId != 0 && uploadQueue.isAutoUploadEnabled()) {
+                uploadQueue.enqueueSession(ev->sessionId, millis());
+            }
+        });
 #endif
 }
 

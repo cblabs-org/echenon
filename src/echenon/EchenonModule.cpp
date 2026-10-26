@@ -121,7 +121,39 @@ void EchenonModule::tick(uint32_t currentMillis) {
     }
 #endif
 
+#ifdef WITH_SESSION
+    const char* sessionStateStr = "IDLE";
+    uint32_t sessionElapsedS = 0;
+    if (_sessionManager != nullptr) {
+        uint8_t sessInternalRes = _calibrationWizard.isPosDone()
+            ? LevelMapping::normalizedToInternal(pTilde)
+            : LevelMapping::INTERNAL_RESISTANCE_UNCALIBRATED;
+        _sessionManager->updateTelemetry(
+            _powerEngine.getLastPower(),
+            cadenceRpm,
+            sessInternalRes,
+            _calibrationWizard.isPosDone());
+        sessionStateStr = echenon::sessionStateToString(_sessionManager->getState());
+        sessionElapsedS = _sessionManager->getElapsedSec();
+    }
+#endif
+
 #ifndef UNIT_TEST
+#ifdef WITH_SESSION
+    _liveFeed.tick(currentMillis,
+                   cadenceRpm,
+                   getEchelonLevel(),
+                   getInternalLevel(),
+                   _powerEngine.getLastPower(),
+                   _resistanceSensor.getFilteredWiper(),
+                   0,
+                   0,
+                   _runawayDetector.isRunaway(),
+                   pelotonRes,
+                   speedKph,
+                   sessionStateStr,
+                   sessionElapsedS);
+#else
     _liveFeed.tick(currentMillis,
                    cadenceRpm,
                    getEchelonLevel(),
@@ -133,6 +165,7 @@ void EchenonModule::tick(uint32_t currentMillis) {
                    _runawayDetector.isRunaway(),
                    pelotonRes,
                    speedKph);
+#endif
 #endif
 #ifdef WITH_SIGNAL_LOGGER
     static bool s_eventBusWired = false;
