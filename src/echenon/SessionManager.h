@@ -194,6 +194,9 @@ private:
     uint64_t    _powerSumW         = 0;
     uint16_t    _maxPowerW         = 0;
     RideSummary _lastSummary{};
+
+    // Persistent EventBus payload — avoids stack-local lifetime issues (D3 safety)
+    SessionStateChangeEvent _lastEvent{};
 };
 
 } // namespace echenon

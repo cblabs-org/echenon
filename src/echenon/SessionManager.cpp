@@ -171,9 +171,9 @@ void SessionManager::updateWallClock(uint32_t now_epoch_s, uint32_t now_ms) {
 
 void SessionManager::publishStateChange(SessionState oldState, SessionState newState, uint32_t now_ms) {
     if (_eventBus) {
-        SessionStateChangeEvent ev{oldState, newState, _sessionId, now_ms};
-        _eventBus->publish(EVENT_SESSION_STATE, &ev);
-        _eventBus->publish(EVENT_SESSION_TOPIC, &ev);
+        _lastEvent = {oldState, newState, _sessionId, now_ms};
+        _eventBus->publish(EVENT_SESSION_STATE, &_lastEvent);
+        _eventBus->publish(EVENT_SESSION_TOPIC, &_lastEvent);
     }
 }
 

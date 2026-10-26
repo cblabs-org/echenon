@@ -4,6 +4,12 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <memory>
+#include <new>
+
+#ifdef ESP_PLATFORM
+#include <esp_heap_caps.h>
+#endif
 
 namespace echenon {
 
@@ -819,20 +825,32 @@ bool TCXGenerator::generateTcxGz(
         return false;
     }
 
-    StreamingGzipEncoder gz_encoder(write_chunk, check_deadline);
-    if (!gz_encoder.writeHeader()) {
+    // Heap-allocate the encoder (~5 KB) to free main-task stack headroom.
+    // On ESP32, place in PSRAM via heap_caps_malloc; on native, use regular new.
+#ifdef ESP_PLATFORM
+    void* mem = heap_caps_malloc(sizeof(StreamingGzipEncoder), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!mem) return false;
+    auto gz = std::unique_ptr<StreamingGzipEncoder, void(*)(StreamingGzipEncoder*)>(
+        new(mem) StreamingGzipEncoder(write_chunk, check_deadline),
+        [](StreamingGzipEncoder* p) { p->~StreamingGzipEncoder(); free(p); }
+    );
+#else
+    auto gz = std::unique_ptr<StreamingGzipEncoder>(new(std::nothrow) StreamingGzipEncoder(write_chunk, check_deadline));
+    if (!gz) return false;
+#endif
+    if (!gz->writeHeader()) {
         return false;
     }
 
-    const WriteChunkFn xml_to_gz = [&gz_encoder](const uint8_t* chunk, size_t len) -> bool {
-        return gz_encoder.compressChunk(chunk, len);
+    const WriteChunkFn xml_to_gz = [&gz](const uint8_t* chunk, size_t len) -> bool {
+        return gz->compressChunk(chunk, len);
     };
 
     if (!generateTcx(summary, records, record_count, xml_to_gz, check_deadline)) {
         return false;
     }
 
-    return gz_encoder.finish();
+    return gz->finish();
 }
 
 bool TCXGenerator::generateTcxGzFromStore(
