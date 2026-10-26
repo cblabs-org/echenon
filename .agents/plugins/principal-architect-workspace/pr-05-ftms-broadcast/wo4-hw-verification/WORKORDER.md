@@ -4,18 +4,32 @@ wo_id: WO-05.4
 pr_id: PR-05
 title: Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak
 complexity: interactive
-status: COMPLETED
+status: IN_PROGRESS
 allowed_files:
 - docs/measurements/phase3/C08-20261024-ftms-verification.md
 - src/echenon/CadenceSensor.h
 - src/echenon/CadenceSensor.cpp
+- src/echenon/ResistanceSensor.h
+- src/echenon/ResistanceSensor.cpp
+- src/echenon/LevelMapping.h
+- src/echenon/LevelMapping.cpp
+- src/echenon/CalibrationWizard.h
+- src/echenon/CalibrationWizard.cpp
+- src/echenon/PowerEngine.h
+- src/echenon/PowerEngine.cpp
+- src/echenon/RecalibrationUI.h
+- src/echenon/RecalibrationUI.cpp
 - src/echenon/FTMSServer.h
 - src/echenon/FTMSServer.cpp
 - src/echenon/HRMClient.h
 - src/echenon/HRMClient.cpp
+- src/echenon/EchenonModule.h
 - src/echenon/EchenonModule.cpp
 - test/test_native/test_cadence_sensor.cpp
 - test/test_native/test_ftms_server.cpp
+- test/test_native/test_level_mapping.cpp
+- test/test_native/test_power_engine.cpp
+- test/test_native/test_recalibration.cpp
 forbidden_files: []
 required_skills:
 - framework-expert
@@ -23,20 +37,8 @@ required_skills:
 verification_command: pio test -e native
 max_attempts: 5
 max_structural_failures: 2
-spec_hash: 09434e5bacdae35200e0de1497e3ef5c5e0e432dc5e57654ef57c9c59629a5b8
-completion:
-  status: COMPLETED
-  attempt_num: 1
-  receipt_id: rcpt_e243cbefe923
-  commit_sha: 5a70b0405933c17798455ab4e50324e9e947df44
-  files_modified:
-  - docs/measurements/phase3/C08-20261024-ftms-verification.md
-  verification_summary: 'pio test -e native: ================ 162 test cases: 162
-    succeeded in 00:00:00.541 ================'
-  out_of_scope_findings: []
-  escalation_request: null
-  decisions_made: []
-  dead_ends: []
+spec_hash: a504e241d67ca8a5d383e1b5d3e053bd1ab284b7d5cac148f8d18b3e9f7148f4
+completion: null
 ---
 
 # WO-05.4: Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak
@@ -138,6 +140,67 @@ Flash `ex3-waveshare-nano` onto the connected ESP32-S3-Nano bench unit, verify t
    - **Unit Tests:**
      - In `test/test_native/test_cadence_sensor.cpp`, add a test verifying that `CadenceSensor` continues computing accurate RPM (`> 0`) and timing out properly when `currentMillis` is past multiple 71.58-minute `micros()` wraparounds (e.g., `currentMillis = 9237153` ms while `pulseMicros` wrapped to `647218000` µs).
      - In `test/test_native/test_ftms_server.cpp`, add a test verifying that `FTMSServer::getEffectiveHrBpm(now_ms)` retains the valid HR BPM (does not underflow to `0`) when `sample.receivedAtMs` is 1–5 ms ahead of `now_ms` (`now_ms = 1000`, `sample.receivedAtMs = 1002`).
+9. **Fundamental-First Sensor-to-Telemetry Pipeline & Formula-Parameter Calibration (`ResistanceSensor`, `LevelMapping`, `CalibrationWizard`, `PowerEngine`, `RecalibrationUI`, `EchenonModule`):**
+   - **9a. `ResistanceSensor` Unrounded Float Wiper (`src/echenon/ResistanceSensor.h`):**
+     - Add `float getFilteredWiperFloat() const { return _initialized ? _filteredWiper : 0.0f; }` alongside `uint16_t getFilteredWiper() const` so the continuous EMA float is preserved without premature `uint16_t` rounding.
+   - **9b. `LevelMapping` Canonical `C07` Constants & Direct Float Helpers (`src/echenon/LevelMapping.h`, `src/echenon/LevelMapping.cpp`, `test/test_native/test_level_mapping.cpp`):**
+     - Update the baseline constants in `LevelMapping.h` from the stale `C03` values (`157..1313`) to the `C07` 320-point sweep model (`docs/power-physics-model.md` §1 & `PowerEngine.h`):
+       - `constexpr uint16_t WORKING_RANGE_MIN = 171;`
+       - `constexpr uint16_t WORKING_RANGE_MAX = 1333;`
+       - `constexpr float B03_SLOPE = (1333.0f - 171.0f) / 31.0f; // 37.483871f`
+       - `constexpr float B03_INTERCEPT = 171.0f - B03_SLOPE; // 133.516129f`
+     - Add direct normalized and continuous level helpers accepting `float` wiper and optional `(potMin, potMax)` bounds:
+       - `inline float wiperToNormalized(float wiper, float potMin = static_cast<float>(WORKING_RANGE_MIN), float potMax = static_cast<float>(WORKING_RANGE_MAX))`: returns `0.0f` if non-finite or `potMax <= potMin`, else `std::clamp((wiper - potMin) / (potMax - potMin), 0.0f, 1.0f)`.
+       - `float wiperToLevel(float wiper, float potMin = static_cast<float>(WORKING_RANGE_MIN), float potMax = static_cast<float>(WORKING_RANGE_MAX))`: returns `normalizedToEchelonContinuous(wiperToNormalized(wiper, potMin, potMax))` (and keep `float wiperToLevel(uint16_t wiper)` overload delegating to `wiperToLevel(static_cast<float>(wiper))`).
+       - Update `wiperToEchelon(uint16_t wiper)` (and add `uint8_t wiperToEchelon(float wiper, float potMin = static_cast<float>(WORKING_RANGE_MIN), float potMax = static_cast<float>(WORKING_RANGE_MAX))`) to compute `static_cast<uint8_t>(std::clamp(std::round(wiperToLevel(wiper, potMin, potMax)), 1.0f, 32.0f))` directly from `wiperToLevel` — eliminating the double integer quantization through `wiperToInternal` (`0..255`).
+       - Add `uint8_t wiperToInternal(float wiper, float potMin = static_cast<float>(WORKING_RANGE_MIN), float potMax = static_cast<float>(WORKING_RANGE_MAX))` delegating to `levelToInternal(wiperToLevel(wiper, potMin, potMax))`.
+   - **9c. `CalibrationWizard` OLS Linear Endpoint Regression (`src/echenon/CalibrationWizard.h`, `src/echenon/CalibrationWizard.cpp`, `test/test_native/test_recalibration.cpp`):**
+     - Rather than interpolating a jagged 32-point lookup table (which bakes in $\pm 2\text{--}4\text{ ADC count}$ bang-bang motor stop jitter), use Ordinary Least Squares (OLS) linear regression across recorded `(level, _table[level - 1])` entries (where `_table[level - 1] > 0`) to fit the linear potentiometer endpoints `pot_min` (at $L = 1$) and `pot_max` (at $L = 32$):
+       - `bool fitLinearEndpoints(float& outPotMin, float& outPotMax) const`:
+         - Collect all levels $L \in \{1..32\}$ where `_table[L - 1] > 0`.
+         - If `_posDone` is `false` or fewer than 2 valid levels exist (or denominator $\sum (L - \bar{L})^2 \le 0$ or fitted `outPotMax <= outPotMin`), set `outPotMin = static_cast<float>(LevelMapping::WORKING_RANGE_MIN)` (`171.0f`), `outPotMax = static_cast<float>(LevelMapping::WORKING_RANGE_MAX)` (`1333.0f`), and return `false`.
+         - Otherwise compute OLS slope $m = \frac{\sum (L_i - \bar{L})(w_i - \bar{w})}{\sum (L_i - \bar{L})^2}$ and intercept $b = \bar{w} - m\bar{L}$, set `outPotMin = b + m * 1.0f` and `outPotMax = b + m * 32.0f`, and return `true` (if `outPotMax <= outPotMin`, fall back to defaults and return `false`).
+       - Cache `_potMin = 171.0f` and `_potMax = 1333.0f` on `CalibrationWizard`, updating them automatically whenever `recordLevel`, `setTableEntry`, `setPosDone`, or `reset` is called (via a private `updateFittedEndpoints()` helper), and expose:
+         - `float getPotMin() const { return _potMin; }`
+         - `float getPotMax() const { return _potMax; }`
+         - `float wiperToNormalized(float wiper) const { return LevelMapping::wiperToNormalized(wiper, _potMin, _potMax); }`
+         - `float wiperToLevel(float wiper) const { return LevelMapping::wiperToLevel(wiper, _potMin, _potMax); }`
+         - `uint8_t wiperToEchelon(float wiper) const { return LevelMapping::wiperToEchelon(wiper, _potMin, _potMax); }`
+   - **9d. `PowerEngine` Direct Normalized Evaluation (`src/echenon/PowerEngine.h`, `src/echenon/PowerEngine.cpp`, `test/test_native/test_power_engine.cpp`):**
+     - Add `static float computePowerFromNormalized(float p_tilde, float cadence_rpm, const PowerPhysicsParams& params = PowerPhysicsParams{})` which validates finite inputs and `cadence_rpm > 0.0f`, clamps `p_tilde` to `[0.0f, 1.0f]`, and calls `evaluateKlossPower(p_tilde, cadence_rpm, params)`.
+     - Add member `float computePowerFromNormalized(float p_tilde, float cadenceRPM) const` which uses `computePowerFromNormalized(p_tilde, cadenceRPM, _physicsParams)` when `_usePhysicsModel` is `true`, and `computePowerTable(1.0f + 31.0f * std::clamp(p_tilde, 0.0f, 1.0f), cadenceRPM)` when a custom CSV table is active.
+     - Add member `void tickFromNormalized(float p_tilde, float cadenceRPM)` which sets `_lastPower = computePowerFromNormalized(p_tilde, cadenceRPM)`.
+     - In `PowerEngine::loadDefault()`, keep `_physicsParams` (or reset `a_scale = A`, `pot_min = POT_MIN_DEFAULT`, `pot_max = POT_MAX_DEFAULT` on explicit default reset while allowing `setPhysicsParams` to customize `pot_min`, `pot_max`, `a_scale` while `_usePhysicsModel == true`).
+   - **9e. `RecalibrationUI` Formula Scale-Factor Fitting (`src/echenon/RecalibrationUI.h`, `src/echenon/RecalibrationUI.cpp`, `test/test_native/test_recalibration.cpp`):**
+     - Add `bool applyToPhysicsParams(PowerPhysicsParams& params) const` to `RecalibrationUI`:
+       - Instead of abandoning `Physics P3r` for a sparse 32x31 table when recalibration points are recorded, fit a least-squares multiplicative scale factor on the eddy-current coefficient `params.a_scale` across all valid recorded points (`pt.cadenceRPM > 0.0f && pt.reportedPower > 0.0f`):
+         - For each point, determine $\tilde{p}_i$: if `pt.wiperCount > 0 && params.pot_max > params.pot_min`, use `std::clamp((static_cast<float>(pt.wiperCount) - params.pot_min) / (params.pot_max - params.pot_min), 0.0f, 1.0f)`; else use `std::clamp((static_cast<float>(pt.echelonLevel) - 1.0f) / 31.0f, 0.0f, 1.0f)`.
+         - Compute baseline eddy-current power at unit scale $B_i = \exp(\beta u_i) \frac{\text{cad}_i^2}{1 + (\text{cad}_i / \text{cad}_c)^2}$ where $u_i = 1 - \cos(\theta_{\text{sweep}} \tilde{p}_i)$, and target eddy power $Y_i = \max(P_{\text{reported},i} - c_{\text{fric}} \cdot \text{cad}_i, 0.0f)$.
+         - Compute the ordinary least-squares estimator through the origin: $a_{\text{scale}} = \frac{\sum B_i Y_i}{\sum B_i^2}$, clamped to a sane physical range $[0.25 \cdot A,\; 4.0 \cdot A]$ (`[0.00122f, 0.01954f]`).
+         - If at least one valid point has $B_i > 0$, update `params.a_scale` and return `true`; otherwise set `params.a_scale = PowerEngine::A` and return `false`.
+     - Keep `applyToPowerTable(PowerTable& table) const` intact for legacy unit test compatibility.
+   - **9f. `EchenonModule` Fundamental-First Propagation (`src/echenon/EchenonModule.h`, `src/echenon/EchenonModule.cpp`):**
+     - Add a private helper `void syncPhysicsCalibration()` on `EchenonModule` that:
+       - Copies `PowerPhysicsParams params = _powerEngine.getPhysicsParams();`
+       - Sets `params.pot_min = _calibrationWizard.getPotMin();` and `params.pot_max = _calibrationWizard.getPotMax();`
+       - Calls `_recalibrationUI.applyToPhysicsParams(params);`
+       - Calls `_powerEngine.setPhysicsParams(params);`
+     - Call `syncPhysicsCalibration()` in `applyConfig()`, `resetConfig()`, after `/api/echenon/calibration/record-level` completes, and after `/api/echenon/recalibration/point` and `/api/echenon/recalibration/reset` (in `/api/echenon/recalibration/point`, call `syncPhysicsCalibration()` instead of `setTable(tbl)` so `_usePhysicsModel` stays `true` and the 320-point `Physics P3r` surface is scaled smoothly rather than disabled!).
+     - Expose `float getNormalizedPosition() const { return _calibrationWizard.wiperToNormalized(_resistanceSensor.getFilteredWiperFloat()); }` and `float getContinuousLevel() const { return _calibrationWizard.wiperToLevel(_resistanceSensor.getFilteredWiperFloat()); }` on `EchenonModule`, and update `getEchelonLevel()` and `getInternalLevel()` to use `_resistanceSensor.getFilteredWiperFloat()` with `_calibrationWizard.getPotMin()` / `getPotMax()`.
+     - In `EchenonModule::tick(uint32_t currentMillis)`:
+       - Read the two fundamental continuous states once per tick:
+         ```cpp
+         const float wiperFloat = _resistanceSensor.getFilteredWiperFloat();
+         const float pTilde = _calibrationWizard.wiperToNormalized(wiperFloat);
+         const float cadenceRpm = _cadenceSensor.getRPM();
+         ```
+       - Evaluate power directly from `(pTilde, cadenceRpm)`:
+         `_powerEngine.tickFromNormalized(pTilde, cadenceRpm);`
+       - Derive all projections directly from `(pTilde, _powerEngine.getLastPower())` and quantize only at the sinks:
+         - `uint8_t pelotonRes = _calibrationWizard.isPosDone() ? echenon::PowerEngine::computePelotonResistanceFromNormalized(pTilde, _powerEngine.getPhysicsParams()) : 0;`
+         - `float speedKph = echenon::PowerEngine::computeVirtualSpeedKph(_powerEngine.getLastPower());`
+         - `uint8_t ftmsInternalRes = _calibrationWizard.isPosDone() ? LevelMapping::normalizedToInternal(pTilde) : LevelMapping::INTERNAL_RESISTANCE_UNCALIBRATED;`
+         - `int16_t ftmsPowerWatts = static_cast<int16_t>(std::round(_powerEngine.getLastPower()));` (fixing the previous `static_cast<int16_t>` float truncation).
 
 ## 3. Acceptance Criteria
 - `BLOCKING-1` and non-blocking findings remediated with unit tests passing (`pio test -e native`).

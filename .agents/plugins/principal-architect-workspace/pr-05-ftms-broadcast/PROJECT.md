@@ -20,7 +20,7 @@ charter:
   - pio test -e native
   charter_locked: false
   charter_hash: null
-status: GRADUATED
+status: APPROVED
 approved_at: '2026-10-24T20:58:09.914035Z'
 github_pr: null
 work_orders:
@@ -49,9 +49,9 @@ work_orders:
   slug: wo4-hw-verification
   title: Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak
   complexity: interactive
-  status: COMPLETED
+  status: IN_PROGRESS
   attempts: 3
-  commit_sha: 96e78ed08ae11ae9ca61fd74161cc8155405376e
+  commit_sha: null
 ---
 
 # PR-05: FTMS Telemetry, Read-Only (Phase 3, v1 Passive)
