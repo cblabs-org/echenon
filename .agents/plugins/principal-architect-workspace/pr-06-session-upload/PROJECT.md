@@ -33,21 +33,21 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 1d171df13958918d2395414d06a3e9c2a4bddcc7
+  commit_sha: ab4525e582475cf19912a14164c3129a3f4289f1
 - id: WO-06.2
   slug: wo2-tcx-generator
   title: Streaming 1 Hz TCX.gz Generator (4 KB Scratch Buffer, Coasting & Pause Gaps)
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: ab4525e582475cf19912a14164c3129a3f4289f1
+  commit_sha: 4e988fe56fa2ad6aa18699427ebbd70ffa36a990
 - id: WO-06.3
   slug: wo3-upload-queue
   title: IUploader & Split-Stage UploadQueue IDataSource State Machine
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 4e988fe56fa2ad6aa18699427ebbd70ffa36a990
+  commit_sha: 172aa9a81f30fb8c3fdb0f3b9fcf19ca55f52d79
 - id: WO-06.4
   slug: wo4-strava-uploader
   title: StravaUploader BYOA OAuth 2.0, KeyManager NVS, Rotated Token Persistence
@@ -55,7 +55,7 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 172aa9a81f30fb8c3fdb0f3b9fcf19ca55f52d79
+  commit_sha: 72eaabfbc0b40a5895d0f977d5636dd21555ea2f
 - id: WO-06.5
   slug: wo5-portal-wiring
   title: SessionOverlay REST API, Authenticated TCX Download, Portal Tabs & Module
@@ -63,7 +63,7 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 08ee2f6b358f1b03e9bd62b93ef879e77e1ba3b0
+  commit_sha: 9556e9c414fc6a6adc78d4a5fa076cd5b200a94e
 - id: WO-06.6
   slug: wo6-hw-verification
   title: Hardware Session Lifecycle, Crash Recovery, TCX Download & Live Strava Upload
@@ -71,7 +71,7 @@ work_orders:
   complexity: interactive
   status: COMPLETED
   attempts: 1
-  commit_sha: 9556e9c414fc6a6adc78d4a5fa076cd5b200a94e
+  commit_sha: c5d85a06535273432119fc1542c6b900ea228777
 ---
 
 # PR-06: Session Recording, TCX Export & Strava Upload (Phase 4, v1 Passive)
@@ -161,14 +161,15 @@ Implement full ride session recording, crash-resilient PSRAM/LittleFS storage, s
 
 | WO ID | Slug | Title | Complexity | Status | Attempts | Commit SHA |
 |---|---|---|---|---|---|---|
-| `WO-06.1` | `wo1-session-ridestore` | RideStore PSRAM/LittleFS Storage & SessionManager Lifecycle (Auto-Start Toggle + 5 s Default) | `standard` | `PLANNED` | 0 | — |
-| `WO-06.2` | `wo2-tcx-generator` | Streaming 1 Hz TCX.gz Generator (4 KB Scratch Buffer, Coasting & Pause Gaps) | `standard` | `PLANNED` | 0 | — |
-| `WO-06.3` | `wo3-upload-queue` | IUploader & Split-Stage UploadQueue IDataSource State Machine | `standard` | `PLANNED` | 0 | — |
-| `WO-06.4` | `wo4-strava-uploader` | StravaUploader BYOA OAuth 2.0, KeyManager NVS, Rotated Token Persistence & Redactor | `standard` | `PLANNED` | 0 | — |
-| `WO-06.5` | `wo5-portal-wiring` | SessionOverlay REST API, Authenticated TCX Download, Portal Tabs & Module Wiring | `standard` | `PLANNED` | 0 | — |
-| `WO-06.6` | `wo6-hw-verification` | Hardware Session Lifecycle, Crash Recovery, TCX Download & Live Strava Upload Verification | `interactive` | `PLANNED` | 0 | — |
+| `WO-06.1` | `wo1-session-ridestore` | RideStore PSRAM/LittleFS Storage & SessionManager Lifecycle (Auto-Start Toggle + 5 s Default) | `standard` | `COMPLETED` | 1 | `ab4525e` |
+| `WO-06.2` | `wo2-tcx-generator` | Streaming 1 Hz TCX.gz Generator (4 KB Scratch Buffer, Coasting & Pause Gaps) | `standard` | `COMPLETED` | 1 | `4e988fe` |
+| `WO-06.3` | `wo3-upload-queue` | IUploader & Split-Stage UploadQueue IDataSource State Machine | `standard` | `COMPLETED` | 1 | `172aa9a` |
+| `WO-06.4` | `wo4-strava-uploader` | StravaUploader BYOA OAuth 2.0, KeyManager NVS, Rotated Token Persistence & Redactor | `standard` | `COMPLETED` | 1 | `72eaabf` |
+| `WO-06.5` | `wo5-portal-wiring` | SessionOverlay REST API, Authenticated TCX Download, Portal Tabs & Module Wiring | `standard` | `COMPLETED` | 1 | `9556e9c` |
+| `WO-06.6` | `wo6-hw-verification` | Hardware Session Lifecycle, Crash Recovery, TCX Download & Live Strava Upload Verification | `interactive` | `COMPLETED` | 1 | `c5d85a0` |
 
 ## 4. Session Log
 
 - **2026-10-24:** Chief Architect drafted and locked `PR-06` Charter and 6-WO decomposition (`WO-06.1` through `WO-06.6`) incorporating owner decisions (`autoStartDelaySec = 5` default, `autoStartEnabled` toggle for manual UI start/stop, sequential execution after `PR-05`).
 - **2026-10-26:** Chief Architect conducted a critical post-`PR-05` review of `PR-06` and updated `docs/power-physics-model.md`, `SPEC.md`, `PROGRAM.md`, `PROJECT.md`, and `WO-06.1`–`WO-06.6`: (1) replaced discrete `1..32` `resistance_level` in `RideRecord` with canonical `0..254` `internal_resistance` (`round(254 * pTilde)`, `255 = UNCALIBRATED`), (2) specified `2 Hz` (`500 ms`) sampling averaged into `1 Hz` `RideRecord` entries in lockstep with `PowerEngine` and `FTMSServer`, (3) mandated wraparound-safe signed `int32_t` `millis()` deltas and mid-ride NTP wall-clock back-computation, (4) wired `PowerEngine::computeVirtualSpeedKph(P)/3.6` (`0.245 v^3 + 3.53 v = P`) and Xert MPA 1 Hz coasting continuity into `TCXGenerator`, (5) aligned `inactivityTimeoutSec = 180 s`, 5-ride storage cap, `Redactor::registerSecret()` return-value check, `POST /api/session/discard`, and portal tab orders `80`/`90`.
+- **2026-10-26:** Principal Architect executed `WO-06.1` through `WO-06.6` sequentially on stacked branches (`ab4525e` -> `4e988fe` -> `172aa9a` -> `72eaabf` -> `9556e9c` -> `c5d85a0`), verified `199/199` native unit/integration tests and clean firmware builds (`ex3-waveshare-nano` at `52.5%` Flash / `21.7%` RAM and `ex3-waveshare-nano-diag` at `53.1%` Flash / `21.9%` RAM), and fast-forwarded `feat/pr-06-session-upload` for Step 6A Cold-Firewall Audit.
