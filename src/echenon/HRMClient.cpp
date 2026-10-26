@@ -120,7 +120,7 @@ void HRMClient::onDisconnected(BLEDisconnectReason reason) {
 
 void HRMClient::tick(uint32_t currentMillis) {
     if (_contactState != echenon::HRContactState::ACTIVE) return;
-    if (currentMillis - _lastValidHrMs >= 10000) {
+    if (static_cast<int32_t>(currentMillis - _lastValidHrMs) >= 10000) {
         _contactState = echenon::HRContactState::NO_CONTACT;
         publishHr(0, _contactState, currentMillis);
     }

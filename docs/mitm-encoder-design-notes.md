@@ -118,29 +118,35 @@ when driven by an external app (e.g., ERG mode in Zwift).
 > the most value for smart trainer integration. Option A is the most
 > complex and highest risk (goalseek divergence).
 
-## 7. Open Questions
+## 7. Open Questions (Updated with Phase 3 Empirical Resolutions)
 
-1. How many encoder detents per Echelon level? (B02 measured ~1.4
-   quadrature steps per level via ADC — PCNT measurement needed for
-   true count)
-2. Does the console accept arbitrary quadrature frequency, or does it
-   have a minimum pulse width requirement?
-3. What is the console's pot tolerance band? (Need to test by injecting
-   encoder pulses that land between levels)
-4. Can we detect ERG mode commands from the Echelon app via BLE sniffing?
-5. What is the console's behaviour when encoder pulses arrive during
-   motor seek? (Does it queue, ignore, or reset?)
+> [!TIP]
+> Questions 1, 2, 3, and 5 were empirically resolved during Phase 3 (`C01`–`C07`). Full characterization data, state-machine specifications, and v2 firmware rules are documented in [`docs/digital-hardware-emulation-and-console-dynamics.md`](digital-hardware-emulation-and-console-dynamics.md).
+
+1. **How many encoder transitions per Echelon level? — RESOLVED (`C01`):**
+   **8 quadrature state transitions (2 full 4-state Gray-code cycles) = 1 Echelon console level** (`2x` edge decoding inside the console, corresponding to `4` physical detents or `16` ESP32 PCNT `4x` counts). Over-stepping `248+` edges `DOWN` clamps cleanly at Level 1 without wrap-around or negative windup.
+2. **Minimum pulse width & valid edge timing? — RESOLVED (`C02`, `C04c`):**
+   Edges faster than `1 ms` (`100–500 µs`) are `100%` rejected by the console's input filter; `1–10 ms` suffers partial drops (`25–80%` registration). **`25–50 ms/edge`** and **`100–200 ms/edge`** achieve **100% registration**. **Critical Exception:** **`75 ms/edge` (`65–85 ms` band)** suffers a deterministic timer-polling aliasing bug that drops exactly `8 edges` (`1 level`) out of a 72-edge burst (`3/3` trials).
+3. **What is the console's pot tolerance / deadband and settle profile? — RESOLVED (`C03`, `C04a`, `C07`):**
+   Updated linear wiper profile is $\text{pot\_adc} = 37.26\,\ell + 120.0$ ($R^2 = 0.9998$, range `170–1333 counts`). True directional hysteresis (`UP` vs `DOWN` after `3.5 s` settle) is only **`3.6 ADC counts` mean**, and intra-level bang-bang deadband stopping spread is **$\sigma = 1.97\text{ ADC counts}$** (`±3 counts` deadband). Settle time varies with cam geometry: `867 ms` at L5 (zero overshoot), **`2,806 ms` at L15** (with a `90-count` / `2.5-level` overshoot and reversal), and `1,561 ms` at L25.
+4. **Can we detect ERG mode commands from the Echelon app via BLE sniffing? — OPEN (v2):**
+   The Echelon console exposes resistance telemetry and workout state over BLE, which our ADB logcat pipeline captured during `C01`–`C06`. Direct BLE command injection vs. FTMS MITM remains a v2 option.
+5. **What is the console's behaviour when encoder pulses arrive during motor seek? — RESOLVED (`C04c` Round 2):**
+   **The console asynchronously queues encoder pulses during active motor seeks with 100% accuracy** when clocked in the safe fast-burst window (`25–50 ms/edge`, verified with continuous 72-edge / 9-level bursts completing in `1.8–3.6 s` while the motor was mid-travel).
 
 ## 8. Dependencies
 
-- **EncoderModule** on GPIO 8/9 (requires releasing from ADC scan)
-- **Two spare GPIOs** for synthesised quadrature output
+- **EncoderModule** on GPIO 2/3 (`D11`/`D12`) for physical knob capture
+- **QuadratureGenerator** on GPIO 17/18 (`D8`/`D9`) for synthesised quadrature output to console (proven in `PR-02`)
 - **MITM board** PCB design (Phase 5+)
-- **BLE FTMS** integration (PR-05)
+- **BLE FTMS** integration (`PR-05` / `PR-10`)
 
 ## 9. References
 
-- [`docs/encoder-resistance-analysis.md`](encoder-resistance-analysis.md) — signal quality, calibration, cam model
+- [`docs/digital-hardware-emulation-and-console-dynamics.md`](digital-hardware-emulation-and-console-dynamics.md) — **definitive Phase 3 reference** for synthetic cadence, quadrature encoder synthesis, console decoder timing/aliasing, and motor settling dynamics
+- [`docs/power-physics-model.md`](power-physics-model.md) — first-principles electromechanical power model (`Physics P3r`) and cam/eddy-current physics derivation
+- [`docs/encoder-resistance-analysis.md`](encoder-resistance-analysis.md) — Phase 0 signal quality, calibration, cam model
+- [`docs/measurements/phase3/`](measurements/phase3/) — `C01`–`C07` empirical reports and 320-point dataset
 - [`docs/measurements/phase0/B02-*`](measurements/phase0/) — encoder characterisation data
 - [`docs/measurements/phase0/B03-*`](measurements/phase0/) — resistance calibration data
 - `framework/modules/EncoderModule/` — PCNT-based encoder module

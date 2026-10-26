@@ -35,13 +35,13 @@ Gather the bench evidence DR-2 needs before any active board is designed. Bench
 rigs only (split encoder loom, H-bridge breakout); **nothing is installed** and
 no product firmware changes.
 
-| # | Item | Why DR-2 needs it |
-|---|---|---|
-| P1 | **Encoder-emulation timing** toward the console: minimum quadrature pulse width and edge spacing accepted | DR-2 §2.10, §2.12 |
-| P2 | **Emulation during a seek**: console behaviour when emulated clicks arrive mid-seek | DR-2 §2.10, §2.12 |
-| P3 | **Wiper in the dead zone and during the stock runaway** (A09-20261012 #3) | DR-2 §2.4, §2.5 |
-| P4 | **H-bridge drive with the console disconnected**: current, stall, coast, direction mapping | DR-2 §2.3, §2.5 |
-| P5 | **Pot-reference replica**: ≈ 4.7 kΩ / 4.7 kΩ divider vs the console's 1.66 V / 2.4 kΩ Green source | DR-2 §2.2, §2.9 |
+| # | Item | Status | Why DR-2 needs it |
+|---|---|---|---|
+| P1 | **Encoder-emulation timing** toward the console: minimum quadrature pulse width (`25 ms`), `8 edges = 1 level`, and `75 ms` aliasing band exclusion | **DONE in Phase 3 (`C01`, `C02`, `C04c`)** — see [`docs/digital-hardware-emulation-and-console-dynamics.md`](../../../../docs/digital-hardware-emulation-and-console-dynamics.md) | DR-2 §2.10, §2.12 |
+| P2 | **Emulation during a seek & motor settling**: console asynchronous queuing of 72-edge bursts (`25–50 ms/edge`), level-dependent settle (`0.87–2.81 s`), `90-count` mid-cam overshoot, and `3.6 ADC` true hysteresis | **DONE in Phase 3 (`C03`, `C04a`, `C04c`, `C07`)** — see [`docs/digital-hardware-emulation-and-console-dynamics.md`](../../../../docs/digital-hardware-emulation-and-console-dynamics.md) | DR-2 §2.5, §2.10, §2.12 |
+| P3 | **Wiper in the dead zone and during the stock runaway** (A09-20261012 #3) | OPEN | DR-2 §2.4, §2.5 |
+| P4 | **H-bridge drive with the console disconnected**: current, stall, coast, direction mapping | OPEN | DR-2 §2.3, §2.5 |
+| P5 | **Pot-reference replica**: ≈ 4.7 kΩ / 4.7 kΩ divider vs the console's 1.66 V / 2.4 kΩ Green source | OPEN | DR-2 §2.2, §2.9 |
 
 Any test that can drive the motor (P3, P4) needs the owner's go-ahead in the
 session and a kill switch within reach.
