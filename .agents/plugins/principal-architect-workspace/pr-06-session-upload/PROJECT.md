@@ -78,9 +78,9 @@ work_orders:
 
 > **Parent:** [`PROGRAM.md`](../PROGRAM.md)
 > **Phase:** 4 (`docs/implementation-strategy.md`) — **v1 "Passive" release**
-> **Depends on:** PR-02 (`8ccccb6`); executed sequentially after `PR-05` merges to `main` (owner decision 2026-10-24)
-> **Branch:** `feat/pr-06-session-upload` (stacked off `main` after `PR-05`)
-> **Spec sections:** §9.1–§9.6 (`SessionManager`, `RideStore`, `TCXGenerator`), §10.1–§10.6 (`IUploader`, `UploadQueue`, `StravaUploader`), §11.4 (`/api/session/*` + `/api/strava/*`), §11.5 (Session History & Upload Settings portal tabs), §13.7 (`4.1–4.14`)
+> **Depends on:** PR-02 (`8ccccb6`), PR-05 (`a6c7a88`)
+> **Branch:** `feat/pr-06-session-upload` (based on `main` at `a6c7a88`)
+> **Spec sections:** §9.1–§9.6 (`SessionManager`, `RideStore`, `TCXGenerator`), §10.1–§10.6 (`IUploader`, `UploadQueue`, `StravaUploader`), §11.3–§11.5 (`/api/session/*` + `/api/strava/*`, Session History & Upload Settings portal tabs), §13.7 (`4.1–4.14`)
 
 ---
 
@@ -90,38 +90,47 @@ work_orders:
 
 Implement full ride session recording, crash-resilient PSRAM/LittleFS storage, streaming `1 Hz` compressed `TCX.gz` export, and background Strava v3 API upload so every ride on the Echelon EX-3 can be started/stopped from the portal UI (or auto-started after a configurable cadence threshold), recovered across power loss, downloaded as a `.tcx` / `.tcx.gz` file, or automatically uploaded to Strava.
 
-### 1.1 Session Lifecycle & Owner Decisions (`SessionManager` + `RideStore`)
+### 1.1 Session Lifecycle, Fundamental-First Storage & Owner Decisions (`SessionManager` + `RideStore`)
 - **State Machine:** `IDLE` $\to$ `ACTIVE` $\leftrightarrow$ `PAUSED` $\to$ `ENDED`.
 - **Owner Decision (2026-10-24) — Configurable Auto-Start & Manual UI Mode:**
-  - `autoStartEnabled` (`bool`, default `true` in `IConfigurable` schema `"echenon_session"`): when `false`, pedalling does **not** auto-start a session — sessions start and end strictly via the portal UI buttons (`POST /api/session/start`, `POST /api/session/pause`, `POST /api/session/resume`, `POST /api/session/end`).
-  - `autoStartDelaySec` (`uint16_t`, default **`5`** seconds, configurable `1–60 s`): when `autoStartEnabled == true` and state is `IDLE`, continuous `cadence > 0 RPM` for `autoStartDelaySec` transitions `IDLE -> ACTIVE`.
-  - `inactivityTimeoutSec` (`uint16_t`, default **`300`** seconds / 5 minutes, configurable `30–3600 s`): continuous `cadence == 0 RPM` while `ACTIVE` ends the session and **trims the trailing 300 s of zero-cadence records** from `RideStore` (`SPEC.md` §9.1 / §9.3).
-- **1 Hz Record Format (`RideRecord`, 8 bytes packed, `SPEC.md` §9.2):**
-  - `uint16_t timestamp_offset_s`, `uint16_t power_watts`, `uint8_t cadence_rpm`, `uint8_t heart_rate_bpm`, `uint8_t resistance_level` (`1–32`), `uint8_t flags` (`bit 0 = hr_valid`, `bit 1 = pause_boundary`).
-  - Allocated in `8 MB` OPI PSRAM (`ps_malloc` on ESP32, `malloc` fallback in native tests) for up to `14,400` records (`4 hours` = `115.2 KB`).
-- **30-Second LittleFS Crash Recovery Checkpoints (`SPEC.md` §9.3):**
-  - Every `30 s` (`30` records), append a delta chunk to `/rides/active.bin` on LittleFS.
-  - On `begin()`, if `/rides/active.bin` exists, recover the interrupted session into the completed history ring (`/rides/ride_<idx>.bin`, max `10` stored rides) so no ride data is lost on power-off.
+  - `session_auto_start` (`bool`, default `true` in `EchenonModule` `IConfigurable` schema): when `false`, pedalling does **not** auto-start a session — sessions start and end strictly via the portal UI buttons (`POST /api/session/start`, `POST /api/session/pause`, `POST /api/session/resume`, `POST /api/session/end` or `/api/session/stop`).
+  - `session_auto_start_s` (`uint16_t`, default **`5`** seconds, configurable `1–60 s`): when `session_auto_start == true` and state is `IDLE`, continuous `cadence > 0 RPM` for `session_auto_start_s` transitions `IDLE -> ACTIVE`.
+  - `session_inactivity_s` (`uint16_t`, default **`180`** seconds / 3 minutes, configurable `30–3600 s`): continuous `cadence == 0 RPM` while `ACTIVE` ends the session and **trims the trailing zero-cadence records** after the last active pedal stroke from `RideStore` (`SPEC.md` §9.2).
+- **`2 Hz` Anti-Aliased Sampling $\to$ `1 Hz` Fundamental-First Record (`RideRecord`, 8 bytes packed, `SPEC.md` §5.3 & §9.3–§9.4):**
+  - `SessionManager::tick()` samples live telemetry at **2 Hz (`500 ms` intervals)** in lockstep with `PowerEngine` and `FTMSServer`, and averages each consecutive pair of `500 ms` samples into a `1 Hz` 8-byte `RideRecord`:
+    - `uint16_t elapsed_sec`, `uint16_t power_watts` (2-sample average), `uint8_t cadence_rpm` (2-sample average), `uint8_t heart_rate_bpm`, `uint8_t internal_resistance` (`0..254 = round(254 * pTilde)`, `255 = UNCALIBRATED`), `uint8_t flags` (`bit 0 = hr_valid`, `bit 1 = resistance_calibrated`, `bit 2 = paused_marker`).
+  - Storing `internal_resistance` (`0..254`) rather than discrete `1..32` preserves the fundamental normalized cam coordinate $\tilde{p} = i / 254.0$ at $8\times$ finer resolution, allowing lossless reconstruction of Echelon (`1..32`), Peloton (`0..100`), or $\tilde{p}$ downstream (`LevelMapping::internalToEchelon` / `internalToPeloton`).
+  - Allocated in `8 MB` OPI PSRAM (`heap_caps_malloc(..., MALLOC_CAP_SPIRAM)` on ESP32, `malloc` fallback in native tests) for up to `14,400` records (`4 hours` = `115.2 KB`).
+- **Wraparound-Safe Signed `int32_t` Timers & Mid-Ride NTP Back-Computation (`PR-05` `WO-05.4` Lesson & `SPEC.md` §9.2):**
+  - All `millis()` interval checks (`500 ms` sample tick, `5 s` auto-start, `180 s` inactivity, `30 s` checkpoint flush) MUST use signed `(int32_t)(now_ms - last_ms) >= threshold_ms` arithmetic.
+  - If a session starts before NTP sync (`start_epoch_s < 1700000000`) and NTP syncs mid-ride (`now_epoch > 1700000000`), `SessionManager` dynamically back-computes `start_epoch_s = now_epoch - elapsed_s` so the exported TCX carries real-world UTC timestamps.
+- **30-Second LittleFS Crash Recovery Checkpoints (`SPEC.md` §9.2):**
+  - Every `30 s` (`30` records), append a delta chunk to `/ride_active.bin` on LittleFS.
+  - On `begin()`, if `/ride_active.bin` exists with $\ge 60$ active records, recover the interrupted session into the completed history ring (`/rides/ride_<idx>.bin`, max `5` queued/completed sessions) so no ride data is lost on power-off.
 
-### 1.2 Streaming 1 Hz `TCXGenerator` (`SPEC.md` §9.4–§9.5)
-- Generates valid Garmin Training Center Database v2 XML (`Activity Sport="Biking"`) with `<Creator><Name>Echenon EX-3</Name></Creator>`, `<Author>`, `<Lap>`, `<Extensions><LX xmlns=".../ActivityExtension/v2"><AvgWatts>`, `<MaxWatts>`, and `1 Hz` `<Trackpoint>` elements (`<Time>`, `<HeartRateBpm>` when `hr_valid`, `<Cadence>`, `<Extensions><TPX><Watts>`).
-- **Coasting vs. Pause Semantics:**
-  - Active coasting (`cadence == 0` while `ACTIVE`) **emits** `<Trackpoint>` elements with `Cadence=0, Watts=0`.
-  - Pause intervals (`PAUSED` state between `pause()` and `resume()`) **omit** `<Trackpoint>` elements across the paused time gap (`SPEC.md` §9.5).
-- **Streaming Gzip Compression:** Streams through a bounded **`4 KB` scratch buffer** into `/rides/ride_<id>.tcx.gz` (using `miniz` / `zlib` deflate with gzip wrapper) so arbitrary 4-hour rides never allocate full XML strings in heap.
+### 1.2 Streaming 1 Hz `TCXGenerator` with Virtual Speed Integration (`SPEC.md` §7.5 & §9.4)
+- Generates valid Garmin Training Center Database v2 XML (`Activity Sport="Biking"`) with `<Creator><Name>Echenon EX-3</Name></Creator>`, `<Author>`, `<Lap>`, `<Extensions><ns3:LX><ns3:AvgWatts>`, `<ns3:MaxWatts>`, and `1 Hz` `<Trackpoint>` elements (`<Time>`, `<DistanceMeters>`, `<HeartRateBpm>` when `hr_valid`, `<Cadence>`, `<Extensions><ns3:TPX><ns3:Speed>` and `<ns3:Watts>`).
+- **First-Principles Virtual Speed & Distance Integration (`PR-05` Continuity):**
+  - Each 1 Hz `<Trackpoint>` computes virtual road speed $v_{\text{m/s}} = \text{PowerEngine::computeVirtualSpeedKph}(P) / 3.6\text{f}$ (`0.245 v^3 + 3.53 v = P`), accumulates `cumulative_distance_m += v_mps * 1.0f`, and writes both `<DistanceMeters>` and `<ns3:Speed>` so Strava, Garmin, and Xert receive physically consistent speed and distance.
+- **Coasting vs. Pause Semantics & Xert MPA Continuity (`SPEC.md` §9.4):**
+  - Active coasting (`cadence == 0` while `ACTIVE`) **always emits** 1 Hz `<Trackpoint>` elements with `<Cadence>0</Cadence>`, `<ns3:Watts>0</ns3:Watts>`, and `<ns3:Speed>0.00</ns3:Speed>` with zero timestamp gaps so Xert MPA continuous differential equations are never corrupted.
+  - Manual UI Pause intervals (`PAUSED` state between `pauseSession()` and `resumeSession()`) suspend point emission until resumed.
+- **Streaming Gzip Compression:** Streams through a bounded **`4 KB` scratch buffer** into `/rides/ride_<id>.tcx.gz` (using `uzlib` / `miniz` / `zlib` deflate with RFC 1952 gzip header + CRC32 + ISIZE trailer) and checks `DeadlineToken` so arbitrary 4-hour rides never allocate full XML strings in heap or blow the 15 s DataManager budget.
 
-### 1.3 Split-Stage `UploadQueue` (`IDataSource`) & `StravaUploader` (`SPEC.md` §10.1–§10.6)
-- **Split-Stage `fetchUpdate()` within 15 s `DeadlineToken`:**
-  - `UploadQueue` implements `IDataSource`, `IConfigurable`, and `IPreconditionContributor`.
-  - Each `fetchUpdate(const FetchContext& ctx)` invocation executes **at most one non-blocking stage** (`STAGE_GENERATE_TCX_GZ` $\to$ `STAGE_REFRESH_TOKEN` $\to$ `STAGE_POST_UPLOAD` $\to$ `STAGE_POLL_STATUS`) and checks `ctx.deadline.remainingMs()` before starting network I/O.
-  - Persistent queue of up to `5` pending sessions in LittleFS (`/rides/upload_queue.json`) with exponential backoff (`30 s`, `60 s`, `120 s`, `300 s`, max 5 attempts per ride).
+### 1.3 Split-Stage `UploadQueue` (`IDataSource`) & Pure Capability `StravaUploader` (`SPEC.md` §10.1–§10.6)
+- **Capability-Only `IUploader` & Transport-Owning `UploadQueue` (`SPEC.md` §10.2):**
+  - `IUploader` describes service capabilities, configuration state, and request-building / response-parsing (`buildRequest` / `handleResponse` or injected `IHttpTransport`) without owning raw sockets.
+  - `UploadQueue` implements `IDataSource`, `IConfigurable`, and `IPreconditionContributor`, owns the HTTP transport and `BLEManager::ScanInhibit` token, and executes **at most one non-blocking stage per `fetchUpdate(const FetchContext& ctx)` call** (`STAGE_GENERATE_TCX_GZ` $\to$ `STAGE_REFRESH_TOKEN` $\to$ `STAGE_POST_UPLOAD` $\to$ `STAGE_POLL_STATUS`) within the 15 s `DeadlineToken`.
+  - Persistent queue of up to `5` pending sessions in LittleFS (`/upload_queue.json`) with exponential backoff (`30 s`, `60 s`, `120 s`, `300 s`, max 5 attempts per ride) and `POST /api/session/discard` support (`SPEC.md` §11.3/§11.5).
 - **BLE ScanInhibit (`#ifdef WITH_BLE`):**
-  - Acquires `BLEManager::ScanInhibit` RAII guard during TLS stages (`STAGE_REFRESH_TOKEN`, `STAGE_POST_UPLOAD`, `STAGE_POLL_STATUS`) when `#ifdef WITH_BLE` is defined, and compiles cleanly when `WITH_BLE` is absent (`SPEC.md` §10.6).
-- **Strava BYOA OAuth 2.0 & Security (`SPEC.md` §10.3–§10.5):**
+  - Acquires `BLEManager::ScanInhibit` RAII guard during TLS stages (`STAGE_REFRESH_TOKEN`, `STAGE_POST_UPLOAD`, `STAGE_POLL_STATUS`) when `#ifdef WITH_BLE` is defined, and compiles cleanly when `WITH_BLE` is absent (`SPEC.md` §10.3).
+- **Strava BYOA OAuth 2.0 & Security (`SPEC.md` §10.4–§10.5):**
   - Stores `client_secret`, `access_token`, and `refresh_token` in encrypted NVS via `KeyManager` (`"strava"` namespace).
   - Generates a single-use random `state` nonce on `/api/strava/auth-url` and validates it on `/api/strava/callback` (rejecting mismatches with HTTP `403`).
-  - **Rotated Refresh Token First:** On token refresh, persists the new `refresh_token` to NVS **before** `access_token` (`SPEC.md` §10.5).
-  - Registers `client_secret`, `access_token`, and `refresh_token` with `Redactor::registerSecret()` immediately upon load and upon every OAuth exchange/refresh.
+  - **Rotated Refresh Token First:** On token refresh, persists the new `refresh_token` to NVS **before** `access_token` (`SPEC.md` §10.4).
+  - Registers `client_secret`, `access_token`, and `refresh_token` with `Redactor::registerSecret()` immediately upon load and upon every OAuth exchange/refresh, checking the boolean return value and logging a warning if the Redactor slot table is full (`SPEC.md` §10.4).
+- **Portal Tab Ordering (`WO-06.5`):**
+  - Registers `Session` at tab order `80` and `Upload Services` at tab order `90` (after `Echenon = 50`, `Calibration = 60`, and `Recalibration = 70`).
 
 ## 2. Scope
 
@@ -162,3 +171,4 @@ Implement full ride session recording, crash-resilient PSRAM/LittleFS storage, s
 ## 4. Session Log
 
 - **2026-10-24:** Chief Architect drafted and locked `PR-06` Charter and 6-WO decomposition (`WO-06.1` through `WO-06.6`) incorporating owner decisions (`autoStartDelaySec = 5` default, `autoStartEnabled` toggle for manual UI start/stop, sequential execution after `PR-05`).
+- **2026-10-26:** Chief Architect conducted a critical post-`PR-05` review of `PR-06` and updated `docs/power-physics-model.md`, `SPEC.md`, `PROGRAM.md`, `PROJECT.md`, and `WO-06.1`–`WO-06.6`: (1) replaced discrete `1..32` `resistance_level` in `RideRecord` with canonical `0..254` `internal_resistance` (`round(254 * pTilde)`, `255 = UNCALIBRATED`), (2) specified `2 Hz` (`500 ms`) sampling averaged into `1 Hz` `RideRecord` entries in lockstep with `PowerEngine` and `FTMSServer`, (3) mandated wraparound-safe signed `int32_t` `millis()` deltas and mid-ride NTP wall-clock back-computation, (4) wired `PowerEngine::computeVirtualSpeedKph(P)/3.6` (`0.245 v^3 + 3.53 v = P`) and Xert MPA 1 Hz coasting continuity into `TCXGenerator`, (5) aligned `inactivityTimeoutSec = 180 s`, 5-ride storage cap, `Redactor::registerSecret()` return-value check, `POST /api/session/discard`, and portal tab orders `80`/`90`.
