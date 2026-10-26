@@ -53,9 +53,9 @@ work_orders:
   title: StravaUploader BYOA OAuth 2.0, KeyManager NVS, Rotated Token Persistence
     & Redactor
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 172aa9a81f30fb8c3fdb0f3b9fcf19ca55f52d79
 - id: WO-06.5
   slug: wo5-portal-wiring
   title: SessionOverlay REST API, Authenticated TCX Download, Portal Tabs & Module

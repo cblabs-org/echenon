@@ -5,7 +5,7 @@ pr_id: PR-06
 title: StravaUploader BYOA OAuth 2.0, KeyManager NVS, Rotated Token Persistence &
   Redactor
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/StravaUploader.h
 - src/echenon/StravaUploader.cpp
@@ -17,7 +17,21 @@ verification_command: pio test -e native
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: f840a0ab844e77d5cc5084a1b56542081704ea13a6aadc4d7d106fe754443580
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_1742f805a074
+  commit_sha: 172aa9a81f30fb8c3fdb0f3b9fcf19ca55f52d79
+  files_modified:
+  - src/echenon/StravaUploader.cpp
+  - src/echenon/StravaUploader.h
+  - test/test_native/test_strava_uploader.cpp
+  verification_summary: 'pio test -e native: ================ 197 test cases: 197
+    succeeded in 00:00:03.201 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-06.4: StravaUploader BYOA OAuth 2.0, KeyManager NVS, Rotated Token Persistence & Redactor
