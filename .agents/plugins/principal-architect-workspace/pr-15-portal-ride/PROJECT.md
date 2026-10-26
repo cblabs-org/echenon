@@ -25,7 +25,7 @@ charter:
   charter_hash: null
 status: CHARTER_DRAFTED
 approved_at: null
-github_pr: null
+github_pr: 8
 work_orders:
 - id: WO-15.1
   slug: wo1-portal-cleanup
