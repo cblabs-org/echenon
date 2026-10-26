@@ -22,7 +22,7 @@ charter:
   - pio test -e native
   charter_locked: false
   charter_hash: null
-status: REMEDIATION_IN_PROGRESS
+status: APPROVED
 approved_at: '2026-10-24T20:58:10.078370Z'
 github_pr: 7
 work_orders:
