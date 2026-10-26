@@ -24,7 +24,7 @@ charter:
   charter_hash: null
 status: STAGED_FOR_AUDIT
 approved_at: '2026-10-24T20:58:10.078370Z'
-github_pr: null
+github_pr: 7
 work_orders:
 - id: WO-06.1
   slug: wo1-session-ridestore
