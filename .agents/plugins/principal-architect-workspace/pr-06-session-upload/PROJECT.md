@@ -63,7 +63,7 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 72eaabfbc0b40a5895d0f977d5636dd21555ea2f
+  commit_sha: 08ee2f6b358f1b03e9bd62b93ef879e77e1ba3b0
 - id: WO-06.6
   slug: wo6-hw-verification
   title: Hardware Session Lifecycle, Crash Recovery, TCX Download & Live Strava Upload

@@ -30,19 +30,13 @@ spec_hash: 6d0f1807438323851997731c54dd84966e2454d0637ee97ed0875a033c48bcd3
 completion:
   status: COMPLETED
   attempt_num: 1
-  receipt_id: rcpt_eb38aeeb776e
-  commit_sha: 72eaabfbc0b40a5895d0f977d5636dd21555ea2f
+  receipt_id: rcpt_0de415574724
+  commit_sha: 08ee2f6b358f1b03e9bd62b93ef879e77e1ba3b0
   files_modified:
-  - platformio.ini
   - src/echenon/EchenonModule.cpp
-  - src/echenon/EchenonModule.h
-  - src/echenon/LiveFeed.h
   - src/echenon/SessionOverlay.cpp
-  - src/echenon/SessionOverlay.h
-  - src/main.cpp
   - test/test_native/test_session_manager.cpp
   - web/session.js
-  - web/upload_settings.js
   verification_summary: 'pio test -e native && pio run -e ex3-waveshare-nano && pio
     run -e ex3-waveshare-nano-diag: ========================= 1 succeeded in 00:00:26.714
     ========================='

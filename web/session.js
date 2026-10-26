@@ -323,8 +323,8 @@
                 '<td>' + (r.total_work_kj || 0) + ' kJ</td>' +
                 '<td>' + uploadState + '</td>' +
                 '<td class="ech-sess-actions">' +
-                '<a class="btn btn-secondary ech-sess-btn-sm" href="/api/session/download?id=' + id + '" download>TCX</a>' +
-                '<a class="btn btn-secondary ech-sess-btn-sm" href="/api/session/download?id=' + id + '&gz=1" download>GZ</a>' +
+                '<a class="btn btn-secondary ech-sess-btn-sm" href="/api/session/download?id=' + id + '&format=tcx" download>TCX</a>' +
+                '<a class="btn btn-secondary ech-sess-btn-sm" href="/api/session/download?id=' + id + '&format=tcx.gz&gz=1" download>GZ</a>' +
                 '<button class="btn btn-primary ech-sess-btn-sm" data-upload-id="' + id + '" type="button">Upload</button>' +
                 '<button class="btn btn-danger ech-sess-btn-sm" data-delete-id="' + id + '" type="button">Delete</button>' +
                 '</td>' +

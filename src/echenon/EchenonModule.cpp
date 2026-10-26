@@ -125,6 +125,9 @@ void EchenonModule::tick(uint32_t currentMillis) {
     const char* sessionStateStr = "IDLE";
     uint32_t sessionElapsedS = 0;
     if (_sessionManager != nullptr) {
+        if (_sessionManager->getState() == SessionState::ENDED && cadenceRpm > 0.0f) {
+            _sessionManager->resetToIdle(currentMillis);
+        }
         uint8_t sessInternalRes = _calibrationWizard.isPosDone()
             ? LevelMapping::normalizedToInternal(pTilde)
             : LevelMapping::INTERNAL_RESISTANCE_UNCALIBRATED;

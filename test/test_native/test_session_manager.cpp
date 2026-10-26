@@ -764,12 +764,14 @@ TEST(SessionOverlayTest, LifecycleStatusConfigHistoryDownloadAndUploadEndpoints)
     auto dlXml = overlay.handleDownload(1u, false);
     EXPECT_EQ(dlXml.status_code, 200);
     EXPECT_EQ(dlXml.content_type, "application/vnd.garmin.tcx+xml");
+    EXPECT_EQ(dlXml.content_disposition, "attachment; filename=\"echenon_1.tcx\"");
     EXPECT_NE(dlXml.body.find("<TrainingCenterDatabase"), std::string::npos);
     EXPECT_NE(dlXml.body.find("<ns3:Watts>240</ns3:Watts>"), std::string::npos);
 
     auto dlGz = overlay.handleDownload(1u, true);
     EXPECT_EQ(dlGz.status_code, 200);
     EXPECT_EQ(dlGz.content_type, "application/gzip");
+    EXPECT_EQ(dlGz.content_disposition, "attachment; filename=\"echenon_1.tcx.gz\"");
     ASSERT_GE(dlGz.body.size(), 18u);
     EXPECT_EQ(static_cast<uint8_t>(dlGz.body[0]), 0x1Fu);
     EXPECT_EQ(static_cast<uint8_t>(dlGz.body[1]), 0x8Bu);
@@ -828,8 +830,8 @@ TEST(SessionOverlayTest, StravaCredentialsOAuthFlowTabsAndLiveFeedJson) {
     std::string stateToken = strava.getPendingState();
     ASSERT_FALSE(stateToken.empty());
 
-    // Wrong state rejected with 400
-    EXPECT_EQ(overlay.handleStravaCallback("code123", "bad_state", 2000u).status_code, 400);
+    // Wrong state rejected with 403
+    EXPECT_EQ(overlay.handleStravaCallback("code123", "bad_state", 2000u).status_code, 403);
 
     // Valid state exchanges code and authenticates athlete
     auto authUrlResp2 = overlay.handleGetStravaAuthUrl("http://echenon.local/api/strava/callback", 3000u);
@@ -839,6 +841,9 @@ TEST(SessionOverlayTest, StravaCredentialsOAuthFlowTabsAndLiveFeedJson) {
     EXPECT_EQ(cbResp.status_code, 200);
     EXPECT_TRUE(strava.isAuthenticated());
     EXPECT_EQ(strava.getAthleteName(), "Ada Lovelace");
+
+    // Replaying consumed state rejected with 403
+    EXPECT_EQ(overlay.handleStravaCallback("valid_code_abc", stateToken, 4001u).status_code, 403);
 
     // Disconnect clears tokens
     auto discStrava = overlay.handleStravaDisconnect();

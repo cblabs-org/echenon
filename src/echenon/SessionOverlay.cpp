@@ -563,7 +563,7 @@ SessionOverlay::HttpResponse SessionOverlay::handleDownload(uint32_t session_id,
 
     resp.status_code = 200;
     resp.content_type = gzip ? "application/gzip" : "application/vnd.garmin.tcx+xml";
-    resp.content_disposition = "attachment; filename=\"ride_" + std::to_string(session_id) +
+    resp.content_disposition = "attachment; filename=\"echenon_" + std::to_string(session_id) +
                                (gzip ? ".tcx.gz\"" : ".tcx\"");
     if (gzip) {
         resp.content_encoding = "gzip";
@@ -737,7 +737,7 @@ SessionOverlay::HttpResponse SessionOverlay::handleStravaCallback(const std::str
     }
 
     if (!_stravaUploader->validateAndConsumeState(state, now_ms)) {
-        resp.status_code = 400;
+        resp.status_code = 403;
         doc["ok"] = false;
         doc["error"] = "Invalid or expired OAuth state";
         serializeJson(doc, resp.body);
@@ -907,6 +907,11 @@ void SessionOverlay::registerRoutes(PsychicHttpServer& server) {
         return sendResp(response, handleEnd(millis()));
     });
 
+    server.on("/api/session/stop", HTTP_POST, [this, checkAuth, sendResp](PsychicRequest* request, PsychicResponse* response) {
+        if (!checkAuth(request, response)) return ESP_OK;
+        return sendResp(response, handleEnd(millis()));
+    });
+
     server.on("/api/session/discard", HTTP_POST, [this, checkAuth, sendResp, extractSessionId](PsychicRequest* request, PsychicResponse* response) {
         if (!checkAuth(request, response)) return ESP_OK;
         uint32_t sid = extractSessionId(request);
@@ -930,7 +935,11 @@ void SessionOverlay::registerRoutes(PsychicHttpServer& server) {
                            ? static_cast<uint32_t>(std::strtoul(request->getParam("id")->value().c_str(), nullptr, 10))
                            : 0u;
         bool gzip = false;
-        if (request->hasParam("gz")) {
+        if (request->hasParam("format")) {
+            String fmtVal = request->getParam("format")->value();
+            gzip = (fmtVal == "tcx.gz" || fmtVal == "gz");
+        }
+        if (!gzip && request->hasParam("gz")) {
             String gzVal = request->getParam("gz")->value();
             gzip = (gzVal == "1" || gzVal == "true");
         }
@@ -941,7 +950,7 @@ void SessionOverlay::registerRoutes(PsychicHttpServer& server) {
         }
 
         response->setContentType(gzip ? "application/gzip" : "application/vnd.garmin.tcx+xml");
-        std::string disp = "attachment; filename=\"ride_" + std::to_string(sid) +
+        std::string disp = "attachment; filename=\"echenon_" + std::to_string(sid) +
                            (gzip ? ".tcx.gz\"" : ".tcx\"");
         response->addHeader("Content-Disposition", disp.c_str());
 
