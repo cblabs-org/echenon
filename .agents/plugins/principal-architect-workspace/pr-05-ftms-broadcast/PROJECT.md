@@ -51,7 +51,7 @@ work_orders:
   complexity: interactive
   status: COMPLETED
   attempts: 3
-  commit_sha: 6db31cc9c6ac5529efc6c516685926679ffa2658
+  commit_sha: 09e580141d251ff7a4ff2e3caaa40a76b73e9e4c
 ---
 
 # PR-05: FTMS Telemetry, Read-Only (Phase 3, v1 Passive)
@@ -138,7 +138,7 @@ All telemetry and future v2 control targets derive deterministically from two me
 | `WO-05.1` | `wo1-ftms-metrics` | FTMS v1.0 Conformance Citation, Unified BikeMetrics & FTMSData Packet Encoder | `standard` | `COMPLETED` | 1 | `add8d3a` |
 | `WO-05.2` | `wo2-ftms-server` | FTMSServer Read-Only BLE Service Provider (0x1826, 0x2ACC, 0x2AD2) | `standard` | `COMPLETED` | 1 | `3aa1f7d` |
 | `WO-05.3` | `wo3-module-wiring` | EchenonModule, LiveFeed & platformio.ini Integration (WITH_FTMS) | `standard` | `COMPLETED` | 1 | `fa4bfab` |
-| `WO-05.4` | `wo4-hw-verification` | Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak | `interactive` | `COMPLETED` | 3 | `96e78ed` |
+| `WO-05.4` | `wo4-hw-verification` | Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak | `interactive` | `COMPLETED` | 3 | `09e5801` |
 
 ## 4. Session Log
 
@@ -153,6 +153,7 @@ All telemetry and future v2 control targets derive deterministically from two me
 - **2026-10-24 23:09:** Cold-Firewall Audit Round 1 (`e0e3975`): `CHANGES_REQUESTED` — `BLOCKING-1` (Level 32 internal resistance `255` sentinel collision with `INTERNAL_RESISTANCE_UNCALIBRATED`) + 6 non-blocking `SPEC.md` §7.3 polish items.
 - **2026-10-24 23:34:** `WO-05.4` COMPLETED (`6593bbd`, `rcpt_31e6fb476dd9`). Remediated `BLOCKING-1` + non-blocking items (155/155 native tests pass), flashed `v0.3.0-dev.18` (`ex3-waveshare-nano-rig`), and verified over-the-air via `bleak` + Calibration Rig across Levels 1, 16, and 32 (`resistance = 254` at Level 32, `0x2ACC` = `82 44 00 00 00 00 00 00`, `0x2AD2` mean interval `500.04 ms` / `2.00 Hz`, `/ws/echenon/live` `peloton_resistance` + `speed_kph`). Dispatching Cold-Firewall Audit Round 2.
 - **2026-10-26 12:38:** `WO-05.4` COMPLETED (`96e78ed`, `rcpt_e243cbefe923`, `v0.3.0-dev.22`, `162/162` native tests). Live physical ride verified on Echelon EX-3 bike with **Xert** + **Echelon Fit** + **Echelon Beat** HR armband simultaneously (`CadenceSensor` two-layer IO-MUX glitch filter + `250 ms` min interval + `50 ms` HIGH release hysteresis + `millis()` timeout latching across `micros()` 71.58m wraparound; `HRMClient`/`FTMSServer` 10s grace window + signed `int32_t` cross-core `millis()` comparison).
+- **2026-10-26 15:40:** `WO-05.4` COMPLETED (`09e5801`, `rcpt_cad6c148b554`, `v0.3.0-dev.23`, `167/167` native tests). Fundamental-first sensor-to-telemetry pipeline & formula-parameter calibration refactor (`getFilteredWiperFloat()`, `LevelMapping` `C07` `171..1333` constants + direct `wiperToNormalized`/`wiperToEchelon`, `CalibrationWizard::fitLinearEndpoints()` OLS regression, `PowerEngine::tickFromNormalized()`, `RecalibrationUI::applyToPhysicsParams()` least-squares `a_scale` fitting, and `EchenonModule::syncPhysicsCalibration()` + `std::round` FTMS power quantization).
 
 <!-- pa:graduation-summary start -->
 ### Graduation Summary (`PR-05` / `pr-05-ftms-broadcast` — `GRADUATED`)
