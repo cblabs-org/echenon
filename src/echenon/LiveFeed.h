@@ -1,5 +1,12 @@
 #pragma once
 
+#if defined(ESP_PLATFORM) && !defined(UNIT_TEST)
+#include <Print.h>
+#ifdef HEX
+#undef HEX
+#endif
+#endif
+
 #ifndef UNIT_TEST
 
 #include <cstdint>
@@ -31,6 +38,35 @@ public:
               uint8_t pelotonResistance = 0,  // Peloton 0–100 power-equivalence
               float speedKph = 0.0f           // virtual flat-road speed (km/h)
               );
+
+    // Extended 13-argument overloads including session_state and session_elapsed_s
+    void tick(uint32_t currentMillis,
+              float cadenceRPM,
+              uint8_t echelonLevel,
+              uint8_t internalLevel,
+              float powerWatts,
+              uint16_t potAdc,
+              int8_t motorDir,
+              int32_t encoderDelta,
+              bool runaway,
+              uint8_t pelotonResistance,
+              float speedKph,
+              const char* sessionState,
+              uint32_t sessionElapsedS);
+
+    void tick(float cadenceRpm,
+              uint8_t levelEchelon,
+              uint8_t levelInternal,
+              float powerWatts,
+              uint16_t potAdc,
+              int8_t motorDir,
+              int32_t encoderDelta,
+              bool runaway,
+              uint8_t pelotonResistance,
+              float speedKph,
+              const char* sessionState,
+              uint32_t sessionElapsedS,
+              uint32_t currentMillis);
 
     // Configuration
     void setIntervalMs(uint32_t ms);  // default 500 ms (~2 Hz)

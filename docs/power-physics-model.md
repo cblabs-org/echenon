@@ -221,15 +221,18 @@ Where does the $3.77\text{ W}$ total RMSE of `Physics P3r` come from? We can par
 
 Based on the error budget decomposition in §4.3, we evaluate **five concrete algorithmic improvements**—ranging from zero-cost input normalization (adopted immediately in PR-02) to optional higher-order enhancements—and quantify their accuracy gains.
 
-### Improvement 1 (Adopted in PR-02): Calibrated Continuous-Level Normalization $\tilde{p} = \frac{\ell - 1}{31}$
+### Improvement 1 (Refined in PR-05 WO-05.4): Direct Float-Wiper Normalization & OLS Endpoint Regression
 
-- **Problem:** Computing $\tilde{p} = \frac{\text{pot\_adc} - 171}{1333 - 171}$ directly from raw ADC counts with hard-coded C07 end-stops (`171` and `1333`) has two drawbacks:
-  1. Different EX-3 units have slightly different potentiometer mounting offsets, and even on the same bike, the bottom/top 2 levels exhibit mechanical end-stop compression (`cal_level_table` piece-wise spacing vs global linear slope).
-  2. When comparing against Echelon's integer-level console output, raw `pot_adc` variations within the motor's $\pm 2\text{ count}$ deadband inject $3.13\text{ W}^2$ of variance.
-- **Solution:** `ResistanceSensor` already maps filtered `pot_adc` through the bike's calibrated 32-entry monotonically increasing wiper table (`cal_level_table`, populated by `CalibrationWizard` passive observation or seeded from the Phase 3 fit $\text{pot} = 37.26\,\ell + 120.0$) to produce a **continuous fractional resistance level $\ell \in [1.0, 32.0]$** (`ResistanceChangedPayload::continuous_level`). Defining:
-  $$\tilde{p} = \text{clamp}\!\left(\frac{\ell - 1.0}{31.0},\; 0.0,\; 1.0\right)$$
-  automatically normalizes any bike's physical potentiometer calibration into the universal $[0, 1]$ cam-angle coordinate!
-- **Accuracy Gain:** Eliminates per-unit potentiometer offset error and reduces C07 validation RMSE from **$3.77\text{ W} \to 3.33\text{ W}$** ($\text{MAE}: 2.71\text{ W} \to 2.41\text{ W}$, $R^2 = 0.999627$) with **zero extra parameters**.
+- **Problem:** Two issues arise if $\tilde{p}$ is computed either from integer-quantized `uint16_t` ADC counts with uncalibrated end-stops or via piecewise-linear interpolation through a 32-entry discrete level table (`cal_level_table`):
+  1. Different EX-3 units have slightly different potentiometer mounting offsets relative to the C07 reference end-stops (`WORKING_RANGE_MIN = 171`, `WORKING_RANGE_MAX = 1333`).
+  2. Mapping `pot_adc` through a 32-entry piecewise lookup table (`cal_level_table`) before computing $\tilde{p} = (\ell - 1)/31$ injects single-level bang-bang motor settling jitter ($\pm 2\text{ ADC}$ counts per recorded step) as local slope kinks in $\tilde{p}$, and rounding the EMA filter output to an integer `uint16_t` before normalization discards sub-count floating-point resolution.
+- **Solution (Adopted in PR-05 `WO-05.4` — Fundamental-First Pipeline):**
+  1. **Unrounded Float Wiper Fundamental:** `ResistanceSensor::getFilteredWiperFloat()` exposes the unrounded 20 Hz EMA floating-point wiper value $w \in \mathbb{R}$.
+  2. **OLS Linear Endpoint Calibration (`CalibrationWizard::fitLinearEndpoints`):** Because the potentiometer tracks a rigid mechanical cam whose resistance ramp is physically linear over the $151^\circ$ working sweep ($R^2 = 0.9998$), `CalibrationWizard::fitLinearEndpoints(float& potMin, float& potMax)` fits the straight line $\text{pot}(\ell) = a + b \cdot (\ell - 1)$ across all recorded calibration levels ($N \ge 2$) via **Ordinary Least Squares (OLS) linear regression**, setting $\text{pot}_{\min} = a$ ($\ell = 1$) and $\text{pot}_{\max} = a + 31\,b$ ($\ell = 32$). When uncalibrated ($N < 2$), it defaults to the C07 physical bounds $[171.0, 1333.0]$.
+  3. **Direct Normalized Cam Position ($\tilde{p} \in [0, 1]$):** `EchenonModule` computes $\tilde{p}$ directly from the float wiper fundamental without passing through any discrete level table:
+     $$\tilde{p} = \text{clamp}\!\left(\frac{w - \text{pot}_{\min}}{\text{pot}_{\max} - \text{pot}_{\min}},\; 0.0,\; 1.0\right)$$
+     and feeds $\tilde{p}$ directly into `PowerEngine::tickFromNormalized(pTilde, cadenceRpm)`. All discrete scales (Echelon `1–32`, FTMS internal `0–254`, Peloton `0–100`) are derived downstream as pure projections of $\tilde{p}$.
+- **Accuracy Gain:** Eliminates per-unit potentiometer offset error, prevents single-level calibration noise from warping the continuous power surface, and preserves smooth sub-count float resolution across the entire $[0, 1]$ cam sweep.
 
 ### Improvement 2 (Optional Mode / Future Tuning): Hybrid Kloss + High-RPM Torque Clamp ($\text{RPM} \ge 100$)
 
@@ -249,26 +252,28 @@ Based on the error budget decomposition in §4.3, we evaluate **five concrete al
   $$B^2(\tilde{p}) \propto \exp\!\Big(\beta_1 u(\tilde{p}) + \beta_2 u(\tilde{p})^2\Big) \quad \text{or} \quad u(\tilde{p}) = 1 - \cos\theta + \gamma\sin^2\theta$$
 - **Accuracy Gain:** Reduces RMSE by an additional $\sim 0.35\text{ W}$ (bringing level-normalized RMSE down to **$\sim 2.1\text{ W}$** and cutting the maximum high-level residual from $18.7\text{ W}$ to $< 9\text{ W}$). However, because $4$ parameters already achieve $R^2 = 0.999522$ ($99.95\%$ variance explained), the 4-parameter `Physics P3r` form is preferred for v1 simplicity and zero overfitting risk.
 
-### Improvement 4 (Tier-3 Calibration Enhancement): Parametric Physics Recalibration via Pedal Power Meters
+### Improvement 4 (Adopted in PR-05 WO-05.4): Parametric Physics Recalibration via Reference Power Points
 
-- **Problem:** Under a pure 992-cell lookup table, a rider who attaches external cycling power-meter pedals (e.g., Assioma Duo or Garmin Rally) and records 5–10 reference points must rely on 2D inverse-distance residual warping (`RecalibrationUI`) to bend nearby table cells.
-- **Solution:** Because `Physics P3r` has only **4 physical parameters** with clear mechanical meanings:
-  - **$A$ (Baseline Air-Gap Gain):** Captures unit-to-unit variation in nominal Level 1 magnet-to-flywheel clearance $d_0$ ($\Delta d_0 = 0.5\text{ mm}$ simply scales $A$ by $e^{-2\kappa \Delta d_0}$).
+- **Problem:** Under a pure 992-cell lookup table, a rider who attaches external cycling power-meter pedals (e.g., Assioma Duo or Garmin Rally) or compares against the Echelon console and records reference points must rely on 2D cell replacement or warping (`RecalibrationUI::applyToPowerTable`) to modify individual table cells, creating jagged steps around the sampled points.
+- **Solution (Implemented in `RecalibrationUI::applyToPhysicsParams` & `EchenonModule::syncPhysicsCalibration`):** Because `Physics P3r` has only **4 physical parameters** with clear mechanical meanings:
+  - **$A$ (Baseline Air-Gap Gain, `params.a_scale`):** Captures unit-to-unit variation in nominal Level 1 magnet-to-flywheel clearance $d_0$ ($\Delta d_0 = 0.5\text{ mm}$ simply scales $A$ by $e^{-2\kappa \Delta d_0}$).
   - **$\beta$ (Cam Eccentricity / Magnet Strength Slope):** Captures unit-to-unit tolerance in cam stroke $e$ or NdFeB magnet grade.
   - **$c_{\text{fric}}$ (Belt Tension Drag):** Captures drive belt wear and tension adjustments.
-  A rider can take just **3 steady rides** (e.g., Level 5 @ 80 RPM, Level 18 @ 85 RPM, Level 28 @ 90 RPM) against their power-meter pedals and solve a trivial 3-parameter regression for $(A, \beta, c_{\text{fric}})$ that **globally recalibrates the physics model across all 32 levels and all cadences**, with `RecalibrationUI`'s local residual offset surface layered on top for any fine local tweaks!
+  `RecalibrationUI::applyToPhysicsParams(PowerPhysicsParams& params, float baseA)` solves a closed-form least-squares linear regression through the origin for the multiplicative eddy-current gain $A$:
+  $$A_{\text{fit}} = \text{clamp}\!\left(\frac{\sum_k x_k y_k}{\sum_k x_k^2},\; 0.25\,A_0,\; 4.0\,A_0\right), \qquad x_k = \exp\!\big(\beta\,u(\tilde{p}_k)\big)\frac{\text{cad}_k^2}{1 + (\text{cad}_k / \text{cad}_c)^2}, \quad y_k = \max(P_k - c_{\text{fric}}\,\text{cad}_k,\; 0)$$
+  This **globally recalibrates the continuous physical surface across all levels and all cadences** while keeping `applyToPowerTable` synchronized for Tier 2/3 grid inspection.
 
 ### Improvement 5 (PR-08 v2 ERG Mode Enabler): Exact Closed-Form Inverse $\tilde{p}(P_{\text{target}}, \text{cad})$
 
 - **Problem:** In v2 ERG mode (PR-08), when a training app (Zwift / TrainerRoad) commands a target wattage $P_{\text{target}}$ at the rider's current cadence $\text{cad}$, a lookup-table architecture must search and interpolate across table rows to find the target resistance level.
-- **Solution:** The `Physics P3r` formula is **analytically invertible in closed form**! Given target power $P_{\text{target}}$ and current cadence $\text{cad} > 0$:
+- **Solution:** The `Physics P3r` formula is **analytically invertible in closed form** (`PowerEngine::solveNormalizedPositionForPower`)! Given target power $P_{\text{target}}$ and current cadence $\text{cad} > 0$:
   1. Subtract drivetrain friction power:
      $$P_{\text{eddy}} = \max\!\big(P_{\text{target}} - c_{\text{fric}} \cdot \text{cad},\; 0\big)$$
   2. Compute required magnetic flux amplification factor $E = \exp(\beta u)$:
      $$E = \frac{P_{\text{eddy}} \cdot \big(1 + (\text{cad} / \text{cad}_c)^2\big)}{A \cdot \text{cad}^2}$$
   3. Clamp $E \in [1,\; \exp(1.87462\,\beta)]$ and invert $\exp(\beta(1 - \cos\theta))$ directly via $\ln$ and $\arccos$:
      $$u_{\text{target}} = \frac{\ln(E)}{\beta}, \qquad \tilde{p}_{\text{target}} = \frac{\arccos(1 - u_{\text{target}})}{2.635447} \in [0, 1]$$
-  4. Map $\tilde{p}_{\text{target}}$ directly to target continuous level $\ell_{\text{target}} = 1.0 + 31.0\,\tilde{p}_{\text{target}}$ (and exact target potentiometer ADC count via `cal_level_table`).
+  4. Map $\tilde{p}_{\text{target}}$ directly to target potentiometer ADC count $\text{pot}_{\text{target}} = \text{pot}_{\min} + \tilde{p}_{\text{target}} \cdot (\text{pot}_{\max} - \text{pot}_{\min})$ (and continuous level $\ell_{\text{target}} = 1.0 + 31.0\,\tilde{p}_{\text{target}}$).
 - **Benefit:** Zero-iteration, microsecond-level exact target wiper position calculation for closed-loop H-bridge motor control.
 
 ---
@@ -277,24 +282,25 @@ Based on the error budget decomposition in §4.3, we evaluate **five concrete al
 
 ### 6.1 Mathematical Definition & Constants in C++ (`src/echenon/PowerEngine.h`)
 
-`PowerEngine` evaluates the derived physical formula in `float` precision (ESP32-S3 single-precision hardware FPU + standard library `cosf`/`expf` executes in $< 3\text{ }\mu\text{s}$ per call at $4\text{ Hz}$):
+`PowerEngine` evaluates the derived physical formula in `float` precision (ESP32-S3 single-precision hardware FPU + standard library `cosf`/`expf` executes in $< 3\text{ }\mu\text{s}$ per call at $2\text{ Hz}$):
 
 ```cpp
 struct PowerPhysicsParams {
-    float a_scale      = 0.0048839f; // A: Baseline eddy-current coefficient (W / RPM^2)
-    float beta         = 1.630327f;  // beta: Exponential air-gap magnetic flux gain
-    float cad_crit     = 128.1495f;  // cad_c: Kloss inductive rollover cadence (RPM)
-    float c_fric       = 0.114260f;  // c_fric: Drivetrain belt/bearing drag (W / RPM)
-    float cam_sweep_rad = 2.635447f; // 151 deg eccentric cam total rotation (rad)
+    float a_scale       = 0.0048839f; // A: Baseline eddy-current coefficient (W / RPM^2)
+    float beta          = 1.630327f;  // beta: Exponential air-gap magnetic flux gain
+    float cad_crit      = 128.1495f;  // cad_c: Kloss inductive rollover cadence (RPM)
+    float c_fric        = 0.114260f;  // c_fric: Drivetrain belt/bearing drag (W / RPM)
+    float cam_sweep_rad = 2.635447f;  // 151 deg eccentric cam total rotation (rad)
 };
 ```
 
-Given continuous resistance level $\ell \in [1.0, 32.0]$ and cadence $\text{cad} \ge 0$:
+Given normalized cam position $\tilde{p} \in [0.0, 1.0]$ (`PowerEngine::computePowerFromNormalized(pTilde, cadenceRpm, params)` / `PowerEngine::tickFromNormalized(pTilde, cadenceRpm)`) and cadence $\text{cad} \ge 0$:
 
 1. **Zero-Cadence Guard:** If $\text{cad} \le 0.0\text{f}$ (or non-finite), return $0.0\text{f}$ ($0\text{ W}$) immediately.
-2. **Normalized Cam Position ($\tilde{p}$):**
-   $$\tilde{p} = \text{clamp}\!\left(\frac{\ell - 1.0\text{f}}{31.0\text{f}},\; 0.0\text{f},\; 1.0\text{f}\right)$$
-   *(Note: A direct raw-ADC overload `computePowerFromPot(float pot_adc, float cadence_rpm, float pot_min, float pot_max)` is also provided using $\tilde{p} = \text{clamp}\!\left(\frac{\text{pot\_adc} - \text{pot\_min}}{\text{pot\_max} - \text{pot\_min}}, 0.0\text{f}, 1.0\text{f}\right)$).*
+2. **Normalized Cam Position ($\tilde{p} \in [0.0, 1.0]$):**
+   Computed directly from the unrounded EMA float wiper $w$ (`ResistanceSensor::getFilteredWiperFloat()`) and the OLS-calibrated linear endpoints $[\text{pot}_{\min}, \text{pot}_{\max}]$ (`CalibrationWizard::fitLinearEndpoints`):
+   $$\tilde{p} = \text{clamp}\!\left(\frac{w - \text{pot}_{\min}}{\text{pot}_{\max} - \text{pot}_{\min}},\; 0.0\text{f},\; 1.0\text{f}\right)$$
+   *(Note: Convenience wrappers `computePowerPhysics(continuous_level, cadence_rpm)` using $\tilde{p} = \text{clamp}((\ell - 1.0\text{f})/31.0\text{f}, 0.0\text{f}, 1.0\text{f})$ and `computePowerFromPot(pot_adc, cadence_rpm, pot_min, pot_max)` are also provided).*
 3. **Cam Follower Displacement ($u$):**
    $$u = 1.0\text{f} - \cosf(2.635447\text{f} \cdot \tilde{p})$$
 4. **Kloss Eddy-Current + Friction Power ($P$):**
@@ -304,13 +310,13 @@ Given continuous resistance level $\ell \in [1.0, 32.0]$ and cadence $\text{cad}
 
 ### 6.2 Integration with the Three-Tier Calibration Model
 
-To preserve full backwards compatibility with `SPEC.md` §6.3's three-tier power customization architecture (`PowerTableTier`) while making the physical model the primary engine:
+To preserve full backwards compatibility with `SPEC.md` §6.3's three-tier power customization architecture (`PowerTableTier`) while making the physical model and parametric calibration the primary engine:
 
 | Tier | Enum (`PowerTableTier`) | Runtime Evaluation Method in `PowerEngine` |
 |---|---|---|
-| **Tier 1: Default (First-Principles Physics)** | `PowerTableTier::DEFAULT` (`0`) | Evaluates the continuous **4-parameter physical formula (`Physics P3r`)** directly from $\tilde{p} = (\ell - 1)/31$ and $\text{cad}$. Furthermore, `DEFAULT_POWER_TABLE[32][11]` is populated from `Physics P3r` so any REST API consumer inspecting `/api/power-table` sees the exact physical reference grid. |
-| **Tier 2: Custom Table Override** | `PowerTableTier::CUSTOM` (`1`) | If a user explicitly uploads a custom $32 \times 11$ CSV/JSON power table via `POST /api/power-table` (`/power_table.bin` in LittleFS), `PowerEngine` uses bilinear interpolation across the user's custom grid. |
-| **Tier 3: Empirical Recalibration** | `PowerTableTier::RECALIBRATED` (`2`) | Evaluates the **continuous physical formula (`Physics P3r`) plus the user's inverse-distance-weighted residual correction surface** stored in `/recal_table.bin` (or custom grid override), allowing smooth continuous intra-level power response with empirical power-meter offsets. |
+| **Tier 1: Default (First-Principles Physics)** | `PowerTableTier::DEFAULT` (`0`) | Evaluates the continuous **4-parameter physical formula (`Physics P3r`)** directly from $\tilde{p} \in [0, 1]$ (`tickFromNormalized`) and $\text{cad}$. `CalibrationWizard::fitLinearEndpoints` calibrates $(\text{pot}_{\min}, \text{pot}_{\max})$ via OLS regression. Furthermore, `DEFAULT_POWER_TABLE[32][31]` is populated from `Physics P3r` so any REST API consumer inspecting `/api/power-table` sees the exact physical reference grid. |
+| **Tier 2: Custom Table Override** | `PowerTableTier::CUSTOM` (`1`) | If a user explicitly uploads a custom $32 \times 31$ CSV/JSON power table via `POST /api/power-table` (`/power_table.bin` in LittleFS), `PowerEngine` uses bilinear interpolation across the user's custom grid (`1.0 + 31.0 * pTilde`). |
+| **Tier 3: Empirical Recalibration** | `PowerTableTier::RECALIBRATED` (`2`) | Fits the physical eddy-current gain $A$ (`params.a_scale`) via least-squares regression (`RecalibrationUI::applyToPhysicsParams`) across the rider's recorded reference points (`EchenonModule::syncPhysicsCalibration()`), recalibrating the smooth `Physics P3r` surface globally while keeping the $32 \times 31$ table synchronized for REST inspection. |
 
 ---
 
@@ -376,12 +382,14 @@ flowchart TD
 ### 8.1 Layer 0 — Hardware Fundamentals (`pot_adc` $\to \tilde{p}$, $\Delta t \to \text{cad}$)
 
 1. **Normalized Cam/Wiper Position ($\tilde{p} \in [0.0, 1.0]$):**
-   - From calibrated continuous level $\ell \in [1.0, 32.0]$ (`ResistanceSensor`):
-     $$\tilde{p} = \text{clamp}\!\left(\frac{\ell - 1.0}{31.0},\; 0.0,\; 1.0\right)$$
-   - Or directly from calibrated potentiometer wiper bounds $[\text{pot}_{\min}, \text{pot}_{\max}]$:
-     $$\tilde{p} = \text{clamp}\!\left(\frac{\text{pot\_adc} - \text{pot}_{\min}}{\text{pot}_{\max} - \text{pot}_{\min}},\; 0.0,\; 1.0\right)$$
+   - Computed directly from the unrounded 20 Hz EMA float wiper reading $w = \text{ResistanceSensor::getFilteredWiperFloat}()$ and the OLS-fitted linear cam bounds $[\text{pot}_{\min}, \text{pot}_{\max}]$ (`CalibrationWizard::fitLinearEndpoints`, defaulting to C07 bounds $[171.0, 1333.0]$):
+     $$\tilde{p} = \text{clamp}\!\left(\frac{w - \text{pot}_{\min}}{\text{pot}_{\max} - \text{pot}_{\min}},\; 0.0,\; 1.0\right)$$
+   - No intermediate 32-level lookup table sits in the forward path; discrete scales are derived strictly downstream of $\tilde{p}$.
 2. **Crank Angular Velocity ($\text{cad} \ge 0\text{ RPM}$):**
-   - Measured from reed-switch period $\Delta t_{\text{crank}}$ on `GPIO 5` (`CadenceSensor`, $30\text{ ms}$ debounce, $3\text{ s}$ zero timeout):
+   - Measured from reed-switch period $\Delta t_{\text{crank}}$ on `GPIO 5` (`CadenceSensor`) with two-layer hardware/software conditioning proven in `PR-05` (`WO-05.4`):
+     - Hardware ESP32-S3 IO-MUX pin glitch filter (`gpio_new_pin_glitch_filter`) to reject sub-microsecond EMI spikes.
+     - Leading-edge (`FALLING`) ISR timestamp commit (`MIN_HW_INTERVAL_US = 250,000 us`, `240 RPM` human ceiling) paired with a `REARM_HIGH_US = 50,000 us` (`50 ms`) continuous-HIGH open-release hysteresis state machine on `CHANGE` interrupts so mechanical reed-switch break-bounce (~80–120 ms after magnet passage) cannot trigger false double-counts.
+     - `3000 ms` (`3 s`) zero-cadence timeout tracked via wraparound-safe signed `int32_t` `millis()` deltas (preventing 71.58-minute `micros()` 32-bit overflow from resurrecting stale pulses).
      $$\text{cad} = \frac{60}{\Delta t_{\text{crank}}}, \qquad \omega_{\text{crank}} = \frac{2\pi\,\text{cad}}{60}\text{ rad/s}$$
 
 ### 8.2 Layer 2 — Forward Resistance Scale Projections from $\tilde{p}$

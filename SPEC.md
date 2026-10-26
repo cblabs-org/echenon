@@ -903,11 +903,21 @@ The bench list, including example shunt and harness details, is hardware spec
 One active-low pulse per pedal revolution. Cadence comes from the inter-pulse
 interval.
 
-- GPIO 5 (D2): `INPUT` with no internal pull, hardware interrupt on `FALLING`
-  (chosen in PR-02 `CadenceSensor` over the ADC software-threshold path)
-- Software debounce lockout: **25 ms**
+- GPIO 5 (D2): `INPUT` with no internal pull, hardware interrupt on `CHANGE`
+  with leading-edge (`LOW`) timestamp commit (refined in PR-05 `WO-05.4` over
+  single-edge `FALLING` to enforce open-release hysteresis)
+- Two-layer debounce & break-bounce rejection (refined in PR-05 `WO-05.4`):
+  - **Layer 1 (Hardware Glitch Filter):** ESP32-S3 IO-MUX pin glitch filter
+    (`gpio_new_pin_glitch_filter` on `GPIO 5`) rejects sub-microsecond EMI spikes
+  - **Layer 2 (Leading-Edge Commit + Open-Release Hysteresis):** Minimum inter-pulse
+    period **`250 ms` (`MIN_HW_INTERVAL_US = 250,000 us`, 240 RPM ceiling)** plus
+    mandatory **`50 ms` (`REARM_HIGH_US = 50,000 us`) continuous-HIGH release
+    hysteresis** before re-arming for the next falling edge, eliminating mechanical
+    reed-switch break-bounce (~80–120 ms after magnet passage)
 - RPM: $\text{RPM} = 60{,}000{,}000 \div \Delta t_{\mu s}$
-- Timeout: 3 s with no pulse → cadence = 0
+- Timeout: 3 s with no pulse → cadence = 0 (tracked via wraparound-safe signed
+  `int32_t` `millis()` deltas and latched in `timedOut_` so 32-bit `micros()`
+  rollover at 71.58 min cannot resurrect stale pulses)
 - Hardware filter (v1 board, as on the PR-01 rig): 4.7 kΩ series + 100 nF from
   GPIO 5 to GND on the ESP32 side (a ~0.47 ms RC low-pass) that the console's
   line does not see. The tap does not distort the console's edge (fall time
@@ -928,17 +938,23 @@ the console's working range.
 - **Wiper profile over a revolution** (register #4, #5; A03, A04, B03): two
   symmetrical working ramps spanning 0–2120 counts, separated by two dead zones
   (a gap crossing of ~5°) and two non-working plateaus. The console works on
-  one ramp from **165 counts (level 1) to 1327 counts (level 32)**, about 151°
+  one ramp from **165 counts (level 1) to 1327 counts (level 32)** (or
+  **171.0–1333.0 counts** on the Phase 3 C07 320-point sweep), about 151°
   of shaft travel, with hysteresis < 15 counts.
-- **v1 level model (DR-1 §2.5/§2.11, refined in PR-02 Phase 3):** the wiper is
-  linear in level over the working range. Phase 0 fit: `wiper = 39.1 × level + 97`
-  over 165–1327 counts (R² = 0.9989, B03). Phase 3 automated sweep refinement
-  (C03-20261024): `wiper = 37.26 × level + 120.0` over 157–1313 counts
-  (R² = 0.9998), used as the `LevelMapping` default. v1 needs no cam-angle
-  tracking. §5.3 maps the wiper to the internal scale.
+- **v1 fundamental-first model (DR-1 §2.5/§2.11, refined in PR-02 & PR-05 `WO-05.4`):**
+  the wiper is linear in cam rotation over the working range. Phase 0 fit:
+  `wiper = 39.1 × level + 97` over 165–1327 counts (R² = 0.9989, B03). Phase 3
+  automated sweep refinement (C03/C07-20261024): `WORKING_RANGE_MIN = 171`,
+  `WORKING_RANGE_MAX = 1333` (`wiper = 37.48 × (level - 1) + 171.0`,
+  R² = 0.9998). Rather than passing through a discrete 32-entry lookup table
+  in the forward path, `ResistanceSensor::getFilteredWiperFloat()` exposes the
+  unrounded EMA float wiper $w$, which maps directly to the normalized cam
+  coordinate $\tilde{p} = \text{clamp}\!\big((w - \text{pot}_{\min}) / (\text{pot}_{\max} - \text{pot}_{\min}),\ 0,\ 1\big)$.
+  v1 needs no cam-angle tracking. §5.3 maps $\tilde{p}$ to all external scales.
 - **Display path** (v1 and v2): EMA at 20 Hz with α = 0.15
   ($\text{filtered} = 0.15 \times \text{sample} + 0.85 \times \text{filtered}$),
-  used for the display level, the internal scale and runaway detection.
+  retained in floating point (`getFilteredWiperFloat()`) for $\tilde{p}$, power,
+  internal scale, display level, and runaway detection.
 - **v2 — fast path**: unfiltered samples at `[DR-2: rate, target ≥ 200 Hz]`,
   used by the motor controller and by click-off detection.
 - **v2 — click-off detection**: a discontinuity in the fast-path stream marks
@@ -960,8 +976,8 @@ runaway detection); it never acts on the motor in v1.
 **Stock-runaway detection (v1, PR-02; known limitation).** A fast knob spin
 past level 32 can leave the stock console's motor turning continuously
 (A09-20261012 #3). A passive board **cannot prevent** this. v1 detects it: when
-the display-path wiper stays **outside the working range (165–1327 counts, or
-157–1313 counts with 20-count tolerance on the Phase 3 fit) for more than
+the display-path wiper stays **outside the working range (171–1333 counts with
+20-count tolerance, i.e., `< 151` or `> 1353`) for more than
 10 s** (`runaway_timeout_s` default = 10 s), Echenon publishes a
 `runaway.detected` event on the EventBus and raises
 a portal alert (PR-14 persists and surfaces it). The motor-sense taps showing
@@ -969,26 +985,36 @@ continuous drive corroborate the event. Prevention is a v2 item (DR-2 §2.4).
 
 ### 5.3 Resistance Level Mapping
 
-**Canonical internal scale (owner decision 2026-10-04, DR-1 §2.11).**
-Resistance is represented internally by `i ∈ 0…255` (`uint8_t`). Every
-external scale is a mapping from `i`.
+**Fundamental-first hierarchy & canonical internal scale (owner decisions 2026-10-04 & 2026-10-26, DR-1 §2.11, PR-05 `WO-05.4`).**
+The primary physical state of the resistance mechanism is the continuous
+normalized cam coordinate $\tilde{p} \in [0.0, 1.0]$ derived directly from the
+unrounded float wiper $w$ (`ResistanceSensor::getFilteredWiperFloat()`):
 
-**v1: wiper → internal scale.** The continuous level is
-$\ell = \text{clamp}\big((w - 120.0) / 37.26,\ 1,\ 32\big)$ for display-path wiper
-counts $w$ (Phase 3 C03 refinement of the B03 fit $(w - 97) / 39.1$), and $i = \text{round}\big((\ell - 1) \times 255 / 31\big)$. The linear
-fit is the default; PR-02's passive calibration (§6.3) replaces it with this
-unit's measured 32-entry wiper table, interpolated linearly, which absorbs the
-fit's error near level 1 (+27 counts, A04-20261012).
+$$\tilde{p} = \text{clamp}\!\left(\frac{w - \text{pot}_{\min}}{\text{pot}_{\max} - \text{pot}_{\min}},\; 0.0,\; 1.0\right)$$
 
-**Mappings (DR-1 §4, condition 2.11):**
+where $(\text{pot}_{\min}, \text{pot}_{\max})$ default to the Phase 3 C07 bounds
+$[171.0, 1333.0]$ (`LevelMapping::WORKING_RANGE_MIN = 171`,
+`WORKING_RANGE_MAX = 1333`) and are refined by `CalibrationWizard::fitLinearEndpoints(potMin, potMax)`
+via Ordinary Least Squares (OLS) linear regression $\text{pot}(\ell) = a + b \cdot (\ell - 1)$
+across all recorded calibration steps ($N \ge 2$). Fitting the linear cam
+endpoints via OLS rather than interpolating piecewise through 32 individual
+level entries prevents single-level bang-bang motor settling noise ($\pm 2$ ADC
+counts) from injecting kinks into the continuous $\tilde{p}$ and power surface.
+
+In compact 8-bit storage (`uint8_t`), resistance is represented on the canonical
+internal scale by `i ∈ 0…254` ($i = \text{round}(254.0 \times \tilde{p})$), with
+`255` (`LevelMapping::UNCALIBRATED`) reserved as the uncalibrated sentinel. Every
+discretized external scale is a deterministic projection of $\tilde{p}$ (or `i`):
+
+**Mappings (DR-1 §4, condition 2.11, finalized in PR-05):**
 
 | Consumer | Scale | Mapping |
 |---|---|---|
-| **Echelon** (console, app, portal) | Level `L ∈ 1…32` | $L = \text{round}(i \times 31 / 255) + 1$ and $i = \text{round}\big((L - 1) \times 255 / 31\big)$; exact endpoints 0 ↔ 1 and 255 ↔ 32 |
-| **Peloton** | Resistance `R ∈ 0…100` | **By power equivalence:** $R$ is the Peloton resistance whose power on the published Peloton power curve equals Echenon's power for `i` at the same cadence (§6.2 table), clamped to 0…100. Evaluated at the live cadence; at zero cadence a reference cadence `[PR-05]` is used. **Deferred to PR-05** (owner decision 2026-10-20) alongside FTMS telemetry |
-| **FTMS** (Indoor Bike Data) | Resistance-level field | Carries `L` (1…32); encoding in §7.5. v1 reports only and accepts **no targets** (PR-05) |
-| **Garmin, Zwift, Strava** | Power, cadence, HR | Power (§6), cadence (§5.1) and HR (§8) over BLE (FTMS Indoor Bike Data, HR service) and in the TCX file (§9.4); no resistance mapping is needed |
-| **Internal** (power table, logs) | `i ∈ 0…255` | Identity |
+| **Echelon** (console, app, portal) | Continuous $\ell \in [1.0, 32.0]$ / Integer `L ∈ 1…32` | $\ell = 1.0 + 31.0\,\tilde{p}$, $L = \text{round}(\ell)$ (from internal `i`: $L = \text{round}(i \times 31 / 254) + 1$); exact endpoints `0 ↔ 1` and `254 ↔ 32` |
+| **Peloton** | Resistance `R ∈ 0…100` | **By braking-curve power equivalence at reference cadence $\text{cad}_{\text{ref}} = 80\text{ RPM}$:** $R(\tilde{p}) = \text{clamp}\!\left(\text{round}\!\left(\left[\frac{\max(P(\tilde{p},\, 80) / 106.6667 - 0.1,\; 0)}{0.000185}\right]^{1/2.7}\right), 0, 100\right)$ (`PowerEngine::computePelotonResistanceFromNormalized`). Monotonic 1-to-1 with knob position (`L1 → 13`, `L32 → 42`) and valid at `0 RPM` (**delivered in PR-05**) |
+| **FTMS** (Indoor Bike Data `0x2AD2`) | Resistance-level field (`sint16`) | Carries `L` (`1…32`); encoding in §7.5. v1 reports only and accepts **no targets** (PR-05) |
+| **Garmin, Zwift, Strava** | Power, cadence, virtual speed, HR | Power (§6), cadence (§5.1), virtual speed $v(P)$ (§7.5) and HR (§8) over BLE (FTMS Indoor Bike Data, HR service) and in the TCX file (§9.4) |
+| **Internal** (`RideStore`, logs, state) | `i ∈ 0…254` (`255` = uncalibrated) | $i = \text{round}(254.0 \times \tilde{p})$; inverse $\tilde{p} = i / 254.0$ preserves $8\times$ finer resolution than discrete `1…32` |
 
 - **v2 — Override Mode.** The display scale has `[DR-2: N_override]` levels
   spanning the working range. A 100-level scale is a goal validated in PR-07
@@ -1254,19 +1280,24 @@ with production constants:
 
 Runtime evaluation rules:
 - When $\text{cad} \le 0\text{ RPM}$, $P(\tilde{p}, \text{cad}) = 0\text{ W}$ identically.
-- The normalized position input $\tilde{p} = \text{clamp}\!\left(\frac{\ell - 1}{31}, 0.0, 1.0\right)$
-  uses the continuous level $\ell \in [1.0, 32.0]$ produced by `ResistanceSensor`
-  from the unit's calibrated 32-entry wiper table (`cal_level_table`, or the
-  Phase 3 linear fit $\text{pot} = 37.26\,\ell + 120.0$ before passive
-  calibration), giving continuous sub-level resolution and eliminating
-  potentiometer end-stop offset across bikes. A direct raw-ADC helper
-  (`computePowerFromPot`) is also provided.
+- The normalized position input $\tilde{p} = \text{clamp}\!\left(\frac{w - \text{pot}_{\min}}{\text{pot}_{\max} - \text{pot}_{\min}}, 0.0, 1.0\right)$
+  is computed directly from the unrounded float wiper fundamental
+  $w = \text{ResistanceSensor::getFilteredWiperFloat}()$ and the OLS-fitted
+  linear cam endpoints $[\text{pot}_{\min}, \text{pot}_{\max}]$
+  (`CalibrationWizard::fitLinearEndpoints`, defaulting to C07 bounds
+  $[171.0, 1333.0]$ before passive calibration), and passed to
+  `PowerEngine::tickFromNormalized(pTilde, cadenceRpm)`. This provides smooth
+  sub-count continuous resolution and eliminates both potentiometer end-stop
+  offset across bikes and single-level calibration table kinks.
 - Power is clamped to $[0, 2000]\text{ W}$.
-- When Tier 2 (custom uploaded CSV/JSON matrix) or Tier 3 (empirical
-  recalibration grid) is active, `PowerEngine` supports bilinear interpolation
-  over the **32 levels × 31 cadence bins** ($0\text{–}150\text{ RPM}$ in $5\text{ RPM}$
-  steps) override table (`DEFAULT_POWER_TABLE` is also seeded from the physical
-  model for REST `/api/power-table` inspection).
+- When Tier 3 (`RECALIBRATED`) is active (`RecalibrationUI`), Echenon fits the
+  physical eddy-current gain $A$ (`params.a_scale`) via least-squares regression
+  (`RecalibrationUI::applyToPhysicsParams`, synced via
+  `EchenonModule::syncPhysicsCalibration()`) across the recorded reference points,
+  preserving the smooth continuous `Physics P3r` curve while also keeping the
+  **32 levels × 31 cadence bins** ($0\text{–}150\text{ RPM}$ in $5\text{ RPM}$
+  steps) table updated for REST `/api/power-table` inspection and Tier 2 custom
+  CSV/JSON overrides.
 - **v2 (PR-08 ERG Mode):** Because `Physics P3r` is strictly monotonic and
   analytically invertible in closed form via $\ln$ and $\arccos$
   ([`docs/power-physics-model.md`](docs/power-physics-model.md) §5.5), the ERG
@@ -1278,8 +1309,7 @@ of the Phase 3 automated 32-level × 10-cadence sweep (`C07`), the 4-parameter
 physical model `Physics P3r` achieves **$R^2 = 0.999522$** ($\text{RMSE} = 3.77\text{ W}$,
 $\text{MAE} = 2.71\text{ W}$) from raw `pot_adc`, and **$R^2 = 0.999627$**
 ($\text{RMSE} = 3.33\text{ W}$, $\text{MAE} = 2.41\text{ W}$) on calibrated
-level position $\tilde{p} = (\ell - 1)/31$—well inside the PR-02 $\pm 15\%$
-validation gate.
+level position $\tilde{p}$—well inside the PR-02 $\pm 15\%$ validation gate.
 
 ### 6.3 Calibration
 
@@ -1287,13 +1317,17 @@ validation gate.
 
 Calibration is split between a passive step and a motor-driven step.
 
-- **Passive calibration (PR-02, all installs).** The `CalibrationWizard`
-  guides the rider to step the console through its 32 levels, pausing at each.
-  The firmware records the display-path wiper counts and the console level at
-  each step. The result is the unit's 32-entry wiper table (`cal_level_table`),
-  which replaces the default linear fit in the wiper → $\ell$ (`i`) mapping
-  (§5.3) and normalizes $\tilde{p} = (\ell - 1)/31 \in [0, 1]$ for the physical
-  power formula (§6.2) as well as indexing any Tier 2/3 override table.
+- **Passive calibration (PR-02 & refined in PR-05 `WO-05.4`, all installs).** The
+  `CalibrationWizard` guides the rider to step the console through its levels
+  (or record any $\ge 2$ distinct levels), pausing at each. The firmware records
+  the display-path wiper counts and the console level at each step in
+  `cal_level_table`. At runtime (`CalibrationWizard::fitLinearEndpoints`), the
+  firmware fits a straight line $\text{pot}(\ell) = a + b \cdot (\ell - 1)$ across
+  all recorded steps via Ordinary Least Squares (OLS) linear regression to
+  determine the bike's physical cam endpoints $\text{pot}_{\min} = a$ ($\ell = 1$)
+  and $\text{pot}_{\max} = a + 31\,b$ ($\ell = 32$), normalizing
+  $\tilde{p} = \text{clamp}\!\big((w - \text{pot}_{\min}) / (\text{pot}_{\max} - \text{pot}_{\min}), 0, 1\big)$
+  for the physical power formula (§6.2) and all downstream scale projections (§5.3).
 - **v2 — Motor-driven calibration (PR-07, active board).** A full-revolution sweep
   finds the click-offs and the cam extremes and records θ<sub>min</sub> and
   θ<sub>max</sub>, which bound the Override working range.
@@ -1366,23 +1400,27 @@ level,rpm_60,rpm_65,rpm_70,rpm_75,rpm_80,...
 32,380,420,465,515,570,...
 ```
 
-#### Tier 3 — Recalibration from Readings (DR-1 §4, condition 2.6)
+#### Tier 3 — Recalibration from Readings (DR-1 §4, condition 2.6; refined in PR-05 `WO-05.4`)
 
-The **recalibration UI** (PR-02) is the primary acquisition path:
+The **recalibration UI** (PR-02 / PR-05) is the primary acquisition path:
 
 1. The rider rides at a console level and a steady cadence.
-2. The rider enters the **level** and the **power** read from the console or
-   the Echelon app screen.
+2. The rider enters the **level** and the **power** read from the console,
+   the Echelon app screen, or external power-meter pedals.
 3. The firmware correlates the entry with its live readings over the same
    window (display-path wiper → `i`, cadence) and stores the point.
-4. Repeating this over a grid of level × cadence points builds the table; each
-   new point updates the table around it. The grid is **32 levels (1–32) × 31
-   cadence bins (0–150 RPM in 5 RPM steps)**, the correlation averaging window
-   is **5000 ms (5 s)** (`RecalibrationUI::AVERAGING_WINDOW_MS`), the update rule
-   is **nearest-bin cell replacement** (`applyToPowerTable` updates
-   `watts[level - 1][rpmBin]` and replaces any prior entry at the same level and
-   5 RPM bin), and the maximum number of stored points is **100**
-   (`RecalibrationUI::MAX_POINTS = 100`).
+4. Repeating this over reference points updates both:
+   - **Parametric Physics Model (`RecalibrationUI::applyToPhysicsParams`):** Solves
+     a closed-form least-squares linear regression for the multiplicative
+     eddy-current gain $A$ (`PowerPhysicsParams::a_scale`, clamped to
+     $[0.25\,A_0, 4.0\,A_0]$) across all stored points (`EchenonModule::syncPhysicsCalibration()`),
+     recalibrating the smooth continuous `Physics P3r` surface globally without
+     kinks.
+   - **Discrete $32 \times 31$ Table (`RecalibrationUI::applyToPowerTable`):** Updates
+     the **32 levels (1–32) × 31 cadence bins (0–150 RPM in 5 RPM steps)** grid
+     via nearest-bin cell replacement (`watts[level - 1][rpmBin]`) with a
+     **5000 ms (5 s)** correlation averaging window (`RecalibrationUI::AVERAGING_WINDOW_MS`)
+     and a maximum of **100** stored points (`RecalibrationUI::MAX_POINTS = 100`).
 
 A level entry that disagrees with the wiper-derived level is flagged, and can
 also be used to refine the wiper table (§6.3 passive calibration). The rider can
@@ -1464,10 +1502,10 @@ BLEManager behaviour relied on (from the `v0.0.12-dev.82` headers):
 |---|---|---|---|
 | Fitness Machine Feature | `0x2ACC` | Read | PR-05 (v1) |
 | Indoor Bike Data | `0x2AD2` | Notify @ 2 Hz | PR-05 (v1) |
-| Supported Resistance Level Range | `0x2AD6` | Read | v1 only if FTMS v1.0 permits it without Resistance Target Setting (PR-05 check); otherwise PR-08 (**v2**) |
-| Supported Power Range | `0x2AD8` | Read | v1 only if FTMS v1.0 permits it without Power Target Setting (PR-05 check); otherwise PR-08 (**v2**) |
-| Fitness Machine Control Point | `0x2AD9` | Write, Indicate | **v2** (PR-08). Omitted in v1 if FTMS v1.0 allows (PR-05 check) |
-| Fitness Machine Status | `0x2ADA` | Notify | **v2** (PR-08) |
+| Supported Resistance Level Range | `0x2AD6` | Read | **v2** (PR-08) — Omitted in v1 per FTMS v1.0 §3.1 Table 3.1 (`C` on Resistance Target Setting bit 2 = 0) |
+| Supported Power Range | `0x2AD8` | Read | **v2** (PR-08) — Omitted in v1 per FTMS v1.0 §3.1 Table 3.1 (`C` on Power Target Setting bit 3 = 0) |
+| Fitness Machine Control Point | `0x2AD9` | Write, Indicate | **v2** (PR-08) — Omitted in v1 per FTMS v1.0 §3.1 Table 3.1 (`C` on Target Setting Features = 0) |
+| Fitness Machine Status | `0x2ADA` | Notify | **v2** (PR-08) — Omitted in v1 per FTMS v1.0 §3.1 Table 3.1 (`C` on Control Point `0x2AD9` presence) |
 
 **Fitness Machine Feature (`0x2ACC`)** — Fitness Machine Features field
 (bytes 0–3) and Target Setting Features field (bytes 4–7):
@@ -1517,11 +1555,11 @@ Advertising is 31-byte legacy only (the framework sets
 
 The Control Point lets FTMS clients command resistance.
 
-- **v1 (PR-05):** no targets. If the FTMS v1.0 requirement table allows the
-  Control Point to be omitted when no target setting is supported, v1 omits
-  it. If it is required, v1 exposes it with `0x00` Request Control only and
-  answers every other opcode with `0x02` (Op Code Not Supported). PR-05's first
-  WO records the answer with a citation.
+- **v1 (PR-05):** no targets. Per Bluetooth SIG FTMS v1.0 §3.1 Table 3.1,
+  `Fitness Machine Control Point (0x2AD9)` is Conditional (`C`) on any Target
+  Setting Features bit being set in `0x2ACC` (bytes 4–7). Because v1 sets
+  `Target Setting Features = 0x00000000`, `0x2AD9`, `0x2AD6`, `0x2AD8`, and
+  `0x2ADA` are omitted in v1 (`FTMSData.h` citation).
 - **v2 (PR-08):** implements the target opcodes and Fitness Machine Status
   below.
 
@@ -1559,8 +1597,19 @@ Offset  Size     Field                  Flags bit  Resolution
 10      uint8    Heart Rate             9          1 BPM (only when HR is valid)
 ```
 
-Speed is derived from cadence: `speed = rpm × 10` (0.01 km/h units). It is a
-synthetic value; Strava uses it for estimated distance.
+Speed is derived from instantaneous mechanical power $P$ via first-principles
+flat-road cycling equilibrium ($75\text{ kg}$ rider + $9\text{ kg}$ bike =
+$84\text{ kg}$, $C_d A = 0.40\text{ m}^2$, $\rho = 1.225\text{ kg/m}^3$,
+$C_{rr} = 0.004$; [`docs/power-physics-model.md`](docs/power-physics-model.md)
+§8.3):
+
+$$0.245\,v^3 + 3.53\,v = P(\tilde{p}, \text{cad}) \quad (v\text{ in m/s}, \quad v_{\text{km/h}} = 3.6\,v)$$
+
+encoded in `0.01 km/h` units (`uint16_t(round(v_kph * 100.0f))`; `0` when
+$P \le 0\text{ W}$). Both FTMS `0x2AD2`, `/ws/echenon/live`, and the TCX
+exporter (§9.4) use this identical `PowerEngine::computeVirtualSpeedKph(P)`
+derivation so speed and integrated distance reflect real effort across all
+resistance levels.
 
 `FTMSServer` tracks subscriptions through `onSubscriptionChanged()` and, in
 `tick()`, notifies only when at least one client is subscribed and the stack
@@ -2061,39 +2110,57 @@ session to `UploadQueue` when the ride ends.
 | State | Trigger | Action |
 |---|---|---|
 | **Idle** | Boot / after hand-off | Waiting for activity |
-| **Recording** | Sustained cadence for `[PR-06: start threshold, seconds]` (auto) or "Start" (manual) | Buffering data points |
-| **Paused** | Cadence = 0 during recording | Keeps recording zero-power points |
-| **Ending** | No cadence for 180 s (auto) or "Stop" (manual) | Finalise the session |
+| **Recording** | Sustained cadence for **5 s** (`session_auto_start_s` default = 5 s, configurable `1–60 s` when `session_auto_start = true`) or "Start" (manual) | Buffering data points |
+| **Paused** | Cadence = 0 during auto-recording (coasting), or manual UI "Pause" | Coasting keeps recording 1 Hz zero-power points (`<Watts>0</Watts>`) to preserve Xert MPA continuity; manual UI "Pause" suspends point emission until "Resume" |
+| **Ending** | No cadence for 180 s (`session_inactivity_s` default = 180 s) or "Stop" / "End" (manual) | Finalise the session |
 | **Handed off** | Session finalised | Queued in `UploadQueue` |
 
-- Auto-start is the default. Rest intervals (cadence = 0) do not end the
-  session; zero-power points are recorded. The 3-minute auto-end timeout means
-  only a genuine dismount ends a session.
+- Auto-start (`session_auto_start = true`, `session_auto_start_s = 5`) is the
+  default, and can be toggled off in configuration so the rider starts and ends
+  sessions explicitly from the UI. Rest intervals during an active ride
+  (coasting with `cadence = 0`) do not end the session; zero-power points are
+  recorded continuously at 1 Hz. The 3-minute auto-end timeout (`180 s`) means
+  only a genuine dismount ends a session automatically, and trailing zero-cadence
+  points after the last pedal stroke are trimmed on finalisation.
 - **Ghost-session prevention.** A single stray pulse does not start a
-  session; auto-start needs sustained cadence.
-- **Wall-clock anchor.** Timestamps are `millis()` since session start. When
-  the first NTP-synced time is available, the start time is back-computed, so
-  sessions started before NTP sync still carry correct real-world times.
-- **Crash recovery.** An append-only, compressed checkpoint is written to
-  LittleFS every 30–60 s. After a reboot, an unfinished checkpoint is
-  finalised as a session.
-- **Trailing zeros.** Trailing zero-cadence points after the last pedal
-  stroke are trimmed before TCX generation.
+  session; auto-start needs sustained cadence (`> 0 RPM`) for `session_auto_start_s`
+  consecutive seconds.
+- **Wall-clock anchor.** Timestamps are tracked via wraparound-safe signed
+  `int32_t` `millis()` deltas since session start. When the first NTP-synced
+  time (`time(nullptr) > 1700000000`) is available — even if NTP syncs mid-ride
+  — the session's `start_epoch_s` is back-computed (`now_epoch - elapsed_s`), so
+  sessions started before NTP sync still carry accurate real-world UTC timestamps.
+- **Crash recovery.** An append-only binary checkpoint (`/ride_active.bin`) is
+  flushed to LittleFS every 30 s (`30` records = `240 B`). After a reboot, an
+  unfinished checkpoint with $\ge 60$ active records is recovered and finalised
+  as a completed session.
+- **Trailing zeros.** Trailing zero-cadence points after the last active pedal
+  stroke are trimmed before TCX generation (`trimTrailingZeros()`).
 
-### 9.3 Ride Data Buffer
+### 9.3 Ride Data Buffer (`2 Hz` Sampling $\to$ `1 Hz` Anti-Aliased Record)
+
+`SessionManager::tick()` samples the live telemetry at **2 Hz (every 500 ms)**
+in lockstep with `PowerEngine` and `FTMSServer`, and averages each consecutive
+pair of `500 ms` samples into a compact 8-byte **1 Hz `RideRecord`** in PSRAM:
 
 ```cpp
-struct __attribute__((packed)) RideDataPoint {
-    uint32_t timestamp_ms;   // millis() since session start
-    uint16_t cadence_rpm;    // 0.5 RPM resolution
-    int16_t  power_watts;    // instantaneous power
-    uint8_t  resistance;     // display level on the active scale (§5.3)
-    uint8_t  heart_rate;     // BPM (0 if unavailable)
-};  // 10 bytes per point
+struct __attribute__((packed)) RideRecord {
+    uint16_t elapsed_sec;         // Elapsed active/coasting seconds since session start (0..65535)
+    uint16_t power_watts;         // 2-sample (2 Hz) averaged mechanical power (0..2000 W)
+    uint8_t  cadence_rpm;         // 2-sample (2 Hz) averaged crank cadence (0..255 RPM)
+    uint8_t  heart_rate_bpm;      // Latest valid HR BPM (0 if unavailable / stale)
+    uint8_t  internal_resistance; // Canonical internal resistance i ∈ 0..254 (round(254 * pTilde), 255 = UNCALIBRATED; §5.3)
+    uint8_t  flags;               // Bit 0: hr_valid, Bit 1: resistance_calibrated, Bit 2: paused_marker
+};  // 8 bytes per 1 Hz record (static_assert(sizeof(RideRecord) == 8))
 ```
 
-Internal buffer rate: **2 Hz** (every 500 ms). At 2 Hz for 60 minutes:
-7 200 points × 10 bytes = **72 KB**. The 8 MB PSRAM holds over 100 hours.
+Storing `internal_resistance` (`0..254`, `255 = UNCALIBRATED`) rather than the
+quantized `1..32` console level preserves the fundamental normalized cam
+coordinate $\tilde{p} = i / 254.0$ at $8\times$ finer resolution, allowing
+lossless reconstruction of Echelon (`1..32`), Peloton (`0..100`), or continuous
+$\tilde{p}$ downstream. At 1 Hz (`8 bytes/s`) for 60 minutes:
+`3,600 records × 8 bytes = 28.8 KB` (`115.2 KB` for a 4-hour `14,400`-record
+ring buffer in the 8 MB OPI PSRAM).
 
 ### 9.4 TCX Generation
 
@@ -2107,8 +2174,8 @@ each stage fits the 15 s `FetchContext` budget:
 
 | Stage | Work | Completes when |
 |---|---|---|
-| 1. Generate | Stream 1 Hz TCX XML through gzip to `tcx.gz` on LittleFS | File closed; a stage cut short by `ctx.deadline.isExpired()` records its offset and resumes on the next fetch |
-| 2. Refresh | Refresh the Strava access token if it has expired | New tokens persisted (§10.4) |
+| 1. Generate | Stream 1 Hz TCX XML through gzip (`uzlib` / `miniz` deflate in a 4 KB heap scratch buffer) to `tcx.gz` on LittleFS | File closed; checks `ctx.deadline` periodically so long rides complete safely within the 15 s budget |
+| 2. Refresh | Refresh the Strava access token if it has expired (`now >= expires_at - 60`) | New tokens persisted (§10.4) |
 | 3. Upload | `POST /api/v3/uploads` with the `tcx.gz` file | Upload id stored |
 | 4. Poll | `GET /api/v3/uploads/{id}` until processed | Activity id received, or duplicate reported |
 
@@ -2117,14 +2184,17 @@ at that stage on the next fetch. DataManager supplies TWDT unsubscription,
 the deadline-bounded transport, health state with exponential backoff, and
 diagnostic visibility in the portal, over MCP and on the EventBus.
 
-TCX content: activity type, lap summary, per-trackpoint power, cadence and
-HR, and watts in the TPX extension namespace. The file is streamed (no DOM in
+TCX content: `Activity Sport="Biking"`, lap summary (`TotalTimeSeconds`,
+`DistanceMeters`, `Calories`, `AverageHeartRateBpm`, `MaximumHeartRateBpm`,
+`Cadence`), and per-trackpoint `Time`, cumulative `DistanceMeters` (integrated
+at 1 Hz from virtual road speed $v(P)$ via `PowerEngine::computeVirtualSpeedKph`),
+`HeartRateBpm` (when `hr_valid`), `Cadence`, and `<ns3:TPX>` containing both
+`<ns3:Speed>` (m/s) and `<ns3:Watts>`. The file is streamed (no DOM in
 memory). Size: about 550–720 KB uncompressed for an hour, about 30–50 KB as
 `tcx.gz`.
 
 **1 Hz trackpoints.** The TCX file contains exactly one `<Trackpoint>` per
-elapsed second, regardless of the internal 2 Hz buffer rate. Each trackpoint
-averages the two 2 Hz samples of its second.
+elapsed second, averaging the two 2 Hz samples of its second (§9.3).
 
 Xert computes second-by-second Maximal Power Available (MPA) with continuous
 differential equations over the power stream. Gaps, smoothing or sub-1 Hz data
@@ -2133,18 +2203,19 @@ distribution.
 
 **TCX output rules:**
 
-- One `<Trackpoint>` per elapsed second; no gaps, no skipped seconds
-- When coasting, `<Watts>0</Watts>` is written; the trackpoint is never
-  dropped and stale values are never repeated
-- Timestamps in ISO 8601 UTC
+- One `<Trackpoint>` per elapsed riding/coasting second; no gaps, no skipped seconds during active riding
+- When coasting (`cadence == 0`), `<ns3:Watts>0</ns3:Watts>` and `<ns3:Speed>0.00</ns3:Speed>` are written; the trackpoint is never dropped and stale values are never repeated
+- Timestamps in ISO 8601 UTC (`YYYY-MM-DDTHH:MM:SSZ`)
 
 ```xml
 <Trackpoint>
   <Time>2026-09-17T21:00:00Z</Time>
+  <DistanceMeters>142.50</DistanceMeters>
   <HeartRateBpm><Value>145</Value></HeartRateBpm>
   <Cadence>90</Cadence>
   <Extensions>
     <ns3:TPX>
+      <ns3:Speed>8.67</ns3:Speed>
       <ns3:Watts>265</ns3:Watts>
     </ns3:TPX>
   </Extensions>
