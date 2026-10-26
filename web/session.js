@@ -38,8 +38,8 @@
             '  margin-bottom: 1rem;',
             '}',
             '.ech-sess-stat {',
-            '  background: var(--bg-input, #0f172a);',
-            '  border: 1px solid var(--border, #334155);',
+            '  background: var(--bg-input);',
+            '  border: 1px solid var(--border);',
             '  border-radius: 0.5rem;',
             '  padding: 0.75rem;',
             '  text-align: center;',
@@ -48,7 +48,7 @@
             '  font-size: 0.7rem;',
             '  text-transform: uppercase;',
             '  letter-spacing: 0.06em;',
-            '  color: var(--text-muted, #94a3b8);',
+            '  color: var(--text-muted);',
             '  margin-bottom: 0.25rem;',
             '}',
             '.ech-sess-stat-val {',
@@ -69,10 +69,11 @@
             '  font-size: 0.75rem;',
             '  font-weight: 700;',
             '}',
-            '.ech-sess-badge-idle { background: rgba(148,163,184,0.15); color: #94a3b8; }',
-            '.ech-sess-badge-active { background: rgba(34,197,94,0.15); color: #22c55e; }',
-            '.ech-sess-badge-paused { background: rgba(245,158,11,0.15); color: #f59e0b; }',
-            '.ech-sess-badge-ended { background: rgba(59,130,246,0.15); color: #3b82f6; }',
+            /* TODO: badge alpha needs color-mix() */
+            '.ech-sess-badge-idle { background: rgba(148,163,184,0.15); color: var(--text-muted); }',
+            '.ech-sess-badge-active { background: rgba(34,197,94,0.15); color: var(--success); }',
+            '.ech-sess-badge-paused { background: rgba(245,158,11,0.15); color: var(--warning); }',
+            '.ech-sess-badge-ended { background: rgba(59,130,246,0.15); color: var(--primary); }',
             '.ech-sess-table {',
             '  width: 100%;',
             '  border-collapse: collapse;',
@@ -80,7 +81,7 @@
             '}',
             '.ech-sess-table th, .ech-sess-table td {',
             '  padding: 0.5rem;',
-            '  border-bottom: 1px solid var(--border, #334155);',
+            '  border-bottom: 1px solid var(--border);',
             '  text-align: left;',
             '}',
             '.ech-sess-actions {',
@@ -148,7 +149,7 @@
             '    <button id="ech-btn-end" class="btn btn-primary" type="button">End &amp; Save</button>',
             '    <button id="ech-btn-discard" class="btn btn-danger" type="button">Discard</button>',
             '  </div>',
-            '  <div id="ech-sess-msg" style="font-size:0.85rem;color:var(--text-muted,#94a3b8);min-height:1.2em;"></div>',
+            '  <div id="ech-sess-msg" style="font-size:0.85rem;color:var(--text-muted);min-height:1.2em;"></div>',
             '</div>',
             '<div class="card">',
             '  <h2>Session Settings</h2>',
@@ -158,11 +159,11 @@
             '      <span>Auto-Start on Cadence</span>',
             '    </label>',
             '    <div>',
-            '      <label for="ech-cfg-delay" style="display:block;font-size:0.75rem;color:var(--text-muted,#94a3b8);">Auto-Start Delay (s)</label>',
+            '      <label for="ech-cfg-delay" style="display:block;font-size:0.75rem;color:var(--text-muted);">Auto-Start Delay (s)</label>',
             '      <input type="number" id="ech-cfg-delay" min="1" max="60" value="3" style="width:5rem;">',
             '    </div>',
             '    <div>',
-            '      <label for="ech-cfg-timeout" style="display:block;font-size:0.75rem;color:var(--text-muted,#94a3b8);">Pause Timeout (s)</label>',
+            '      <label for="ech-cfg-timeout" style="display:block;font-size:0.75rem;color:var(--text-muted);">Pause Timeout (s)</label>',
             '      <input type="number" id="ech-cfg-timeout" min="30" max="3600" value="300" style="width:6rem;">',
             '    </div>',
             '    <button id="ech-btn-save-cfg" class="btn btn-secondary" type="button">Save Settings</button>',
@@ -187,7 +188,7 @@
             '        </tr>',
             '      </thead>',
             '      <tbody id="ech-sess-history-body">',
-            '        <tr><td colspan="7" style="text-align:center;color:var(--text-muted,#94a3b8);">Loading...</td></tr>',
+            '        <tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Loading...</td></tr>',
             '      </tbody>',
             '    </table>',
             '  </div>',
@@ -305,7 +306,7 @@
         if (!tbody) return;
         var rides = (data && data.rides) ? data.rides : [];
         if (rides.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted,#94a3b8);">No stored rides</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">No stored rides</td></tr>';
             return;
         }
         var rows = [];

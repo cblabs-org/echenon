@@ -1,3 +1,6 @@
+/// @file StravaUploader.cpp
+/// @brief Strava v3 API OAuth 2.0 BYOA uploader with token rotation and CSRF protection.
+
 #include "echenon/StravaUploader.h"
 
 #include <ArduinoJson.h>

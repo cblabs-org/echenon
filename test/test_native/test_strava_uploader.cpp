@@ -1,3 +1,6 @@
+/// @file test_strava_uploader.cpp
+/// @brief Native unit tests for StravaUploader OAuth flows, token refresh, and upload handling.
+
 #include <gtest/gtest.h>
 
 #include "lib/Redactor/Redactor.cpp"

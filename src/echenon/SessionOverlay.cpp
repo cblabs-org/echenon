@@ -1,3 +1,6 @@
+/// @file SessionOverlay.cpp
+/// @brief Session and upload REST API endpoints, portal tab registration, and IWebContributor wiring.
+
 #include "echenon/SessionOverlay.h"
 #include "echenon/LiveFeed.h"
 #include "interfaces/ITabRegistry.hpp"

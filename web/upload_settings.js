@@ -24,7 +24,7 @@
             '    <h2 style="margin:0;">Strava Integration</h2>',
             '    <span id="ech-strava-badge" style="font-weight:700;font-size:0.85rem;">Checking...</span>',
             '  </div>',
-            '  <div id="ech-strava-details" style="font-size:0.85rem;color:var(--text-muted,#94a3b8);margin-bottom:1rem;"></div>',
+            '  <div id="ech-strava-details" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;"></div>',
             '  <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">',
             '    <button id="ech-btn-strava-auth" class="btn btn-primary" type="button">Authorize with Strava</button>',
             '    <button id="ech-btn-strava-disconnect" class="btn btn-danger" type="button">Disconnect Strava</button>',
@@ -37,7 +37,7 @@
             '</div>',
             '<div class="card">',
             '  <h2>Strava API Credentials</h2>',
-            '  <p style="font-size:0.8rem;color:var(--text-muted,#94a3b8);margin-top:0;">',
+            '  <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0;">',
             '    Enter your Strava API Application Client ID and Client Secret. The secret is stored encrypted in NVS and is write-only.',
             '  </p>',
             '  <div style="display:grid;gap:0.75rem;max-width:420px;">',
@@ -53,7 +53,7 @@
             '      <button id="ech-btn-strava-save" class="btn btn-primary" type="button">Save Credentials</button>',
             '    </div>',
             '  </div>',
-            '  <div id="ech-strava-msg" style="font-size:0.85rem;color:var(--text-muted,#94a3b8);margin-top:0.75rem;min-height:1.2em;"></div>',
+            '  <div id="ech-strava-msg" style="font-size:0.85rem;color:var(--text-muted);margin-top:0.75rem;min-height:1.2em;"></div>',
             '</div>'
         ].join('\n');
 
@@ -78,13 +78,13 @@
         if (badge) {
             if (data.authenticated) {
                 badge.textContent = 'CONNECTED';
-                badge.style.color = '#22c55e';
+                badge.style.color = 'var(--success)';
             } else if (data.configured) {
                 badge.textContent = 'CREDENTIALS SAVED (NOT AUTHORIZED)';
-                badge.style.color = '#f59e0b';
+                badge.style.color = 'var(--warning)';
             } else {
                 badge.textContent = 'NOT CONFIGURED';
-                badge.style.color = '#94a3b8';
+                badge.style.color = 'var(--text-muted)';
             }
         }
 

@@ -1,3 +1,6 @@
+/// @file test_tcx_generator.cpp
+/// @brief Native unit tests for TCX/TCX.gz generation, gzip round-trip, and virtual speed.
+
 #include <gtest/gtest.h>
 
 #include "echenon/PowerEngine.h"

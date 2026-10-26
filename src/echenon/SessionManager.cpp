@@ -1,3 +1,6 @@
+/// @file SessionManager.cpp
+/// @brief Session lifecycle state machine, 2 Hz telemetry sampling, and auto-start/pause logic.
+
 #include "echenon/SessionManager.h"
 
 #ifdef UNIT_TEST

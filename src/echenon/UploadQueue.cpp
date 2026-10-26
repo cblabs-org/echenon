@@ -1,3 +1,6 @@
+/// @file UploadQueue.cpp
+/// @brief Split-stage background upload queue state machine and LittleFS job persistence.
+
 #include "echenon/UploadQueue.h"
 
 #include <ArduinoJson.h>

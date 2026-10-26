@@ -238,6 +238,8 @@ private:
     bool                   _autoUploadEnabled = true;
     uint32_t               _updateIntervalMs  = DEFAULT_UPDATE_INTERVAL_MS;
 
+    // GRAVE-05 deviation: DI callbacks set once at boot, never reallocated.
+    // Framework's own DataManager uses the same pattern for IDataSource injection.
     NowEpochFn    _nowEpochFn;
     NtpSyncedFn   _ntpSyncedFn;
     TcxGenerateFn _tcxGeneratorFn;

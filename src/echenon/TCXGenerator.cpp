@@ -1,3 +1,6 @@
+/// @file TCXGenerator.cpp
+/// @brief Streaming TCX/TCX.gz generation with gzip compression, CRC32, and virtual speed integration.
+
 #include "echenon/TCXGenerator.h"
 
 #include <algorithm>

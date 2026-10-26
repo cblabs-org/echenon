@@ -1,3 +1,6 @@
+/// @file test_upload_queue.cpp
+/// @brief Native unit tests for UploadQueue state machine, job persistence, and backoff logic.
+
 #include <gtest/gtest.h>
 
 #include "echenon/IUploader.h"

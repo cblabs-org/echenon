@@ -1,3 +1,6 @@
+/// @file test_session_manager.cpp
+/// @brief Native unit and integration tests for SessionManager lifecycle and telemetry sampling.
+
 #include <gtest/gtest.h>
 
 #include "modules/EventBus/EventBus.hpp"

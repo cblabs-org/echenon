@@ -290,6 +290,8 @@ private:
     IHttpClient*        _httpClient     = nullptr;
     IRideFileSystem*    _fs             = nullptr;
 
+    // GRAVE-05 deviation: DI callbacks set once at boot, never reallocated.
+    // Framework's own DataManager uses the same pattern for IDataSource injection.
     SecretRegistrarFn   _secretRegistrar;
     MetadataSaveFn      _metadataSaveFn;
     RandomU32Fn         _randomU32Fn;

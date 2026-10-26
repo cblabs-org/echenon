@@ -1,3 +1,6 @@
+/// @file RideStore.cpp
+/// @brief PSRAM-backed ride sample storage and LittleFS crash recovery implementation.
+
 #include "echenon/RideStore.h"
 
 #include <esp_heap_caps.h>

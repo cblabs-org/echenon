@@ -148,6 +148,8 @@ private:
     RideStore&               _rideStore;
     EventBus*                _eventBus = nullptr;
     bool                     _subscribedHr = false;
+    // GRAVE-05 deviation: DI callback set once at boot, never reallocated.
+    // Framework's own DataManager uses the same pattern for IDataSource injection.
     SessionCompletedCallback _onSessionCompleted;
 
     // Configuration ("echenon_session")
