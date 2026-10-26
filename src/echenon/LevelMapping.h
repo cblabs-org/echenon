@@ -6,17 +6,29 @@
 
 namespace LevelMapping {
 
-    // Constants — Phase 3 bench-verified fit (C03, R²=0.9998)
-    // Supersedes B03 fit (39.1, 97.0) per docs/measurements/phase3/C03
-    constexpr float B03_SLOPE = 37.26f;
-    constexpr float B03_INTERCEPT = 120.0f;
-    constexpr uint16_t WORKING_RANGE_MIN = 157;   // pot @ level 1
-    constexpr uint16_t WORKING_RANGE_MAX = 1313;  // pot @ level 32
+    // Constants — C07 320-point sweep model (docs/power-physics-model.md §1)
+    constexpr uint16_t WORKING_RANGE_MIN = 171;   // pot @ level 1
+    constexpr uint16_t WORKING_RANGE_MAX = 1333;  // pot @ level 32
+    constexpr float B03_SLOPE = (1333.0f - 171.0f) / 31.0f; // 37.483871f
+    constexpr float B03_INTERCEPT = 171.0f - B03_SLOPE;     // 133.516129f
+
+    /// Wiper (float) → normalized cam position p̃ ∈ [0.0, 1.0]
+    inline float wiperToNormalized(
+        float wiper,
+        float potMin = static_cast<float>(WORKING_RANGE_MIN),
+        float potMax = static_cast<float>(WORKING_RANGE_MAX)) {
+        if (!std::isfinite(wiper) || !std::isfinite(potMin) ||
+            !std::isfinite(potMax) || potMax <= potMin) {
+            return 0.0f;
+        }
+        return std::clamp((wiper - potMin) / (potMax - potMin), 0.0f, 1.0f);
+    }
 
     // Wiper → continuous level (float, clamped 1.0–32.0)
-    // Uses Phase 3 fit: wiper = 37.26 × level + 120
-    // level = (wiper - 120) / 37.26, clamped to [1, 32]
-    float wiperToLevel(uint16_t wiper);
+    float wiperToLevel(
+        float wiper,
+        float potMin = static_cast<float>(WORKING_RANGE_MIN),
+        float potMax = static_cast<float>(WORKING_RANGE_MAX));
 
     // Continuous level → canonical internal scale i ∈ 0…255
     // i = round((level - 1) × 255 / 31)
@@ -31,10 +43,16 @@ namespace LevelMapping {
     uint8_t echelonToInternal(uint8_t echelonLevel);
 
     // Convenience: wiper → Echelon level
-    uint8_t wiperToEchelon(uint16_t wiper);
+    uint8_t wiperToEchelon(
+        float wiper,
+        float potMin = static_cast<float>(WORKING_RANGE_MIN),
+        float potMax = static_cast<float>(WORKING_RANGE_MAX));
 
     // Convenience: wiper → internal scale
-    uint8_t wiperToInternal(uint16_t wiper);
+    uint8_t wiperToInternal(
+        float wiper,
+        float potMin = static_cast<float>(WORKING_RANGE_MIN),
+        float potMax = static_cast<float>(WORKING_RANGE_MAX));
 
     // =========================================================================
     // WO-05.1: Unified BikeMetrics — Normalized cam/wiper position helpers

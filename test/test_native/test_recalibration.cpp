@@ -7,6 +7,7 @@
 #include "echenon/CadenceSensor.h"
 #include "echenon/LevelMapping.h"
 #include "echenon/PowerTable.h"
+#include "echenon/PowerEngine.h"
 #include <cmath>
 
 using namespace echenon;
@@ -218,4 +219,82 @@ TEST(RecalibrationUITest, ApplyToPowerTable) {
     EXPECT_EQ(table.tier, PowerTableTier::RECALIBRATED);
     EXPECT_EQ(table.watts[9][16], 175);
     EXPECT_EQ(table.watts[19][20], 320);
+}
+
+// =============================================================================
+// WO-05.4 (9c & 9e): OLS Endpoint Regression & Physics Parameter Scale Fitting
+// =============================================================================
+
+TEST(CalibrationWizardTest, OlsLinearEndpointRegression) {
+    CalibrationWizard wizard;
+    // Before posDone, endpoints default to C07 [171, 1333]
+    EXPECT_FLOAT_EQ(wizard.getPotMin(), 171.0f);
+    EXPECT_FLOAT_EQ(wizard.getPotMax(), 1333.0f);
+    float minOut = 0.0f, maxOut = 0.0f;
+    EXPECT_FALSE(wizard.fitLinearEndpoints(minOut, maxOut));
+    EXPECT_FLOAT_EQ(minOut, 171.0f);
+    EXPECT_FLOAT_EQ(maxOut, 1333.0f);
+
+    // Record 32 levels along a line: wiper(L) = 160 + 38 * L (so L1 = 198, L32 = 1376)
+    // Add alternating ±2 count motor-stop jitter that cancels out in OLS
+    wizard.start();
+    for (uint8_t lvl = 1; lvl <= 32; ++lvl) {
+        int jitter = (lvl % 2 == 0) ? 2 : -2;
+        if (lvl == 1 || lvl == 32) jitter = 0;
+        uint16_t w = static_cast<uint16_t>(160 + 38 * static_cast<int>(lvl) + jitter);
+        EXPECT_TRUE(wizard.recordLevel(lvl, w));
+    }
+    EXPECT_TRUE(wizard.isPosDone());
+    EXPECT_TRUE(wizard.fitLinearEndpoints(minOut, maxOut));
+    EXPECT_NEAR(wizard.getPotMin(), 198.0f, 1.0f);
+    EXPECT_NEAR(wizard.getPotMax(), 1376.0f, 1.0f);
+
+    // Verify normalized and continuous level helpers use fitted endpoints
+    EXPECT_NEAR(wizard.wiperToNormalized(wizard.getPotMin()), 0.0f, 1e-4f);
+    EXPECT_NEAR(wizard.wiperToNormalized(wizard.getPotMax()), 1.0f, 1e-4f);
+    EXPECT_NEAR(wizard.wiperToLevel(wizard.getPotMin()), 1.0f, 1e-3f);
+    EXPECT_NEAR(wizard.wiperToLevel(wizard.getPotMax()), 32.0f, 1e-3f);
+    EXPECT_EQ(wizard.wiperToEchelon(wizard.getPotMin()), 1u);
+    EXPECT_EQ(wizard.wiperToEchelon(wizard.getPotMax()), 32u);
+
+    // Reset restores C07 defaults
+    wizard.reset();
+    EXPECT_FLOAT_EQ(wizard.getPotMin(), 171.0f);
+    EXPECT_FLOAT_EQ(wizard.getPotMax(), 1333.0f);
+}
+
+TEST(RecalibrationUITest, ApplyToPhysicsParamsScalesEddyCoefficient) {
+    RecalibrationUI ui;
+    PowerPhysicsParams params;
+
+    // Empty points -> returns false and restores default PowerEngine::A
+    params.a_scale = 0.01f;
+    EXPECT_FALSE(ui.applyToPhysicsParams(params));
+    EXPECT_FLOAT_EQ(params.a_scale, PowerEngine::A);
+
+    // Simulate a bike whose eddy-current magnet strength is +15% higher than baseline A
+    const float scaleFactor = 1.15f;
+    PowerPhysicsParams targetParams;
+    targetParams.a_scale = PowerEngine::A * scaleFactor;
+
+    // Add 3 calibration points at L16/80rpm, L20/85rpm, L24/90rpm
+    struct TestPt { uint8_t lvl; float rpm; };
+    TestPt testPts[] = {{16, 80.0f}, {20, 85.0f}, {24, 90.0f}};
+    uint32_t ts = 1000;
+    for (const auto& tp : testPts) {
+        float pTilde = static_cast<float>(tp.lvl - 1) / 31.0f;
+        uint16_t wiper = static_cast<uint16_t>(std::round(171.0f + pTilde * (1333.0f - 171.0f)));
+        float measuredWatts = PowerEngine::computePowerFromNormalized(pTilde, tp.rpm, targetParams);
+        EXPECT_TRUE(ui.addPoint(tp.lvl, measuredWatts, 0, tp.rpm, wiper, ts));
+        ts += 1000;
+    }
+
+    PowerPhysicsParams fittedParams;
+    EXPECT_TRUE(ui.applyToPhysicsParams(fittedParams));
+    EXPECT_NEAR(fittedParams.a_scale, PowerEngine::A * scaleFactor, 2e-5f);
+
+    // Verify the entire continuous Physics P3r surface scales smoothly
+    float pL20 = PowerEngine::computePowerPhysics(20.0f, 85.0f, fittedParams);
+    float pL20Expected = PowerEngine::computePowerPhysics(20.0f, 85.0f, targetParams);
+    EXPECT_NEAR(pL20, pL20Expected, 0.5f);
 }

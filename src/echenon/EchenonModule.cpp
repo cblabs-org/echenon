@@ -76,10 +76,13 @@ void EchenonModule::tick(uint32_t currentMillis) {
     static bool s_powerStarted = false;
     if (!s_powerStarted) {
         _powerEngine.loadDefault();
+        syncPhysicsCalibration();
         s_powerStarted = true;
     }
-    float continuousLevel = LevelMapping::wiperToLevel(_resistanceSensor.getFilteredWiper());
-    _powerEngine.tick(continuousLevel, _cadenceSensor.getRPM());
+    const float wiperFloat = _resistanceSensor.getFilteredWiperFloat();
+    const float pTilde = _calibrationWizard.wiperToNormalized(wiperFloat);
+    const float cadenceRpm = _cadenceSensor.getRPM();
+    _powerEngine.tickFromNormalized(pTilde, cadenceRpm);
 
     // Runaway detection
     if (_runawayDetector.tick(currentMillis, _resistanceSensor.getFilteredWiper())) {
@@ -92,7 +95,8 @@ void EchenonModule::tick(uint32_t currentMillis) {
 
     // Compute Peloton resistance and virtual speed
     uint8_t pelotonRes = _calibrationWizard.isPosDone()
-        ? echenon::PowerEngine::computePelotonResistance(continuousLevel)
+        ? echenon::PowerEngine::computePelotonResistanceFromNormalized(
+              pTilde, _powerEngine.getPhysicsParams())
         : 0;
     float speedKph = echenon::PowerEngine::computeVirtualSpeedKph(_powerEngine.getLastPower());
 
@@ -108,18 +112,18 @@ void EchenonModule::tick(uint32_t currentMillis) {
     }
     if (_ftmsServer) {
         uint8_t ftmsInternalRes = _calibrationWizard.isPosDone()
-            ? LevelMapping::normalizedToInternal(
-                  LevelMapping::echelonContinuousToNormalized(continuousLevel))
+            ? LevelMapping::normalizedToInternal(pTilde)
             : LevelMapping::INTERNAL_RESISTANCE_UNCALIBRATED;
-        _ftmsServer->updateTelemetry(speedKph, _cadenceSensor.getRPM(),
+        int16_t ftmsPowerWatts = static_cast<int16_t>(std::round(_powerEngine.getLastPower()));
+        _ftmsServer->updateTelemetry(speedKph, cadenceRpm,
                                       ftmsInternalRes,
-                                      static_cast<int16_t>(_powerEngine.getLastPower()));
+                                      ftmsPowerWatts);
     }
 #endif
 
 #ifndef UNIT_TEST
     _liveFeed.tick(currentMillis,
-                   _cadenceSensor.getRPM(),
+                   cadenceRpm,
                    getEchelonLevel(),
                    getInternalLevel(),
                    _powerEngine.getLastPower(),
@@ -177,6 +181,14 @@ int EchenonModule::getSchemaVersion() const {
     return 1;
 }
 
+void EchenonModule::syncPhysicsCalibration() {
+    PowerPhysicsParams params = _powerEngine.getPhysicsParams();
+    params.pot_min = _calibrationWizard.getPotMin();
+    params.pot_max = _calibrationWizard.getPotMax();
+    _recalibrationUI.applyToPhysicsParams(params);
+    _powerEngine.setPhysicsParams(params);
+}
+
 void EchenonModule::applyConfig(const JsonObject& config) {
     if (config["cal_pos_done"].is<bool>()) {
         _calibrationWizard.setPosDone(config["cal_pos_done"].as<bool>());
@@ -206,6 +218,7 @@ void EchenonModule::applyConfig(const JsonObject& config) {
             _recalibrationUI.addPoint(lvl, pwr, internal, cad, wiper, ts);
         }
     }
+    syncPhysicsCalibration();
 #ifdef WITH_SIGNAL_LOGGER
     _signalLogger.applyConfig(config);
 #endif
@@ -236,6 +249,7 @@ void EchenonModule::serializeConfig(JsonObject& config) const {
 void EchenonModule::resetConfig() {
     _calibrationWizard.reset();
     _recalibrationUI.reset();
+    syncPhysicsCalibration();
     _runawayDetector.setTimeoutSeconds(RunawayDetector::DEFAULT_TIMEOUT_S);
 #ifdef WITH_SIGNAL_LOGGER
     _signalLogger.resetConfig();
@@ -382,6 +396,9 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
         }
         uint8_t level = inDoc["level"].as<uint8_t>();
         bool ok = _calibrationWizard.recordLevel(level);
+        if (ok) {
+            syncPhysicsCalibration();
+        }
         JsonDocument outDoc;
         outDoc["success"] = ok;
         outDoc["step"] = _calibrationWizard.getCurrentStep();
@@ -423,10 +440,7 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
         float power = inDoc["power"].as<float>();
         bool ok = _recalibrationUI.addPoint(level, power);
         if (ok) {
-            // Automatic power table update: update nearest cell in PowerEngine
-            PowerTable tbl = _powerEngine.getTable();
-            _recalibrationUI.applyToPowerTable(tbl);
-            _powerEngine.setTable(tbl);
+            syncPhysicsCalibration();
         }
         JsonDocument outDoc;
         outDoc["success"] = ok;
@@ -462,6 +476,7 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
     server.on("/api/echenon/recalibration/reset", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) {
         (void)request;
         _recalibrationUI.reset();
+        syncPhysicsCalibration();
         return response->send(200, "application/json", "{\"success\":true,\"count\":0}");
     });
 

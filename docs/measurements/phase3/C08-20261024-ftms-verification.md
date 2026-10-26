@@ -306,6 +306,16 @@ Across tags `v0.3.0-dev.19` through `v0.3.0-dev.22`, live physical riding on the
 - In **Xert**, pairing `Echenon` as a Power / Cadence / Heart Rate source with *Trainer Control* unchecked works natively with `FTMS_STUB_CONTROL_POINT = 0`.
 - Compile-time fallback `#if FTMS_STUB_CONTROL_POINT` in `FTMSServer.cpp` includes full `NimBLECharacteristicCallbacks` write/indicate handling (`0x00` → `[0x80, 0x00, 0x01]`, other opcodes → `[0x80, req, 0x02]`).
 
+### 3.4 Fundamental-First Sensor-to-Telemetry Pipeline & Formula-Parameter Calibration
+
+- **Unrounded Continuous State Propagation (`ResistanceSensor`, `LevelMapping`, `EchenonModule`):**
+  - `ResistanceSensor::getFilteredWiperFloat()` exposes the unrounded EMA float wiper directly to `CalibrationWizard::wiperToNormalized(wiperFloat)` (`p̃ ∈ [0.0, 1.0]`).
+  - `LevelMapping` baseline constants unified on the `C07` 320-point sweep (`WORKING_RANGE_MIN = 171`, `WORKING_RANGE_MAX = 1333`), with `wiperToEchelon` rounding directly from `wiperToLevel` (eliminating double integer quantization through `0..255`).
+  - `EchenonModule::tick()` evaluates `_powerEngine.tickFromNormalized(pTilde, cadenceRpm)` and derives Peloton resistance, virtual speed, FTMS internal resistance, and rounded `int16_t` FTMS watts (`std::round`) directly from `(pTilde, _powerEngine.getLastPower())`.
+- **OLS Linear Endpoint Regression & Eddy-Current Scale Fitting (`CalibrationWizard`, `RecalibrationUI`):**
+  - `CalibrationWizard::fitLinearEndpoints(outPotMin, outPotMax)` fits OLS linear endpoints across recorded `_table` levels (`> 0`) when `_posDone` is `true`, smoothing out `±2–4 ADC count` bang-bang motor stop jitter.
+  - `RecalibrationUI::applyToPhysicsParams(params)` fits a least-squares multiplicative scale factor on `params.a_scale` (clamped to `[0.25·A, 4.0·A]`) so rider recalibration points smoothly scale the continuous `Physics P3r` surface rather than reverting to a sparse lookup table.
+
 ---
 
 ## Step 4: GO / NO-GO Verdict
@@ -313,7 +323,7 @@ Across tags `v0.3.0-dev.19` through `v0.3.0-dev.22`, live physical riding on the
 | Criterion | Status |
 |-----------|--------|
 | Boot clean with both services (`0x180D` + `0x1826`) registered (`v0.3.0-dev.22`) | ✅ PASS |
-| Native unit test suite (`pio test -e native`, **162/162** tests passing) | ✅ PASS |
+| Native unit test suite (`pio test -e native`, **167/167** tests passing) | ✅ PASS |
 | ADV payload (`20/31` B) includes `0x1826` + `0x180D` + Appearance `0x0485` + FTMS Service Data `01 20 00`, no budget faults | ✅ PASS |
 | `0x2ACC` on-device BLE GATT read (`82 44 00 00 00 00 00 00`) | ✅ PASS |
 | `0x2AD2` on-device BLE notifications at 2 Hz (`500.04 ms` mean, 11 bytes, `Flags=0x0264`) | ✅ PASS |

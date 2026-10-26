@@ -83,6 +83,19 @@ public:
     // Load the compiled-in default table and enable Tier 1 Physics P3r evaluation
     void loadDefault();
 
+    // Evaluate first-principles Physics P3r model directly from normalized cam position p̃ ∈ [0.0, 1.0]
+    static float computePowerFromNormalized(
+        float p_tilde,
+        float cadence_rpm,
+        const PowerPhysicsParams& params);
+
+    template <typename Params = PowerPhysicsParams>
+    static float computePowerFromNormalized(
+        float p_tilde,
+        float cadence_rpm) {
+        return computePowerFromNormalized(p_tilde, cadence_rpm, Params{});
+    }
+
     // Evaluate first-principles Physics P3r model from continuous level in [1.0, 32.0]
     static float computePowerPhysics(
         float continuous_level,
@@ -100,6 +113,9 @@ public:
     // Compute power using bilinear interpolation over the active 32x31 PowerTable
     float computePowerTable(float level, float cadenceRPM) const;
 
+    // Primary power calculation entry point from normalized cam position p̃ ∈ [0.0, 1.0]
+    float computePowerFromNormalized(float p_tilde, float cadenceRPM) const;
+
     // Primary power calculation entry point:
     // - Tier 1 (DEFAULT "ex3-default"): evaluates continuous Physics P3r formula
     // - Tier 2/3 (SELECTED / RECALIBRATED or custom table): bilinear interpolation on _table
@@ -114,6 +130,7 @@ public:
 
     // Tick: compute power from current sensor readings
     void tick(float level, float cadenceRPM);
+    void tickFromNormalized(float p_tilde, float cadenceRPM);
 
 private:
     PowerTable _table;

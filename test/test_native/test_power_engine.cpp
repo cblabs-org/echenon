@@ -537,7 +537,65 @@ TEST(PowerEngineTest, PelotonToNormalized_BoundaryValues) {
     EXPECT_GT(p100, 0.8f);
     EXPECT_LE(p100, 1.0f);
 
-    // Negative clamps to 0
+    //Negative clamps to 0
     float p_neg = PowerEngine::pelotonToNormalized(-5.0f);
     EXPECT_EQ(p_neg, p0); // Same as Peloton 0
+}
+
+// =============================================================================
+// WO-05.4 (9d): Direct Normalized Power Evaluation
+// =============================================================================
+
+TEST(PowerEngineTest, ComputePowerFromNormalized_MatchesPhysicsAndPot) {
+    // At p_tilde = 0.0 -> matches Level 1.0 and pot_min (171.0)
+    EXPECT_FLOAT_EQ(
+        PowerEngine::computePowerFromNormalized(0.0f, 80.0f),
+        PowerEngine::computePowerPhysics(1.0f, 80.0f));
+    EXPECT_FLOAT_EQ(
+        PowerEngine::computePowerFromNormalized(0.0f, 80.0f),
+        PowerEngine::computePowerFromPot(171.0f, 80.0f));
+
+    // At p_tilde = 1.0 -> matches Level 32.0 and pot_max (1333.0)
+    EXPECT_FLOAT_EQ(
+        PowerEngine::computePowerFromNormalized(1.0f, 90.0f),
+        PowerEngine::computePowerPhysics(32.0f, 90.0f));
+
+    // At p_tilde = 0.5 -> matches Level 16.5 and midpoint pot (752.0)
+    EXPECT_NEAR(
+        PowerEngine::computePowerFromNormalized(0.5f, 85.0f),
+        PowerEngine::computePowerPhysics(16.5f, 85.0f),
+        1e-4f);
+
+    // Edge cases: zero cadence, negative cadence, NaN
+    EXPECT_FLOAT_EQ(PowerEngine::computePowerFromNormalized(0.5f, 0.0f), 0.0f);
+    EXPECT_FLOAT_EQ(PowerEngine::computePowerFromNormalized(0.5f, -5.0f), 0.0f);
+    EXPECT_FLOAT_EQ(PowerEngine::computePowerFromNormalized(NAN, 80.0f), 0.0f);
+    EXPECT_FLOAT_EQ(PowerEngine::computePowerFromNormalized(0.5f, NAN), 0.0f);
+}
+
+TEST(PowerEngineTest, TickFromNormalized_PhysicsAndTableFallback) {
+    PowerEngine engine;
+    engine.loadDefault();
+
+    // Default physics model evaluation
+    engine.tickFromNormalized(15.0f / 31.0f, 80.0f); // Level 16.0
+    EXPECT_NEAR(engine.getLastPower(), 80.56f, 0.05f);
+
+    // Custom physics params (scaled a_scale)
+    PowerPhysicsParams customParams = engine.getPhysicsParams();
+    customParams.a_scale *= 1.15f;
+    engine.setPhysicsParams(customParams);
+    engine.tickFromNormalized(15.0f / 31.0f, 80.0f);
+    EXPECT_GT(engine.getLastPower(), 80.56f);
+
+    // Custom CSV table fallback via computePowerFromNormalized
+    PowerTable customTable;
+    customTable.clear();
+    customTable.tier = PowerTableTier::SELECTED;
+    std::strncpy(customTable.id, "custom-norm", sizeof(customTable.id) - 1);
+    customTable.watts[15][16] = 210; // Level 16 (idx 15), 80 RPM (idx 16)
+    engine.setTable(customTable);
+
+    engine.tickFromNormalized(15.0f / 31.0f, 80.0f);
+    EXPECT_NEAR(engine.getLastPower(), 210.0f, 0.01f);
 }

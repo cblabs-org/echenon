@@ -26,6 +26,7 @@ public:
     void tick(uint32_t currentMillis);
 
     uint16_t getFilteredWiper() const;
+    float getFilteredWiperFloat() const { return _initialized ? _filteredWiper : 0.0f; }
     uint16_t getRawWiper() const { return _rawWiper; }
     bool isInWorkingRange() const;
     int8_t getPin() const { return _pin; }

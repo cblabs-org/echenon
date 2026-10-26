@@ -5,11 +5,8 @@
 
 namespace LevelMapping {
 
-float wiperToLevel(uint16_t wiper) {
-    float lvl = (static_cast<float>(wiper) - B03_INTERCEPT) / B03_SLOPE;
-    if (lvl < 1.0f) return 1.0f;
-    if (lvl > 32.0f) return 32.0f;
-    return lvl;
+float wiperToLevel(float wiper, float potMin, float potMax) {
+    return normalizedToEchelonContinuous(wiperToNormalized(wiper, potMin, potMax));
 }
 
 uint8_t levelToInternal(float level) {
@@ -37,12 +34,13 @@ uint8_t echelonToInternal(uint8_t echelonLevel) {
     return static_cast<uint8_t>(val);
 }
 
-uint8_t wiperToEchelon(uint16_t wiper) {
-    return internalToEchelon(wiperToInternal(wiper));
+uint8_t wiperToEchelon(float wiper, float potMin, float potMax) {
+    return static_cast<uint8_t>(
+        std::clamp(std::round(wiperToLevel(wiper, potMin, potMax)), 1.0f, 32.0f));
 }
 
-uint8_t wiperToInternal(uint16_t wiper) {
-    return levelToInternal(wiperToLevel(wiper));
+uint8_t wiperToInternal(float wiper, float potMin, float potMax) {
+    return levelToInternal(wiperToLevel(wiper, potMin, potMax));
 }
 
 uint8_t internalToPeloton(uint8_t internal) {

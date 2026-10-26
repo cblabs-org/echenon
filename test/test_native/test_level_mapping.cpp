@@ -28,33 +28,60 @@ TEST(LevelMappingTest, All32LevelsRoundTrip) {
 }
 
 TEST(LevelMappingTest, WorkingRangeEndpointsWiperToLevel) {
-    // Wiper 157 (min working range) -> (157 - 120) / 37.26 = 0.9925 -> clamps to 1.0
-    float levelMin = wiperToLevel(WORKING_RANGE_MIN);
-    EXPECT_NEAR(levelMin, 1.0f, 0.01f);
+    // C07 320-point sweep: WORKING_RANGE_MIN = 171 -> 1.0, WORKING_RANGE_MAX = 1333 -> 32.0
+    EXPECT_EQ(WORKING_RANGE_MIN, 171u);
+    EXPECT_EQ(WORKING_RANGE_MAX, 1333u);
 
-    // Wiper 1313 (max working range) -> (1313 - 120) / 37.26 = 32.02 -> clamps to 32.0
+    float levelMin = wiperToLevel(WORKING_RANGE_MIN);
+    EXPECT_FLOAT_EQ(levelMin, 1.0f);
+
     float levelMax = wiperToLevel(WORKING_RANGE_MAX);
-    EXPECT_NEAR(levelMax, 32.0f, 0.01f);
+    EXPECT_FLOAT_EQ(levelMax, 32.0f);
 }
 
 TEST(LevelMappingTest, WiperToLevelClamping) {
-    // Exactly at intercept 120: (120 - 120) / 37.26 = 0.0 -> clamps to 1.0
+    // At or below WORKING_RANGE_MIN (171) -> clamps to 1.0
+    EXPECT_FLOAT_EQ(wiperToLevel(171), 1.0f);
     EXPECT_FLOAT_EQ(wiperToLevel(120), 1.0f);
-
-    // Below 120 (e.g. 0): negative -> clamps to 1.0
     EXPECT_FLOAT_EQ(wiperToLevel(0), 1.0f);
     EXPECT_FLOAT_EQ(wiperToLevel(50), 1.0f);
 
-    // Above range (e.g. 1400): (1400 - 120) / 37.26 = 34.35 -> clamps to 32.0
+    // At or above WORKING_RANGE_MAX (1333) -> clamps to 32.0
+    EXPECT_FLOAT_EQ(wiperToLevel(1333), 32.0f);
     EXPECT_FLOAT_EQ(wiperToLevel(1400), 32.0f);
     EXPECT_FLOAT_EQ(wiperToLevel(4095), 32.0f);
 }
 
 TEST(LevelMappingTest, B03FitMidRangeAccuracy) {
-    // Check level 16 midpoint: wiper = 120 + 37.26 * 16 = 716.16 -> ~716 counts
-    uint16_t midWiper = static_cast<uint16_t>(std::round(B03_INTERCEPT + B03_SLOPE * 16.0f));
+    // Check level 16 midpoint: wiper = B03_INTERCEPT + B03_SLOPE * 16
+    float exactWiper16 = B03_INTERCEPT + B03_SLOPE * 16.0f;
+    EXPECT_NEAR(wiperToLevel(exactWiper16), 16.0f, 1e-4f);
+
+    uint16_t midWiper = static_cast<uint16_t>(std::round(exactWiper16));
     float levelMid = wiperToLevel(midWiper);
     EXPECT_NEAR(levelMid, 16.0f, 0.05f);
+}
+
+TEST(LevelMappingTest, WiperToNormalizedAndCustomBounds) {
+    // Default C07 bounds [171, 1333]
+    EXPECT_FLOAT_EQ(wiperToNormalized(171.0f), 0.0f);
+    EXPECT_FLOAT_EQ(wiperToNormalized(1333.0f), 1.0f);
+    EXPECT_FLOAT_EQ(wiperToNormalized(752.0f), 0.5f);
+    EXPECT_FLOAT_EQ(wiperToLevel(752.0f), 16.5f);
+
+    // Custom calibrated bounds [200, 1400]
+    EXPECT_FLOAT_EQ(wiperToNormalized(200.0f, 200.0f, 1400.0f), 0.0f);
+    EXPECT_FLOAT_EQ(wiperToNormalized(800.0f, 200.0f, 1400.0f), 0.5f);
+    EXPECT_FLOAT_EQ(wiperToNormalized(1400.0f, 200.0f, 1400.0f), 1.0f);
+    EXPECT_FLOAT_EQ(wiperToLevel(800.0f, 200.0f, 1400.0f), 16.5f);
+    EXPECT_EQ(wiperToEchelon(800.0f, 200.0f, 1400.0f), 17u);
+    EXPECT_EQ(wiperToInternal(200.0f, 200.0f, 1400.0f), 0u);
+    EXPECT_EQ(wiperToInternal(1400.0f, 200.0f, 1400.0f), 255u);
+
+    // Invalid / non-finite bounds return 0.0 normalized -> level 1.0
+    EXPECT_FLOAT_EQ(wiperToNormalized(NAN), 0.0f);
+    EXPECT_FLOAT_EQ(wiperToNormalized(500.0f, 1000.0f, 500.0f), 0.0f);
+    EXPECT_FLOAT_EQ(wiperToNormalized(500.0f, 500.0f, 500.0f), 0.0f);
 }
 
 TEST(LevelMappingTest, WiperToEchelonValidRange) {

@@ -4,7 +4,7 @@ wo_id: WO-05.4
 pr_id: PR-05
 title: Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak
 complexity: interactive
-status: IN_PROGRESS
+status: COMPLETED
 allowed_files:
 - docs/measurements/phase3/C08-20261024-ftms-verification.md
 - src/echenon/CadenceSensor.h
@@ -38,7 +38,33 @@ verification_command: pio test -e native
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: a504e241d67ca8a5d383e1b5d3e053bd1ab284b7d5cac148f8d18b3e9f7148f4
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_cad6c148b554
+  commit_sha: 6db31cc9c6ac5529efc6c516685926679ffa2658
+  files_modified:
+  - docs/measurements/phase3/C08-20261024-ftms-verification.md
+  - src/echenon/CalibrationWizard.cpp
+  - src/echenon/CalibrationWizard.h
+  - src/echenon/EchenonModule.cpp
+  - src/echenon/EchenonModule.h
+  - src/echenon/LevelMapping.cpp
+  - src/echenon/LevelMapping.h
+  - src/echenon/PowerEngine.cpp
+  - src/echenon/PowerEngine.h
+  - src/echenon/RecalibrationUI.cpp
+  - src/echenon/RecalibrationUI.h
+  - src/echenon/ResistanceSensor.h
+  - test/test_native/test_level_mapping.cpp
+  - test/test_native/test_power_engine.cpp
+  - test/test_native/test_recalibration.cpp
+  verification_summary: 'pio test -e native: ================ 167 test cases: 167
+    succeeded in 00:00:01.242 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-05.4: Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak

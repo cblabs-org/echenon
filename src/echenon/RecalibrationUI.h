@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <vector>
 #include "echenon/PowerTable.h"
+#include "echenon/PowerEngine.h"
 
 namespace echenon {
 
@@ -53,6 +54,9 @@ public:
     size_t getMaxPoints() const { return MAX_POINTS; }
 
     void reset() { _points.clear(); }
+
+    // Helper: fit least-squares eddy-current scale factor (params.a_scale) on Physics P3r
+    bool applyToPhysicsParams(PowerPhysicsParams& params) const;
 
     // Helper: apply points to a PowerTable (updates nearest cell for each point)
     void applyToPowerTable(PowerTable& table) const;

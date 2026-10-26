@@ -3,6 +3,7 @@
 #include "echenon/CadenceSensor.h"
 #include "echenon/LevelMapping.h"
 #include <cmath>
+#include <algorithm>
 
 #if defined(ARDUINO)
 #include <Arduino.h>
@@ -77,6 +78,54 @@ bool RecalibrationUI::addPoint(uint8_t echelonLevel, float reportedPower,
     pt.wiperCount = wiperCount;
     pt.timestamp = timestamp;
     _points.push_back(pt);
+    return true;
+}
+
+bool RecalibrationUI::applyToPhysicsParams(PowerPhysicsParams& params) const {
+    float sumBY = 0.0f;
+    float sumBB = 0.0f;
+    bool hasValidPoint = false;
+
+    for (const auto& pt : _points) {
+        if (!std::isfinite(pt.cadenceRPM) || !std::isfinite(pt.reportedPower) ||
+            pt.cadenceRPM <= 0.0f || pt.reportedPower <= 0.0f) {
+            continue;
+        }
+
+        float pTilde = 0.0f;
+        if (pt.wiperCount > 0 && std::isfinite(params.pot_min) &&
+            std::isfinite(params.pot_max) && params.pot_max > params.pot_min) {
+            pTilde = std::clamp(
+                (static_cast<float>(pt.wiperCount) - params.pot_min) /
+                    (params.pot_max - params.pot_min),
+                0.0f, 1.0f);
+        } else {
+            pTilde = std::clamp(
+                (static_cast<float>(pt.echelonLevel) - 1.0f) / 31.0f,
+                0.0f, 1.0f);
+        }
+
+        const float u = 1.0f - std::cos(params.cam_sweep_rad * pTilde);
+        const float r = pt.cadenceRPM / params.cad_crit;
+        const float B = std::exp(params.beta * u) *
+                        ((pt.cadenceRPM * pt.cadenceRPM) / (1.0f + r * r));
+        if (!std::isfinite(B) || B <= 0.0f) {
+            continue;
+        }
+
+        const float Y = std::max(pt.reportedPower - params.c_fric * pt.cadenceRPM, 0.0f);
+        sumBY += B * Y;
+        sumBB += B * B;
+        hasValidPoint = true;
+    }
+
+    if (!hasValidPoint || sumBB <= 0.0f) {
+        params.a_scale = PowerEngine::A;
+        return false;
+    }
+
+    const float fittedA = sumBY / sumBB;
+    params.a_scale = std::clamp(fittedA, 0.25f * PowerEngine::A, 4.0f * PowerEngine::A);
     return true;
 }
 

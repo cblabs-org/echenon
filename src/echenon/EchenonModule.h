@@ -82,8 +82,24 @@ public:
     const echenon::ResistanceSensor& resistanceSensor() const { return _resistanceSensor; }
 
     float getCadenceRPM() const { return _cadenceSensor.getRPM(); }
-    uint8_t getEchelonLevel() const { return LevelMapping::wiperToEchelon(_resistanceSensor.getFilteredWiper()); }
-    uint8_t getInternalLevel() const { return LevelMapping::wiperToInternal(_resistanceSensor.getFilteredWiper()); }
+    float getNormalizedPosition() const {
+        return _calibrationWizard.wiperToNormalized(_resistanceSensor.getFilteredWiperFloat());
+    }
+    float getContinuousLevel() const {
+        return _calibrationWizard.wiperToLevel(_resistanceSensor.getFilteredWiperFloat());
+    }
+    uint8_t getEchelonLevel() const {
+        return LevelMapping::wiperToEchelon(
+            _resistanceSensor.getFilteredWiperFloat(),
+            _calibrationWizard.getPotMin(),
+            _calibrationWizard.getPotMax());
+    }
+    uint8_t getInternalLevel() const {
+        return LevelMapping::wiperToInternal(
+            _resistanceSensor.getFilteredWiperFloat(),
+            _calibrationWizard.getPotMin(),
+            _calibrationWizard.getPotMax());
+    }
     uint16_t getFilteredWiper() const { return _resistanceSensor.getFilteredWiper(); }
 
     // --- Power Engine ---
@@ -126,6 +142,8 @@ public:
 #endif
 
 private:
+    void syncPhysicsCalibration();
+
     ConfigManager* _configManager = nullptr;
     EventBus*      _eventBus      = nullptr;
 

@@ -55,6 +55,19 @@ void PowerEngine::loadDefault() {
     }
 }
 
+float PowerEngine::computePowerFromNormalized(
+    float p_tilde,
+    float cadence_rpm,
+    const PowerPhysicsParams& params) {
+    if (!std::isfinite(cadence_rpm) || !std::isfinite(p_tilde) ||
+        cadence_rpm <= 0.0f) {
+        return 0.0f;
+    }
+
+    const float p_norm = std::clamp(p_tilde, 0.0f, 1.0f);
+    return evaluateKlossPower(p_norm, cadence_rpm, params);
+}
+
 float PowerEngine::computePowerPhysics(
     float continuous_level,
     float cadence_rpm,
@@ -134,6 +147,16 @@ float PowerEngine::computePowerTable(float level, float cadenceRPM) const {
     return std::clamp(p, 0.0f, MAX_WATTS);
 }
 
+float PowerEngine::computePowerFromNormalized(float p_tilde, float cadenceRPM) const {
+    if (_usePhysicsModel) {
+        return computePowerFromNormalized(p_tilde, cadenceRPM, _physicsParams);
+    }
+    if (!std::isfinite(p_tilde)) {
+        return 0.0f;
+    }
+    return computePowerTable(1.0f + 31.0f * std::clamp(p_tilde, 0.0f, 1.0f), cadenceRPM);
+}
+
 float PowerEngine::computePower(float level, float cadenceRPM) const {
     if (_usePhysicsModel) {
         return computePowerPhysics(level, cadenceRPM, _physicsParams);
@@ -143,6 +166,10 @@ float PowerEngine::computePower(float level, float cadenceRPM) const {
 
 void PowerEngine::tick(float level, float cadenceRPM) {
     _lastPower = computePower(level, cadenceRPM);
+}
+
+void PowerEngine::tickFromNormalized(float p_tilde, float cadenceRPM) {
+    _lastPower = computePowerFromNormalized(p_tilde, cadenceRPM);
 }
 
 // =========================================================================
