@@ -5,7 +5,7 @@ pr_id: PR-06
 title: RideStore PSRAM/LittleFS Storage & SessionManager Lifecycle (Auto-Start Toggle
   + 5 s Default)
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/RideStore.h
 - src/echenon/RideStore.cpp
@@ -19,7 +19,23 @@ verification_command: pio test -e native
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 2e9c46e54bdc8ebcf61dcab65a01ec788bc1024b7c86bced62c9a5ba916e2291
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_32293b2a6d95
+  commit_sha: 4ddcc829074dc2a9db2c6dd2ed28f6a1d2e0bb5d
+  files_modified:
+  - src/echenon/RideStore.cpp
+  - src/echenon/RideStore.h
+  - src/echenon/SessionManager.cpp
+  - src/echenon/SessionManager.h
+  - test/test_native/test_session_manager.cpp
+  verification_summary: 'pio test -e native: ================ 180 test cases: 180
+    succeeded in 00:00:00.394 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-06.1: RideStore PSRAM/LittleFS Storage & SessionManager Lifecycle (Auto-Start Toggle + 5 s Default)
