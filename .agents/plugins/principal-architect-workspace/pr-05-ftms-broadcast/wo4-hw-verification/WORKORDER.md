@@ -4,7 +4,7 @@ wo_id: WO-05.4
 pr_id: PR-05
 title: Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak
 complexity: interactive
-status: IN_PROGRESS
+status: COMPLETED
 allowed_files:
 - docs/measurements/phase3/C08-20261024-ftms-verification.md
 - src/echenon/CadenceSensor.h
@@ -24,7 +24,19 @@ verification_command: pio test -e native
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 09434e5bacdae35200e0de1497e3ef5c5e0e432dc5e57654ef57c9c59629a5b8
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_e243cbefe923
+  commit_sha: 5a70b0405933c17798455ab4e50324e9e947df44
+  files_modified:
+  - docs/measurements/phase3/C08-20261024-ftms-verification.md
+  verification_summary: 'pio test -e native: ================ 162 test cases: 162
+    succeeded in 00:00:00.541 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-05.4: Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak
