@@ -38,9 +38,9 @@ work_orders:
   slug: wo2-tcx-generator
   title: Streaming 1 Hz TCX.gz Generator (4 KB Scratch Buffer, Coasting & Pause Gaps)
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: ab4525e582475cf19912a14164c3129a3f4289f1
 - id: WO-06.3
   slug: wo3-upload-queue
   title: IUploader & Split-Stage UploadQueue IDataSource State Machine

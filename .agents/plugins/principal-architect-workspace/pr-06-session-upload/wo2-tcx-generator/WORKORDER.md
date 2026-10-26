@@ -4,7 +4,7 @@ wo_id: WO-06.2
 pr_id: PR-06
 title: Streaming 1 Hz TCX.gz Generator (4 KB Scratch Buffer, Coasting & Pause Gaps)
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/TCXGenerator.h
 - src/echenon/TCXGenerator.cpp
@@ -16,7 +16,21 @@ verification_command: pio test -e native
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: f4275a9a628ad1a4b0ac92037d4711558b6e987a18ee1337010f53caa9e3d5ab
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_181ebb34dc83
+  commit_sha: ab4525e582475cf19912a14164c3129a3f4289f1
+  files_modified:
+  - src/echenon/TCXGenerator.cpp
+  - src/echenon/TCXGenerator.h
+  - test/test_native/test_tcx_generator.cpp
+  verification_summary: 'pio test -e native: ================ 185 test cases: 185
+    succeeded in 00:00:02.675 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-06.2: Streaming 1 Hz TCX.gz Generator (4 KB Scratch Buffer, Coasting & Pause Gaps)
