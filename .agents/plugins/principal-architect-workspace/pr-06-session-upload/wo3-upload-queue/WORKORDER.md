@@ -4,7 +4,7 @@ wo_id: WO-06.3
 pr_id: PR-06
 title: IUploader & Split-Stage UploadQueue IDataSource State Machine
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/IUploader.h
 - src/echenon/UploadQueue.h
@@ -17,7 +17,22 @@ verification_command: pio test -e native
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: a87c8dd6edf21092832a5148ad080fa190b3e24674027ea7ad1f48f639384c9f
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_6b0877f52aa9
+  commit_sha: 4e988fe56fa2ad6aa18699427ebbd70ffa36a990
+  files_modified:
+  - src/echenon/IUploader.h
+  - src/echenon/UploadQueue.cpp
+  - src/echenon/UploadQueue.h
+  - test/test_native/test_upload_queue.cpp
+  verification_summary: 'pio test -e native: ================ 190 test cases: 190
+    succeeded in 00:00:03.136 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-06.3: IUploader & Split-Stage UploadQueue IDataSource State Machine

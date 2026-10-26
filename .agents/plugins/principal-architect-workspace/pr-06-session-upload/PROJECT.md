@@ -45,9 +45,9 @@ work_orders:
   slug: wo3-upload-queue
   title: IUploader & Split-Stage UploadQueue IDataSource State Machine
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 4e988fe56fa2ad6aa18699427ebbd70ffa36a990
 - id: WO-06.4
   slug: wo4-strava-uploader
   title: StravaUploader BYOA OAuth 2.0, KeyManager NVS, Rotated Token Persistence
