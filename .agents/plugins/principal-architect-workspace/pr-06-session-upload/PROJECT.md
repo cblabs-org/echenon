@@ -22,7 +22,7 @@ charter:
   - pio test -e native
   charter_locked: false
   charter_hash: null
-status: APPROVED
+status: STAGED_FOR_AUDIT
 approved_at: '2026-10-24T20:58:10.078370Z'
 github_pr: null
 work_orders:
