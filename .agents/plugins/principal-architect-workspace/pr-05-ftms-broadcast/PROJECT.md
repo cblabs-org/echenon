@@ -20,7 +20,7 @@ charter:
   - pio test -e native
   charter_locked: false
   charter_hash: null
-status: AUDIT_APPROVED
+status: GRADUATED
 approved_at: '2026-10-24T20:58:09.914035Z'
 github_pr: null
 work_orders:
@@ -159,12 +159,12 @@ All telemetry and future v2 control targets derive deterministically from two me
 
 - **Completed Date:** 2026-10-24
 - **Graduation Mode:** `external`
-- **Latest Audit:** Round 2 — `APPROVED` (`1ee282482c1b`)
+- **Latest Audit:** Round 3 — `APPROVED` (`740b15461676`)
 
 | WO-ID | Status | Attempts | Commit SHA |
 |---|---|---|---|
 | WO-05.1 | COMPLETED | 1 | `9b7e5fef77dc` |
 | WO-05.2 | COMPLETED | 1 | `5ffd70479992` |
 | WO-05.3 | COMPLETED | 1 | `82d203e2dfd6` |
-| WO-05.4 | COMPLETED | 1 | `aa2d1f57859d` |
+| WO-05.4 | COMPLETED | 3 | `96e78ed08ae1` |
 <!-- pa:graduation-summary end -->
