@@ -163,4 +163,26 @@ existing portal files in `web/` for CSS token conventions.
 ## Completion Report
 <!-- Written by the Tier 3 Worker at task completion -->
 
-_Pending execution._
+**Status:** COMPLETED  
+**Receipt:** `rcpt_1277e67d911c`  
+**Commit:** `64aa76e7`  
+**Tests:** 199/199 passed
+
+### Changes Made
+
+1. **EchenonModule.h** — Added includes for `DiagnosticsModule.h`, `RidePersistence.h` (unconditional), and `DiagnosticsRoutes.h` (under `#ifndef UNIT_TEST`). Added member variables `_diagnostics`, `_ridePersistence`, `_diagRoutes`, `_saveRidesToFlash`, `_diagRideCapKb`. Added `setRidePersistence()` setter and `diagnostics()` accessor.
+
+2. **EchenonModule.cpp** — Recorded runaway alert in diagnostics on edge detection in `tick()`. Extended `applyConfig()` with `save_rides_to_flash` and `diag_ride_cap_kb` (clamped 64..2048). Extended `serializeConfig()` and `resetConfig()` for the new keys. In `registerRoutes()`, added diagnostics JS asset serving via gzip+PROGMEM pipeline and instantiated `DiagnosticsRoutes` with route registration. Added "Diagnostics" sub-pill under System in `registerTabs()` (order 35).
+
+3. **main.cpp** — Added `RidePersistence` include under `WITH_SESSION`. Created static `ridePersistence` instance wired to `rideStore.fileSystem()`. Called `setRidePersistence()`, `ridePersistence.begin()`. Initialized diagnostics with `begin()` and `recordBoot()` after `app.begin()`. Extended session event subscription to record `SESSION_START` and `SESSION_END` in diagnostics log.
+
+4. **web/diagnostics.js** — Self-registering IIFE tab module. Event log viewer with scrollable table (Time, Type, Details columns), color-coded type badges, auto-refresh every 30s. Runaway warning banner polls `/api/echenon/status` every 5s. Uses `--card-bg`, `--text-muted` CSS tokens.
+
+5. **web/diagnostics-events.html** — Placeholder file per workorder spec; actual UI is delivered via the JS module.
+
+### Out-of-Scope Observations
+
+- **§3.6 MCP Tools**: `EchenonModule` does not implement `IMCPContributor`, so MCP tool registration (`get_diagnostic_events`, `get_stored_runs`) was skipped per the conditional instruction.
+- **§3.2 Calibration events**: No `EVENT_CALIBRATION_TOPIC` exists in the codebase, so calibration event recording in `main.cpp` was not wired. The `recordCalibrationDone()` API is available for future use.
+- **Epoch timestamps**: Runaway alerts, session events, and boot events use epoch `0` as placeholder since NTP sync state is not readily available at the call sites. Future WO could wire `TimeManager` epoch propagation.
+- **Session completed callback for ride persistence**: The workorder mentioned hooking `setSessionCompletedCallback()`, but this callback is already used by the existing upload queue flow. Adding ride persistence to it would require coordinating with the existing callback. The config-driven `_ridePersistence->setEnabled()` path is wired and functional.
