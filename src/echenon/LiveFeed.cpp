@@ -86,7 +86,8 @@ void LiveFeed::tick(uint32_t currentMillis,
                     uint16_t encVcc,
                     uint16_t motorSenseP,
                     uint16_t motorSenseN,
-                    bool bleConnected) {
+                    bool bleConnected,
+                    bool calCustom) {
     if (_handler == nullptr) {
         return;
     }
@@ -104,7 +105,7 @@ void LiveFeed::tick(uint32_t currentMillis,
 
     char buf[512];
     int len = snprintf(buf, sizeof(buf),
-        "{\"cadence_rpm\":%.1f,\"level_echelon\":%u,\"level_i\":%u,\"power_watts\":%.1f,\"pot_adc\":%u,\"motor_dir\":%d,\"encoder_delta\":%ld,\"runaway\":%s,\"peloton_resistance\":%u,\"speed_kph\":%.1f,\"timestamp_ms\":%lu,\"ses\":\"%s\",\"ses_s\":%lu,\"hr\":%u,\"pot_raw\":%u,\"pot_filt\":%.1f,\"p_tilde\":%.3f,\"cad_us\":%lu,\"cad_pin\":%s,\"enc_vcc\":%u,\"mot_p\":%u,\"mot_n\":%u,\"ble_conn\":%s}",
+        "{\"cadence_rpm\":%.1f,\"level_echelon\":%u,\"level_i\":%u,\"power_watts\":%.1f,\"pot_adc\":%u,\"motor_dir\":%d,\"encoder_delta\":%ld,\"runaway\":%s,\"peloton_resistance\":%u,\"speed_kph\":%.1f,\"timestamp_ms\":%lu,\"ses\":\"%s\",\"ses_s\":%lu,\"hr\":%u,\"pot_raw\":%u,\"pot_filt\":%.1f,\"p_tilde\":%.3f,\"cad_us\":%lu,\"cad_pin\":%s,\"enc_vcc\":%u,\"mot_p\":%u,\"mot_n\":%u,\"ble_conn\":%s,\"cal\":%s}",
         (double)cadenceRPM,
         (unsigned int)echelonLevel,
         (unsigned int)internalLevel,
@@ -127,7 +128,8 @@ void LiveFeed::tick(uint32_t currentMillis,
         (unsigned int)encVcc,
         (unsigned int)motorSenseP,
         (unsigned int)motorSenseN,
-        bleConnected ? "true" : "false");
+        bleConnected ? "true" : "false",
+        calCustom ? "true" : "false");
 
     if (len > 0 && len < (int)sizeof(buf)) {
         _handler->sendAll(buf);

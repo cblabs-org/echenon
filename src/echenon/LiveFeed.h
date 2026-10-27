@@ -93,7 +93,8 @@ public:
               uint16_t encVcc,
               uint16_t motorSenseP,
               uint16_t motorSenseN,
-              bool bleConnected);
+              bool bleConnected,
+              bool calCustom);
 
     // Configuration
     void setIntervalMs(uint32_t ms);  // default 500 ms (~2 Hz)
