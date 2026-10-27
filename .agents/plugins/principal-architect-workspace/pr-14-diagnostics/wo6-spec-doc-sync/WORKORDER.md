@@ -4,7 +4,7 @@ wo_id: WO-14.6
 pr_id: PR-14
 title: SPEC + Doc Sync
 complexity: mechanical
-status: PENDING
+status: COMPLETED
 allowed_files:
 - SPEC.md
 - docs/diagnostics.md
@@ -99,6 +99,19 @@ for documentation conventions and SPEC.md structure.
 - Surface any concerns in the Completion Report.
 
 ## Completion Report
-<!-- Written by the Tier 3 Worker at task completion -->
 
-_Pending execution._
+**Status:** COMPLETED
+
+### Files Modified
+- `SPEC.md` — Added §13 Diagnostics (§13.1–§13.4), §14 Run-Data Persistence (§14.1–§14.4), renumbered old §13 Testing to §15, updated module table, persisted settings, trust boundaries, project tree, portal tabs, test table, and all cross-references.
+- `docs/diagnostics.md` — Created: DiagnosticsModule developer guide covering architecture, event recording, query API, payload encoding, portal viewer, ring buffer capacity, and testing.
+- `docs/run-data-persistence.md` — Created: Run-data persistence developer guide covering enablement, storage budget, eviction policy, REST API usage, CSV format spec, binary file format, session pipeline integration, flash wear, and testing.
+
+### Verification
+- `pio test -e native --verbose`: **232 tests passed** (0 failures). Doc-only changes; no compilation impact.
+
+### Decisions Made
+- Renumbered §13 Testing → §15 to make room for §13 Diagnostics and §14 Run-Data Persistence, maintaining consistency with the WO instructions that specified "§13 Diagnostics" and "§14 Run-Data Persistence".
+- All internal cross-references (§13.6, §13.10, §13.11, §13.12, §13.1) updated to new §15.x numbering.
+- Diagnostics endpoints documented as requiring authentication per existing §11.4 trust boundary pattern, consistent with the implementation in `DiagnosticsRoutes.cpp` which calls `auth.checkPortalAuth()`.
+- CSS tokens (`--card-bg`, `--text-muted`) not referenced because no portal HTML/CSS was created in this WO (portal UI is in WO-14.4). The developer docs reference the portal viewer conceptually with a TODO screenshot placeholder.
