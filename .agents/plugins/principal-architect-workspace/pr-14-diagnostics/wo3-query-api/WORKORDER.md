@@ -4,7 +4,7 @@ wo_id: WO-14.3
 pr_id: PR-14
 title: Query REST API
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/DiagnosticsRoutes.h
 - src/echenon/DiagnosticsRoutes.cpp
@@ -15,7 +15,20 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 3d7a4478317ca44c41ccf3c90afc2767e7873e4cd587b0daeb90ff98f832c538
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_587713c5907e
+  commit_sha: bf25fea79673678681878e6b318521892d33eeb8
+  files_modified:
+  - src/echenon/DiagnosticsRoutes.cpp
+  - src/echenon/DiagnosticsRoutes.h
+  verification_summary: 'pio test -e native --verbose: ================ 199 test cases:
+    199 succeeded in 00:00:00.614 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-14.3 — Query REST API

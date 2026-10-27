@@ -46,9 +46,9 @@ work_orders:
   slug: wo3-query-api
   title: Query REST API
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: bf25fea79673678681878e6b318521892d33eeb8
 - id: WO-14.4
   slug: wo4-portal-integration
   title: Portal Integration + Runaway Alert Surfacing
