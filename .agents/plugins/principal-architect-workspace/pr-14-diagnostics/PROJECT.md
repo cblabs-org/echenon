@@ -67,9 +67,9 @@ work_orders:
   slug: wo6-spec-doc-sync
   title: SPEC + Doc Sync
   complexity: mechanical
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: d90a8252d3d63ff11ef0c444780a927219d2182d
 - id: WO-14.7
   slug: wo7-hw-verification
   title: Hardware Verification (60-min ride)

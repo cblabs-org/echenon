@@ -139,7 +139,7 @@ fetch pipeline, the module composition architecture and the optional
   (external or portal-native). These are v2
 - **Any interception**: no encoder or motor interception, no outputs to the
   bike; the stock console runaway (A09-20261012 #3) can be detected but not
-  prevented (§13.11)
+  prevented (§15.11)
 - Standalone / console-off operation (UC6; v2 mode 2)
 - **ANT+**: not supported. The ESP32-S3 has no ANT radio. A future hardware
   add-on (e.g. an nRF51422 ANT+ module) may connect over **UART0, GPIO 43 /
@@ -401,6 +401,9 @@ phase and are never driver outputs; the driver uses GPIO 10 and 17.
 | `UploadQueue` | The only upload execution path: runs one pipeline stage per `fetchUpdate()` | `IDataSource` | PR-06 |
 | `StravaUploader` | Describes the Strava service: BYOA OAuth, request building, response parsing | `IUploader` (Echenon), `IWebContributor` | PR-06 |
 | `SessionUI` | Session REST API, authenticated TCX download and Session History tab (PR-06); standalone `/ride` page and `/ws/session` WebSocket push (PR-09) | `IWebContributor` | PR-06 / PR-09 |
+| `DiagnosticsModule` | PSRAM-backed bounded event log with ring-buffer semantics; records boot, session, runaway, calibration and firmware-change events (§13) | `ITickable` | PR-14 |
+| `RidePersistence` | Saves completed rides as gzip-compressed `.ride.gz` binary files to LittleFS with configurable cap and oldest-first eviction (§14) | — | PR-14 |
+| `DiagnosticsRoutes` | REST API for event log queries, stored ride listing, CSV download and ride deletion (§13.4) | — | PR-14 |
 | `InterceptController` (**v2**) | Mode manager (Intercept ↔ Override), console-drive relay, command source arbitration | — | PR-07 / PR-10 |
 | `ResistanceMotor` (**v2**) | Motor driver (`[DR-2]`), cam-angle position controller, safety limits | — | PR-07 |
 | `ERGController` (**v2**) | Control Point target handling, ERG state machine, Fitness Machine Status | — | PR-08 |
@@ -837,7 +840,7 @@ them (DR-1 §2.9).
   the USB host, none from VBUS into the 9 V line). If it does not, a diode is
   added on the VIN path. The schematic finding and the selector design are
   committed as evidence before the board is soldered; the behaviour in both
-  selector positions is then measured on the built board (§13.6).
+  selector positions is then measured on the built board (§15.6).
 - Until the selector is built and verified, the rule on any VIN-powered rig
   is: disconnect 9 V before connecting USB.
 
@@ -1445,6 +1448,8 @@ keys are frozen at DR-1.
 | `cal_power_table` | blob (32 × N watts) | copy of the active table | Working table updated by recalibration (tier 3) |
 | `cal_recal_points` | array of {level, watts, rpm, i, time} | empty | Recalibration entries, bounded to `100` points (`RecalibrationUI::MAX_POINTS`) |
 | `runaway_timeout_s` | uint16 | `10` | Stock-runaway detection time (seconds) outside 165–1327 counts (§5.2) |
+| `save_rides_to_flash` | bool | `false` | Enable persistent ride storage to LittleFS (§14.2) |
+| `diag_ride_cap_kb` | uint32 | `512` | Maximum total flash budget for persisted rides (KB, range 64–2048; §14.2) |
 | `cal_level_table_sa` | array[32] | empty | **v2:** standalone-referenced level table (PR-07) |
 | `cam_theta_min` | float | `[DR-2]` | **v2:** cam-min angle from the motor-driven sweep (PR-07) |
 | `cam_theta_max` | float | `[DR-2]` | **v2:** cam-max angle from the motor-driven sweep (PR-07) |
@@ -2070,7 +2075,7 @@ the coexistence arbiter works per event type and priority.
 
 **Coexistence verification.** PR-03 (HR relay) and PR-05 (FTMS) each run a
 progressive check of the scenario below at their own configuration. The final
-verification at **maximum configuration** belongs to **PR-09** (§13.10):
+verification at **maximum configuration** belongs to **PR-09** (§15.10):
 
 1. **3 Peripheral connections** (FTMS notifying at 2 Hz on at least one, plus
    the Echelon tablet and one more app, e.g. nRF Connect × 2 + Zwift)
@@ -2162,7 +2167,8 @@ coordinate $\tilde{p} = i / 254.0$ at $8\times$ finer resolution, allowing
 lossless reconstruction of Echelon (`1..32`), Peloton (`0..100`), or continuous
 $\tilde{p}$ downstream. At 1 Hz (`8 bytes/s`) for 60 minutes:
 `3,600 records × 8 bytes = 28.8 KB` (`115.2 KB` for a 4-hour `14,400`-record
-ring buffer in the 8 MB OPI PSRAM).
+ring buffer in the 8 MB OPI PSRAM). For optional persistent storage of
+completed rides to LittleFS, see §14 (Run-Data Persistence).
 
 ### 9.4 TCX Generation
 
@@ -2541,7 +2547,7 @@ default App tab is disabled (`app.disableDefaultAppTab()`).
 | **Echenon** | 50 | Device status summary + "Open Ride Page →" button |
 | **Setup** | 60 | PillBar sub-navigation (see below) |
 | **Security** | — | Framework authentication settings |
-| **System** | — | Framework system info, OTA, diagnostics |
+| **System** | — | Framework system info, OTA, diagnostics; event log viewer (PR-14) |
 
 **Echenon tab (order 50):** Shows device connection status, sensor readings and
 a prominent "Open Ride Page →" button that links to `/ride`.
@@ -2635,6 +2641,13 @@ lightweight.
 - **Mutations, downloads and motor commands** (session start/stop/discard,
   calibration, uploader credentials, `GET /api/session/download`,
   `POST /api/resistance`): require `AuthManager` authentication.
+- **Diagnostics read-only** (`GET /api/echenon/events`,
+  `GET /api/echenon/runs`): require authentication for data privacy (event
+  timestamps and ride data reveal usage patterns).
+- **Diagnostics downloads** (`GET /api/echenon/runs/<id>.csv.gz`): require
+  authentication (ride data contains health data such as heart rate).
+- **Diagnostics mutations** (`DELETE /api/echenon/runs/<id>`): require
+  authentication.
 - **v2: `POST /api/resistance`** is accepted only in Override Mode on the MITM
   board; it returns `409` otherwise.
 - **v2: BLE Control Point**: any Central in range can Request Control. This is an
@@ -2657,6 +2670,8 @@ Echenon/
 │   ├── hardware_specification.md        Phase-by-phase circuit build guide
 │   ├── implementation-strategy.md       Development rationale
 │   ├── use_case_analysis.md             Use cases UC1–UC6
+│   ├── diagnostics.md                   DiagnosticsModule developer guide (PR-14)
+│   ├── run-data-persistence.md          Run-data persistence developer guide (PR-14)
 │   ├── measurements/phase0/README.md    Phase 0 register and evidence
 │   └── echelon-teardown/                Teardown photos and notes
 ├── hardware/
@@ -2683,11 +2698,14 @@ Echenon/
 │       ├── UploadQueue.h / .cpp         PR-06
 │       ├── StravaUploader.h / .cpp      PR-06
 │       ├── SessionUI.h / .cpp          PR-06 / PR-09
+│       ├── DiagnosticsModule.h / .cpp  PR-14
+│       ├── RidePersistence.h / .cpp    PR-14
+│       ├── DiagnosticsRoutes.h / .cpp  PR-14
 │       ├── InterceptController.h / .cpp PR-07
 │       ├── ResistanceMotor.h / .cpp     PR-07
 │       └── ERGController.h / .cpp       PR-08
 ├── test/
-│   └── test_native/                     googletest suites for pure-logic modules (§13.1)
+│   └── test_native/                     googletest suites for pure-logic modules (§15.1)
 ├── web/                                 gzip + PROGMEM pipeline sources
 │   ├── ride.html                        → portal_assets/ride_html.hpp
 │   ├── ride.js                          → portal_assets/ride_js.hpp
@@ -2936,22 +2954,220 @@ LVGL display contract.
 
 ---
 
-## 13. Testing & Verification
+## 13. Diagnostics
+
+Diagnostics is a production subsystem that records structured device events in a
+bounded PSRAM log and exposes them through a paged REST API. It is **separate
+from `SignalLogger`** (which remains behind `WITH_SIGNAL_LOGGER` and is not
+compiled in production builds). Diagnostics is always available; no build flag is
+required.
+
+### 13.1 DiagnosticsModule Overview
+
+`DiagnosticsModule` (`src/echenon/DiagnosticsModule.h/.cpp`) implements
+`ITickable` and records structured diagnostic events in a fixed-capacity PSRAM
+ring buffer. Its purpose is to provide a lightweight, always-on audit trail for
+production devices: boot events, session lifecycle, safety alerts,
+calibration milestones and firmware changes.
+
+- **Separation from SignalLogger.** `SignalLogger` is a Phase 0 development
+  tool that captures raw ADC data at high frequency across all channels. It is
+  guarded by `WITH_SIGNAL_LOGGER` and is not compiled in production builds.
+  `DiagnosticsModule` records high-level structured events at low volume and
+  is always compiled.
+- **Separation from the Audit module.** The framework's optional `AuditModule`
+  (`WITH_AUDIT`) provides a general-purpose flash-backed audit trail with rate
+  limiting and token-bucket flushing. `DiagnosticsModule` is Echenon-specific,
+  PSRAM-backed, and focused on the bike's operational lifecycle.
+
+### 13.2 Diagnostic Event Types
+
+Six event types are defined by `DiagEventType`:
+
+| Type | Value | Payload encoding (3 bytes) | Source |
+|---|---|---|---|
+| `BOOT` | `0` | 24-bit little-endian `uptime_s` (max 16,777,215 s) | Boot sequence |
+| `SESSION_START` | `1` | Low 16-bit LE `session_id`; `payload[2]` unused | `SessionManager` |
+| `SESSION_END` | `2` | 16-bit LE `duration_s` in `[0..1]`; `payload[2]` = `record_count / 64` (coarse granularity) | `SessionManager` |
+| `RUNAWAY_ALERT` | `3` | 16-bit LE `duration_ms / 100` in `[0..1]` (100 ms resolution); `payload[2]` unused | Runaway detection (§5.2) |
+| `CALIBRATION_DONE` | `4` | `payload[0]` = calibration type (`0` = initial, `1` = recalibration); `[1..2]` unused | `CalibrationWizard` |
+| `FIRMWARE_CHANGE` | `5` | `payload[0..2]` = major, minor, patch | Boot after OTA |
+
+Each event is 8 bytes: 4-byte UTC epoch + 1-byte type discriminator + 3-byte
+payload, packed with `__attribute__((packed))` and verified at compile time
+with `static_assert(sizeof(DiagnosticEvent) == 8)`.
+
+### 13.3 Event Log Ring Buffer
+
+- **Allocation:** PSRAM via `heap_caps_calloc(EVENT_LOG_CAPACITY,
+  sizeof(DiagnosticEvent), MALLOC_CAP_SPIRAM)` with fallback to internal heap
+  if PSRAM is unavailable.
+- **Capacity:** 100 entries (`EVENT_LOG_CAPACITY = 100`), consuming
+  `100 × 8 = 800 bytes`.
+- **Wrap semantics:** when the buffer is full, the oldest event is overwritten
+  (classic ring buffer). `_head` points to the next write position; `_count`
+  tracks the number of stored events (clamped to capacity).
+- **Index convention:** `getEvent(0)` returns the oldest event. When the buffer
+  is not full, oldest is at position 0. When full, oldest is at `_head` (the
+  slot that was just overwritten).
+- **Clearing:** `clearEvents()` resets `_head` and `_count` to zero and
+  zero-fills the buffer.
+- **Memory budget:** 800 bytes of PSRAM (well within the 4 KB budget for
+  diagnostics data).
+
+### 13.4 Query API
+
+#### EventQuery Struct
+
+```cpp
+struct EventQuery {
+    uint32_t from_epoch = 0;            // inclusive lower bound (0 = no filter)
+    uint32_t to_epoch   = UINT32_MAX;   // inclusive upper bound
+    size_t   limit      = 100;          // max results
+};
+```
+
+`DiagnosticsModule::queryEvents(const EventQuery& query, DiagnosticEvent* out,
+size_t out_capacity)` iterates over stored events in oldest-first order and
+copies those whose `epoch_s` falls within `[from_epoch, to_epoch]` into the
+output buffer, stopping at `min(limit, out_capacity)` results.
+
+#### REST Endpoints
+
+All diagnostics endpoints are registered by `DiagnosticsRoutes::registerRoutes()`
+and require `AuthManager` authentication (§11.4).
+
+**`GET /api/echenon/events`** — Diagnostic event log.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `from` | `uint32_t` | `0` | Inclusive lower epoch bound |
+| `to` | `uint32_t` | `UINT32_MAX` | Inclusive upper epoch bound |
+| `limit` | `size_t` | `100` | Maximum events to return (capped at 100) |
+
+Response (chunked JSON streaming):
+
+```json
+{
+  "events": [
+    {
+      "epoch": 1698400000,
+      "type": "BOOT",
+      "type_id": 0,
+      "payload": {"uptime_s": 12345}
+    }
+  ],
+  "count": 1,
+  "total": 42
+}
+```
+
+**`GET /api/echenon/runs`** — Stored ride listing.
+
+Response:
+
+```json
+{
+  "runs": [
+    {
+      "session_id": 12345,
+      "start_epoch": 1698400000,
+      "file_size_bytes": 4096,
+      "record_count": 512
+    }
+  ],
+  "count": 1,
+  "total_size_kb": 4
+}
+```
+
+**`GET /api/echenon/runs/<id>.csv.gz`** — Streamed CSV download.
+
+Downloads the stored ride as CSV (chunked transfer encoding, ≤ 4 KB chunks).
+CSV columns: `elapsed_s,power_w,cadence_rpm,hr_bpm,resistance,flags`.
+Content-Disposition header triggers a file download as `ride_<id>.csv`.
+
+**`DELETE /api/echenon/runs/<id>`** — Delete a stored ride.
+
+Response: `{"ok": true}` on success; `404` if the ride is not found.
+
+---
+
+## 14. Run-Data Persistence
+
+`RidePersistence` (`src/echenon/RidePersistence.h/.cpp`) provides optional
+persistent storage of completed rides to LittleFS. When enabled, it saves
+each completed ride as a compressed binary file and manages storage within a
+configurable capacity budget with oldest-first eviction.
+
+### 14.1 Storage Format
+
+Each ride is stored as a `.ride.gz` file containing gzip-compressed binary
+data (gzip on ESP32; uncompressed under `UNIT_TEST`):
+
+| Segment | Size | Content |
+|---|---|---|
+| `RideFileHeader` | 16 bytes | Magic (`0x45434852` = "ECHR"), version (`1`), flags (NTP valid, finalized), `session_id`, `start_epoch_s` |
+| `RideRecord[]` | 8 bytes each | Packed ride data records (§9.3): `elapsed_sec`, `power_watts`, `cadence_rpm`, `heart_rate_bpm`, `internal_resistance`, `flags` |
+
+`RideFileHeader` is packed and compile-time verified:
+`static_assert(sizeof(RideFileHeader) == 16)`.
+
+### 14.2 Configuration
+
+| Setting | Type | Default | Range | Description |
+|---|---|---|---|---|
+| `save_rides_to_flash` | `bool` | `false` | — | Enable or disable ride persistence to LittleFS |
+| `diag_ride_cap_kb` | `uint32_t` | `512` | `64–2048` | Maximum total storage budget for persisted rides (KB) |
+
+Both settings are fields of the `echenon` configuration namespace and are
+persisted by `ConfigManager`.
+
+### 14.3 Eviction Policy
+
+- **Oldest-first eviction.** When `saveRide()` would exceed the configured
+  `diag_ride_cap_kb` cap, the oldest stored ride is deleted before writing the
+  new one. Eviction repeats until sufficient space is available.
+- **Flash wear mitigation.**
+  - Block-append writes: ride data is written in a single sequential pass,
+    not updated in place.
+  - Minimum checkpoint interval: ≥ 30 s between LittleFS writes (consistent
+    with the `RideStore` crash-recovery checkpoint interval, §9.2).
+  - Files are written once and only deleted during eviction or explicit user
+    action.
+
+### 14.4 File Layout
+
+```
+/rides/persist/
+├── ride_12345.ride.gz
+├── ride_12346.ride.gz
+└── ride_12347.ride.gz
+```
+
+The directory `/rides/persist/` is separate from the session working directory
+(`/rides/`) used by `RideStore` for active session checkpoints and the
+completed-ride FIFO. `RidePersistence::begin()` scans this directory on boot
+to rebuild its stored-ride inventory.
+
+---
+
+## 15. Testing & Verification
 
 Tests are organised by delivery phase (§1.5), one subsection per PR plus DR-1,
 and grouped by release:
 
 | Release | Subsections |
 |---|---|
-| **v1 "Passive"** | §13.1 (v1 rows), §13.2 PR-01, §13.3 DR-1, §13.4 PR-02, §13.5 PR-03, §13.6 PR-04a / PR-05, §13.7 PR-06, §13.10 PR-09, §13.11 v1 limitations |
-| **v2 "Active"** (provisional) | §13.8 PR-07, §13.9 PR-08, §13.12 PR-13. Tests for DR-2, PR-10, PR-11 and PR-12 are written after DR-2 |
+| **v1 "Passive"** | §15.1 (v1 rows), §15.2 PR-01, §15.3 DR-1, §15.4 PR-02, §15.5 PR-03, §15.6 PR-04a / PR-05, §15.7 PR-06, §15.10 PR-09, §15.11 v1 limitations |
+| **v2 "Active"** (provisional) | §15.8 PR-07, §15.9 PR-08, §15.12 PR-13. Tests for DR-2, PR-10, PR-11 and PR-12 are written after DR-2 |
 
 Test IDs use the phase number. Use-case tests derive from
 [`docs/use_case_analysis.md`](docs/use_case_analysis.md), with pin numbers,
 level scales and mode names updated to this specification. Every PR also
-passes the native unit tests for the modules it touches (§13.1).
+passes the native unit tests for the modules it touches (§15.1).
 
-### 13.1 Native Unit Tests (All PRs)
+### 15.1 Native Unit Tests (All PRs)
 
 Every pure-logic module has googletest suites that run on the host with
 `pio test -e native`, following the framework's `env:native` pattern. Hardware
@@ -2972,10 +3188,13 @@ access sits behind thin interfaces, so the logic is testable without a board.
 | TCX writer | Exactly one trackpoint per second, 2 Hz → 1 Hz averaging, `<Watts>0</Watts>` when coasting | PR-06 |
 | Upload stage machine | Stage sequencing, `UpdateStatus` mapping, duplicate = success, resume after failure | PR-06 |
 | OAuth helpers | `state` generation and single-use validation, rotated-token persistence order | PR-06 |
+| DiagnosticsModule | Ring buffer wrap, event recording, time-windowed query, capacity clamping, payload encoding/decoding | PR-14 |
+| RidePersistence | Save/load/delete rides, cap enforcement with oldest-first eviction, begin() directory scan, gzip round-trip | PR-14 |
+| DiagnosticsRoutes helpers | `diagEventTypeToString()`, `formatPayloadJson()` for all 6 event types, payload decode round-trips | PR-14 |
 | **v2:** Position controller logic | Direction choice, never crossing an extreme, settle/retry limit, run-time bound, plausibility faults | PR-07 |
 | **v2:** ERG state machine | `ACTIVE` / `SUSPENDED_BY_RIDER` / `RELEASED` transitions, stored targets, hold time, Status opcodes, deadband, rate limit | PR-08 |
 
-### 13.2 PR-01 — Phase 0: Observe
+### 15.2 PR-01 — Phase 0: Observe
 
 > Fly-wire logger on USB power, Phase 0/1 pin map (§4.4.1). No bike wires are
 > altered and no BLE is compiled.
@@ -3003,7 +3222,7 @@ fitted.
 
 **Exit:** test 0.13 passes. The register is the input to DR-1.
 
-### 13.3 DR-1 — Design Freeze (v1 Passive)
+### 15.3 DR-1 — Design Freeze (v1 Passive)
 
 | # | Check | Expected result | Status (2026-10-12) |
 |---|---|---|---|
@@ -3015,7 +3234,7 @@ fitted.
 | D.6 | Standalone supports. | None on the v1 board (R3/R4/R5 and the Green–GND link are DR-2 items). | **Done.** None in v1 |
 | D.7 | Decision record. | [`DR-1-design-freeze.md`](.agents/skills/principal-architect-workspace/reviews/DR-1-design-freeze.md) approved by the owner. | **Approved with conditions**, 2026-10-12 |
 
-### 13.4 PR-02 — Phase 1: Calibrate
+### 15.4 PR-02 — Phase 1: Calibrate
 
 > Same fly-wire rig. Gated on DR-1.
 
@@ -3031,7 +3250,7 @@ fitted.
 | 1.8 | Hold the wiper outside 165–1327 counts for longer than `10` s (`runaway_timeout_s` default; bench simulation; do not provoke a real runaway). | Runaway event on the EventBus and a portal alert. |
 | 1.9 | Peloton mapping (deferred to PR-05 per owner decision 2026-10-20). | 0…100 value matches the published Peloton curve at equal power and cadence (validated in PR-05). |
 
-### 13.5 PR-03 — Phase 2: HR Relay (UC1 HR path)
+### 15.5 PR-03 — Phase 2: HR Relay (UC1 HR path)
 
 > BLE on. Entry gates: the Echelon-app HR spike and framework central-role
 > acceptance evidence (§8.3).
@@ -3046,7 +3265,7 @@ fitted.
 | 2.6 | Factory reset, then repeat 2.5. | Slow retry is still 15 s. |
 | 2.7 | Progressive coexistence check: HR relay plus portal open plus a large HTTPS POST, 5 minutes. | No HR gap > 2.5 s while on-skin (criterion b). |
 
-### 13.6 PR-04a and PR-05 — Phase 3: Passive Tap Board and FTMS Telemetry (UC1, UC3) — v1
+### 15.6 PR-04a and PR-05 — Phase 3: Passive Tap Board and FTMS Telemetry (UC1, UC3) — v1
 
 **PR-04a — Passive tap board (permanent install):**
 
@@ -3073,7 +3292,7 @@ fitted.
 | 3.11 | Echelon tablet (HR) plus a fitness app (FTMS) at the same time. | Both connections coexist; data flows to both. |
 | 3.12 | Progressive coexistence check: 3 peripherals + HR central + ride page, 5 minutes. | FTMS gap ≤ 600 ms; HR gap ≤ 2.5 s; free DRAM recorded. |
 
-### 13.7 PR-06 — Phase 4: Session, TCX and Strava (UC2) — v1
+### 15.7 PR-06 — Phase 4: Session, TCX and Strava (UC2) — v1
 
 | # | Test | Expected result |
 |---|---|---|
@@ -3090,7 +3309,7 @@ fitted.
 | 4.11 | Download the TCX from the portal without and with login. | Refused without authentication; served with it. |
 | 4.12 | Build without `WITH_BLE`. | Upload pipeline compiles and runs; no `ScanInhibit` dependency. |
 
-### 13.8 PR-07 — Phase 5: MITM Board, Motor Control and Safety (UC6 hardware) — v2
+### 15.8 PR-07 — Phase 5: MITM Board, Motor Control and Safety (UC6 hardware) — v2
 
 > **v2 (provisional).** Active intercept board installed. Pin map from DR-2.
 > Tests 5.4–5.7 and 5.12 (standalone supports) move to PR-12 when v2 is
@@ -3111,7 +3330,7 @@ fitted.
 | 5.11 | Reboot in Override with cadence present. | Stored half verified by a small move; no full homing sweep while pedalling. |
 | 5.12 | Reconnect the console, open the standalone supports, switch to Intercept Mode. | Pass-through restored; no contention; console position still valid (no desync). |
 
-### 13.9 PR-08 — Phase 6: ERG and Control Point (UC4, UC5) — v2
+### 15.9 PR-08 — Phase 6: ERG and Control Point (UC4, UC5) — v2
 
 > **v2 (provisional).** Test 6.8's external HR-zone app is joined by PR-11's
 > portal-native HR-zone control when v2 is decomposed.
@@ -3129,7 +3348,7 @@ fitted.
 | 6.9 | Reset (`0x01`), then a control-loss event. | ERG → `RELEASED`; Status `0xFF` Control Permission Lost sent on control loss. |
 | 6.10 | `POST /api/resistance` in Override Mode, then in Intercept Mode, then unauthenticated. | Accepted; `409`; refused. |
 
-### 13.10 PR-09 — Phase 7: v1 Integration and Release Candidate — v1
+### 15.10 PR-09 — Phase 7: v1 Integration and Release Candidate — v1
 
 | # | Test | Expected result |
 |---|---|---|
@@ -3142,9 +3361,9 @@ fitted.
 | 7.8 | UC1–UC3 end-to-end runs from [`docs/use_case_analysis.md`](docs/use_case_analysis.md). | Each use case passes on the installed passive tap board. |
 | 7.9 | **P12 Split-Screen Acceptance**: Open `/ride` on the Lenovo Tab P12 in Android split-screen with the Echelon app. | Metrics update at 2 Hz; session start/stop works from the ride page; PWA "Add to Home Screen" installs and launches in standalone mode. |
 
-Test 7.2 (mode switching) moved to §13.12 (v2).
+Test 7.2 (mode switching) moved to §15.12 (v2).
 
-### 13.11 Known Limitations
+### 15.11 Known Limitations
 
 - Power is estimated, not measured. Accuracy improves with Tier 2 or Tier 3
   calibration.
@@ -3165,7 +3384,7 @@ Test 7.2 (mode switching) moved to §13.12 (v2).
 - OTA is manual-only until framework issue #226 lands.
 - **v2:** any BLE Central in range can take FTMS control.
 
-### 13.12 PR-13 — Phase 7: v2 Integration and Release — v2
+### 15.12 PR-13 — Phase 7: v2 Integration and Release — v2
 
 > **v2 (provisional).** Detailed tests are written after DR-2.
 

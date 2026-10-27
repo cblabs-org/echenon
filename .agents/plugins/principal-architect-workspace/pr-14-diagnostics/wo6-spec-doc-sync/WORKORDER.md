@@ -16,7 +16,21 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 03a0c959ee9355aeefe3f66a94eb3c58d7fe2fdf437c583a650ee7bb7534d076
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_e7840ded0eca
+  commit_sha: d90a8252d3d63ff11ef0c444780a927219d2182d
+  files_modified:
+  - SPEC.md
+  - docs/diagnostics.md
+  - docs/run-data-persistence.md
+  verification_summary: 'pio test -e native --verbose: ================ 232 test cases:
+    232 succeeded in 00:00:00.605 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-14.6 — SPEC + Doc Sync
