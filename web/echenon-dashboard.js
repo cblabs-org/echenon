@@ -13,6 +13,7 @@
   var wsReconnectTimer = null;
   var wsReconnectDelay = 1000;
   var MAX_RECONNECT_DELAY = 16000;
+  var lastWsRx = 0;
 
   function formatDuration(seconds) {
     if (!seconds && seconds !== 0) return '-';
@@ -72,9 +73,11 @@
     ws.onopen = function() {
       wsReconnectDelay = 1000;
       updateWsStatus('connected', 'Live');
+      try { ws.send('ping'); } catch(e) {}
     };
 
     ws.onmessage = function(e) {
+      lastWsRx = Date.now();
       try {
         var data = JSON.parse(e.data);
         handleLiveMessage(data);
@@ -95,6 +98,12 @@
         updateWsStatus('disconnected', 'Disconnected');
       }
     };
+
+    // 15s keepalive ping
+    var keepalive = setInterval(function() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) { clearInterval(keepalive); return; }
+      try { ws.send('ping'); } catch(e) { clearInterval(keepalive); }
+    }, 15000);
   }
 
   function scheduleWsReconnect() {
@@ -373,7 +382,10 @@
 
       var ride = rides[0]; // Most recent
       var dateStr = '-';
-      if (ride.date || ride.started_at || ride.timestamp) {
+      if (ride.start_epoch_s) {
+        var d = new Date(ride.start_epoch_s * 1000);
+        dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      } else if (ride.date || ride.started_at || ride.timestamp) {
         var d = new Date(ride.date || ride.started_at || ride.timestamp);
         dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
       }
@@ -389,7 +401,7 @@
           '<span style="font-family:monospace; font-weight:600;">' + formatDuration(duration) + '</span>' +
         '</div>';
     } catch (err) {
-      // non-fatal — history endpoint may not be available yet
+      console.warn('[echenon-dashboard] fetchLastRide error:', err);
     }
   }
 
@@ -411,6 +423,14 @@
       }
       fetchAll();
       connectWS();
+      // Fallback: if WS stalls, fetch via HTTP
+      if (!window._echenonFallback) {
+        window._echenonFallback = setInterval(function() {
+          if (isTabActive && lastWsRx > 0 && (Date.now() - lastWsRx) > 2500) {
+            fetchAll();
+          }
+        }, 2500);
+      }
     } else {
       isTabActive = false;
       disconnectWS();

@@ -1,5 +1,5 @@
 (function(){
-var w,rt=1e3,el=0,st='IDLE',spd=0,dst=0,ap=0,pc=0;
+var w,rt=1e3,el=0,st='IDLE',spd=0,dst=0,ap=0,pc=0,lastRx=0;
 var $=function(i){return document.getElementById(i)};
 function fmt(s){var h=s/3600|0,m=(s%3600)/60|0,sec=s%60|0;return h?(h+':'+p(m)+':'+p(sec)):m+':'+p(sec)}
 function p(n){return n<10?'0'+n:''+n}
@@ -19,12 +19,12 @@ spd=d.speed_kph||0;
 function ws(){
 var u='ws://'+location.host+'/ws/echenon/live';
 w=new WebSocket(u);
-w.onopen=function(){$('ws-dot').className='conn on';rt=1e3};
+w.onopen=function(){$('ws-dot').className='conn on';rt=1e3;try{w.send('ping')}catch(e){}};
 w.onclose=function(){$('ws-dot').className='conn off';setTimeout(ws,rt);rt=Math.min(rt*2,3e4)};
-w.onmessage=function(e){try{tl(JSON.parse(e.data))}catch(x){}};
+w.onmessage=function(e){lastRx=Date.now();try{tl(JSON.parse(e.data))}catch(x){}};
 }
 function pl(){
-if(!w||w.readyState!==1){
+if(!w||w.readyState!==1||(lastRx>0&&(Date.now()-lastRx)>2500)){
 fetch('/api/echenon/live').then(function(r){return r.json()}).then(function(d){tl(d)}).catch(function(){});
 }}
 function ub(){
@@ -71,7 +71,7 @@ var rides=d.rides||d;if(!rides||!rides.length){$('history').innerHTML='<div id="
 var h='';rides.slice(-5).reverse().forEach(function(r){
 var dt=r.start_epoch_s?new Date(r.start_epoch_s*1e3).toLocaleDateString():'--';
 var dur=fmt(r.duration_s||0);
-h+='<div class="r"><span>'+dt+' · '+dur+' · '+((r.avg_power_w||0))+'W</span><a href="/api/session/download?id='+r.session_id+'">TCX</a></div>';
+h+='<div class="r"><span>'+dt+' · '+dur+' · '+((r.avg_power_w||0))+'W</span><a href="/api/session/download?id='+r.session_id+'">TCX</a>'+(r.activity_id?'<a href="https://www.strava.com/activities/'+r.activity_id+'" target="_blank">Strava ↗</a>':'')+'</div>';
 });$('history').innerHTML=h;
 }).catch(function(){});
 }
@@ -85,5 +85,5 @@ body:JSON.stringify({auto_start:asInit.checked})
 }).catch(function(){});
 };
 }
-ws();ss();lh();setInterval(pl,2500);setInterval(ss,5e3);setInterval(lh,30e3);
+ws();setInterval(function(){if(w&&w.readyState===1)try{w.send('ping')}catch(e){}},15e3);ss();lh();setInterval(pl,2500);setInterval(ss,5e3);setInterval(lh,30e3);
 })();
