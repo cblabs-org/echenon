@@ -25,7 +25,7 @@ charter:
   - pio test -e native
   charter_locked: true
   charter_hash: 50a5ba28b7c4b4fdd9d3c0ff6018eee2d68d19885ae6b794dc979f644715b695
-status: APPROVED
+status: IN_PROGRESS
 approved_at: '2026-10-27T07:19:12.619513Z'
 github_pr: 8
 work_orders:
@@ -35,28 +35,28 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 911d660847a54e714a284338df175946338868b2
+  commit_sha: 7dc14eeac13dacc07cc72e5d960598e4a698a911
 - id: WO-15.2
   slug: wo2-setup-tab
   title: Setup Tab — Apps & Calibration Pills
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 9c3e53ab2e4e865db749f9401db22bbe8de7d122
+  commit_sha: 6dc83ed16337e72352a7dd648f046c3cc89cb5b3
 - id: WO-15.3
   slug: wo3-ride-page
   title: Ride Page — Standalone /ride
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 6dc83ed16337e72352a7dd648f046c3cc89cb5b3
+  commit_sha: 61a177371b074820c2a4f4bb3a057c077d85bcab
 - id: WO-15.4
   slug: wo4-spec-updates
   title: SPEC & Design Doc Updates
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 61a177371b074820c2a4f4bb3a057c077d85bcab
+  commit_sha: ab3ee53044df9f542d982e24125e1338f4f2e853
 - id: WO-15.5
   slug: wo5-hw-verification
   title: Hardware Verification — P12 Split-Screen
@@ -70,7 +70,7 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 053511d0cc5522ea95b32132d5830a0c009eb846
+  commit_sha: 71e9222da53418561ceb58ddb76a505dd5d477e8
 ---
 
 # PR-15: Portal Rework & Ride Page (Phase 4, v1 Passive)
@@ -145,11 +145,12 @@ All new and refactored UI must follow the `framework-portal-design` skill:
 
 | WO ID | Slug | Title | Complexity | Status | Attempts | Commit SHA |
 |---|---|---|---|---|---|---|
-| `WO-15.1` | `wo1-portal-cleanup` | Portal Cleanup & Tab Restructure | `standard` | `NOT_STARTED` | 0 | — |
-| `WO-15.2` | `wo2-setup-tab` | Setup Tab — Apps & Calibration Pills | `standard` | `NOT_STARTED` | 0 | — |
-| `WO-15.3` | `wo3-ride-page` | Ride Page — Standalone `/ride` | `standard` | `NOT_STARTED` | 0 | — |
-| `WO-15.4` | `wo4-spec-updates` | SPEC & Design Doc Updates | `standard` | `NOT_STARTED` | 0 | — |
-| `WO-15.5` | `wo5-hw-verification` | Hardware Verification — P12 Split-Screen | `interactive` | `NOT_STARTED` | 0 | — |
+| `WO-15.1` | `wo1-portal-cleanup` | Portal Cleanup & Tab Restructure | `standard` | `COMPLETED` | 1 | `7dc14ee` |
+| `WO-15.2` | `wo2-setup-tab` | Setup Tab — Apps & Calibration Pills | `standard` | `COMPLETED` | 1 | `6dc83ed` |
+| `WO-15.3` | `wo3-ride-page` | Ride Page — Standalone `/ride` | `standard` | `COMPLETED` | 1 | `61a1773` |
+| `WO-15.4` | `wo4-spec-updates` | SPEC & Design Doc Updates | `standard` | `COMPLETED` | 1 | `ab3ee53` |
+| `WO-15.5` | `wo5-hw-verification` | Hardware Verification — P12 Split-Screen | `interactive` | `IN_PROGRESS` | 1 | — |
+| `WO-15.6` | `wo6-portal-bugfixes` | Portal Bug Fixes from Hardware Verification | `standard` | `COMPLETED` | 1 | `71e9222` |
 
 ### WO-15.1: Portal Cleanup & Tab Restructure
 **Goal:** Remove the App tab, strip signal-logger content from production `echenon-dashboard.js`, rewrite the Echenon tab to show device status + "Open Ride Page →" button, and verify the resulting 6-tab bottom nav.
@@ -281,3 +282,4 @@ All new and refactored UI must follow the `framework-portal-design` skill:
 - **2026-10-26:** Chief Architect drafted PR-15 charter based on portal UX audit conducted live on bench with owner. Two-surface model finalised, 5-WO decomposition defined. Awaiting charter lock and execution approval.
 - **2026-10-27:** PA: Read locked charter, rules, skills. Created 5 WORKORDER.md specs (WO-15.1–WO-15.5) with flat YAML schema, detailed task checklists, exact code references. Corrected portal asset naming (`.hpp` via `portalBuilder.py` auto-generation). Plan approved via `pa pr approve-plan PR-15` (5 WOs stamped). Dispatched WO-15.1 engineer on branch `pr-15-portal-ride/wo1-portal-cleanup`.
 - **2026-10-27:** Chief Architect: WO-15.5 hardware verification (interactive). Device flashed v0.3.0-dev.25, portal and /ride page verified functional. 6 bugs found: (1) CSS dark mode broken (wrong variable names), (2) Setup tab same icon as System, (3) Strava auth button enabled without credentials, (4) Power table stuck on Loading, (5) WITH_TIME missing, (6) Echenon tab duplicates System tab content. Owner decision: Strava stays BYOA with improved UX; cloud proxy (Google Cloud) deferred. WO-15.6 created for bug fixes.
+- **2026-10-27:** PA: Dispatched pa-engineer for WO-15.6 on pr-15-portal-ride/wo6-portal-bugfixes. Implemented all 6 tasks: T1 (CSS dark mode variables fixed in 3 JS files), T2 (restructured Setup to Apps tab with Feather grid icon and Strava sub-pill, moved calibration pills to System tab), T3 (Strava BYOA UX improvements with setup guide, credential ordering, disabled auth button, and StravaUploader empty clientId guard), T4 (recalibration power table error handling and empty state), T5 (-DWITH_TIME build flag added to ex3-waveshare-nano), T6 (Echenon tab reworked to show bike-specific BLE/calibration/session status). Verification passed (199/199 native unit tests, ex3-waveshare-nano build succeeded). Receipt rcpt_b467ac37e0ac stamped in commit 71e9222. Work order COMPLETED.
