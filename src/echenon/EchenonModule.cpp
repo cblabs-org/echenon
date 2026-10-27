@@ -155,6 +155,27 @@ void EchenonModule::tick(uint32_t currentMillis) {
     }
 #endif
 
+    // Gather diagnostic sensor readings
+    uint16_t livePotRaw = _resistanceSensor.getRawWiper();
+    uint32_t liveCadIntervalUs = _cadenceSensor.getLastPulseInterval();
+
+#if !defined(UNIT_TEST)
+    bool liveCadPin = digitalRead(PIN_CADENCE);
+    uint16_t liveEncVcc = analogRead(PIN_KNOB_ENC_VCC);
+    uint16_t liveMotP = analogRead(PIN_MOTOR_SENSE_P);
+    uint16_t liveMotN = analogRead(PIN_MOTOR_SENSE_N);
+#else
+    bool liveCadPin = false;
+    uint16_t liveEncVcc = 0;
+    uint16_t liveMotP = 0;
+    uint16_t liveMotN = 0;
+#endif
+
+    bool liveBleConn = false;
+#ifdef WITH_BLE
+    liveBleConn = (_hrmClient.getContactState() == echenon::HRContactState::ACTIVE);
+#endif
+
 #ifdef WITH_SESSION
     _liveFeed.tick(currentMillis,
                    cadenceRpm,
@@ -169,7 +190,16 @@ void EchenonModule::tick(uint32_t currentMillis) {
                    speedKph,
                    sessionStateStr,
                    sessionElapsedS,
-                   liveHrBpm);
+                   liveHrBpm,
+                   livePotRaw,
+                   wiperFloat,
+                   pTilde,
+                   liveCadIntervalUs,
+                   liveCadPin,
+                   liveEncVcc,
+                   liveMotP,
+                   liveMotN,
+                   liveBleConn);
 #else
     _liveFeed.tick(currentMillis,
                    cadenceRpm,
@@ -184,7 +214,16 @@ void EchenonModule::tick(uint32_t currentMillis) {
                    speedKph,
                    "IDLE",
                    0,
-                   liveHrBpm);
+                   liveHrBpm,
+                   livePotRaw,
+                   wiperFloat,
+                   pTilde,
+                   liveCadIntervalUs,
+                   liveCadPin,
+                   liveEncVcc,
+                   liveMotP,
+                   liveMotN,
+                   liveBleConn);
 #endif
 #endif
 #ifdef WITH_SIGNAL_LOGGER

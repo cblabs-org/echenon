@@ -70,6 +70,31 @@ public:
               uint32_t currentMillis,
               uint8_t hrBpm = 0);
 
+    // Extended overload including diagnostic sensor fields
+    void tick(uint32_t currentMillis,
+              float cadenceRPM,
+              uint8_t echelonLevel,
+              uint8_t internalLevel,
+              float powerWatts,
+              uint16_t potAdc,
+              int8_t motorDir,
+              int32_t encoderDelta,
+              bool runaway,
+              uint8_t pelotonResistance,
+              float speedKph,
+              const char* sessionState,
+              uint32_t sessionElapsedS,
+              uint8_t hrBpm,
+              uint16_t potRaw,
+              float potFiltered,
+              float pTilde,
+              uint32_t cadenceIntervalUs,
+              bool cadencePin,
+              uint16_t encVcc,
+              uint16_t motorSenseP,
+              uint16_t motorSenseN,
+              bool bleConnected);
+
     // Configuration
     void setIntervalMs(uint32_t ms);  // default 500 ms (~2 Hz)
     uint32_t getIntervalMs() const;
