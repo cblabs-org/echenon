@@ -124,6 +124,14 @@ public:
         const std::string& out_path = "",
         const DeadlineCheckFn& check_deadline = nullptr);
 
+    /// Compress arbitrary data into an RFC 1952 gzip stream using the PSRAM-allocated
+    /// streaming encoder (RFC 1951 fixed-Huffman/LZ77 + CRC32 + ISIZE trailer).
+    static bool compressGzip(
+        const uint8_t* data,
+        size_t len,
+        std::vector<uint8_t>& out_compressed,
+        const DeadlineCheckFn& check_deadline = nullptr);
+
     /// Decompress an RFC 1952 .tcx.gz stream and verify its IEEE 802.3 CRC32 and
     /// ISIZE trailer (supports RFC 1951 stored and fixed-Huffman blocks).
     static bool decompressGzip(

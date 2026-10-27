@@ -35,28 +35,28 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 7dc14eeac13dacc07cc72e5d960598e4a698a911
+  commit_sha: 911d660847a54e714a284338df175946338868b2
 - id: WO-15.2
   slug: wo2-setup-tab
   title: Setup Tab — Apps & Calibration Pills
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 6dc83ed16337e72352a7dd648f046c3cc89cb5b3
+  commit_sha: 9c3e53ab2e4e865db749f9401db22bbe8de7d122
 - id: WO-15.3
   slug: wo3-ride-page
   title: Ride Page — Standalone /ride
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 61a177371b074820c2a4f4bb3a057c077d85bcab
+  commit_sha: 6dc83ed16337e72352a7dd648f046c3cc89cb5b3
 - id: WO-15.4
   slug: wo4-spec-updates
   title: SPEC & Design Doc Updates
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: ab3ee53044df9f542d982e24125e1338f4f2e853
+  commit_sha: 61a177371b074820c2a4f4bb3a057c077d85bcab
 - id: WO-15.5
   slug: wo5-hw-verification
   title: Hardware Verification — P12 Split-Screen
@@ -70,7 +70,7 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 71e9222da53418561ceb58ddb76a505dd5d477e8
+  commit_sha: 053511d0cc5522ea95b32132d5830a0c009eb846
 ---
 
 # PR-15: Portal Rework & Ride Page (Phase 4, v1 Passive)

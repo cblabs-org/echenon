@@ -135,6 +135,7 @@ public:
     uint16_t getAvgPowerWatts() const;
     uint16_t getMaxPowerWatts() const { return _maxPowerW; }
     uint16_t getTotalWorkKj() const { return static_cast<uint16_t>((_powerSumW + 500u) / 1000u); }
+    uint8_t  getHeartRateBpm() const { return (_hrConnected && _heartRateBpm > 0) ? _heartRateBpm : 0; }
 
     const RideSummary& getLastSummary() const { return _lastSummary; }
     RideStore& getRideStore() { return _rideStore; }

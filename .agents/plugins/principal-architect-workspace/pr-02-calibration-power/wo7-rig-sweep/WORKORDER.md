@@ -2,15 +2,21 @@
 schema_version: 1
 wo_id: WO-02.7
 pr_id: PR-02
-title: "Rig Sweep (90-min)"
+title: Rig Sweep (90-min)
 complexity: interactive
 status: COMPLETED
 allowed_files:
-  - tools/calibration-rig/
-  - src/echenon/
-  - test/
-  - docs/
-verification_command: "./.pio/build/native/program"
+- tools/calibration-rig/
+- src/echenon/
+- test/
+- docs/
+forbidden_files: []
+required_skills: []
+verification_command: ./.pio/build/native/program
+max_attempts: 5
+max_structural_failures: 2
+spec_hash: null
+completion: null
 ---
 
 # WO-02.7 — Rig Sweep (90-min)
@@ -25,3 +31,6 @@ Run the full 320-point automated calibration sweep (32 levels × 10 cadence step
 - **Sweep result:** 320/320 points captured over 74 minutes (`docs/measurements/phase3/evidence/sweep_20261024.csv`), zero HTTP/ADB errors.
 - **Power range:** 12 W (L1 / 40 RPM) to 861 W (L32 / 130 RPM).
 - **Phase 3 fit applied:** `LevelMapping` updated to `B03_SLOPE = 37.26f`, `B03_INTERCEPT = 120.0f`, `WORKING_RANGE_MIN = 157`, `WORKING_RANGE_MAX = 1313` (R² = 0.9998).
+## Completion Report
+
+_No completion report recorded._

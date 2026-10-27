@@ -39,7 +39,7 @@ public:
               float speedKph = 0.0f           // virtual flat-road speed (km/h)
               );
 
-    // Extended 13-argument overloads including session_state and session_elapsed_s
+    // Extended overloads including session_state, session_elapsed_s, and heart rate
     void tick(uint32_t currentMillis,
               float cadenceRPM,
               uint8_t echelonLevel,
@@ -52,7 +52,8 @@ public:
               uint8_t pelotonResistance,
               float speedKph,
               const char* sessionState,
-              uint32_t sessionElapsedS);
+              uint32_t sessionElapsedS,
+              uint8_t hrBpm = 0);
 
     void tick(float cadenceRpm,
               uint8_t levelEchelon,
@@ -66,7 +67,8 @@ public:
               float speedKph,
               const char* sessionState,
               uint32_t sessionElapsedS,
-              uint32_t currentMillis);
+              uint32_t currentMillis,
+              uint8_t hrBpm = 0);
 
     // Configuration
     void setIntervalMs(uint32_t ms);  // default 500 ms (~2 Hz)

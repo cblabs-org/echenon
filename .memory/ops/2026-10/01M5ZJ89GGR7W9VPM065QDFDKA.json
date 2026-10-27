@@ -1,0 +1,1623 @@
+{
+  "version": 1,
+  "ops": [
+    {
+      "type": "amend",
+      "entry_id": "docseed-125127e0",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/mitm-encoder-design-notes.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "5606a069a97aa6657146a98d64d1fe1abdafb596",
+        "source_doc_path": "SPEC.md",
+        "text": "**Mode 1, relay/active (Intercept)**: the console is connected. The ESP32 takes the knob and the console's motor drive in as signals, emulates the encoder toward the console and drives the motor through an H-bridge (\"console as signal source\", `docs/mitm-encoder-design-notes.md` §11). The Echelon app runs unchanged."
+      }
+    },
+    {
+      "type": "amend",
+      "entry_id": "docseed-5c68dcae",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/ex3_specification.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "5606a069a97aa6657146a98d64d1fe1abdafb596",
+        "source_doc_path": "SPEC.md",
+        "text": "EX-3 internal sensors, looms, connectors and actuators: [`docs/ex3_specification.md`](docs/ex3_specification.md)"
+      }
+    },
+    {
+      "type": "amend",
+      "entry_id": "docseed-b54b7cc6",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/hardware_specification.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "5606a069a97aa6657146a98d64d1fe1abdafb596",
+        "source_doc_path": "SPEC.md",
+        "text": "Circuit build guide per phase: [`docs/hardware_specification.md`](docs/hardware_specification.md)"
+      }
+    },
+    {
+      "type": "amend",
+      "entry_id": "docseed-b2888efc",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/implementation-strategy.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "5606a069a97aa6657146a98d64d1fe1abdafb596",
+        "source_doc_path": "SPEC.md",
+        "text": "Development rationale: [`docs/implementation-strategy.md`](docs/implementation-strategy.md)"
+      }
+    },
+    {
+      "type": "amend",
+      "entry_id": "docseed-9e31f3f2",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/use_case_analysis.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "5606a069a97aa6657146a98d64d1fe1abdafb596",
+        "source_doc_path": "SPEC.md",
+        "text": "Operating scenarios UC1–UC6: [`docs/use_case_analysis.md`](docs/use_case_analysis.md)"
+      }
+    },
+    {
+      "type": "amend",
+      "entry_id": "docseed-cad3e2bf",
+      "dossier_scope": "docs/measurements/phase0",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase0/README.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "5606a069a97aa6657146a98d64d1fe1abdafb596",
+        "source_doc_path": "SPEC.md",
+        "text": "Phase 0 measurement register: [`docs/measurements/phase0/README.md`](docs/measurements/phase0/README.md) (the \"Phase 0 register\", also called Appendix A in programme documents)"
+      }
+    },
+    {
+      "type": "amend",
+      "entry_id": "docseed-149da17b",
+      "dossier_scope": "hardware",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "hardware"
+        ],
+        "entry_type": "recipe",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "procedural",
+        "source_doc_blob_sha": "5606a069a97aa6657146a98d64d1fe1abdafb596",
+        "source_doc_path": "SPEC.md",
+        "text": "**Hardware-portable**: all hardware-specific configuration (pin map, bike signal set, partition table, SDK settings) lives in one target directory under `hardware/`. A different ESP32 board or bike is a new target directory plus a PlatformIO environment. Firmware uses `#if HAS_*` guards for bike signals and `WITH_*` flags for compiled modules (§12.3)."
+      }
+    },
+    {
+      "type": "amend",
+      "entry_id": "docseed-4ffa8947",
+      "dossier_scope": "framework/hardware/esp32s3nano",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "framework/hardware/_common/board_contract.h",
+          "framework/hardware/_TEMPLATE",
+          "framework/hardware/esp32s3nano/board.h"
+        ],
+        "entry_type": "contract",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "5606a069a97aa6657146a98d64d1fe1abdafb596",
+        "source_doc_path": "SPEC.md",
+        "text": "**One header.** `board.h` is the single source of truth for pins and bike signals. It follows the framework's board contract (`framework/hardware/_common/board_contract.h`) and is authored from the framework's `framework/hardware/_TEMPLATE/`, not cloned from the reference `framework/hardware/esp32s3nano/board.h`, whose display and button pins collide with Echenon's tap pins (§12.3). No other p..."
+      }
+    },
+    {
+      "type": "amend",
+      "entry_id": "docseed-2dda879b",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "platformio.ini"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "5606a069a97aa6657146a98d64d1fe1abdafb596",
+        "source_doc_path": "SPEC.md",
+        "text": "**Two flag families.** `HAS_*` macros in `board.h` state that a bike signal exists and is wired. `WITH_*` build flags in `platformio.ini` select which framework and application modules compile (§12.3)."
+      }
+    },
+    {
+      "type": "amend",
+      "entry_id": "docseed-1914be52",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "sdkconfig.defaults"
+        ],
+        "entry_type": "recipe",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "procedural",
+        "source_doc_blob_sha": "5606a069a97aa6657146a98d64d1fe1abdafb596",
+        "source_doc_path": "SPEC.md",
+        "text": "**Build wiring.** The PlatformIO env passes `-DBOARD_HEADER=\\\"hardware/ex3-waveshare-nano/board.h\\\"`, the target's partition table and the target's `sdkconfig.defaults` (§12.2)."
+      }
+    },
+    {
+      "type": "amend",
+      "entry_id": "docseed-678b3000",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/ex3_specification.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "5606a069a97aa6657146a98d64d1fe1abdafb596",
+        "source_doc_path": "SPEC.md",
+        "text": "The cadence, potentiometer and encoder signals operate at 3.3 V logic (see [`docs/ex3_specification.md` §10](docs/ex3_specification.md#10-voltage-summary)). They reach the ESP32 only through series resistors (§4.4)."
+      }
+    },
+    {
+      "type": "amend",
+      "entry_id": "docseed-fa409e1c",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "sdkconfig.defaults"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:SPEC.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "5606a069a97aa6657146a98d64d1fe1abdafb596",
+        "source_doc_path": "SPEC.md",
+        "text": "**SDK config chain.** The project-root `sdkconfig.defaults` holds the project-level defaults. The framework's `sync_sdkconfig.py` pre-script keeps it in step with the framework root file, as it does for the template app. The framework BLE defaults follow, and the target's own `sdkconfig.defaults` comes last, so the target's octal-PSRAM, 16 MB flash, USB-console and NimBLE slot settings win."
+      }
+    },
+    {
+      "type": "amend",
+      "entry_id": "docseed-e71e522f",
+      "dossier_scope": "hardware/ex3-waveshare-nano",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "hardware/ex3-waveshare-nano/board.h"
+        ],
+        "entry_type": "contract",
+        "evidence": [
+          "doc:docs/implementation-strategy.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "1056aa75dd7a60d8659f85775658c2406d2677cf",
+        "source_doc_path": "docs/implementation-strategy.md",
+        "text": "`hardware/ex3-waveshare-nano/board.h` — pin map, bike characteristics and `HAS_*` signal flags. Built from the framework's `hardware/_common/board_contract.h` and `hardware/_TEMPLATE/`, not cloned from the reference `esp32s3nano` board."
+      }
+    },
+    {
+      "type": "amend",
+      "entry_id": "docseed-569dd29a",
+      "dossier_scope": "hardware/ex3-waveshare-nano",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "hardware/ex3-waveshare-nano/partitions.csv"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/implementation-strategy.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "1056aa75dd7a60d8659f85775658c2406d2677cf",
+        "source_doc_path": "docs/implementation-strategy.md",
+        "text": "`hardware/ex3-waveshare-nano/partitions.csv` — flash partition table"
+      }
+    },
+    {
+      "type": "amend",
+      "entry_id": "docseed-d11c20de",
+      "dossier_scope": "hardware/ex3-waveshare-nano",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "hardware/ex3-waveshare-nano/sdkconfig.defaults"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/implementation-strategy.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "1056aa75dd7a60d8659f85775658c2406d2677cf",
+        "source_doc_path": "docs/implementation-strategy.md",
+        "text": "`hardware/ex3-waveshare-nano/sdkconfig.defaults` — SDK overrides"
+      }
+    },
+    {
+      "type": "amend",
+      "entry_id": "docseed-449dd672",
+      "dossier_scope": "docs/measurements/phase0",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase0"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/implementation-strategy.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "1056aa75dd7a60d8659f85775658c2406d2677cf",
+        "source_doc_path": "docs/implementation-strategy.md",
+        "text": "**Inputs:** the Phase 0 register with every row's evidence (scope captures, CSVs, photos) under `docs/measurements/phase0/`, and the WO0 spike results."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-2cfbb715",
+      "dossier_scope": "framework/web/portal",
+      "timestamp": "2026-10-15T19:49:44Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "framework/web/portal/wifi.js"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase2/BLE-0x3e-debug-2026-10-13.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "fa589e6ee489f69085403a2220c0e28c4f697949",
+        "source_doc_path": "docs/measurements/phase2/BLE-0x3e-debug-2026-10-13.md",
+        "text": "**Portal auto-starts WiFi scan on tab open:** `framework/web/portal/wifi.js` L550–561: The `tab-changed` event listener calls `startScan()` whenever the WiFi tab becomes active. If the portal is open with the WiFi tab selected, scans run automatically."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-5f497ec1",
+      "dossier_scope": "framework/modules/WifiManager",
+      "timestamp": "2026-10-15T19:49:44Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "framework/modules/WifiManager/WifiManager.cpp"
+        ],
+        "entry_type": "gotcha",
+        "evidence": [
+          "doc:docs/measurements/phase2/BLE-0x3e-debug-2026-10-13.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "fa589e6ee489f69085403a2220c0e28c4f697949",
+        "source_doc_path": "docs/measurements/phase2/BLE-0x3e-debug-2026-10-13.md",
+        "text": "**MCP scan uses non-default active scan time:** `framework/modules/WifiManager/WifiManager.cpp` L632: When `WITH_BLE` is defined, `WiFi.scanNetworks(false, false, false, 120)` passes 120 ms/channel active scan time. The same 120 ms parameter is used in the async scan path at L741. ESP-IDF's warning specifically calls out non-default active scan time as problematic when Bluetooth is enabled."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-83ce44b3",
+      "dossier_scope": "docs/measurements/phase2/evidence/wo3d-ab-run/batch-a-prime",
+      "timestamp": "2026-10-15T18:19:50Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase2/evidence/wo3d-ab-run/batch-a-prime/attempts.csv"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase2/evidence/wo3d-ab-run/batch-a-prime/summary.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "6698da30eb1fbe62ad0fe9e1b2c443d8f75baf6c",
+        "source_doc_path": "docs/measurements/phase2/evidence/wo3d-ab-run/batch-a-prime/summary.md",
+        "text": "Attempts log: [`attempts.csv`](attempts.csv)"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-9f33450b",
+      "dossier_scope": "docs/measurements/phase2/evidence/wo3d-ab-run/batch-a",
+      "timestamp": "2026-10-15T18:19:50Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase2/evidence/wo3d-ab-run/batch-a/attempts.csv"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase2/evidence/wo3d-ab-run/batch-a/summary.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "56a13fa60da06d195157099bee5ee4abe7592155",
+        "source_doc_path": "docs/measurements/phase2/evidence/wo3d-ab-run/batch-a/summary.md",
+        "text": "Attempts log: [`attempts.csv`](attempts.csv)"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-e96ad7dd",
+      "dossier_scope": "docs/measurements/phase2/evidence/wo3d-ab-run/batch-a",
+      "timestamp": "2026-10-15T18:19:50Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase2/evidence/wo3d-ab-run/batch-a/esp32_events_batch-a.csv"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase2/evidence/wo3d-ab-run/batch-a/summary.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "56a13fa60da06d195157099bee5ee4abe7592155",
+        "source_doc_path": "docs/measurements/phase2/evidence/wo3d-ab-run/batch-a/summary.md",
+        "text": "ESP32 events (first half): [`esp32_events_batch-a.csv`](esp32_events_batch-a.csv)"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-9e1bbce4",
+      "dossier_scope": "docs/measurements/phase2/evidence/wo3d-ab-run/batch-a",
+      "timestamp": "2026-10-15T18:19:50Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase2/evidence/wo3d-ab-run/batch-a/esp32_events_batch-a-cont.csv"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase2/evidence/wo3d-ab-run/batch-a/summary.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "56a13fa60da06d195157099bee5ee4abe7592155",
+        "source_doc_path": "docs/measurements/phase2/evidence/wo3d-ab-run/batch-a/summary.md",
+        "text": "ESP32 events (second half): [`esp32_events_batch-a-cont.csv`](esp32_events_batch-a-cont.csv)"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-37701846",
+      "dossier_scope": "docs/measurements/phase2/evidence/wo3d-ab-run/batch-b",
+      "timestamp": "2026-10-15T18:19:50Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase2/evidence/wo3d-ab-run/batch-b/attempts.csv"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase2/evidence/wo3d-ab-run/batch-b/summary.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "66c7254eff828daa687fcb6c618f055b92effd55",
+        "source_doc_path": "docs/measurements/phase2/evidence/wo3d-ab-run/batch-b/summary.md",
+        "text": "Attempts log: [`attempts.csv`](attempts.csv)"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-ce699a0f",
+      "dossier_scope": "tools/ble-test",
+      "timestamp": "2026-10-17T18:55:35Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "tools/ble-test/mac_runner.py"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase2/wo5-strap-acceptance/evidence.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "98dc61f6c6d9bcedcaeccdefd1d25578f7d87933",
+        "source_doc_path": "docs/measurements/phase2/wo5-strap-acceptance/evidence.md",
+        "text": "`tools/ble-test/mac_runner.py` — existing BLE test harness (pre-existing)"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-4bdd473a",
+      "dossier_scope": "docs/measurements/phase3/evidence",
+      "timestamp": "2026-10-24T13:42:36Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase3/evidence/chartest4_settle_time.csv"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase3/C04-20261024-settle-pulse-report.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "f827190860468a8942e116458ebcb38709488fdb",
+        "source_doc_path": "docs/measurements/phase3/C04-20261024-settle-pulse-report.md",
+        "text": "[`evidence/chartest4_settle_time.csv`](evidence/chartest4_settle_time.csv)"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-dfc7ce5b",
+      "dossier_scope": "docs/measurements/phase3/evidence",
+      "timestamp": "2026-10-24T13:42:36Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase3/evidence/char_test4_settle_time.py"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase3/C04-20261024-settle-pulse-report.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "f827190860468a8942e116458ebcb38709488fdb",
+        "source_doc_path": "docs/measurements/phase3/C04-20261024-settle-pulse-report.md",
+        "text": "[`evidence/char_test4_settle_time.py`](evidence/char_test4_settle_time.py) — settle time test script"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-f342ef61",
+      "dossier_scope": "docs/measurements/phase3/evidence",
+      "timestamp": "2026-10-24T13:42:36Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase3/evidence/char_test4c_pulse_width.py"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase3/C04-20261024-settle-pulse-report.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "f827190860468a8942e116458ebcb38709488fdb",
+        "source_doc_path": "docs/measurements/phase3/C04-20261024-settle-pulse-report.md",
+        "text": "[`evidence/char_test4c_pulse_width.py`](evidence/char_test4c_pulse_width.py) — pulse width test script"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-816210e0",
+      "dossier_scope": "docs/measurements/phase3/evidence",
+      "timestamp": "2026-10-24T17:45:55Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase3/evidence/sweep_20261024.csv"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase3/C07-20261024-power-regression-analysis.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08123579e3dea191d361be73abc7a176356b2759",
+        "source_doc_path": "docs/measurements/phase3/C07-20261024-power-regression-analysis.md",
+        "text": "[`evidence/sweep_20261024.csv`](evidence/sweep_20261024.csv) — 320-point empirical power sweep (32 resistance levels × 10 cadence steps, 40–130 RPM)"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-926c8b71",
+      "dossier_scope": "docs/measurements/phase3/evidence",
+      "timestamp": "2026-10-24T17:45:55Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase3/evidence/power_regression_analysis.xlsx"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase3/C07-20261024-power-regression-analysis.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08123579e3dea191d361be73abc7a176356b2759",
+        "source_doc_path": "docs/measurements/phase3/C07-20261024-power-regression-analysis.md",
+        "text": "[`evidence/power_regression_analysis.xlsx`](evidence/power_regression_analysis.xlsx) — 5-sheet workbook with raw dataset, model comparison, live Excel prediction formulas, 32×10 power surface heatmap, and residual scatter charts"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-6d117a5f",
+      "dossier_scope": "src/echenon",
+      "timestamp": "2026-10-26T15:40:32Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "src/echenon/CadenceSensor.h",
+          "src/echenon/CadenceSensor.cpp"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase3/C08-20261024-ftms-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "ba0e27381dae3d0c0343468fd365022c24e1065b",
+        "source_doc_path": "docs/measurements/phase3/C08-20261024-ftms-verification.md",
+        "text": "**Hardware Bug 1 — Physical Reed Switch Rising-Edge RC Threshold Bounce (`src/echenon/CadenceSensor.h`, `src/echenon/CadenceSensor.cpp`):**"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-b9c34743",
+      "dossier_scope": "tmp",
+      "timestamp": "2026-10-26T15:40:32Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "tmp/ftms_bleak_pedal_v21.json"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase3/C08-20261024-ftms-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "ba0e27381dae3d0c0343468fd365022c24e1065b",
+        "source_doc_path": "docs/measurements/phase3/C08-20261024-ftms-verification.md",
+        "text": "**Live Capture Proof (`tmp/ftms_bleak_pedal_v21.json`):** Continuous physical pedalling from `35.5 RPM` to `84.5 RPM` (`84–146 W`, `24.16–29.50 km/h`) with **zero** `200.0 RPM` spikes."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-cd25b342",
+      "dossier_scope": "src/echenon",
+      "timestamp": "2026-10-26T15:40:32Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "src/echenon/HRMClient.cpp",
+          "src/echenon/FTMSServer.cpp"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase3/C08-20261024-ftms-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "ba0e27381dae3d0c0343468fd365022c24e1065b",
+        "source_doc_path": "docs/measurements/phase3/C08-20261024-ftms-verification.md",
+        "text": "**Hardware Bug 2 — Optical HR Armband Transient `0 BPM` Drops \u0026 Cross-Core `millis()` Underflow (`src/echenon/HRMClient.cpp`, `src/echenon/FTMSServer.cpp`):**"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-7a8e1850",
+      "dossier_scope": "tmp",
+      "timestamp": "2026-10-26T15:40:32Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "tmp/ftms_bleak_hr_knob_v21.json"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase3/C08-20261024-ftms-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "ba0e27381dae3d0c0343468fd365022c24e1065b",
+        "source_doc_path": "docs/measurements/phase3/C08-20261024-ftms-verification.md",
+        "text": "**Live Capture Proof (`tmp/ftms_bleak_hr_knob_v21.json` \u0026 `v0.3.0-dev.22` live ride):** Continuous rock-solid HR reporting (`68–79 BPM`) across both `0x180D` (`HRMRepeater`) and `0x2AD2` (`FTMSServer`) alongside full resistance knob sweeps (`Level 1` / `R_ftms=0` / `Peloton=13` through `Level 32` / `R_ftms=254` / `Peloton=42`)."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-0b56dc2a",
+      "dossier_scope": "src/echenon",
+      "timestamp": "2026-10-26T15:40:32Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "src/echenon/CadenceSensor.cpp"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase3/C08-20261024-ftms-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "ba0e27381dae3d0c0343468fd365022c24e1065b",
+        "source_doc_path": "docs/measurements/phase3/C08-20261024-ftms-verification.md",
+        "text": "**Hardware Bug 3 — `CadenceSensor` 71.58-Minute `uint32_t micros()` Wraparound vs `millis()` (`src/echenon/CadenceSensor.cpp`):**"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-01e8b9f5",
+      "dossier_scope": "tmp",
+      "timestamp": "2026-10-26T15:40:32Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "tmp/ftms_multi_channel_monitor.json"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase3/C08-20261024-ftms-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "ba0e27381dae3d0c0343468fd365022c24e1065b",
+        "source_doc_path": "docs/measurements/phase3/C08-20261024-ftms-verification.md",
+        "text": "**Root Cause:** During extended bench operation (`uptime \u003e 71.58 min` = `4,294,967 ms`, observed at `uptime = 9,237 s` in `tmp/ftms_multi_channel_monitor.json`), `uint32_t pulseMicros` wraps modulo `2^32 µs` (`0 .. 4,294,967 ms`), whereas `currentMillis` (`millis()`) continues advancing past `4,294,967 ms`. Because `handlePulse()` set `_lastPulseMs = pulseMicros / 1000` and `tick()` checked `c..."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-3f76c244",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-24T17:45:55Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/power-physics-model.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase3/README.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "3b6595cad52fcb3c970d4193dff06feb7a99b582",
+        "source_doc_path": "docs/measurements/phase3/README.md",
+        "text": "[`docs/power-physics-model.md`](../../power-physics-model.md) — First-principles electromechanical derivation (`Physics P3r`), reverse-engineering of Echelon's console algorithm, evaluation across 14 candidate models, and `PowerEngine` implementation spec."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-ce828c61",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-24T17:45:55Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/digital-hardware-emulation-and-console-dynamics.md"
+        ],
+        "entry_type": "recipe",
+        "evidence": [
+          "doc:docs/measurements/phase3/README.md"
+        ],
+        "kind": "procedural",
+        "source_doc_blob_sha": "3b6595cad52fcb3c970d4193dff06feb7a99b582",
+        "source_doc_path": "docs/measurements/phase3/README.md",
+        "text": "[`docs/digital-hardware-emulation-and-console-dynamics.md`](../../digital-hardware-emulation-and-console-dynamics.md) — Complete engineering reference for synthetic cadence emulation (`GPIO 11` NPN open-collector), digital quadrature encoder synthesis (`GPIO 17/18`, `8 edges = 1 level`), console decoder timing \u0026 the `75 ms` polling-aliasing anomaly, and bang-bang motor settling dynamics (`C03..."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-56371065",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "**Active Ride Ring Buffer (`RideStore::allocateBuffer()`):** Allocates `14,400 * sizeof(RideRecord) = 115,200 B` (`112.5 KB`, 4 hours at 1 Hz) in PSRAM via `heap_caps_malloc(..., MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT)` on ESP32-S3, falling back to `3,600 * 8 = 28,800 B` (`28.1 KB`, 1 hour) in internal DRAM only if PSRAM is unavailable."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-060b7488",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "**Streaming TCX \u0026 Gzip Scratch (`TCXGenerator`):** Strictly bounded to a single `4,096 B` (`4 KB`) formatting buffer (`kScratchBufferSize = 4096`) plus streaming `miniz` (`tdefl_compressor`) deflation directly to LittleFS or HTTP response stream — zero full-ride XML strings in RAM."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-1e01684a",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "**TLS + BLE Coexistence (`UploadQueue`):** Each outbound HTTPS call (`StravaUploader::refreshTokenIfNeeded`, `postUpload`, `pollUploadStatus`) is executed inside a single split stage on the background `DataCollector` FreeRTOS task (`Core 0`) while holding a stack-allocated `BLEManager::ScanInhibit` RAII guard (`#ifdef WITH_BLE`) so internal SRAM retains $\u003e 40\\text{ KB}$ headroom during `mbedTLS..."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-f39a7963",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "recipe",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "procedural",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "Flash production or diagnostic firmware via PlatformIO MCP (`upload` for environment `ex3-waveshare-nano` or `ex3-waveshare-nano-diag`)."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-b436ea2d",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "Confirm boot log reports PSRAM ride buffer allocation (`14,400` records = `115,200 B`), LittleFS mount (`/rides` directory ready), and registration of `Session` (order `80`) and `Upload Services` (order `90`) portal tabs."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-568c71d3",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "**Auto-Start (`4.1`):** With `auto_start_enabled: true` (`GET /api/session/status`), pedal continuously for `\u003e 5 s`. Verify `/ws/echenon/live` transitions `session_state: \"IDLE\" -\u003e \"ACTIVE\"` and `session_elapsed_s` increments at 1 Hz."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-850adaa6",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "**Coasting vs. Manual Pause (`4.2, 4.9`):**"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-04018788",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "Stop pedalling for `15 s` while `ACTIVE` (coasting): verify `session_state` remains `\"ACTIVE\"` and `0 W / 0 RPM` records are logged at 1 Hz."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-34d795bf",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "Click **Pause** in the Session tab (`POST /api/session/pause`): verify `session_state` becomes `\"PAUSED\"`. Wait `15 s`, then click **Resume** (`POST /api/session/resume`) and pedal for another `30 s`."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-f89b5b84",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "**Inactivity Auto-End (`4.4`) or Manual End (`4.2`):** Stop pedalling for `180 s` (or click **End Session**). Verify trailing zero-cadence records from the final stop are stripped and the completed ride appears in `GET /api/session/history`."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-bda7ff90",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "**Subsequent Ride After `ENDED` (`4.1`):** Resume pedalling for `\u003e 5 s` without rebooting; verify `SessionManager` transitions cleanly from `ENDED -\u003e ACTIVE` with a fresh session ID."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-22200df1",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "**Manual Discard (`4.2`):** Start a short session, click **Discard**, and verify `session_state` returns to `\"IDLE\"` and `/ride_active.bin` is removed without adding an entry to `GET /api/session/history`."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-86cc9195",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "Pedal for `\u003e 65 s` (`\u003e= 60` 1 Hz records, crossing at least two `30 s` LittleFS checkpoints to `/ride_active.bin`), then press hardware reset (or power-cycle USB-C) mid-ride."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-9550efd3",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "On reboot, query `GET /api/session/history` and confirm `RideStore::recoverInterruptedRide()` finalized the interrupted ride into `/rides/ride_\u003cid\u003e.bin`."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-f7b4f7ba",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "Complete a 6th stored ride and verify `RideStore` evicts the oldest `.bin` (and any `.tcx.gz`), maintaining a maximum of `5` stored rides."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-e0585866",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "contract",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "Verify unauthenticated `curl -i \"http://192.168.1.100/api/session/download?id=\u003cid\u003e\u0026format=tcx\"` returns `HTTP/1.1 401 Unauthorized`."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-a6e7a0a3",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "contract",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "Authenticate via the portal and download `/api/session/download?id=\u003cid\u003e\u0026format=tcx` and `format=tcx.gz`."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-bd8306ed",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "contract",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "Confirm `\u003cTrainingCenterDatabase\u003e` root schema and `\u003cCreator\u003e\u003cName\u003eEchenon EX-3\u003c/Name\u003e\u003c/Creator\u003e`."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-40500681",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "contract",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "Confirm 1 Hz `\u003cTrackpoint\u003e` elements contain `\u003cTime\u003e`, `\u003cDistanceMeters\u003e`, `\u003cCadence\u003e`, `\u003cHeartRateBpm\u003e` (when BLE HR connected), and `\u003cExtensions\u003e\u003cns3:TPX\u003e\u003cns3:Speed\u003e...\u003c/ns3:Speed\u003e\u003cns3:Watts\u003e...\u003c/ns3:Watts\u003e\u003c/ns3:TPX\u003e\u003c/Extensions\u003e`."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-f7d8c498",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "contract",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "Confirm the `15 s` coasting window contains continuous 1 Hz `\u003cTrackpoint\u003e` entries with `\u003cns3:Watts\u003e0\u003c/ns3:Watts\u003e` and `\u003cns3:Speed\u003e0.00\u003c/ns3:Speed\u003e`, whereas the `15 s` manual `PAUSED` window has no `\u003cTrackpoint\u003e` timestamps during the pause gap."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-00d50b73",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "Open the **Upload Services** tab (`#upload_settings`), enter Strava API `Client ID` and `Client Secret`, and click **Save Credentials** (`POST /api/strava/credentials`)."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-f2237a5a",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "Click **Connect with Strava** (`GET /api/strava/auth-url`), authorize the app on Strava, and confirm redirect back to `/api/strava/callback?code=...\u0026state=...` succeeds and `GET /api/strava/status` reports `\"token_valid\": true`."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-73a5436e",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "Replay the same `/api/strava/callback` URL in the browser and confirm it returns `HTTP 403 Forbidden` (single-use `state` consumed)."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-fccc16af",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "Trigger **Upload to Strava** (`POST /api/session/upload?id=\u003cid\u003e`) or end a ride with auto-upload enabled:"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-8342d150",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "Observe `UploadQueue` progress through `STAGE_GENERATE_TCX_GZ -\u003e STAGE_REFRESH_TOKEN -\u003e STAGE_POST_UPLOAD -\u003e STAGE_POLL_STATUS` (one stage per `fetchUpdate()` tick on `Core 0`)."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-d4599601",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/measurements/phase4/C09-20261026-session-strava-verification.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "08c5190060539035f5e4c5482a38312a5c027147",
+        "source_doc_path": "docs/measurements/phase4/C09-20261026-session-strava-verification.md",
+        "text": "Confirm serial logs redact `client_secret`, `access_token`, and `refresh_token` (`***REDACTED***`), `internal_free_bytes` remains $\u003e 40\\text{ KB}$ during TLS handshakes (`BLEManager::ScanInhibit` active), `/rides/ride_\u003cid\u003e.tcx.gz` is deleted upon `STAGE_COMPLETE`, and the activity appears on Strava with power, cadence, heart rate, virtual speed, and distance curves."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-9b04c122",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-24T19:04:49Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/digital-hardware-emulation-and-console-dynamics.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/mitm-encoder-design-notes.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "7959668c78e9a25ef8846db8d4eec33c05f38511",
+        "source_doc_path": "docs/mitm-encoder-design-notes.md",
+        "text": "Questions 1, 2, 3, and 5 were empirically resolved during Phase 3 (`C01`–`C07`). Full characterization data, state-machine specifications, and v2 firmware rules are documented in [`docs/digital-hardware-emulation-and-console-dynamics.md`](digital-hardware-emulation-and-console-dynamics.md)."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-ffde7036",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-24T19:04:49Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/digital-hardware-emulation-and-console-dynamics.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/mitm-encoder-design-notes.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "7959668c78e9a25ef8846db8d4eec33c05f38511",
+        "source_doc_path": "docs/mitm-encoder-design-notes.md",
+        "text": "[`docs/digital-hardware-emulation-and-console-dynamics.md`](digital-hardware-emulation-and-console-dynamics.md) — **definitive Phase 3 reference** for synthetic cadence, quadrature encoder synthesis, console decoder timing/aliasing, and motor settling dynamics"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-53738f4a",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-24T19:04:49Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/power-physics-model.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/mitm-encoder-design-notes.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "7959668c78e9a25ef8846db8d4eec33c05f38511",
+        "source_doc_path": "docs/mitm-encoder-design-notes.md",
+        "text": "[`docs/power-physics-model.md`](power-physics-model.md) — first-principles electromechanical power model (`Physics P3r`) and cam/eddy-current physics derivation"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-ac60238f",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-24T19:04:49Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/encoder-resistance-analysis.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/mitm-encoder-design-notes.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "7959668c78e9a25ef8846db8d4eec33c05f38511",
+        "source_doc_path": "docs/mitm-encoder-design-notes.md",
+        "text": "[`docs/encoder-resistance-analysis.md`](encoder-resistance-analysis.md) — Phase 0 signal quality, calibration, cam model"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-ccfe52b0",
+      "dossier_scope": "docs/measurements/phase3",
+      "timestamp": "2026-10-24T19:04:49Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase3"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/mitm-encoder-design-notes.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "7959668c78e9a25ef8846db8d4eec33c05f38511",
+        "source_doc_path": "docs/mitm-encoder-design-notes.md",
+        "text": "[`docs/measurements/phase3/`](measurements/phase3/) — `C01`–`C07` empirical reports and 320-point dataset"
+      }
+    },
+    {
+      "type": "amend",
+      "entry_id": "docseed-80fa9fb4",
+      "dossier_scope": "docs/measurements/phase0",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase0"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/mitm-encoder-design-notes.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "7959668c78e9a25ef8846db8d4eec33c05f38511",
+        "source_doc_path": "docs/mitm-encoder-design-notes.md",
+        "text": "[`docs/measurements/phase0/B02-*`](measurements/phase0/) — encoder characterisation data"
+      }
+    },
+    {
+      "type": "amend",
+      "entry_id": "docseed-d78df89e",
+      "dossier_scope": "docs/measurements/phase0",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase0"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/mitm-encoder-design-notes.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "7959668c78e9a25ef8846db8d4eec33c05f38511",
+        "source_doc_path": "docs/mitm-encoder-design-notes.md",
+        "text": "[`docs/measurements/phase0/B03-*`](measurements/phase0/) — resistance calibration data"
+      }
+    },
+    {
+      "type": "amend",
+      "entry_id": "docseed-79695500",
+      "dossier_scope": "framework/modules/EncoderModule",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "framework/modules/EncoderModule"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/mitm-encoder-design-notes.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "7959668c78e9a25ef8846db8d4eec33c05f38511",
+        "source_doc_path": "docs/mitm-encoder-design-notes.md",
+        "text": "`framework/modules/EncoderModule/` — PCNT-based encoder module"
+      }
+    },
+    {
+      "type": "retire",
+      "entry_id": "docseed-e3c9185d",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-27T20:53:57.285104Z",
+      "source": "doc-seed",
+      "fields": {
+        "reason": "source_doc_updated: docs/mitm-encoder-design-notes.md (7959668c78e9)"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-68e8f40f",
+      "dossier_scope": "docs",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/power-physics-model.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/power-physics-model.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "b27c37b4a92190a4995403e3e971f8652574982d",
+        "source_doc_path": "docs/power-physics-model.md",
+        "text": "**Document ID:** `docs/power-physics-model.md`"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-926713ee",
+      "dossier_scope": "docs/measurements/phase3/evidence",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase3/C07-20261024-power-regression-analysis.md",
+          "docs/measurements/phase3/evidence/power_regression_analysis.xlsx",
+          "docs/encoder-resistance-analysis.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/power-physics-model.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "b27c37b4a92190a4995403e3e971f8652574982d",
+        "source_doc_path": "docs/power-physics-model.md",
+        "text": "**Primary Evidence:** [`docs/measurements/phase3/C07-20261024-power-regression-analysis.md`](measurements/phase3/C07-20261024-power-regression-analysis.md), [`docs/measurements/phase3/evidence/power_regression_analysis.xlsx`](measurements/phase3/evidence/power_regression_analysis.xlsx), [`docs/encoder-resistance-analysis.md`](encoder-resistance-analysis.md)"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-02c56dbf",
+      "dossier_scope": "src/echenon",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "src/echenon/PowerEngine.h"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/power-physics-model.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "b27c37b4a92190a4995403e3e971f8652574982d",
+        "source_doc_path": "docs/power-physics-model.md",
+        "text": "**Zero-Cadence Guard:** If $\\text{cad} \\le 0.0\\text{f}$ (or non-finite), return $0.0\\text{f}$ ($0\\text{ W}$) immediately."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-81978d11",
+      "dossier_scope": "src/echenon",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "src/echenon/PowerEngine.h"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/power-physics-model.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "b27c37b4a92190a4995403e3e971f8652574982d",
+        "source_doc_path": "docs/power-physics-model.md",
+        "text": "**Normalized Cam Position ($\\tilde{p} \\in [0.0, 1.0]$):** Computed directly from the unrounded EMA float wiper $w$ (`ResistanceSensor::getFilteredWiperFloat()`) and the OLS-calibrated linear endpoints $[\\text{pot}_{\\min}, \\text{pot}_{\\max}]$ (`CalibrationWizard::fitLinearEndpoints`): $$\\tilde{p} = \\text{clamp}\\!\\left(\\frac{w - \\text{pot}_{\\min}}{\\text{pot}_{\\max} - \\text{pot}_{\\min}},\\; 0.0\\tex..."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-49cb262b",
+      "dossier_scope": "src/echenon",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "src/echenon/PowerEngine.h"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/power-physics-model.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "b27c37b4a92190a4995403e3e971f8652574982d",
+        "source_doc_path": "docs/power-physics-model.md",
+        "text": "**Cam Follower Displacement ($u$):** $$u = 1.0\\text{f} - \\cosf(2.635447\\text{f} \\cdot \\tilde{p})$$"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-9bd6e106",
+      "dossier_scope": "src/echenon",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "src/echenon/PowerEngine.h"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/power-physics-model.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "b27c37b4a92190a4995403e3e971f8652574982d",
+        "source_doc_path": "docs/power-physics-model.md",
+        "text": "**Kloss Eddy-Current + Friction Power ($P$):** $$r = \\frac{\\text{cad}}{\\text{cad}_c}, \\qquad P_{\\text{eddy}} = A \\cdot \\expf(\\beta \\cdot u) \\cdot \\frac{\\text{cad}^2}{1.0\\text{f} + r^2}$$ $$P = P_{\\text{eddy}} + c_{\\text{fric}} \\cdot \\text{cad}$$"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-80c8c5b6",
+      "dossier_scope": "src/echenon",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "src/echenon/PowerEngine.h"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/power-physics-model.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "b27c37b4a92190a4995403e3e971f8652574982d",
+        "source_doc_path": "docs/power-physics-model.md",
+        "text": "**Output Clamping:** Clamp $P$ to $[0.0\\text{f}, 2000.0\\text{f}]$ (`uint16_t` rounded watts for FTMS / BLE / UI telemetry, plus `float` watts for internal filtering)."
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-107d34a9",
+      "dossier_scope": "root",
+      "timestamp": "2026-10-26T23:50:41Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "SPEC.md"
+        ],
+        "entry_type": "invariant",
+        "evidence": [
+          "doc:docs/power-physics-model.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "b27c37b4a92190a4995403e3e971f8652574982d",
+        "source_doc_path": "docs/power-physics-model.md",
+        "text": "Per `SPEC.md` §5.3, the standard published Peloton Bike power curve is: $$P_{\\text{pel}}(R_{\\text{pel}}, \\text{cad}) = \\left(0.000185 \\cdot R_{\\text{pel}}^{2.7} + 0.1\\right) \\times \\left(\\frac{\\text{cad}}{60}\\right)^2 \\times 60$$"
+      }
+    },
+    {
+      "type": "add",
+      "entry_id": "docseed-0d6b6ce9",
+      "dossier_scope": "docs/measurements/phase2",
+      "timestamp": "2026-10-17T23:00:37Z",
+      "source": "doc-seed",
+      "fields": {
+        "anchors": [
+          "docs/measurements/phase2/wo5-strap-acceptance/evidence.md"
+        ],
+        "entry_type": "gotcha",
+        "evidence": [
+          "doc:docs/upstream-central-acceptance-report.md"
+        ],
+        "kind": "semantic",
+        "source_doc_blob_sha": "ae4d0a6ce94f822f4318871eee06f29f9cc4dad0",
+        "source_doc_path": "docs/upstream-central-acceptance-report.md",
+        "text": "Full evidence: `docs/measurements/phase2/wo5-strap-acceptance/evidence.md`"
+      }
+    }
+  ],
+  "created_at": "2026-10-27T20:53:57.904149Z",
+  "batch_id": "01M5ZJ89GGR7W9VPM065QDFDKA"
+}

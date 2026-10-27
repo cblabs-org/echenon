@@ -1,25 +1,25 @@
 ---
+schema_version: 1
 wo_id: WO-02.8
 pr_id: PR-02
-programme_id: prog-echenon
-title: "Runaway Detection"
-slug: wo8-runaway
-branch: "calibration-power/wo8-runaway"
-base_branch: "calibration-power/wo5-rig-firmware"
+title: Runaway Detection
 complexity: standard
 status: IN_PROGRESS
-attempts: 1
-spec_hash: null
 allowed_files:
-  - src/echenon/RunawayDetector.h
-  - src/echenon/RunawayDetector.cpp
-  - src/echenon/EchenonModule.h
-  - src/echenon/EchenonModule.cpp
-  - test/test_native/test_runaway_detector.cpp
-  - web/echenon-dashboard.js
-verification_command: "pio test -e native && pio run -e ex3-waveshare-nano"
+- src/echenon/RunawayDetector.h
+- src/echenon/RunawayDetector.cpp
+- src/echenon/EchenonModule.h
+- src/echenon/EchenonModule.cpp
+- test/test_native/test_runaway_detector.cpp
+- web/echenon-dashboard.js
+forbidden_files: []
 required_skills:
-  - /Users/mcneillm/Documents/Projects/Echenon/.agents/skills/framework-expert/SKILL.md
+- /Users/mcneillm/Documents/Projects/Echenon/.agents/skills/framework-expert/SKILL.md
+verification_command: pio test -e native && pio run -e ex3-waveshare-nano
+max_attempts: 5
+max_structural_failures: 2
+spec_hash: null
+completion: null
 ---
 
 # WO-02.8 — Runaway Detection
@@ -187,3 +187,6 @@ Required test cases:
 - Framework submodule drift — NEVER commit
 - Known gotchas: `<cstddef>` before BOARD_HEADER; Arduino `#define DEFAULT 1`
 - LiveFeed code is guarded behind `#ifndef UNIT_TEST`
+## Completion Report
+
+_No completion report recorded._

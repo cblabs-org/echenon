@@ -345,3 +345,22 @@ TEST(TCXGeneratorTest, GzipStreamAndRideStoreFileRoundTripDecompression) {
         []() -> bool { return false; }));
     EXPECT_FALSE(fs.exists(partial_path));
 }
+
+TEST(TCXGeneratorTest, CompressGzipArbitraryBinaryRoundTrip) {
+    // Generate synthetic binary payload (e.g. serialized RideRecords)
+    std::vector<uint8_t> payload(1024);
+    for (size_t i = 0; i < payload.size(); ++i) {
+        payload[i] = static_cast<uint8_t>((i * 37) & 0xFF);
+    }
+
+    std::vector<uint8_t> compressed;
+    ASSERT_TRUE(TCXGenerator::compressGzip(payload.data(), payload.size(), compressed));
+    ASSERT_GE(compressed.size(), 18u);
+    EXPECT_EQ(compressed[0], 0x1f);
+    EXPECT_EQ(compressed[1], 0x8b);
+    EXPECT_EQ(compressed[2], 0x08);
+
+    std::vector<uint8_t> decompressed;
+    ASSERT_TRUE(TCXGenerator::decompressGzip(compressed.data(), compressed.size(), decompressed));
+    EXPECT_EQ(decompressed, payload);
+}

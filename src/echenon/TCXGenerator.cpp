@@ -24,6 +24,7 @@ namespace {
 
 struct ScratchBufferWriter {
     uint8_t buf[TCXGenerator::SCRATCH_BUFFER_SIZE];
+    char fmt[1024];
     size_t len = 0;
     const WriteChunkFn& sink;
     const DeadlineCheckFn& deadline;
@@ -606,16 +607,27 @@ bool TCXGenerator::generateTcx(
     const RideSummary eff = resolveEffectiveSummary(
         summary, records, record_count, total_distance_m);
 
-    ScratchBufferWriter writer(write_chunk, check_deadline);
+#if defined(ESP_PLATFORM)
+    void* mem = heap_caps_malloc(sizeof(ScratchBufferWriter), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!mem) return false;
+    auto writer = std::unique_ptr<ScratchBufferWriter, void(*)(ScratchBufferWriter*)>(
+        new(mem) ScratchBufferWriter(write_chunk, check_deadline),
+        [](ScratchBufferWriter* p) { p->~ScratchBufferWriter(); free(p); }
+    );
+#else
+    auto writer = std::unique_ptr<ScratchBufferWriter>(
+        new(std::nothrow) ScratchBufferWriter(write_chunk, check_deadline)
+    );
+    if (!writer) return false;
+#endif
 
     char start_iso[32];
     formatIso8601Utc(eff.start_epoch_s, start_iso, sizeof(start_iso));
 
-    // Format XML header + <Lap> summary metadata
-    char header_buf[1024];
+    // Format XML header + <Lap> summary metadata directly into PSRAM writer->fmt
     int n = std::snprintf(
-        header_buf,
-        sizeof(header_buf),
+        writer->fmt,
+        sizeof(writer->fmt),
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
         "<TrainingCenterDatabase"
         " xmlns=\"http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2\""
@@ -633,43 +645,40 @@ bool TCXGenerator::generateTcx(
         static_cast<unsigned>(eff.duration_s),
         static_cast<double>(total_distance_m),
         static_cast<unsigned>(eff.total_work_kj));
-    if (n <= 0 || static_cast<size_t>(n) >= sizeof(header_buf) ||
-        !writer.append(header_buf, static_cast<size_t>(n))) {
+    if (n <= 0 || static_cast<size_t>(n) >= sizeof(writer->fmt) ||
+        !writer->append(writer->fmt, static_cast<size_t>(n))) {
         return false;
     }
 
     if (eff.avg_hr_bpm > 0 && eff.max_hr_bpm > 0) {
-        char hr_lap_buf[256];
         int hr_n = std::snprintf(
-            hr_lap_buf,
-            sizeof(hr_lap_buf),
+            writer->fmt,
+            sizeof(writer->fmt),
             "        <AverageHeartRateBpm><Value>%u</Value></AverageHeartRateBpm>\n"
             "        <MaximumHeartRateBpm><Value>%u</Value></MaximumHeartRateBpm>\n",
             static_cast<unsigned>(eff.avg_hr_bpm),
             static_cast<unsigned>(eff.max_hr_bpm));
-        if (hr_n <= 0 || static_cast<size_t>(hr_n) >= sizeof(hr_lap_buf) ||
-            !writer.append(hr_lap_buf, static_cast<size_t>(hr_n))) {
+        if (hr_n <= 0 || static_cast<size_t>(hr_n) >= sizeof(writer->fmt) ||
+            !writer->append(writer->fmt, static_cast<size_t>(hr_n))) {
             return false;
         }
     }
 
-    char lap_mid_buf[256];
     int mid_n = std::snprintf(
-        lap_mid_buf,
-        sizeof(lap_mid_buf),
+        writer->fmt,
+        sizeof(writer->fmt),
         "        <Intensity>Active</Intensity>\n"
         "        <Cadence>%u</Cadence>\n"
         "        <TriggerMethod>Manual</TriggerMethod>\n"
         "        <Track>\n",
         static_cast<unsigned>(eff.avg_cadence_rpm));
-    if (mid_n <= 0 || static_cast<size_t>(mid_n) >= sizeof(lap_mid_buf) ||
-        !writer.append(lap_mid_buf, static_cast<size_t>(mid_n))) {
+    if (mid_n <= 0 || static_cast<size_t>(mid_n) >= sizeof(writer->fmt) ||
+        !writer->append(writer->fmt, static_cast<size_t>(mid_n))) {
         return false;
     }
 
     // Stream 1 Hz <Trackpoint> elements
     float cumulative_distance_m = 0.0f;
-    char tp_buf[512];
     char tp_iso[32];
 
     for (size_t i = 0; i < record_count; ++i) {
@@ -692,8 +701,8 @@ bool TCXGenerator::generateTcx(
         int tp_n = 0;
         if (emit_hr) {
             tp_n = std::snprintf(
-                tp_buf,
-                sizeof(tp_buf),
+                writer->fmt,
+                sizeof(writer->fmt),
                 "          <Trackpoint>\n"
                 "            <Time>%s</Time>\n"
                 "            <DistanceMeters>%.2f</DistanceMeters>\n"
@@ -714,8 +723,8 @@ bool TCXGenerator::generateTcx(
                 static_cast<unsigned>(eff_watts));
         } else {
             tp_n = std::snprintf(
-                tp_buf,
-                sizeof(tp_buf),
+                writer->fmt,
+                sizeof(writer->fmt),
                 "          <Trackpoint>\n"
                 "            <Time>%s</Time>\n"
                 "            <DistanceMeters>%.2f</DistanceMeters>\n"
@@ -734,17 +743,16 @@ bool TCXGenerator::generateTcx(
                 static_cast<unsigned>(eff_watts));
         }
 
-        if (tp_n <= 0 || static_cast<size_t>(tp_n) >= sizeof(tp_buf) ||
-            !writer.append(tp_buf, static_cast<size_t>(tp_n))) {
+        if (tp_n <= 0 || static_cast<size_t>(tp_n) >= sizeof(writer->fmt) ||
+            !writer->append(writer->fmt, static_cast<size_t>(tp_n))) {
             return false;
         }
     }
 
     // Format </Track>, <Extensions><ns3:LX>, <Creator>, and <Author> footer
-    char footer_buf[1024];
     int foot_n = std::snprintf(
-        footer_buf,
-        sizeof(footer_buf),
+        writer->fmt,
+        sizeof(writer->fmt),
         "        </Track>\n"
         "        <Extensions>\n"
         "          <ns3:LX>\n"
@@ -782,12 +790,12 @@ bool TCXGenerator::generateTcx(
         "</TrainingCenterDatabase>\n",
         static_cast<unsigned>(eff.avg_power_w),
         static_cast<unsigned>(eff.max_power_w));
-    if (foot_n <= 0 || static_cast<size_t>(foot_n) >= sizeof(footer_buf) ||
-        !writer.append(footer_buf, static_cast<size_t>(foot_n))) {
+    if (foot_n <= 0 || static_cast<size_t>(foot_n) >= sizeof(writer->fmt) ||
+        !writer->append(writer->fmt, static_cast<size_t>(foot_n))) {
         return false;
     }
 
-    return writer.flush();
+    return writer->flush();
 }
 
 bool TCXGenerator::generateTcxFromStore(
@@ -946,6 +954,44 @@ bool TCXGenerator::generateTcxGzToFile(
         check_deadline);
 }
 
+bool TCXGenerator::compressGzip(
+    const uint8_t* data,
+    size_t len,
+    std::vector<uint8_t>& out_compressed,
+    const DeadlineCheckFn& check_deadline) {
+    out_compressed.clear();
+    if (!data && len > 0) {
+        return false;
+    }
+
+    const WriteChunkFn chunk_sink = [&out_compressed](const uint8_t* chunk, size_t clen) -> bool {
+        if (chunk && clen > 0) {
+            out_compressed.insert(out_compressed.end(), chunk, chunk + clen);
+        }
+        return true;
+    };
+
+#ifdef ESP_PLATFORM
+    void* mem = heap_caps_malloc(sizeof(StreamingGzipEncoder), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!mem) return false;
+    auto gz = std::unique_ptr<StreamingGzipEncoder, void(*)(StreamingGzipEncoder*)>(
+        new(mem) StreamingGzipEncoder(chunk_sink, check_deadline),
+        [](StreamingGzipEncoder* p) { p->~StreamingGzipEncoder(); free(p); }
+    );
+#else
+    auto gz = std::unique_ptr<StreamingGzipEncoder>(new(std::nothrow) StreamingGzipEncoder(chunk_sink, check_deadline));
+    if (!gz) return false;
+#endif
+
+    if (!gz->writeHeader()) {
+        return false;
+    }
+    if (len > 0 && !gz->compressChunk(data, len)) {
+        return false;
+    }
+    return gz->finish();
+}
+
 bool TCXGenerator::decompressGzip(
     const uint8_t* gz_data,
     size_t gz_len,
@@ -959,6 +1005,17 @@ bool TCXGenerator::decompressGzip(
     // Validate RFC 1952 header magic & compression method (8 = deflate)
     if (gz_data[0] != 0x1f || gz_data[1] != 0x8b || gz_data[2] != 0x08) {
         return false;
+    }
+
+    // Pre-reserve output vector if uncompressed size in trailer looks reasonable
+    const uint8_t* trailer = gz_data + (gz_len - 8);
+    const uint32_t expected_isize =
+        static_cast<uint32_t>(trailer[4]) |
+        (static_cast<uint32_t>(trailer[5]) << 8) |
+        (static_cast<uint32_t>(trailer[6]) << 16) |
+        (static_cast<uint32_t>(trailer[7]) << 24);
+    if (expected_isize > 0 && expected_isize <= 10u * 1024u * 1024u) {
+        out_uncompressed.reserve(expected_isize);
     }
 
     const uint8_t flg = gz_data[3];
@@ -1062,17 +1119,11 @@ bool TCXGenerator::decompressGzip(
     }
 
     // Verify RFC 1952 trailer: 4-byte little-endian CRC32 and 4-byte little-endian ISIZE
-    const uint8_t* trailer = gz_data + (gz_len - 8);
     const uint32_t expected_crc =
         static_cast<uint32_t>(trailer[0]) |
         (static_cast<uint32_t>(trailer[1]) << 8) |
         (static_cast<uint32_t>(trailer[2]) << 16) |
         (static_cast<uint32_t>(trailer[3]) << 24);
-    const uint32_t expected_isize =
-        static_cast<uint32_t>(trailer[4]) |
-        (static_cast<uint32_t>(trailer[5]) << 8) |
-        (static_cast<uint32_t>(trailer[6]) << 16) |
-        (static_cast<uint32_t>(trailer[7]) << 24);
 
     const uint32_t actual_crc = computeCrc32(
         out_uncompressed.empty() ? nullptr : out_uncompressed.data(),

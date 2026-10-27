@@ -42,6 +42,7 @@ public:
 
     // Accessors for portal / MCP
     uint8_t getBpm() const { return _lastBpm; }
+    uint8_t getHeartRateBpm() const { return _lastBpm; }
     echenon::HRContactState getContactState() const { return _contactState; }
     uint8_t getBatteryPct() const { return _batteryPct; }
     uint8_t getBodySensorLocation() const { return _bodySensorLocation; }

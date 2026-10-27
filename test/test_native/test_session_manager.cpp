@@ -858,12 +858,19 @@ TEST(SessionOverlayTest, StravaCredentialsOAuthFlowTabsAndLiveFeedJson) {
     overlay.registerTabs(tabReg);
     ASSERT_EQ(tabReg.tabs.size(), 0u);
 
-    // 4. Verify 13-field LiveFeed JSON includes session_state and session_elapsed_s
+    // 4. Verify 14-field LiveFeed JSON includes session_state, session_elapsed_s, and hr
     std::string liveJson = SessionOverlay::formatLiveFeedJson(
         85.5f, 16, 100, 215.0f, 1450, 0, 0, false, 45, 31.2f, "ACTIVE", 125u, 98765u);
     JsonDocument liveDoc;
     ASSERT_FALSE(deserializeJson(liveDoc, liveJson));
     EXPECT_STREQ(liveDoc["session_state"].as<const char*>(), "ACTIVE");
     EXPECT_EQ(liveDoc["session_elapsed_s"].as<uint32_t>(), 125u);
+    EXPECT_EQ(liveDoc["hr"].as<uint32_t>(), 0u);
     EXPECT_EQ(liveDoc["timestamp_ms"].as<uint32_t>(), 98765u);
+
+    std::string liveJsonWithHr = SessionOverlay::formatLiveFeedJson(
+        85.5f, 16, 100, 215.0f, 1450, 0, 0, false, 45, 31.2f, "ACTIVE", 125u, 98765u, 142u);
+    JsonDocument hrDoc;
+    ASSERT_FALSE(deserializeJson(hrDoc, liveJsonWithHr));
+    EXPECT_EQ(hrDoc["hr"].as<uint32_t>(), 142u);
 }
