@@ -20,7 +20,7 @@ charter:
   verification_floor: []
   charter_locked: true
   charter_hash: null
-status: STAGED_FOR_AUDIT
+status: GRADUATED
 approved_at: null
 github_pr: null
 work_orders:

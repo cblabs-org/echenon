@@ -61,7 +61,7 @@ work_orders:
   slug: wo5-hw-verification
   title: Hardware Verification — P12 Split-Screen
   complexity: interactive
-  status: IN_PROGRESS
+  status: COMPLETED
   attempts: 1
   commit_sha: null
 - id: WO-15.6
