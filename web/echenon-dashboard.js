@@ -144,8 +144,8 @@
     if (levelEl && data.level_echelon !== undefined) {
       levelEl.textContent = data.level_echelon;
     }
-    if (hrEl && data.heart_rate !== undefined) {
-      hrEl.textContent = data.heart_rate;
+    if (hrEl && data.hr !== undefined) {
+      hrEl.textContent = data.hr;
     }
     if (data.session_state) {
       updateSessionUI(data.session_state);
