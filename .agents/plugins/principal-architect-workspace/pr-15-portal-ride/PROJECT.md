@@ -2,12 +2,13 @@
 schema_version: 1
 charter:
   pr_id: PR-15
-  programme_id: null
+  programme_id: prog-default
   slug: pr-15-portal-ride
   title: Portal Rework & Ride Page
   branch: feat/pr-15-portal-ride
   base_branch: main
-  depends_on: [PR-06]
+  depends_on:
+  - PR-06
   allowed_modules:
   - src/echenon/
   - src/main.cpp
@@ -21,8 +22,8 @@ charter:
   - framework-design-system
   verification_floor:
   - pio test -e native
-  charter_locked: false
-  charter_hash: null
+  charter_locked: true
+  charter_hash: f51dda39925bdb0213f65bdc2f583fc84799ab248b8a751fe741274599a8ec67
 status: PLANNED
 approved_at: null
 github_pr: 8
