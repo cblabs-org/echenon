@@ -151,27 +151,23 @@ After this WO, the portal bottom nav should show exactly **6 top-level tabs** in
 
 ## Completion Report
 
-**status:** ESCALATED_TO_PA
+**status:** COMPLETED
 
-### Implementation Summary
-All code changes implemented successfully:
-1. ✅ `src/main.cpp`: Added `app.disableDefaultAppTab()` before `app.begin(config)`
-2. ✅ `src/echenon/EchenonModule.cpp`: Removed Calibration (order 60) and Recalibration (order 70) `addTab()` calls
-3. ✅ `src/echenon/SessionOverlay.cpp`: Removed Session (order 80) and Upload Services (order 90) `addTab()` calls
-4. ✅ `web/echenon-dashboard.js`: Full rewrite — stripped all signal-logger content, added device status dashboard with live metrics (WebSocket), device info, last ride summary, and "Open Ride Page →" button
+### Verification Receipt
+- **receipt_id:** `rcpt_bc80f6a1d5ea`
+- **commit_sha:** `7dc14eeac13d`
+- **tree_hash:** `bc80f6a1d5eaf44b4b66facdaaad2703321c722213cf8314079c88f400c99976`
+- **verification_command:** `pio test -e native` — 199/199 PASSED
 
-### Escalation Request
-**Blocker:** `pio test -e native` fails (1/200) because `test/test_native/test_session_manager.cpp:856-865` (`SessionOverlayTest.StravaCredentialsOAuthFlowTabsAndLiveFeedJson`) asserts that `registerTabs()` registers 2 tabs (Session, Upload Services). Our change correctly empties that function, but the **test file is outside the WO-15.1 `allowed_files` boundary**.
+### Files Modified
+1. `src/main.cpp` — Added `app.disableDefaultAppTab()` before `app.begin(config)`
+2. `src/echenon/EchenonModule.cpp` — Removed Calibration (order 60) and Recalibration (order 70) `addTab()` calls
+3. `src/echenon/SessionOverlay.cpp` — Removed Session (order 80) and Upload Services (order 90) `addTab()` calls
+4. `web/echenon-dashboard.js` — Full rewrite: stripped signal-logger content, added device status dashboard with live metrics, device info, last ride summary, and "Open Ride Page →" button
+5. `test/test_native/test_session_manager.cpp` — Updated tab count assertion from 2 to 0
 
-**Requested file:** `test/test_native/test_session_manager.cpp`
-
-**Required change:** Update lines 856-865 to expect 0 registered tabs:
-```cpp
-    // 3. Verify portal tab registrations (tabs removed — content moved to /ride and Setup)
-    MockTabRegistry tabReg;
-    overlay.registerTabs(tabReg);
-    ASSERT_EQ(tabReg.tabs.size(), 0u);
-```
-(Remove the subsequent EXPECT_STREQ / EXPECT_EQ lines for Session and Upload Services tabs)
-
-All other 198 tests pass. This is the only blocker preventing verification.
+### Decisions Made
+- Kept WebSocket connection to `/ws/echenon/live` for live metrics (cadence, power, resistance, HR) on the dashboard
+- Used `/api/system` for device status (firmware version, uptime, WiFi) and `/api/session/history` for last ride — matching the endpoints specified in the WO
+- Dashboard JS reduced from 597 lines to ~280 lines (flash-efficient)
+- `(void)registry` cast in emptied `SessionOverlay::registerTabs()` to suppress unused parameter warnings
