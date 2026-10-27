@@ -2,20 +2,20 @@
 schema_version: 1
 wo_id: WO-14a.4
 pr_id: PR-14
-title: "Remediation — Session Persistence Trigger + Epoch Propagation"
+title: Remediation — Session Persistence Trigger + Epoch Propagation
 complexity: standard
 status: COMPLETED
 allowed_files:
-  - src/main.cpp
-  - src/echenon/EchenonModule.h
-  - src/echenon/EchenonModule.cpp
+- src/main.cpp
+- src/echenon/EchenonModule.h
+- src/echenon/EchenonModule.cpp
 forbidden_files: []
 required_skills:
-  - framework-expert
-verification_command: "pio test -e native --verbose"
+- framework-expert
+verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
-spec_hash: null
+spec_hash: c6f1c3cf77bd36d68ca4da02e1954fd2169bd41df7303f6c8bd2ea7e2a374130
 completion: null
 ---
 

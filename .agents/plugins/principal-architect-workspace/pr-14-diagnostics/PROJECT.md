@@ -24,7 +24,7 @@ charter:
   - pio test -e native --verbose
   charter_locked: true
   charter_hash: 26aaafe1dd55bab0490bbc71e7fecdabffbdaf645fcc4c070b4d7e3f952e4108
-status: CHANGES_REQUESTED
+status: APPROVED
 approved_at: '2026-10-27T17:09:34.409212Z'
 github_pr: 11
 work_orders:
@@ -77,6 +77,13 @@ work_orders:
   status: COMPLETED
   attempts: 1
   commit_sha: 486dff905f146e5b70a8d955295627edee9264f3
+- id: WO-14.8
+  slug: wo8-audit-remediation
+  title: Audit Remediation — Event Viewer Schema, Runaway Telemetry & Ride Banner
+  complexity: standard
+  status: PENDING
+  attempts: 0
+  commit_sha: null
 ---
 
 # PR-14: Diagnostics & Run-Data Persistence
