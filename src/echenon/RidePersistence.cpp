@@ -3,15 +3,13 @@
 ///        and raw binary fallback (UNIT_TEST / native builds).
 
 #include "echenon/RidePersistence.h"
+#include "echenon/TCXGenerator.h"
 
 #include <algorithm>
 #include <cstring>
 
 #if defined(ESP_PLATFORM)
 #include <esp_log.h>
-// ESP-IDF bundles miniz in esp_rom — only raw tinfl/tdefl APIs are available
-// (MINIZ_NO_ZLIB_APIS and MINIZ_NO_MALLOC are set).
-#include <miniz.h>
 #define RIDE_PERSIST_HAS_COMPRESSION 1
 #else
 #include <cstdio>
@@ -221,55 +219,37 @@ bool RidePersistence::loadRide(uint32_t session_id,
 #if RIDE_PERSIST_HAS_COMPRESSION
 
 bool RidePersistence::compressAndWrite(const char* path, const uint8_t* data, size_t len) {
-    // Use miniz tdefl raw deflate (no zlib/gzip wrapper).
-    // tdefl_compress_mem_to_mem returns 0 on failure, else compressed size.
-    // Worst case, deflate output ≤ input + overhead; allocate input + 256 bytes.
-    const size_t maxOut = len + 256;
-    std::vector<uint8_t> compressed(maxOut);
-
-    size_t compLen = tdefl_compress_mem_to_mem(
-        compressed.data(), maxOut,
-        data, len,
-        TDEFL_DEFAULT_MAX_PROBES);  // Default compression level
-
-    if (compLen == 0) {
-        ESP_LOGE(TAG, "tdefl_compress_mem_to_mem failed");
+    // Compress into RFC 1952 gzip stream via PSRAM-allocated StreamingGzipEncoder.
+    // Memory footprint is ~5.2 KB in PSRAM (0 DRAM pressure), preventing ESP32-S3 heap exhaustion.
+    std::vector<uint8_t> compressed;
+    if (!TCXGenerator::compressGzip(data, len, compressed)) {
+        ESP_LOGE(TAG, "compressGzip failed for %s", path);
         return false;
     }
-    compressed.resize(compLen);
     return _fs.writeFile(path, compressed.data(), compressed.size());
 }
 
 bool RidePersistence::readAndDecompress(const char* path,
                                         std::vector<uint8_t>& out) const {
     out.clear();
-    std::vector<uint8_t> compressed;
-    if (!_fs.readFile(path, compressed) || compressed.empty()) {
+    std::vector<uint8_t> fileData;
+    if (!_fs.readFile(path, fileData) || fileData.empty()) {
         return false;
     }
 
-    // Estimate decompressed size: start with 4x compressed, grow if needed.
-    // tinfl_decompress_mem_to_mem returns TINFL_DECOMPRESS_MEM_TO_MEM_FAILED on error.
-    size_t decompLen = compressed.size() * 4u;
-    if (decompLen < 256) decompLen = 256;
-
-    for (int attempts = 0; attempts < 4; ++attempts) {
-        out.resize(decompLen);
-        size_t result = tinfl_decompress_mem_to_mem(
-            out.data(), decompLen,
-            compressed.data(), compressed.size(), 0);
-
-        if (result != TINFL_DECOMPRESS_MEM_TO_MEM_FAILED) {
-            out.resize(result);
-            return true;
+    // Decompress via TCXGenerator::decompressGzip if RFC 1952 gzip header (0x1F, 0x8B) is present
+    if (fileData.size() >= 18 && fileData[0] == 0x1fu && fileData[1] == 0x8bu) {
+        if (!TCXGenerator::decompressGzip(fileData.data(), fileData.size(), out)) {
+            ESP_LOGE(TAG, "decompressGzip failed for %s", path);
+            out.clear();
+            return false;
         }
-        // Buffer may be too small — double and retry
-        decompLen *= 2u;
+        return true;
     }
 
-    ESP_LOGE(TAG, "Decompression failed after retries");
-    out.clear();
-    return false;
+    // Fallback for uncompressed raw binary files (e.g. legacy or test files)
+    out = std::move(fileData);
+    return true;
 }
 
 #else

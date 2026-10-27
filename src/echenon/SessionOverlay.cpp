@@ -50,7 +50,8 @@ std::string SessionOverlay::formatLiveFeedJson(float cadenceRpm,
                                                float speedKph,
                                                const char* sessionState,
                                                uint32_t sessionElapsedS,
-                                               uint32_t currentMillis) {
+                                               uint32_t currentMillis,
+                                               uint8_t hrBpm) {
     const char* safeState = (sessionState && sessionState[0] != '\0') ? sessionState : "IDLE";
     char buf[384];
     int len = std::snprintf(
@@ -59,7 +60,7 @@ std::string SessionOverlay::formatLiveFeedJson(float cadenceRpm,
         "{\"cadence_rpm\":%.1f,\"level_echelon\":%u,\"level_i\":%u,\"power_watts\":%.1f,"
         "\"pot_adc\":%u,\"motor_dir\":%d,\"encoder_delta\":%ld,\"runaway\":%s,"
         "\"peloton_resistance\":%u,\"speed_kph\":%.1f,\"session_state\":\"%s\","
-        "\"session_elapsed_s\":%lu,\"timestamp_ms\":%lu}",
+        "\"session_elapsed_s\":%lu,\"hr\":%u,\"timestamp_ms\":%lu}",
         static_cast<double>(cadenceRpm),
         static_cast<unsigned int>(levelEchelon),
         static_cast<unsigned int>(levelInternal),
@@ -72,6 +73,7 @@ std::string SessionOverlay::formatLiveFeedJson(float cadenceRpm,
         static_cast<double>(speedKph),
         safeState,
         static_cast<unsigned long>(sessionElapsedS),
+        static_cast<unsigned int>(hrBpm),
         static_cast<unsigned long>(currentMillis));
 
     if (len <= 0) {
@@ -96,7 +98,8 @@ void LiveFeed::tick(uint32_t currentMillis,
                     uint8_t pelotonResistance,
                     float speedKph,
                     const char* sessionState,
-                    uint32_t sessionElapsedS) {
+                    uint32_t sessionElapsedS,
+                    uint8_t hrBpm) {
     if (_handler == nullptr) {
         return;
     }
@@ -124,7 +127,8 @@ void LiveFeed::tick(uint32_t currentMillis,
         speedKph,
         sessionState,
         sessionElapsedS,
-        currentMillis);
+        currentMillis,
+        hrBpm);
 
     if (!payload.empty()) {
         _handler->sendAll(payload.c_str());
@@ -143,7 +147,8 @@ void LiveFeed::tick(float cadenceRpm,
                     float speedKph,
                     const char* sessionState,
                     uint32_t sessionElapsedS,
-                    uint32_t currentMillis) {
+                    uint32_t currentMillis,
+                    uint8_t hrBpm) {
     tick(currentMillis,
          cadenceRpm,
          levelEchelon,
@@ -156,7 +161,8 @@ void LiveFeed::tick(float cadenceRpm,
          pelotonResistance,
          speedKph,
          sessionState,
-         sessionElapsedS);
+         sessionElapsedS,
+         hrBpm);
 }
 #endif // UNIT_TEST
 

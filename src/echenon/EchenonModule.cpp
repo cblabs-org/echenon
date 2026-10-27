@@ -145,6 +145,16 @@ void EchenonModule::tick(uint32_t currentMillis) {
 #endif
 
 #ifndef UNIT_TEST
+    uint8_t liveHrBpm = 0;
+#ifdef WITH_BLE
+    liveHrBpm = _hrmClient.getHeartRateBpm();
+#endif
+#ifdef WITH_SESSION
+    if (liveHrBpm == 0 && _sessionManager != nullptr) {
+        liveHrBpm = _sessionManager->getHeartRateBpm();
+    }
+#endif
+
 #ifdef WITH_SESSION
     _liveFeed.tick(currentMillis,
                    cadenceRpm,
@@ -158,7 +168,8 @@ void EchenonModule::tick(uint32_t currentMillis) {
                    pelotonRes,
                    speedKph,
                    sessionStateStr,
-                   sessionElapsedS);
+                   sessionElapsedS,
+                   liveHrBpm);
 #else
     _liveFeed.tick(currentMillis,
                    cadenceRpm,
@@ -170,7 +181,10 @@ void EchenonModule::tick(uint32_t currentMillis) {
                    0,
                    _runawayDetector.isRunaway(),
                    pelotonRes,
-                   speedKph);
+                   speedKph,
+                   "IDLE",
+                   0,
+                   liveHrBpm);
 #endif
 #endif
 #ifdef WITH_SIGNAL_LOGGER
@@ -598,9 +612,45 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
         return response->send(200, "application/json", out.c_str());
     });
 
-#ifdef WITH_SIGNAL_LOGGER
-    // Lightweight live endpoint for 8-channel decimated stats + event count
+    // Live ride telemetry + optional signal logger stats
     server.on("/api/echenon/live", HTTP_GET, [this](PsychicRequest* request, PsychicResponse* response) -> esp_err_t {
+        JsonDocument doc;
+        doc["timestamp_ms"] = millis();
+
+        float cadence = _cadenceSensor.getRPM();
+        float power = _powerEngine.getLastPower();
+        float speedKph = 0.0f;
+        if (cadence > 0.0f && power > 0.0f) {
+            speedKph = PowerEngine::computeVirtualSpeedKph(power);
+        }
+        doc["cadence_rpm"] = cadence;
+        doc["power_watts"] = power;
+        doc["speed_kph"] = speedKph;
+
+        uint8_t liveHr = 0;
+#ifdef WITH_BLE
+        liveHr = _hrmClient.getHeartRateBpm();
+#endif
+#ifdef WITH_SESSION
+        if (liveHr == 0 && _sessionManager != nullptr) {
+            liveHr = _sessionManager->getHeartRateBpm();
+        }
+        if (_sessionManager != nullptr) {
+            doc["session_state"] = sessionStateToString(_sessionManager->getState());
+            doc["session_elapsed_s"] = _sessionManager->getElapsedSec();
+        } else {
+            doc["session_state"] = "IDLE";
+            doc["session_elapsed_s"] = 0;
+        }
+#else
+        doc["session_state"] = "IDLE";
+        doc["session_elapsed_s"] = 0;
+#endif
+        doc["hr"] = liveHr;
+        doc["level_echelon"] = getEchelonLevel();
+        doc["level_i"] = getInternalLevel();
+
+#ifdef WITH_SIGNAL_LOGGER
         DecimationRow* buf = _signalLogger.*get(SignalLogger_rideLogBuffer());
         size_t count = _signalLogger.*get(SignalLogger_rideLogCount());
         size_t head = _signalLogger.*get(SignalLogger_rideLogHead());
@@ -615,8 +665,6 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
             row = _signalLogger.*get(SignalLogger_currentRow());
         }
 
-        JsonDocument doc;
-        doc["timestamp_ms"] = row.timestamp_ms;
         doc["event_count"] = events;
         JsonArray channels = doc["channels"].to<JsonArray>();
         static const int live_adc_channels[] = {0, 1, 2, 3, 4, 5, 6, 9};
@@ -628,12 +676,12 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
             chObj["mean"] = mean;
             chObj["max"] = row.channels[s].max_val;
         }
+#endif
 
         String res;
         serializeJson(doc, res);
         return response->send(200, "application/json", res.c_str());
     });
-#endif
 }
 
 void EchenonModule::registerTabs(ITabRegistry& registry) {

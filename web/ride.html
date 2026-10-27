@@ -3,7 +3,7 @@
 body{font-family:system-ui,-apple-system,sans-serif;background:#121212;color:#fff;max-width:480px;margin:0 auto;padding:8px;font-size:14px}
 header{display:flex;align-items:center;justify-content:space-between;padding:4px 0 8px}
 header h1{font-size:18px;font-weight:600}
-header a{color:rgba(255,255,255,.7);text-decoration:none;font-size:22px}
+header a{color:rgba(255,255,255,.7);text-decoration:none;font-size:22px;display:flex;align-items:center}
 .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;text-transform:uppercase}
 .b-idle{background:#555;color:#fff}
 .b-active{background:#4CAF50;color:#fff;animation:pulse 1.5s infinite}
@@ -20,6 +20,13 @@ header a{color:rgba(255,255,255,.7);text-decoration:none;font-size:22px}
 .btn-pause{background:#FF9800;color:#000}
 .btn-stop{background:#f44336}
 button:disabled{opacity:.35;cursor:default}
+.toggle-row{display:flex;justify-content:space-between;align-items:center;padding:4px 6px;margin:4px 0}
+.switch{position:relative;display:inline-block;width:38px;height:22px}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#333;border-radius:22px;transition:.2s}
+.slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s}
+input:checked+.slider{background:#4CAF50}
+input:checked+.slider:before{transform:translateX(16px)}
 .stats{display:flex;justify-content:space-around;font-size:13px;color:rgba(255,255,255,.7)}
 .stats span{text-align:center}
 .stats b{display:block;color:#fff;font-size:16px}
@@ -32,7 +39,7 @@ button:disabled{opacity:.35;cursor:default}
 .conn.on{background:#4CAF50}
 .conn.off{background:#f44336}
 </style></head><body>
-<header><h1>Echenon</h1><div><span class="conn off" id="ws-dot"></span><span class="badge b-idle" id="badge">IDLE</span></div><a href="/" title="Settings">⚙️</a></header>
+<header><h1>Echenon</h1><div><span class="conn off" id="ws-dot"></span><span class="badge b-idle" id="badge">IDLE</span></div><a href="/" title="Settings" aria-label="Settings"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></a></header>
 <div class="card"><div class="grid" id="m">
 <div class="metric"><div class="v" id="cad">--</div><div class="l">RPM</div></div>
 <div class="metric"><div class="v" id="pwr">--</div><div class="l">Watts</div></div>
@@ -42,6 +49,7 @@ button:disabled{opacity:.35;cursor:default}
 <div class="metric"><div class="v" id="tmr">0:00</div><div class="l">Time</div></div>
 </div></div>
 <div class="btns"><button class="btn-start" id="b-start" onclick="R.cmd('start')">Start</button><button class="btn-pause" id="b-pause" onclick="R.cmd('pause')" disabled>Pause</button><button class="btn-stop" id="b-stop" onclick="R.cmd('stop')" disabled>Stop</button></div>
+<div class="toggle-row"><span style="font-size:13px;color:rgba(255,255,255,.8)">Auto-start</span><label class="switch"><input type="checkbox" id="auto-start" checked><span class="slider"></span></label></div>
 <div class="card"><div class="stats" id="st"><span>Avg Power<b id="ap">-- W</b></span><span>Distance<b id="dst">-- km</b></span></div><div id="upload"></div></div>
 <div class="card"><b style="font-size:13px">Recent Rides</b><div id="history"><div id="empty">No rides yet — start your first session!</div></div></div>
 <script src="/ride.js"></script></body></html>

@@ -108,8 +108,8 @@ public:
     HttpResponse handleStravaDisconnect();
 
     /**
-     * Format the 13-field /ws/echenon/live JSON telemetry frame including
-     * session_state and session_elapsed_s.
+     * Format the 14-field /ws/echenon/live JSON telemetry frame including
+     * session_state, session_elapsed_s, and instantaneous heart rate (hr).
      */
     static std::string formatLiveFeedJson(float cadenceRpm,
                                           uint8_t levelEchelon,
@@ -123,7 +123,8 @@ public:
                                           float speedKph,
                                           const char* sessionState,
                                           uint32_t sessionElapsedS,
-                                          uint32_t currentMillis);
+                                          uint32_t currentMillis,
+                                          uint8_t hrBpm = 0);
 
 private:
     RideStore* resolveRideStore() const {
