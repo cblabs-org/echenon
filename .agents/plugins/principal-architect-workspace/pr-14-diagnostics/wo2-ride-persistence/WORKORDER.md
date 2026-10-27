@@ -187,4 +187,23 @@ Relevant references:
 ## Completion Report
 <!-- Written by the Tier 3 Worker at task completion -->
 
-_Pending execution._
+**Status:** COMPLETED
+**Receipt ID:** rcpt_d652d68e3680
+**Commit SHA:** 099d86bee7c4
+**Tree Hash:** d652d68e3680f862b2bad8bfbc70efbef9ef1dca08147e0f4cc331ffb5c710e0
+
+### Files Modified
+- `src/echenon/RidePersistence.h` — New header (class declaration per WO spec)
+- `src/echenon/RidePersistence.cpp` — Full implementation (compress/decompress, save/load/delete, eviction, scanning)
+- `src/echenon/RideStore.h` — Added `listDir()` to `IRideFileSystem` and `InMemoryRideFileSystem`
+- `src/echenon/RideStore.cpp` — Implemented `listDir()` for `InMemoryRideFileSystem` and `LittleFSRideFileSystem`
+
+### Decisions Made
+- **Added `listDir()` to `IRideFileSystem`**: The WO requires `begin()` to scan `PERSIST_DIR` for existing `.ride.gz` files. The existing interface had no directory listing capability. Added a minimal `listDir(dirPath, out)` method that returns filenames (not full paths) of direct children. Implemented for both `InMemoryRideFileSystem` (prefix-matching on internal `std::map` keys) and `LittleFSRideFileSystem` (Arduino-style `openNextFile()` iteration).
+- **Conditional compression**: ESP32 builds use `miniz` (`mz_compress2`/`mz_uncompress`). Native/UNIT_TEST builds store raw uncompressed bytes. The `.ride.gz` extension is used in both cases for API consistency. This follows the WO § 3.2 conditional compilation directive.
+- **No `std::function` used**: All callbacks avoided per GRAVE-05. Lambdas used only as arguments to standard algorithms (`std::sort`, `std::find_if`) which decay to stateless inline code.
+
+### Verification Summary
+- `pio test -e native --verbose` → 199/199 tests passed (0 failures)
+- No existing test was modified or broken
+- Class is fully standalone — no wiring into SessionManager, EchenonModule, or any other module
