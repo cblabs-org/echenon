@@ -18,6 +18,7 @@ EncoderModule encoderModule;
 #include "echenon/SessionManager.h"
 #include "echenon/UploadQueue.h"
 #include "echenon/SessionOverlay.h"
+#include "echenon/RidePersistence.h"
 #endif
 
 #ifdef WITH_STRAVA
@@ -39,6 +40,7 @@ static echenon::RideStore rideStore;
 static echenon::SessionManager sessionManager(rideStore);
 static echenon::UploadQueue uploadQueue(rideStore);
 static echenon::SessionOverlay sessionOverlay;
+static echenon::RidePersistence ridePersistence(rideStore.fileSystem());
 #endif
 
 #ifdef WITH_STRAVA
@@ -94,6 +96,7 @@ void setup() {
     sessionManager.setEventBus(&app.getEventBus());
     uploadQueue.setEventBus(&app.getEventBus());
     echenonModule.setSessionManager(&sessionManager);
+    echenonModule.setRidePersistence(&ridePersistence);
 #ifdef WITH_BLE
     uploadQueue.setBLEManager(&bleManager);
 #endif
@@ -128,6 +131,10 @@ void setup() {
     FrameworkConfig config;
     app.begin(config);
 
+    // Initialize diagnostics event log and record boot event
+    echenonModule.diagnostics().begin();
+    echenonModule.diagnostics().recordBoot(0, millis() / 1000);
+
 #ifdef WITH_TIME
     timeManager.begin();
 #endif
@@ -150,6 +157,7 @@ void setup() {
 #ifdef WITH_SESSION
     rideStore.begin();
     rideStore.recoverInterruptedSession();
+    ridePersistence.begin();
     sessionManager.begin();
 #ifdef WITH_STRAVA
     stravaUploader.begin();
@@ -160,6 +168,12 @@ void setup() {
         [](const char*, const void* data, void*) {
             if (data == nullptr) return;
             const auto* ev = static_cast<const echenon::SessionStateChangeEvent*>(data);
+            // Record session state changes in diagnostics log
+            if (ev->newState == echenon::SessionState::ACTIVE) {
+                echenonModule.diagnostics().recordSessionStart(0, ev->sessionId);
+            } else if (ev->newState == echenon::SessionState::ENDED) {
+                echenonModule.diagnostics().recordSessionEnd(0, 0, 0);
+            }
             if (ev->newState == echenon::SessionState::ENDED &&
                 ev->sessionId != 0 && uploadQueue.isAutoUploadEnabled()) {
                 uploadQueue.enqueueSession(ev->sessionId, millis());

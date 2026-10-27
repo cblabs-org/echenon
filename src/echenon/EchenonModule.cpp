@@ -12,6 +12,8 @@
 #include "include/portal_assets/echenon-dashboard_js.hpp"
 #include "include/portal_assets/calibration-wizard_js.hpp"
 #include "include/portal_assets/recalibration_js.hpp"
+#include "include/portal_assets/diagnostics_js.hpp"
+#include "AuthManager.hpp"
 
 static const char* TAG = "EchenonModule";
 
@@ -91,6 +93,7 @@ void EchenonModule::tick(uint32_t currentMillis) {
                  RunawayDetector::RANGE_MIN,
                  RunawayDetector::RANGE_MAX,
                  _runawayDetector.getTimeoutSeconds());
+        _diagnostics.recordRunawayAlert(0, _runawayDetector.getRunawayDurationMs());
     }
 
     // Compute Peloton resistance and virtual speed
@@ -255,6 +258,22 @@ void EchenonModule::applyConfig(const JsonObject& config) {
         }
     }
     syncPhysicsCalibration();
+
+    // Diagnostics persistence config
+    if (config["save_rides_to_flash"].is<bool>()) {
+        _saveRidesToFlash = config["save_rides_to_flash"].as<bool>();
+    }
+    if (config["diag_ride_cap_kb"].is<int>()) {
+        uint32_t cap = config["diag_ride_cap_kb"].as<uint32_t>();
+        if (cap < echenon::RidePersistence::MIN_CAP_KB) cap = echenon::RidePersistence::MIN_CAP_KB;
+        if (cap > echenon::RidePersistence::MAX_CAP_KB) cap = echenon::RidePersistence::MAX_CAP_KB;
+        _diagRideCapKb = cap;
+    }
+    if (_ridePersistence) {
+        _ridePersistence->setEnabled(_saveRidesToFlash);
+        _ridePersistence->setCapKb(_diagRideCapKb);
+    }
+
 #ifdef WITH_SIGNAL_LOGGER
     _signalLogger.applyConfig(config);
 #endif
@@ -277,6 +296,8 @@ void EchenonModule::serializeConfig(JsonObject& config) const {
         ptObj["wiper"] = pt.wiperCount;
         ptObj["timestamp"] = pt.timestamp;
     }
+    config["save_rides_to_flash"] = _saveRidesToFlash;
+    config["diag_ride_cap_kb"] = _diagRideCapKb;
 #ifdef WITH_SIGNAL_LOGGER
     _signalLogger.serializeConfig(config);
 #endif
@@ -287,6 +308,12 @@ void EchenonModule::resetConfig() {
     _recalibrationUI.reset();
     syncPhysicsCalibration();
     _runawayDetector.setTimeoutSeconds(RunawayDetector::DEFAULT_TIMEOUT_S);
+    _saveRidesToFlash = false;
+    _diagRideCapKb = echenon::RidePersistence::DEFAULT_CAP_KB;
+    if (_ridePersistence) {
+        _ridePersistence->setEnabled(false);
+        _ridePersistence->setCapKb(echenon::RidePersistence::DEFAULT_CAP_KB);
+    }
 #ifdef WITH_SIGNAL_LOGGER
     _signalLogger.resetConfig();
 #endif
@@ -398,6 +425,23 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
                               recalibration_js_gz_etag,
                               "application/javascript");
     });
+
+    // Serve diagnostics JavaScript
+    server.on("/diagnostics.js", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
+        return serveGzipAsset(request, response,
+                              diagnostics_js_gz,
+                              diagnostics_js_gz_len,
+                              diagnostics_js_gz_etag,
+                              "application/javascript");
+    });
+
+    // Register diagnostics API routes (events + stored rides)
+    if (_ridePersistence) {
+        extern Application app;
+        static echenon::DiagnosticsRoutes diagRoutes(_diagnostics, *_ridePersistence);
+        _diagRoutes = &diagRoutes;
+        diagRoutes.registerRoutes(server, app.getAuthManager());
+    }
 
     // --- Calibration Wizard Endpoints ---
     server.on("/api/echenon/calibration/start", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) {
@@ -617,4 +661,5 @@ void EchenonModule::registerTabs(ITabRegistry& registry) {
     registry.addTab("Strava",        "Apps",   10, nullptr, "/upload_settings.js");
     registry.addTab("Level Mapping", "System", 25, nullptr, "/calibration-wizard.js");
     registry.addTab("Power Tuning",  "System", 30, nullptr, "/recalibration.js");
+    registry.addTab("Diagnostics",   "System", 35, nullptr, "/diagnostics.js");
 }

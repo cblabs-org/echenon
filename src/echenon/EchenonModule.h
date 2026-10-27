@@ -8,12 +8,15 @@
 #include "echenon/CalibrationWizard.h"
 #include "echenon/RecalibrationUI.h"
 #include "echenon/RunawayDetector.h"
+#include "echenon/DiagnosticsModule.h"
+#include "echenon/RidePersistence.h"
 #ifdef WITH_SIGNAL_LOGGER
 #include "echenon/SignalLogger.h"
 #endif
 
 #ifndef UNIT_TEST
 #include "echenon/LiveFeed.h"
+#include "echenon/DiagnosticsRoutes.h"
 #endif
 
 #ifdef WITH_BLE
@@ -77,6 +80,9 @@ public:
         _signalLogger.setEventBus(eb);
 #endif
     }
+
+    void setRidePersistence(echenon::RidePersistence* rp) { _ridePersistence = rp; }
+    echenon::DiagnosticsModule& diagnostics() { return _diagnostics; }
 
     // --- Sensors & Level Mapping ---
     echenon::CadenceSensor& cadenceSensor() { return _cadenceSensor; }
@@ -162,9 +168,14 @@ private:
     echenon::CalibrationWizard _calibrationWizard;
     echenon::RecalibrationUI _recalibrationUI;
     echenon::RunawayDetector _runawayDetector;
+    echenon::DiagnosticsModule _diagnostics;
+    echenon::RidePersistence*  _ridePersistence = nullptr;
+    bool     _saveRidesToFlash = false;
+    uint32_t _diagRideCapKb    = echenon::RidePersistence::DEFAULT_CAP_KB;
 
 #ifndef UNIT_TEST
     echenon::LiveFeed _liveFeed;
+    echenon::DiagnosticsRoutes* _diagRoutes = nullptr;
 #endif
 
 #ifdef WITH_SIGNAL_LOGGER

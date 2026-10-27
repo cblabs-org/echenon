@@ -4,7 +4,7 @@ wo_id: WO-14.4
 pr_id: PR-14
 title: Portal Integration + Runaway Alert Surfacing
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/EchenonModule.h
 - src/echenon/EchenonModule.cpp
@@ -18,7 +18,23 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 8619c017f7902657a25d39a459e69b6ca03a414ad2ac6650b0ece9347bdb96c6
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_1277e67d911c
+  commit_sha: 64aa76e7110c039abe65a22244395521080e75f6
+  files_modified:
+  - src/echenon/EchenonModule.cpp
+  - src/echenon/EchenonModule.h
+  - src/main.cpp
+  - web/diagnostics-events.html
+  - web/diagnostics.js
+  verification_summary: 'pio test -e native --verbose: ================ 199 test cases:
+    199 succeeded in 00:00:00.508 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-14.4 — Portal Integration + Runaway Alert Surfacing

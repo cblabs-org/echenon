@@ -53,9 +53,9 @@ work_orders:
   slug: wo4-portal-integration
   title: Portal Integration + Runaway Alert Surfacing
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 64aa76e7110c039abe65a22244395521080e75f6
 - id: WO-14.5
   slug: wo5-native-tests
   title: Native Tests
