@@ -39,9 +39,9 @@ work_orders:
   slug: wo2-ride-persistence
   title: Run-Data Persistence (LittleFS + Gzip)
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: a37b3d2af5722b5a3f09c37fc7c54b43eb9ff204
 - id: WO-14.3
   slug: wo3-query-api
   title: Query REST API

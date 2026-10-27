@@ -75,6 +75,21 @@ public:
         f.close();
         return sz;
     }
+
+    bool listDir(const char* dirPath, std::vector<std::string>& out) const override {
+        out.clear();
+        if (!dirPath) return false;
+        File root = LittleFS.open(dirPath, "r");
+        if (!root || !root.isDirectory()) return false;
+        File entry = root.openNextFile();
+        while (entry) {
+            if (!entry.isDirectory()) {
+                out.push_back(entry.name());
+            }
+            entry = root.openNextFile();
+        }
+        return true;
+    }
 };
 
 LittleFSRideFileSystem& defaultLittleFs() {
@@ -139,6 +154,24 @@ size_t InMemoryRideFileSystem::fileSize(const char* path) const {
     auto it = _files.find(path);
     if (it == _files.end()) return 0;
     return it->second.size();
+}
+
+bool InMemoryRideFileSystem::listDir(const char* dirPath, std::vector<std::string>& out) const {
+    out.clear();
+    if (!dirPath) return false;
+    std::string prefix = dirPath;
+    if (!prefix.empty() && prefix.back() != '/') prefix += '/';
+    for (const auto& kv : _files) {
+        if (kv.first.size() > prefix.size() &&
+            kv.first.compare(0, prefix.size(), prefix) == 0) {
+            // Only include direct children (no further '/' after prefix)
+            std::string remainder = kv.first.substr(prefix.size());
+            if (remainder.find('/') == std::string::npos) {
+                out.push_back(remainder);
+            }
+        }
+    }
+    return true;
 }
 
 // =============================================================================

@@ -110,6 +110,8 @@ public:
     virtual bool appendFile(const char* path, const uint8_t* data, size_t len) = 0;
     virtual bool readFile(const char* path, std::vector<uint8_t>& out) const = 0;
     virtual size_t fileSize(const char* path) const = 0;
+    /// List filenames (not full paths) in a directory. Returns false if dir doesn't exist.
+    virtual bool listDir(const char* dirPath, std::vector<std::string>& out) const = 0;
 
     bool exists(const std::string& path) const { return exists(path.c_str()); }
     bool remove(const std::string& path) { return remove(path.c_str()); }
@@ -126,6 +128,7 @@ public:
     bool appendFile(const char* path, const uint8_t* data, size_t len) override;
     bool readFile(const char* path, std::vector<uint8_t>& out) const override;
     size_t fileSize(const char* path) const override;
+    bool listDir(const char* dirPath, std::vector<std::string>& out) const override;
 
     void clear() { _files.clear(); }
     const std::map<std::string, std::vector<uint8_t>>& files() const { return _files; }

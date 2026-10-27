@@ -4,7 +4,7 @@ wo_id: WO-14.2
 pr_id: PR-14
 title: Run-Data Persistence (LittleFS + Gzip)
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/RideStore.h
 - src/echenon/RideStore.cpp
@@ -17,7 +17,22 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 3638d4e67dd3ffebc5906daf394551d65ec7947082602b883ad5ebbe4fa73483
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_d652d68e3680
+  commit_sha: a37b3d2af5722b5a3f09c37fc7c54b43eb9ff204
+  files_modified:
+  - src/echenon/RidePersistence.cpp
+  - src/echenon/RidePersistence.h
+  - src/echenon/RideStore.cpp
+  - src/echenon/RideStore.h
+  verification_summary: 'pio test -e native --verbose: ================ 199 test cases:
+    199 succeeded in 00:00:00.466 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-14.2 — Run-Data Persistence (LittleFS + Gzip)
