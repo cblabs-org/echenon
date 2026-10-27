@@ -61,6 +61,13 @@ work_orders:
   slug: wo5-hw-verification
   title: Hardware Verification — P12 Split-Screen
   complexity: interactive
+  status: IN_PROGRESS
+  attempts: 1
+  commit_sha: null
+- id: WO-15.6
+  slug: wo6-portal-bugfixes
+  title: Portal Bug Fixes from Hardware Verification
+  complexity: standard
   status: PENDING
   attempts: 0
   commit_sha: null
@@ -248,7 +255,33 @@ All new and refactored UI must follow the `framework-portal-design` skill:
 
 **Verification:** Screenshot evidence committed to `docs/measurements/phase4/wo15-portal-ride/`.
 
+### WO-15.6: Portal Bug Fixes from Hardware Verification
+**Goal:** Fix 6 bugs found during WO-15.5 hardware verification: dark mode styling, Setup icon, Strava BYOA UX, power table loading, WITH_TIME flag, and Echenon tab content.
+
+**Tasks:**
+1. **CSS Dark Mode Fix:** Find-replace `--bg-card` → `--card-bg` and `--text-secondary` → `--text-muted` in `web/calibration-wizard.js`, `web/recalibration.js`, `web/upload_settings.js`
+2. **Setup Tab Icon:** In `src/echenon/EchenonModule.cpp` `registerTabs()`, replace gear/cog SVG with Feather "sliders" icon for the Setup tab
+3. **Strava BYOA UX:** In `web/upload_settings.js`:
+   - Reorder UI: credential form ABOVE authorize section
+   - Disable "Authorize with Strava" button until `data.configured === true`
+   - Add step-by-step setup guide (create Strava app, set callback domain, enter credentials, then authorize)
+   - Show device callback URL dynamically (`http://<host>/api/strava/callback`)
+   - In `src/echenon/StravaUploader.cpp`: guard `_clientId.empty()` in `buildAuthorizeUrl()` → return empty string
+4. **Power Table Loading Fix:** In `web/recalibration.js`, add error handling to `fetchActiveTable()` so it shows "Could not load" instead of stuck "Loading...". Fix `getApiFetch()` usage in pill context.
+5. **WITH_TIME Build Flag:** Add `-DWITH_TIME` to `platformio.ini` `ex3-waveshare-nano` build flags
+6. **Echenon Tab Content:** In `web/echenon-dashboard.js`, remove duplicate "Device Status" card (firmware/uptime/WiFi — duplicated in System tab). Replace with Echenon-specific: bike connection state, calibration status, last ride summary, session state. Keep "Open Ride Page →" button.
+
+**Allowed Files:**
+- `web/calibration-wizard.js`, `web/recalibration.js`, `web/upload_settings.js`
+- `web/echenon-dashboard.js`
+- `src/echenon/EchenonModule.cpp`
+- `src/echenon/StravaUploader.cpp`
+- `platformio.ini`
+
+**Verification:** `pio test -e native` passes. Build succeeds for `ex3-waveshare-nano`. Manual dark mode toggle check on device.
+
 ## 4. Session Log
 
 - **2026-10-26:** Chief Architect drafted PR-15 charter based on portal UX audit conducted live on bench with owner. Two-surface model finalised, 5-WO decomposition defined. Awaiting charter lock and execution approval.
 - **2026-10-27:** PA: Read locked charter, rules, skills. Created 5 WORKORDER.md specs (WO-15.1–WO-15.5) with flat YAML schema, detailed task checklists, exact code references. Corrected portal asset naming (`.hpp` via `portalBuilder.py` auto-generation). Plan approved via `pa pr approve-plan PR-15` (5 WOs stamped). Dispatched WO-15.1 engineer on branch `pr-15-portal-ride/wo1-portal-cleanup`.
+- **2026-10-27:** Chief Architect: WO-15.5 hardware verification (interactive). Device flashed v0.3.0-dev.25, portal and /ride page verified functional. 6 bugs found: (1) CSS dark mode broken (wrong variable names), (2) Setup tab same icon as System, (3) Strava auth button enabled without credentials, (4) Power table stuck on Loading, (5) WITH_TIME missing, (6) Echenon tab duplicates System tab content. Owner decision: Strava stays BYOA with improved UX; cloud proxy (Google Cloud) deferred. WO-15.6 created for bug fixes.
