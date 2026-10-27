@@ -256,20 +256,16 @@ All new and refactored UI must follow the `framework-portal-design` skill:
 **Verification:** Screenshot evidence committed to `docs/measurements/phase4/wo15-portal-ride/`.
 
 ### WO-15.6: Portal Bug Fixes from Hardware Verification
-**Goal:** Fix 6 bugs found during WO-15.5 hardware verification: dark mode styling, Setup icon, Strava BYOA UX, power table loading, WITH_TIME flag, and Echenon tab content.
-
-**Tasks:**
-1. **CSS Dark Mode Fix:** Find-replace `--bg-card` → `--card-bg` and `--text-secondary` → `--text-muted` in `web/calibration-wizard.js`, `web/recalibration.js`, `web/upload_settings.js`
-2. **Setup Tab Icon:** In `src/echenon/EchenonModule.cpp` `registerTabs()`, replace gear/cog SVG with Feather "sliders" icon for the Setup tab
-3. **Strava BYOA UX:** In `web/upload_settings.js`:
-   - Reorder UI: credential form ABOVE authorize section
-   - Disable "Authorize with Strava" button until `data.configured === true`
-   - Add step-by-step setup guide (create Strava app, set callback domain, enter credentials, then authorize)
-   - Show device callback URL dynamically (`http://<host>/api/strava/callback`)
-   - In `src/echenon/StravaUploader.cpp`: guard `_clientId.empty()` in `buildAuthorizeUrl()` → return empty string
-4. **Power Table Loading Fix:** In `web/recalibration.js`, add error handling to `fetchActiveTable()` so it shows "Could not load" instead of stuck "Loading...". Fix `getApiFetch()` usage in pill context.
-5. **WITH_TIME Build Flag:** Add `-DWITH_TIME` to `platformio.ini` `ex3-waveshare-nano` build flags
-6. **Echenon Tab Content:** In `web/echenon-dashboard.js`, remove duplicate "Device Status" card (firmware/uptime/WiFi — duplicated in System tab). Replace with Echenon-specific: bike connection state, calibration status, last ride summary, session state. Keep "Open Ride Page →" button.
+**Goal:** Fix 6 bugs found during WO-15.5 hardware verification and restructure tabs per owner's architectural decision:
+1. **Restructure Setup → Apps tab & move Calibration to System:**
+   - Bottom nav tab 5 becomes **"Apps"** (order 60, Feather `grid` icon), housing fitness app integrations.
+   - Sub-pill `Strava` (order 10, `/upload_settings.js`) under parent "Apps".
+   - Move `Level Mapping` and `Power Tuning` calibration pills under parent **"System"** (orders 25 and 30).
+2. **CSS Dark Mode Fix:** Find-replace `--bg-card` → `--card-bg` and `--text-secondary` → `--text-muted` in `web/calibration-wizard.js`, `web/recalibration.js`, `web/upload_settings.js`.
+3. **Strava BYOA UX:** In `web/upload_settings.js`, update `TAB_ID = 'tab-strava'`, reorder credentials above authorize button, disable authorize button until configured, add setup guide with dynamic callback URL. In `src/echenon/StravaUploader.cpp`, guard `_clientId.empty()`.
+4. **Power Table Loading Fix:** In `web/recalibration.js`, add error handling to `fetchActiveTable()`.
+5. **WITH_TIME Build Flag:** Add `-DWITH_TIME` to `platformio.ini` `ex3-waveshare-nano` build flags.
+6. **Echenon Tab Content:** In `web/echenon-dashboard.js`, remove duplicate device info, show bike-specific status (BLE connection, calibration state, session state).
 
 **Allowed Files:**
 - `web/calibration-wizard.js`, `web/recalibration.js`, `web/upload_settings.js`
