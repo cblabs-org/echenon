@@ -25,7 +25,7 @@ required_skills:
 verification_command: pio test -e native
 max_attempts: 5
 max_structural_failures: 2
-spec_hash: acc1f208500cfa24947b0c1cbde4e5d4dc5c68cb18fe76d45d7d62ce2c298aee
+spec_hash: 1edc752b40cfa7ec65611c3a50bf00de020a84050be7002953aa157d27e196f7
 completion: null
 ---
 
