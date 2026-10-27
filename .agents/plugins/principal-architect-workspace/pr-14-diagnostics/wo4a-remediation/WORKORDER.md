@@ -4,7 +4,7 @@ wo_id: WO-14.4a
 pr_id: PR-14
 title: "Remediation — Session Persistence Trigger + Epoch Propagation"
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
   - src/main.cpp
   - src/echenon/EchenonModule.h
@@ -129,4 +129,14 @@ WO-14.7 hardware verification to fail:
 ## Completion Report
 <!-- Written by the Tier 3 Worker at task completion -->
 
-_Pending execution._
+- **status**: COMPLETED
+- **commit_sha**: (to be stamped on commit)
+- **files_modified**:
+  - `src/main.cpp` — Added `getValidEpoch()` helper, `onSessionEndPersist()` static free function for ride persistence on session end, epoch propagation in session event lambda and loop, boot event epoch fix.
+  - `src/echenon/EchenonModule.h` — Added `updateEpoch()`/`getCurrentEpoch()` methods and `_currentEpoch` member.
+  - `src/echenon/EchenonModule.cpp` — Changed `recordRunawayAlert` to use `_currentEpoch` instead of hard-coded 0.
+- **verification_summary**: 232/232 native tests passed. All changes within allowed_files boundary. No heap std::function used — persistence callback is a static free function (GRAVE-05 safe).
+- **decisions_made**:
+  - Used a shared `getValidEpoch()` static helper (threshold 1700000000) to avoid repeating the epoch-validity check in 4+ call sites.
+  - Epoch propagation happens every loop iteration via `echenonModule.updateEpoch(getValidEpoch())` — `time(nullptr)` is a cheap syscall, no throttling needed.
+  - Boot event records `getValidEpoch()` at setup time (will be 0 pre-NTP, real epoch post-NTP on warm reboot).

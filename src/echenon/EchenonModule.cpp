@@ -93,7 +93,7 @@ void EchenonModule::tick(uint32_t currentMillis) {
                  RunawayDetector::RANGE_MIN,
                  RunawayDetector::RANGE_MAX,
                  _runawayDetector.getTimeoutSeconds());
-        _diagnostics.recordRunawayAlert(0, _runawayDetector.getRunawayDurationMs());
+        _diagnostics.recordRunawayAlert(_currentEpoch, _runawayDetector.getRunawayDurationMs());
     }
 
     // Compute Peloton resistance and virtual speed

@@ -84,6 +84,10 @@ public:
     void setRidePersistence(echenon::RidePersistence* rp) { _ridePersistence = rp; }
     echenon::DiagnosticsModule& diagnostics() { return _diagnostics; }
 
+    // --- Epoch Propagation ---
+    void updateEpoch(uint32_t epoch_s) { _currentEpoch = epoch_s; }
+    uint32_t getCurrentEpoch() const { return _currentEpoch; }
+
     // --- Sensors & Level Mapping ---
     echenon::CadenceSensor& cadenceSensor() { return _cadenceSensor; }
     const echenon::CadenceSensor& cadenceSensor() const { return _cadenceSensor; }
@@ -170,6 +174,7 @@ private:
     echenon::RunawayDetector _runawayDetector;
     echenon::DiagnosticsModule _diagnostics;
     echenon::RidePersistence*  _ridePersistence = nullptr;
+    uint32_t _currentEpoch = 0;
     bool     _saveRidesToFlash = false;
     uint32_t _diagRideCapKb    = echenon::RidePersistence::DEFAULT_CAP_KB;
 
