@@ -47,9 +47,9 @@ work_orders:
   slug: wo3-ride-page
   title: Ride Page — Standalone /ride
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 6dc83ed16337e72352a7dd648f046c3cc89cb5b3
 - id: WO-15.4
   slug: wo4-spec-updates
   title: SPEC & Design Doc Updates

@@ -27,6 +27,9 @@
 #else
 #include "include/portal_assets/upload_settings_js.hpp"
 #endif
+#include "include/portal_assets/ride_html.hpp"
+#include "include/portal_assets/ride_js.hpp"
+#include "include/portal_assets/manifest_json.hpp"
 #endif
 
 namespace echenon {
@@ -836,6 +839,17 @@ void SessionOverlay::registerRoutes(PsychicHttpServer& server) {
                               upload_settings_js_gz_len,
                               upload_settings_js_gz_etag,
                               "application/javascript");
+    });
+
+    // Standalone /ride page assets
+    server.on("/ride", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
+        return serveGzipAsset(request, response, ride_html_gz, ride_html_gz_len, ride_html_gz_etag, "text/html");
+    });
+    server.on("/ride.js", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
+        return serveGzipAsset(request, response, ride_js_gz, ride_js_gz_len, ride_js_gz_etag, "application/javascript");
+    });
+    server.on("/manifest.json", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
+        return serveGzipAsset(request, response, manifest_json_gz, manifest_json_gz_len, manifest_json_gz_etag, "application/manifest+json");
     });
 
     auto checkAuth = [this](PsychicRequest* request, PsychicResponse* response) -> bool {

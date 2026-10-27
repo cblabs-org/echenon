@@ -4,7 +4,7 @@ wo_id: WO-15.3
 pr_id: PR-15
 title: Ride Page — Standalone /ride
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - web/ride.html
 - web/ride.js
@@ -32,7 +32,22 @@ verification_command: pio test -e native
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 9fba032ad1979acfcd2b770416007530e0dcb322874e62d48c50f317edafd7c4
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_c18e841c62c6
+  commit_sha: 6dc83ed16337e72352a7dd648f046c3cc89cb5b3
+  files_modified:
+  - src/echenon/SessionOverlay.cpp
+  - web/manifest.json
+  - web/ride.html
+  - web/ride.js
+  verification_summary: 'pio test -e native: ================ 199 test cases: 199
+    succeeded in 00:00:04.400 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-15.3: Ride Page — Standalone /ride
