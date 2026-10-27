@@ -81,9 +81,9 @@ work_orders:
   slug: wo8-audit-remediation
   title: Audit Remediation — Event Viewer Schema, Runaway Telemetry & Ride Banner
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: a50d8f9ff2ddbad92888c79fb8f0ab4af8e3b947
 ---
 
 # PR-14: Diagnostics & Run-Data Persistence

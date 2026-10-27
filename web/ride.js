@@ -5,6 +5,8 @@ function fmt(s){var h=s/3600|0,m=(s%3600)/60|0,sec=s%60|0;return h?(h+':'+p(m)+'
 function p(n){return n<10?'0'+n:''+n}
 function tl(d){
 if(!d)return;
+var rb=$('runaway-banner');
+if(rb){rb.style.display=(d.runaway===true||d.runaway==='true')?'block':'none'}
 $('cad').textContent=Math.round(d.cadence_rpm||0);
 $('pwr').textContent=Math.round(d.power_watts||0);
 $('spd').textContent=(d.speed_kph||0).toFixed(1);

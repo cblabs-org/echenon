@@ -649,6 +649,7 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
         doc["hr"] = liveHr;
         doc["level_echelon"] = getEchelonLevel();
         doc["level_i"] = getInternalLevel();
+        doc["runaway"] = _runawayDetector.isRunaway();
 
 #ifdef WITH_SIGNAL_LOGGER
         DecimationRow* buf = _signalLogger.*get(SignalLogger_rideLogBuffer());

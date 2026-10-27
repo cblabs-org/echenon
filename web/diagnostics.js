@@ -6,7 +6,7 @@
  *
  * Endpoints consumed:
  *   GET /api/echenon/events?limit=50
- *   GET /api/echenon/status (or LiveFeed WS for runaway state)
+ *   GET /api/echenon/live (or LiveFeed WS for runaway state)
  */
 (function() {
   'use strict';
@@ -151,16 +151,21 @@
   }
 
   function formatDetails(ev) {
-    if (!ev.details) return '—';
-    var d = ev.details;
+    var d = ev.payload || ev.details;
+    if (!d) return '—';
     var parts = [];
     if (d.uptime_s !== undefined) parts.push('Uptime: ' + d.uptime_s + 's');
     if (d.session_id !== undefined) parts.push('Session: ' + d.session_id);
     if (d.duration_s !== undefined) parts.push('Duration: ' + d.duration_s + 's');
     if (d.duration_ms !== undefined) parts.push('Duration: ' + d.duration_ms + 'ms');
-    if (d.record_count !== undefined) parts.push('Records: ' + d.record_count);
+    var rec = (d.record_count_approx !== undefined) ? d.record_count_approx : d.record_count;
+    if (rec !== undefined) parts.push('Records: ' + rec);
     if (d.calibration_type !== undefined) {
-      parts.push('Type: ' + (d.calibration_type === 0 ? 'Initial' : 'Recalibration'));
+      var cal = d.calibration_type;
+      var calLabel = (cal === 'initial' || cal === 0) ? 'Initial'
+                   : (cal === 'recalibration' || cal === 1) ? 'Recalibration'
+                   : String(cal);
+      parts.push('Type: ' + calLabel);
     }
     if (d.version !== undefined) parts.push('Version: ' + d.version);
     return parts.length ? parts.join(', ') : '—';
@@ -182,7 +187,7 @@
     for (var i = 0; i < events.length; i++) {
       var ev = events[i];
       html += '<tr>' +
-        '<td>' + formatTime(ev.epoch_s) + '</td>' +
+        '<td>' + formatTime(ev.epoch || ev.epoch_s) + '</td>' +
         '<td>' + makeBadge(ev.type) + '</td>' +
         '<td>' + formatDetails(ev) + '</td>' +
         '</tr>';
@@ -213,7 +218,7 @@
     if (!banner) return;
 
     var fetchFn = (typeof window.apiFetch === 'function') ? window.apiFetch : fetch;
-    fetchFn('/api/echenon/status')
+    fetchFn('/api/echenon/live')
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (data && data.runaway) {

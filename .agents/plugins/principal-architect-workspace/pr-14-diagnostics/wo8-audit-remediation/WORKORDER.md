@@ -4,7 +4,7 @@ wo_id: WO-14.8
 pr_id: PR-14
 title: Audit Remediation — Event Viewer Schema, Runaway Telemetry & Ride Banner
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/EchenonModule.cpp
 - web/diagnostics.js
@@ -17,7 +17,22 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 70e0cbbe04087396c1d0a436b8bb8a3fbf3dda5449ad2f1b06ea22ba2d7a9a3f
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_f601adf48897
+  commit_sha: a50d8f9ff2ddbad92888c79fb8f0ab4af8e3b947
+  files_modified:
+  - src/echenon/EchenonModule.cpp
+  - web/diagnostics.js
+  - web/ride.html
+  - web/ride.js
+  verification_summary: 'pio test -e native --verbose: ================ 233 test cases:
+    233 succeeded in 00:00:00.426 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-14.8 — Audit Remediation: Event Viewer Schema, Runaway Telemetry & Ride Banner
