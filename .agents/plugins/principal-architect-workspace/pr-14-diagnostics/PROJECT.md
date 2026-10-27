@@ -24,7 +24,7 @@ charter:
   - pio test -e native --verbose
   charter_locked: true
   charter_hash: 26aaafe1dd55bab0490bbc71e7fecdabffbdaf645fcc4c070b4d7e3f952e4108
-status: STAGED_FOR_AUDIT
+status: CHANGES_REQUESTED
 approved_at: '2026-10-27T17:09:34.409212Z'
 github_pr: 11
 work_orders:
