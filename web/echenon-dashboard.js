@@ -23,6 +23,15 @@
     return m + 'm';
   }
 
+  // --- Health Colour Helper ---
+  function healthColour(value, thresholds) {
+    // thresholds = { red: N, yellow: N }
+    // Returns CSS colour variable string
+    if (value < thresholds.red) return 'var(--error)';
+    if (value < thresholds.yellow) return 'var(--warning)';
+    return 'var(--success)';
+  }
+
   // --- WebSocket Live Feed ---
   function getWsUrl() {
     var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -130,6 +139,7 @@
   }
 
   function handleLiveMessage(data) {
+    // --- Live Metrics Card ---
     var cadenceEl = document.getElementById('echenon-live-cadence');
     var powerEl = document.getElementById('echenon-live-power');
     var levelEl = document.getElementById('echenon-live-level');
@@ -147,6 +157,112 @@
     if (hrEl && data.heart_rate !== undefined) {
       hrEl.textContent = data.heart_rate;
     }
+
+    // --- Diagnostics Drawer: Lid ---
+    var diagDot = document.getElementById('echenon-diag-dot');
+    var diagLabel = document.getElementById('echenon-diag-label');
+    if (diagDot && data.ble_conn !== undefined) {
+      if (data.ble_conn) {
+        diagDot.style.background = 'var(--success)';
+        if (diagLabel) diagLabel.textContent = 'Bike Connected';
+      } else {
+        diagDot.style.background = 'var(--border)';
+        if (diagLabel) diagLabel.textContent = 'Not Connected';
+      }
+    }
+
+    // --- Diagnostics Drawer: Status Section ---
+    var calEl = document.getElementById('echenon-diag-cal');
+    if (calEl && data.p_tilde !== undefined) {
+      if (data.p_tilde !== 0) {
+        calEl.textContent = 'Calibrated';
+        calEl.style.color = 'var(--success)';
+      } else {
+        calEl.textContent = 'Not Calibrated';
+        calEl.style.color = 'var(--warning)';
+      }
+    }
+
+    var sesEl = document.getElementById('echenon-diag-ses');
+    if (sesEl && data.ses !== undefined) {
+      var sesUpper = String(data.ses).toUpperCase();
+      if (sesUpper === 'ACTIVE') {
+        sesEl.textContent = 'Active';
+        sesEl.style.color = 'var(--success)';
+      } else if (sesUpper === 'PAUSED') {
+        sesEl.textContent = 'Paused';
+        sesEl.style.color = 'var(--warning)';
+      } else if (sesUpper === 'ENDED') {
+        sesEl.textContent = 'Ended';
+        sesEl.style.color = 'var(--text-muted)';
+      } else {
+        sesEl.textContent = 'Idle';
+        sesEl.style.color = 'var(--text-muted)';
+      }
+    }
+
+    // --- Diagnostics Drawer: Resistance Knob Section ---
+    var potRawEl = document.getElementById('echenon-diag-pot-raw');
+    if (potRawEl && data.pot_raw !== undefined) {
+      potRawEl.textContent = data.pot_raw;
+    }
+
+    var potFiltEl = document.getElementById('echenon-diag-pot-filt');
+    if (potFiltEl && data.pot_filt !== undefined) {
+      potFiltEl.textContent = Number(data.pot_filt).toFixed(1);
+    }
+
+    var pTildeEl = document.getElementById('echenon-diag-ptilde');
+    if (pTildeEl && data.p_tilde !== undefined) {
+      pTildeEl.textContent = Number(data.p_tilde).toFixed(3);
+    }
+
+    var encVccEl = document.getElementById('echenon-diag-enc-vcc');
+    if (encVccEl && data.enc_vcc !== undefined) {
+      var vccColour = healthColour(data.enc_vcc, { red: 100, yellow: 500 });
+      encVccEl.innerHTML = '<span style="color:' + vccColour + ';">' + data.enc_vcc + '</span>';
+    }
+
+    var encDeltaEl = document.getElementById('echenon-diag-enc-delta');
+    if (encDeltaEl && data.encoder_delta !== undefined) {
+      encDeltaEl.textContent = data.encoder_delta;
+    }
+
+    // --- Diagnostics Drawer: Cadence Sensor Section ---
+    var cadUsEl = document.getElementById('echenon-diag-cad-us');
+    if (cadUsEl && data.cad_us !== undefined) {
+      cadUsEl.textContent = data.cad_us;
+    }
+
+    var cadPinEl = document.getElementById('echenon-diag-cad-pin');
+    if (cadPinEl && data.cad_pin !== undefined) {
+      cadPinEl.textContent = data.cad_pin ? 'HIGH' : 'LOW';
+    }
+
+    // --- Diagnostics Drawer: Motor Sense Section ---
+    var motPEl = document.getElementById('echenon-diag-mot-p');
+    if (motPEl && data.mot_p !== undefined) {
+      motPEl.textContent = data.mot_p;
+    }
+
+    var motNEl = document.getElementById('echenon-diag-mot-n');
+    if (motNEl && data.mot_n !== undefined) {
+      motNEl.textContent = data.mot_n;
+    }
+
+    var motDirEl = document.getElementById('echenon-diag-mot-dir');
+    if (motDirEl && data.motor_dir !== undefined) {
+      var dir = Number(data.motor_dir);
+      if (dir > 0) {
+        motDirEl.textContent = 'FWD';
+      } else if (dir < 0) {
+        motDirEl.textContent = 'REV';
+      } else {
+        motDirEl.textContent = 'IDLE';
+      }
+    }
+
+    // --- Session state (legacy WS field fallback) ---
     if (data.session_state) {
       updateSessionUI(data.session_state);
     }
@@ -192,29 +308,6 @@
         '</div>' +
       '</div>' +
 
-      // --- Echenon Status Card ---
-      '<div class="card" style="margin-bottom:1rem;">' +
-        '<h3 style="margin:0 0 0.75rem 0; font-size:1.15rem; font-weight:700;">Echenon Status</h3>' +
-        '<div class="info-row">' +
-          '<span class="text-muted">Bike Connection</span>' +
-          '<div style="display:flex; align-items:center; gap:0.4rem;">' +
-            '<span class="dot dot--grey" id="echenon-bike-dot"></span>' +
-            '<span id="echenon-bike-status" style="font-weight:600;">Not connected</span>' +
-          '</div>' +
-        '</div>' +
-        '<div class="info-row">' +
-          '<span class="text-muted">Calibration Status</span>' +
-          '<div id="echenon-calibration-container" style="display:flex; align-items:center; gap:0.4rem;">' +
-            '<span id="echenon-calibration-status" style="font-weight:600;">Checking...</span>' +
-            '<a href="#" id="echenon-calibration-link" style="display:none; color:var(--primary); font-size:0.85rem; text-decoration:none; font-weight:600;">Calibrate &rarr;</a>' +
-          '</div>' +
-        '</div>' +
-        '<div class="info-row">' +
-          '<span class="text-muted">Session State</span>' +
-          '<span id="echenon-session-status" style="font-weight:600;">Idle</span>' +
-        '</div>' +
-      '</div>' +
-
       // --- Last Ride Card ---
       '<div class="card" style="margin-bottom:1rem;">' +
         '<h3 style="margin:0 0 0.75rem 0; font-size:1.15rem; font-weight:700;">Last Ride</h3>' +
@@ -234,108 +327,88 @@
             iconArrowRight +
           '</div>' +
         '</div>' +
-      '</a>';
+      '</a>' +
+
+      // --- Diagnostics Info-Drawer ---
+      '<article class="info-drawer">' +
+        '<details id="echenon-diag-drawer">' +
+          '<summary class="info-summary">' +
+            '<span id="echenon-diag-dot" style="' +
+              'width:8px; height:8px; border-radius:50%; background:var(--border);' +
+              'display:inline-block; margin-right:0.5rem; flex-shrink:0;' +
+            '"></span>' +
+            '<span id="echenon-diag-label">Bike Status</span>' +
+          '</summary>' +
+          '<div class="info-drawer-content">' +
+
+            // Section: Status
+            '<div style="font-weight:600; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); margin:0.5rem 0 0.25rem;">Status</div>' +
+            '<div class="info-row">' +
+              '<span class="text-muted">Calibration</span>' +
+              '<span id="echenon-diag-cal" style="font-weight:600;">--</span>' +
+            '</div>' +
+            '<div class="info-row">' +
+              '<span class="text-muted">Session</span>' +
+              '<span id="echenon-diag-ses" style="font-weight:600;">Idle</span>' +
+            '</div>' +
+
+            // Section: Resistance Knob
+            '<div style="font-weight:600; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); margin:0.75rem 0 0.25rem;">Resistance Knob</div>' +
+            '<div class="info-row">' +
+              '<span class="text-muted">Raw ADC</span>' +
+              '<span id="echenon-diag-pot-raw" style="font-family:monospace;">--</span>' +
+            '</div>' +
+            '<div class="info-row">' +
+              '<span class="text-muted">Filtered</span>' +
+              '<span id="echenon-diag-pot-filt" style="font-family:monospace;">--</span>' +
+            '</div>' +
+            '<div class="info-row">' +
+              '<span class="text-muted">Normalized</span>' +
+              '<span id="echenon-diag-ptilde" style="font-family:monospace;">--</span>' +
+            '</div>' +
+            '<div class="info-row">' +
+              '<span class="text-muted">Enc VCC</span>' +
+              '<span id="echenon-diag-enc-vcc" style="font-family:monospace;">--</span>' +
+            '</div>' +
+            '<div class="info-row">' +
+              '<span class="text-muted">Enc &Delta;</span>' +
+              '<span id="echenon-diag-enc-delta" style="font-family:monospace;">--</span>' +
+            '</div>' +
+
+            // Section: Cadence Sensor
+            '<div style="font-weight:600; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); margin:0.75rem 0 0.25rem;">Cadence Sensor</div>' +
+            '<div class="info-row">' +
+              '<span class="text-muted">Pulse &mu;s</span>' +
+              '<span id="echenon-diag-cad-us" style="font-family:monospace;">--</span>' +
+            '</div>' +
+            '<div class="info-row">' +
+              '<span class="text-muted">Pin State</span>' +
+              '<span id="echenon-diag-cad-pin" style="font-family:monospace;">--</span>' +
+            '</div>' +
+
+            // Section: Motor Sense
+            '<div style="font-weight:600; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); margin:0.75rem 0 0.25rem;">Motor Sense</div>' +
+            '<div class="info-row">' +
+              '<span class="text-muted">Sense +</span>' +
+              '<span id="echenon-diag-mot-p" style="font-family:monospace;">--</span>' +
+            '</div>' +
+            '<div class="info-row">' +
+              '<span class="text-muted">Sense &minus;</span>' +
+              '<span id="echenon-diag-mot-n" style="font-family:monospace;">--</span>' +
+            '</div>' +
+            '<div class="info-row">' +
+              '<span class="text-muted">Direction</span>' +
+              '<span id="echenon-diag-mot-dir" style="font-family:monospace;">--</span>' +
+            '</div>' +
+
+          '</div>' +
+        '</details>' +
+      '</article>';
 
     container.innerHTML = html;
-
-    var calLink = document.getElementById('echenon-calibration-link');
-    if (calLink) {
-      calLink.onclick = function(e) {
-        e.preventDefault();
-        var navSystem = document.querySelector('.tab-link[data-target="tab-system"]') || document.getElementById('nav-system');
-        if (navSystem) {
-          navSystem.click();
-          setTimeout(function() {
-            var pill = document.querySelector('.pill-btn[data-target="tab-level-mapping"]') || document.getElementById('pill-level-mapping');
-            if (pill) pill.click();
-          }, 50);
-        }
-      };
-    }
   }
 
   // --- Data Fetching ---
-  async function fetchBikeStatus() {
-    var fetchFn = window.apiFetch || window.fetch;
-    try {
-      var resp = await fetchFn('/api/ble/status');
-      if (!resp.ok) return;
-      var data = await resp.json();
-      updateBikeUI(data);
-    } catch (err) {
-      // non-fatal
-    }
-  }
-
-  function updateBikeUI(data) {
-    var dot = document.getElementById('echenon-bike-dot');
-    var label = document.getElementById('echenon-bike-status');
-    if (!dot || !label) return;
-
-    dot.className = 'dot';
-    if (data && (data.isScanning || (data.discovery && data.discovery.active))) {
-      dot.classList.add('dot--yellow');
-      label.textContent = 'Scanning...';
-      label.style.color = 'var(--warning)';
-    } else {
-      var isConnected = false;
-      if (data && data.connections && data.connections.length > 0) {
-        isConnected = true;
-      } else if (data && data.devices && data.devices.length > 0) {
-        for (var i = 0; i < data.devices.length; i++) {
-          if (data.devices[i].connected) {
-            isConnected = true;
-            break;
-          }
-        }
-      }
-      if (isConnected) {
-        dot.classList.add('dot--green');
-        label.textContent = 'Connected to Echelon EX-3';
-        label.style.color = 'var(--success)';
-      } else {
-        dot.classList.add('dot--grey');
-        label.textContent = 'Not connected';
-        label.style.color = 'var(--text-muted)';
-      }
-    }
-  }
-
-  async function fetchCalibrationStatus() {
-    var fetchFn = window.apiFetch || window.fetch;
-    try {
-      var resp = await fetchFn('/api/echenon/calibration/status');
-      if (!resp.ok) return;
-      var data = await resp.json();
-      updateCalibrationUI(data);
-    } catch (err) {
-      // non-fatal
-    }
-  }
-
-  function updateCalibrationUI(data) {
-    var label = document.getElementById('echenon-calibration-status');
-    var link = document.getElementById('echenon-calibration-link');
-    if (!label) return;
-
-    var nonZeroCount = 0;
-    if (data && Array.isArray(data.table)) {
-      for (var i = 0; i < data.table.length; i++) {
-        if (data.table[i] > 0) nonZeroCount++;
-      }
-    }
-
-    if (nonZeroCount > 0) {
-      label.textContent = 'Calibrated (32/32 levels)';
-      label.style.color = 'var(--success)';
-      if (link) link.style.display = 'none';
-    } else {
-      label.textContent = 'Not calibrated';
-      label.style.color = 'var(--warning)';
-      if (link) link.style.display = 'inline';
-    }
-  }
-
   async function fetchSessionStatus() {
     var fetchFn = window.apiFetch || window.fetch;
     try {
@@ -349,7 +422,7 @@
   }
 
   function updateSessionUI(state) {
-    var label = document.getElementById('echenon-session-status');
+    var label = document.getElementById('echenon-diag-ses');
     if (!label || !state) return;
     var s = String(state).toUpperCase();
     if (s === 'ACTIVE') {
@@ -406,8 +479,6 @@
   }
 
   async function fetchAll() {
-    await fetchBikeStatus();
-    await fetchCalibrationStatus();
     await fetchSessionStatus();
     await fetchLastRide();
   }
