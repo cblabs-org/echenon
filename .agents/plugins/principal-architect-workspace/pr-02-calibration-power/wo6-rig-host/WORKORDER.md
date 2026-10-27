@@ -1,21 +1,22 @@
 ---
+schema_version: 1
 wo_id: WO-02.6
 pr_id: PR-02
-programme_id: prog-echenon
-title: "Host Script (software-only pre-work)"
-slug: wo6-rig-host
-branch: "calibration-power/wo6-rig-host"
-base_branch: "calibration-power/wo5-rig-firmware"
+title: Host Script (software-only pre-work)
 complexity: interactive
 status: IN_PROGRESS
-attempts: 1
-spec_hash: null
 allowed_files:
-  - tools/calibration-rig/calibration_sweep.py
-  - tools/calibration-rig/requirements.txt
-  - tools/calibration-rig/README.md
-verification_command: "python3 -c 'import ast; ast.parse(open(\"tools/calibration-rig/calibration_sweep.py\").read()); print(\"syntax ok\")'"
+- tools/calibration-rig/calibration_sweep.py
+- tools/calibration-rig/requirements.txt
+- tools/calibration-rig/README.md
+forbidden_files: []
 required_skills: []
+verification_command: python3 -c 'import ast; ast.parse(open("tools/calibration-rig/calibration_sweep.py").read());
+  print("syntax ok")'
+max_attempts: 5
+max_structural_failures: 2
+spec_hash: null
+completion: null
 ---
 
 # WO-02.6 — Host Script (Software-Only Pre-Work)
@@ -170,3 +171,6 @@ Message: `WO-02.6: Calibration sweep host script`
 Stage ONLY: `tools/calibration-rig/calibration_sweep.py`,
 `tools/calibration-rig/requirements.txt`, `tools/calibration-rig/README.md`
 Do NOT commit: framework submodule, any firmware files
+## Completion Report
+
+_No completion report recorded._

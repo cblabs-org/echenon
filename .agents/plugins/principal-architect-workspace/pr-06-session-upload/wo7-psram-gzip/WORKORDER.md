@@ -4,7 +4,7 @@ wo_id: WO-06.7
 pr_id: PR-06
 title: Move StreamingGzipEncoder to PSRAM Heap Allocation + EventBus Payload Safety
 complexity: standard
-status: PLANNED
+status: PENDING
 allowed_files:
 - src/echenon/TCXGenerator.h
 - src/echenon/TCXGenerator.cpp
@@ -107,3 +107,6 @@ D3: SessionManager::publishStateChange() EventBus payload migrated from
 
 Release audit remediation — no behavioural change; all 199 tests pass.
 ```
+## Completion Report
+
+_No completion report recorded._

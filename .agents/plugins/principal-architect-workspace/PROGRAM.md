@@ -33,8 +33,9 @@ provisional, decomposed after DR-2).
 | v1 | PR-03 | 2 | BLE Foundation + HR Relay | PR-01 ✅ | ✅ Merged 2026-10-20 (PR #3, `e930314`) |
 | v1 | PR-04a | 3 | Passive Tap Board (VIN + VIN/USB switch, manual OTA, UART0 reserved) | PR-02, DR-1 | ⬜ Deferred to pre-PR-09 (bench stays on USB-C during PR-05/06) |
 | v1 | PR-05 | 3 | FTMS Telemetry, **read-only** (Target Setting Features = 0) | PR-02, PR-03 | ✅ Merged 2026-10-26 (PR #6, `a6c7a88`) |
-| v1 | PR-06 | 4 | Session + TCX + Strava | PR-02 | ✅ Audit Approved 2026-10-26 (8/8 WOs complete, PR #7 pushed `aecdc97`, ready to merge) |
-| v1 | PR-15 | 4 | Portal Rework & Ride Page ([charter](pr-15-portal-ride/PROJECT.md)) | PR-06 | 📋 Charter drafted 2026-10-26 |
+| v1 | PR-06 | 4 | Session + TCX + Strava | PR-02 | ✅ Merged 2026-10-27 (`46837d2`, PR #7) |
+| v1 | PR-15 | 4 | Portal Rework & Ride Page ([charter](pr-15-portal-ride/PROJECT.md)) | PR-06 | ✅ Merged 2026-10-27 (`57b352d`, PR #8) |
+| v1 | — | — | fix(strava): OAuth callback redirect | — | ✅ Merged 2026-10-27 (`03be4c1`, PR #9) |
 | v1 | PR-14 | 4 | Diagnostics & Run-Data Persistence ([stub](pr-14-diagnostics/PROJECT.md)) | PR-06 | ⬜ Not started |
 | v1 | PR-09 | 7 | v1 Integration & Release (UC1–UC3) | PR-04a, PR-05, PR-14, PR-15 | ⬜ Not started |
 | v2 | DR-2 prep | — | Active-design bench evidence ([project](pr-dr2-prep/PROJECT.md)) | DR-1 (timing: owner) | ⬜ Provisional |
@@ -494,4 +495,26 @@ Decisions on the v1 Passive / v2 Active restructure:
   - Ride page: standalone `/ride` HTML, PWA manifest, dark theme, responsive 280–430px, designed for Android split-screen with Echelon app on Lenovo P12 and iPad Slide Over.
 - **PR-15 Chartered:** Portal Rework & Ride Page (5 WOs: Portal Cleanup, Setup Tab, Ride Page, SPEC Updates, HW Verification). Inserted before PR-09 in programme table. PR-09 now depends on PR-15.
 - **SPEC.md Update:** 12 sections identified for `/overlay` → `/ride` rename and §11 major rewrite.
+
+### 2026-10-27: CA Session 2 — PR-06, PR-15, fix/strava merged; PR-14 chartered
+
+- **Programme table updated:** PR-06 → ✅ Merged (`46837d2`, PR #7); PR-15 → ✅ Merged
+  (`57b352d`, PR #8); fix(strava) → ✅ Merged (`03be4c1`, PR #9). `main` is at `03be4c1`.
+- **All v1 dependencies for PR-14 are met.** PR-06 (RideStore, SessionManager, RideRecord,
+  IRideFileSystem) and PR-02 (RunawayDetector) are on `main`.
+- **PR-14 Charter written and locked** (7 WOs):
+  - WO-14.1: DiagnosticsModule + Bounded Event Log (standard)
+  - WO-14.2: Run-Data Persistence — LittleFS + Gzip (standard)
+  - WO-14.3: Query REST API — streamed, paged, authenticated (standard)
+  - WO-14.4: Portal Integration + Runaway Alert Surfacing (standard)
+  - WO-14.5: Native Tests (≥ 25 new RUN_TEST cases) (standard)
+  - WO-14.6: SPEC + Doc Sync (mechanical)
+  - WO-14.7: Hardware Verification — 60-min ride with persistence (interactive)
+- **Owner decisions at approval:**
+  - D1: New `DiagnosticsModule` (not a SignalLogger refactor) — approved.
+  - D2: Binary `.ride.gz` persistence with CSV-on-download — approved.
+  - D3: 512 KB default cap for run-data on flash — approved.
+  - D4: Event log scope: runaway alerts, calibration, boot, session start/end,
+    firmware version changes — approved.
+- **Next:** Tier 2 PA to decompose WOs into detailed specs, then execution.
 

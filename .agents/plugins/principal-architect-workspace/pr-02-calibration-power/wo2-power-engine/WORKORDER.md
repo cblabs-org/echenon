@@ -1,26 +1,26 @@
 ---
+schema_version: 1
 wo_id: WO-02.2
 pr_id: PR-02
-programme_id: prog-echenon
-title: "PowerEngine + Default Table Structure"
-slug: wo2-power-engine
-branch: "calibration-power/wo2-power-engine"
-base_branch: "calibration-power/wo1-sensors"
+title: PowerEngine + Default Table Structure
 complexity: standard
 status: IN_PROGRESS
-attempts: 1
-spec_hash: null
 allowed_files:
-  - src/echenon/PowerEngine.h
-  - src/echenon/PowerEngine.cpp
-  - src/echenon/PowerTable.h
-  - src/echenon/EchenonModule.h
-  - src/echenon/EchenonModule.cpp
-  - test/test_native/test_power_engine.cpp
-  - platformio.ini                            # native test deps only
-verification_command: "pio test -e native && pio run -e ex3-waveshare-nano"
+- src/echenon/PowerEngine.h
+- src/echenon/PowerEngine.cpp
+- src/echenon/PowerTable.h
+- src/echenon/EchenonModule.h
+- src/echenon/EchenonModule.cpp
+- test/test_native/test_power_engine.cpp
+- platformio.ini
+forbidden_files: []
 required_skills:
-  - /Users/mcneillm/Documents/Projects/Echenon/.agents/skills/framework-expert/SKILL.md
+- /Users/mcneillm/Documents/Projects/Echenon/.agents/skills/framework-expert/SKILL.md
+verification_command: pio test -e native && pio run -e ex3-waveshare-nano
+max_attempts: 5
+max_structural_failures: 2
+spec_hash: null
+completion: null
 ---
 
 # WO-02.2 — PowerEngine + Default Table Structure
@@ -208,3 +208,6 @@ Required test cases:
 - Framework submodule drift is expected — NEVER commit the submodule
 - Known gotcha: include `<cstddef>` before `BOARD_HEADER` in standalone
   headers (board.h uses `size_t` without including it)
+## Completion Report
+
+_No completion report recorded._

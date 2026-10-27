@@ -1,29 +1,30 @@
 ---
+schema_version: 1
 wo_id: WO-02.5
 pr_id: PR-02
-programme_id: prog-echenon
-title: "CalibrationRig Firmware Module"
-slug: wo5-rig-firmware
-branch: "calibration-power/wo5-rig-firmware"
-base_branch: "calibration-power/wo4-ws-feed"
+title: CalibrationRig Firmware Module
 complexity: standard
 status: IN_PROGRESS
-attempts: 1
-spec_hash: null
 allowed_files:
-  - src/echenon/CalibrationRig.h
-  - src/echenon/CalibrationRig.cpp
-  - src/echenon/QuadratureGenerator.h
-  - src/echenon/QuadratureGenerator.cpp
-  - src/echenon/EchenonModule.h
-  - src/echenon/EchenonModule.cpp
-  - src/main.cpp
-  - hardware/ex3-waveshare-nano/board.h
-  - platformio.ini
-  - test/test_native/test_quadrature_generator.cpp
-verification_command: "pio test -e native && pio run -e ex3-waveshare-nano && pio run -e ex3-waveshare-nano-rig"
+- src/echenon/CalibrationRig.h
+- src/echenon/CalibrationRig.cpp
+- src/echenon/QuadratureGenerator.h
+- src/echenon/QuadratureGenerator.cpp
+- src/echenon/EchenonModule.h
+- src/echenon/EchenonModule.cpp
+- src/main.cpp
+- hardware/ex3-waveshare-nano/board.h
+- platformio.ini
+- test/test_native/test_quadrature_generator.cpp
+forbidden_files: []
 required_skills:
-  - /Users/mcneillm/Documents/Projects/Echenon/.agents/skills/framework-expert/SKILL.md
+- /Users/mcneillm/Documents/Projects/Echenon/.agents/skills/framework-expert/SKILL.md
+verification_command: pio test -e native && pio run -e ex3-waveshare-nano && pio run
+  -e ex3-waveshare-nano-rig
+max_attempts: 5
+max_structural_failures: 2
+spec_hash: null
+completion: null
 ---
 
 # WO-02.5 — CalibrationRig Firmware Module
@@ -270,3 +271,6 @@ Test the QuadratureGenerator state machine (no GPIO, just state tracking):
 - The `WITH_CALIBRATION_RIG` build and `ex3-waveshare-nano-rig` env are
   excluded from the production build
 - Known gotchas: `<cstddef>` before BOARD_HEADER; Arduino `#define DEFAULT 1`
+## Completion Report
+
+_No completion report recorded._

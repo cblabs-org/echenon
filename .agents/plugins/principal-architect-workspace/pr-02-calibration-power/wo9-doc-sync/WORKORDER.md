@@ -2,19 +2,25 @@
 schema_version: 1
 wo_id: WO-02.9
 pr_id: PR-02
-title: "Doc Sync + Integration"
+title: Doc Sync + Integration
 complexity: standard
 status: COMPLETED
 allowed_files:
-  - SPEC.md
-  - docs/
-  - src/echenon/PowerEngine.h
-  - src/echenon/PowerEngine.cpp
-  - src/echenon/PowerTableDefault.h
-  - test/test_native/test_power_engine.cpp
-  - tools/calibration-rig/ex3-default-power-table.csv
-  - .agents/plugins/principal-architect-workspace/pr-02-calibration-power/
-verification_command: "./.pio/build/native/program"
+- SPEC.md
+- docs/
+- src/echenon/PowerEngine.h
+- src/echenon/PowerEngine.cpp
+- src/echenon/PowerTableDefault.h
+- test/test_native/test_power_engine.cpp
+- tools/calibration-rig/ex3-default-power-table.csv
+- .agents/plugins/principal-architect-workspace/pr-02-calibration-power/
+forbidden_files: []
+required_skills: []
+verification_command: ./.pio/build/native/program
+max_attempts: 5
+max_structural_failures: 2
+spec_hash: null
+completion: null
 ---
 
 # WO-02.9 — Doc Sync + Integration
@@ -40,3 +46,6 @@ verification_command: "./.pio/build/native/program"
 - **Verification:**
   - PlatformIO MCP `run_tests` (`native`): **112/112 tests passed** (including `DefaultTableSanity`, `PhysicsP3rReferenceEnvelope`, `PhysicsP3rPotentiometerMapping`, and `TierOverrideSwitchesBetweenPhysicsAndTable`).
   - PlatformIO MCP `build_project` (`ex3-waveshare-nano`): **SUCCESS** (`RAM: 56,576 B`, `Flash: 1,564,543 B`).
+## Completion Report
+
+_No completion report recorded._

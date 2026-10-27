@@ -4,7 +4,7 @@ wo_id: WO-06.8
 pr_id: PR-06
 title: File Headers, std::function Deviation Comments & CSS Design Tokens
 complexity: standard
-status: PLANNED
+status: PENDING
 allowed_files:
 - src/echenon/RideStore.cpp
 - src/echenon/SessionManager.cpp
@@ -157,3 +157,6 @@ D6: Replace hardcoded hex colours with CSS var() design tokens in session.js
 
 Release audit remediation — cosmetic only; no behavioural changes.
 ```
+## Completion Report
+
+_No completion report recorded._
