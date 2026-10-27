@@ -30,28 +30,28 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 9b7e5fef77dc2da98ba8917dbf0c2308a61b6e8c
+  commit_sha: add8d3a844c7e277608d08e888d52af576fbefb1
 - id: WO-05.2
   slug: wo2-ftms-server
   title: FTMSServer Read-Only BLE Service Provider (0x1826, 0x2ACC, 0x2AD2)
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 5ffd704799920ef0df2a11c447a761bf9cd6d259
+  commit_sha: 3aa1f7d6ab1893d33d551e75b5c4ad016970a782
 - id: WO-05.3
   slug: wo3-module-wiring
   title: EchenonModule, LiveFeed & platformio.ini Integration (WITH_FTMS)
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 82d203e2dfd6abfc3260bea39e17f411d085ad8a
+  commit_sha: fa4bfab55b3736ceb3d11601e4fc63809d2a58d4
 - id: WO-05.4
   slug: wo4-hw-verification
   title: Hardware FTMS Broadcast, App Compatibility Matrix & P12 Coexistence Soak
   complexity: interactive
   status: COMPLETED
   attempts: 3
-  commit_sha: 09e580141d251ff7a4ff2e3caaa40a76b73e9e4c
+  commit_sha: 09e580141d25fdc9585c61387770b51445aed8bc
 ---
 
 # PR-05: FTMS Telemetry, Read-Only (Phase 3, v1 Passive)
