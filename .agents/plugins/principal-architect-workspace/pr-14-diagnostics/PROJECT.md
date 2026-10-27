@@ -60,9 +60,9 @@ work_orders:
   slug: wo5-native-tests
   title: Native Tests
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: becaccf06b4b636924886ccd3b1ef8f57fdefb2c
 - id: WO-14.6
   slug: wo6-spec-doc-sync
   title: SPEC + Doc Sync

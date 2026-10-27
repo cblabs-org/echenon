@@ -4,7 +4,7 @@ wo_id: WO-14.5
 pr_id: PR-14
 title: Native Tests
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - test/test_native/test_diagnostics_module.cpp
 - test/test_native/test_ride_persistence.cpp
@@ -16,7 +16,21 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 5a584088892be40521437a5787e9464528ef04fb1bc82691b4f305665b20cb66
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_3634caebb0d7
+  commit_sha: becaccf06b4b636924886ccd3b1ef8f57fdefb2c
+  files_modified:
+  - test/test_native/test_diagnostics_module.cpp
+  - test/test_native/test_diagnostics_routes.cpp
+  - test/test_native/test_ride_persistence.cpp
+  verification_summary: 'pio test -e native --verbose: ================ 232 test cases:
+    232 succeeded in 00:00:00.501 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-14.5 — Native Tests
