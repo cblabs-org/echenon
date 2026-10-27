@@ -1009,11 +1009,36 @@ void SessionOverlay::registerRoutes(PsychicHttpServer& server) {
         return sendResp(response, handleGetStravaAuthUrl(redirectUri, millis()));
     });
 
-    server.on("/api/strava/callback", HTTP_GET, [this, checkAuth, sendResp](PsychicRequest* request, PsychicResponse* response) {
-        if (!checkAuth(request, response)) return ESP_OK;
+    server.on("/api/strava/callback", HTTP_GET, [this](PsychicRequest* request, PsychicResponse* response) {
+        // No checkAuth — the OAuth state parameter is validated inside handleStravaCallback
         std::string code  = request->hasParam("code") ? request->getParam("code")->value().c_str() : "";
         std::string state = request->hasParam("state") ? request->getParam("state")->value().c_str() : "";
-        return sendResp(response, handleStravaCallback(code, state, millis()));
+        HttpResponse result = handleStravaCallback(code, state, millis());
+
+        if (result.status_code == 200) {
+            return response->redirect("/#tab-strava");
+        }
+        // Extract error message from JSON body for the redirect query param
+        std::string errMsg = "Authorization failed";
+        JsonDocument errDoc;
+        if (deserializeJson(errDoc, result.body) == DeserializationError::Ok && errDoc.containsKey("error")) {
+            errMsg = errDoc["error"].as<std::string>();
+        }
+        // URL-encode the error message (minimal: spaces and special chars)
+        std::string encoded;
+        for (char c : errMsg) {
+            if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+                encoded += c;
+            } else if (c == ' ') {
+                encoded += '+';
+            } else {
+                char hex[4];
+                snprintf(hex, sizeof(hex), "%%%02X", static_cast<unsigned char>(c));
+                encoded += hex;
+            }
+        }
+        std::string redirectUrl = "/#tab-strava?strava_error=" + encoded;
+        return response->redirect(redirectUrl.c_str());
     });
 
     server.on("/api/strava/disconnect", HTTP_POST, [this, checkAuth, sendResp](PsychicRequest* request, PsychicResponse* response) {
