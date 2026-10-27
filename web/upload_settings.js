@@ -23,8 +23,12 @@
             '  <h4 style="margin:0 0 0.5rem 0; font-size:1rem; font-weight:700; color:var(--text, #212121);">Setup Guide</h4>',
             '  <ol style="margin:0; padding-left:1.25rem; font-size:0.85rem; color:var(--text-muted); line-height:1.6;">',
             '    <li>Go to <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener" style="color:var(--primary, #2196F3);">strava.com/settings/api</a> and create an API application</li>',
-            '    <li>Set "Authorization Callback Domain" to: <code id="ech-callback-domain" style="font-family:monospace; background:var(--border, #e0e0e0); padding:2px 6px; border-radius:4px;"></code><br><span style="font-size:0.8rem; color:var(--text-muted);">Full callback URL: <code id="ech-callback-url" style="font-family:monospace;"></code></span></li>',
-            '    <li>Enter the Client ID and Client Secret below, then click <strong>Save Credentials</strong></li>',
+            '    <li>Set <strong>Application Name</strong> to <em>Echenon</em> (or your preference), <strong>Category</strong> to <em>Data Importer</em></li>',
+            '    <li><strong>Website</strong> (required): enter the callback URL shown below &mdash; <code id="ech-callback-url" style="font-family:monospace;"></code></li>',
+            '    <li>Set <strong>Authorization Callback Domain</strong> to: <code id="ech-callback-domain" style="font-family:monospace; background:var(--border, #e0e0e0); padding:2px 6px; border-radius:4px;"></code></li>',
+            '    <li><strong>Application Description</strong>: e.g. <em>Echelon Ex3 Bike Data Importer</em></li>',
+            '    <li>After clicking <strong>Create</strong>, Strava will ask you to <strong>upload an app icon</strong> &mdash; any small image will do</li>',
+            '    <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> from the app page, enter them below, then click <strong>Save Credentials</strong></li>',
             '    <li>Click <strong>Authorize with Strava</strong> to connect your account</li>',
             '  </ol>',
             '</div>',
@@ -245,6 +249,31 @@
 
     document.addEventListener('tab-changed', onTabChanged);
     window.addEventListener('tab-changed', onTabChanged);
+
+    // Detect strava_error in hash after OAuth redirect (e.g. /#tab-strava?strava_error=...)
+    function checkStravaError() {
+        var hash = window.location.hash || '';
+        var idx = hash.indexOf('strava_error=');
+        if (idx !== -1) {
+            var errEncoded = hash.substring(idx + 'strava_error='.length);
+            var errMsg = decodeURIComponent(errEncoded.replace(/\+/g, ' '));
+            if (errMsg) {
+                // Ensure the tab is built so setMsg has a target element
+                var container = document.getElementById(TAB_ID);
+                if (container && !initialized) {
+                    buildUI(container);
+                    initialized = true;
+                }
+                setMsg('Strava authorization failed: ' + errMsg);
+            }
+            // Clean up the hash to remove the error param
+            var cleanHash = hash.substring(0, hash.indexOf('?strava_error='));
+            if (cleanHash) {
+                window.location.hash = cleanHash;
+            }
+        }
+    }
+    checkStravaError();
 
     var el = document.getElementById(TAB_ID);
     if (el && el.classList.contains('active')) {
