@@ -17,15 +17,16 @@ charter:
   - docs/
   - platformio.ini
   - SPEC.md
+  - test/
   required_skills:
   - framework-expert
   - framework-design-system
   verification_floor:
   - pio test -e native
   charter_locked: true
-  charter_hash: f51dda39925bdb0213f65bdc2f583fc84799ab248b8a751fe741274599a8ec67
-status: PLANNED
-approved_at: null
+  charter_hash: 50a5ba28b7c4b4fdd9d3c0ff6018eee2d68d19885ae6b794dc979f644715b695
+status: APPROVED
+approved_at: '2026-10-27T07:19:12.619513Z'
 github_pr: 8
 work_orders:
 - id: WO-15.1
@@ -250,3 +251,4 @@ All new and refactored UI must follow the `framework-portal-design` skill:
 ## 4. Session Log
 
 - **2026-10-26:** Chief Architect drafted PR-15 charter based on portal UX audit conducted live on bench with owner. Two-surface model finalised, 5-WO decomposition defined. Awaiting charter lock and execution approval.
+- **2026-10-27:** PA: Read locked charter, rules, skills. Created 5 WORKORDER.md specs (WO-15.1–WO-15.5) with flat YAML schema, detailed task checklists, exact code references. Corrected portal asset naming (`.hpp` via `portalBuilder.py` auto-generation). Plan approved via `pa pr approve-plan PR-15` (5 WOs stamped). Dispatched WO-15.1 engineer on branch `pr-15-portal-ride/wo1-portal-cleanup`.
