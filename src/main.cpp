@@ -24,6 +24,13 @@ EncoderModule encoderModule;
 #include "echenon/StravaUploader.h"
 #endif
 
+#ifdef WITH_TIME
+#include "TimeManager/TimeManager.hpp"
+#include "TimeManager/TimePreconditionContributor.hpp"
+static TimeManager timeManager;
+static TimePreconditionContributor timePrecondition{timeManager};
+#endif
+
 Application app;
 EchenonModule echenonModule;
 
@@ -110,8 +117,20 @@ void setup() {
     app.registerModule(&sessionOverlay);
 #endif
 
+#ifdef WITH_TIME
+    timeManager.setConfigManager(&app.getConfigManager());
+    app.registerModule(&timeManager);
+    app.registerModule(&timePrecondition);
+#endif
+
+    app.disableDefaultAppTab();
+
     FrameworkConfig config;
     app.begin(config);
+
+#ifdef WITH_TIME
+    timeManager.begin();
+#endif
 
 #ifdef WITH_BLE
     bleManager.begin(app);

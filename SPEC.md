@@ -35,12 +35,12 @@ open training computer. It ships as **two releases**:
 
 | Release | Board | What it adds | Use cases |
 |---|---|---|---|
-| **v1 Passive** | Passive tap board (PR-04a); ESP32 on the bike's 9 V via VIN or on USB-C, never both (VIN/USB selector) | Session overlay, automatic recording and Strava upload, **read-only** FTMS telemetry (Indoor Bike Data) over BLE, heart-rate relay | UC1–UC3 |
+| **v1 Passive** | Passive tap board (PR-04a); ESP32 on the bike's 9 V via VIN or on USB-C, never both (VIN/USB selector) | Ride page, automatic recording and Strava upload, **read-only** FTMS telemetry (Indoor Bike Data) over BLE, heart-rate relay | UC1–UC3 |
 | **v2 Active** | Active intercept board (PR-07): H-bridge + PWM motor drive, encoder emulation, NC fail-safe bypasses | Mode 1 relay/active: FTMS Control Point targets, ERG, resistance setting, portal-native HR-zone auto-resistance. Mode 2 console off (UC6) | UC4–UC6 + HR zones |
 
 Echenon provides:
 
-- A **session overlay**: a floating training-computer UI showing live power,
+- A **ride page**: a standalone training-computer UI showing live power,
   cadence, heart rate, charts and session controls
 - **Automatic session recording** with post-ride upload to Strava (other
   platforms post-v1)
@@ -62,7 +62,7 @@ Echenon provides:
   Echelon app runs unchanged.
 - **Mode 2, console off (Override, UC6)**: the console is switched off or
   unplugged. The ESP32 drives the resistance motor from the knob, the web
-  overlay or the FTMS Control Point, with a replica of the console's pot
+  ride page or the FTMS Control Point, with a replica of the console's pot
   reference.
 
 The v1 passive tap board has no motor path and no outputs; it only observes,
@@ -94,7 +94,7 @@ Related documents:
    not a prerequisite.
 3. **Hands-free daily use**: recording starts when the rider pedals and uploads
    when the rider stops. No buttons, no apps to open.
-4. **Three independent outputs**: the session overlay, the BLE FTMS broadcast
+4. **Three independent outputs**: the ride page, the BLE FTMS broadcast
    and the cloud upload are decoupled. Each works without the others.
 5. **Open ecosystem**: FTMS advertises continuously. Data uploads to the
    rider's own accounts. Nothing is locked down.
@@ -233,7 +233,7 @@ regardless of whether the others are active, connected or configured.
                ┌───────────────┼───────────────┐
                ▼               ▼               ▼
 
-          📊 OVERLAY      📡 BLE FTMS     ☁️ UPLOAD
+          📊 RIDE PAGE    📡 BLE FTMS     ☁️ UPLOAD
           (always)        (always on)     (post-session)
 
      Session control    Broadcasts to    Pushes completed
@@ -254,7 +254,7 @@ regardless of whether the others are active, connected or configured.
 
 | Path | What it does | When | Knows about the others? |
 |---|---|---|---|
-| **Overlay** | Live training-computer UI: session control, metrics, charts | Always available via the web portal | No |
+| **Ride page** | Live training-computer UI: session control, metrics, charts | Always available via the web portal | No |
 | **FTMS** | Broadcasts standard BLE fitness data | Advertising whenever BLE is running | No |
 | **Upload** | Pushes finished sessions to cloud platforms | After a session ends | No |
 
@@ -297,13 +297,13 @@ map (§4.4.1); its v2 rows stay provisional until DR-2.
 │
 │  Firmware:
 │    CadenceSensor, ResistanceSensor, EncoderModule ──► PowerEngine
-│    PowerEngine ──► SessionManager ──► Overlay / FTMS / Upload
+│    PowerEngine ──► SessionManager ──► Ride page / FTMS / Upload
 │    HRMClient ──► EventBus ──► HRMRepeater, FTMSServer, SessionManager
 │    InterceptController, ResistanceMotor, ERGController (v2 only)
 └───────┬───────────────────────────┬───────────────────────────┬──
         │ WiFi (HTTP + WebSocket)   │ BLE                       │ WiFi (HTTPS)
         ▼                           ▼                           ▼
-  Floating overlay            FTMS 0x1826                  Strava API
+  Ride page                  FTMS 0x1826                  Strava API
   (echenon.local)             HR   0x180D
                               Control Point 0x2AD9 (v2)
                                     │
@@ -356,7 +356,7 @@ phase and are never driver outputs; the driver uses GPIO 10 and 17.
    - `FTMSServer` sends an Indoor Bike Data notification if anyone is
      subscribed
    - `SessionManager` appends a data point to the ride buffer
-   - the overlay receives a WebSocket update
+   - the ride page receives a WebSocket update
 6. **Console motor sense (v1, monitoring only)**: GPIO 6/7 are sampled as
    ADC1 analog at ≥ 1 kHz through the ÷4 dividers; the drive direction is
    whichever wire is high. Echenon publishes motor-direction and seek events
@@ -400,7 +400,7 @@ phase and are never driver outputs; the driver uses GPIO 10 and 17.
 | `TCXGenerator` | Streams 1 Hz TCX to a gzip file on LittleFS | — | PR-06 |
 | `UploadQueue` | The only upload execution path: runs one pipeline stage per `fetchUpdate()` | `IDataSource` | PR-06 |
 | `StravaUploader` | Describes the Strava service: BYOA OAuth, request building, response parsing | `IUploader` (Echenon), `IWebContributor` | PR-06 |
-| `SessionOverlay` | Session REST API, authenticated TCX download and Session History tab (PR-06); standalone `/overlay` page and `/ws/session` WebSocket push (PR-09) | `IWebContributor` | PR-06 / PR-09 |
+| `SessionUI` | Session REST API, authenticated TCX download and Session History tab (PR-06); standalone `/ride` page and `/ws/session` WebSocket push (PR-09) | `IWebContributor` | PR-06 / PR-09 |
 | `InterceptController` (**v2**) | Mode manager (Intercept ↔ Override), console-drive relay, command source arbitration | — | PR-07 / PR-10 |
 | `ResistanceMotor` (**v2**) | Motor driver (`[DR-2]`), cam-angle position controller, safety limits | — | PR-07 |
 | `ERGController` (**v2**) | Control Point target handling, ERG state machine, Fitness Machine Status | — | PR-08 |
@@ -415,7 +415,7 @@ the EventBus (§8.2).
 | `BLEManager` (`WITH_BLE`) | NimBLE lifecycle, advertising packing, HR strap discovery, pairing portal, reconnection, `ScanInhibit` |
 | `EncoderModule` (`WITH_ENCODER`) | PCNT quadrature decoding of the red knob (PR-07) |
 | `WifiManager` | AP setup, STA connection, mDNS hostname `echenon` |
-| `WebServerManager` | Portal chrome, REST API, WebSocket for the overlay |
+| `WebServerManager` | Portal chrome, REST API, WebSocket for the ride page |
 | `ConfigManager` | Persistence of every `IConfigurable` namespace |
 | `KeyManager` | Encrypted storage of Strava client secret and tokens |
 | `AuthManager` | Portal login; protects mutations, downloads and motor commands |
@@ -526,7 +526,7 @@ Watchdog panics if the main loop blocks for more than 5 s.
 |---|---|---|
 | Reading the ADC fast path from the continuous-mode DMA buffer | < 1 ms | `tick()` |
 | Power calculation and FTMS notify | < 1 ms | `tick()` |
-| WebSocket push to the overlay | < 1 ms | `tick()` |
+| WebSocket push to the ride page | < 1 ms | `tick()` |
 | TCX generation (50–200 ms) | Deferred | `UploadQueue::fetchUpdate()` |
 | HTTPS upload to Strava (2–10 s) | Deferred | `UploadQueue::fetchUpdate()` |
 
@@ -553,14 +553,16 @@ Watchdog panics if the main loop blocks for more than 5 s.
 | Component | Detail |
 |---|---|
 | **Tablet** | Lenovo Tab P12 (12.7" 3K screen, Android) |
-| **Floating window** | Android's freeform/split-screen PiP mode; Chrome can be resized to a small overlay window on top of full-screen apps |
+| **Floating window** | Android's freeform/split-screen PiP mode; Chrome can be resized to a small window on top of full-screen apps |
 | **Bike placement** | Tablet on the bike's handlebar tablet holder |
 | **ESP32 placement, Phase 0/1** | Fly-wire logger beside the bike, powered from USB-C (laptop or power bank) |
 | **ESP32 placement, Phase 3+** | v1: on the passive tap board inside the console housing, powered from the bike's 9 V rail via the Waveshare VIN pin **or** from USB-C, never both, through a VIN/USB power selector (no external buck; §4.6). v2: on the active board, same power path `[DR-2]` |
 
 The Lenovo P12 runs both the Echelon class app (full-screen) and Chrome showing
-`echenon.local` (floating window) at the same time. This is a native Android
-capability; no root or special app is required.
+`echenon.local/ride` (split-screen or floating window) at the same time. This is
+a native Android capability; no root or special app is required. The ride page
+can also be installed as a PWA ("Add to Home Screen") for a standalone
+full-screen experience.
 
 ### 4.3 Hardware Configuration Architecture
 
@@ -1178,7 +1180,7 @@ move. It never runs a full homing sweep while there is cadence.
 1. **Knob** — always wins; suspends ERG (below). The rider always has
    physical control.
 2. **FTMS Control Point** — target from Zwift, Xert or TrainerRoad.
-3. **Web overlay** — `POST /api/resistance`, authenticated, Override Mode
+3. **Ride page** — `POST /api/resistance`, authenticated, Override Mode
    only; returns `409` in Intercept Mode.
 
 **ERG state machine (PR-08):**
@@ -1460,7 +1462,7 @@ keys are frozen at DR-1.
 
 The FTMS server is one of the three independent output paths. It broadcasts
 standard BLE fitness data continuously. Any compatible app can connect at any
-time, or nothing connects; recording and the overlay work regardless.
+time, or nothing connects; recording and the ride page work regardless.
 
 It implements the **Bluetooth SIG Fitness Machine Service v1.0** (`0x1826`).
 The MIT-licensed [esp32-ftms-server](https://github.com/jamesjmtaylor/esp32-ftms-server)
@@ -1581,7 +1583,7 @@ Result codes: `0x01` Success, `0x02` Op Code Not Supported, `0x03` Invalid
 Parameter, `0x04` Operation Failed, `0x05` Control Not Permitted.
 
 **Access.** Any Central in radio range can Request Control. This is an
-accepted, documented risk for a device used in the rider's own home (§11.5).
+accepted, documented risk for a device used in the rider's own home (§11.4).
 
 ### 7.5 Indoor Bike Data Packet (`0x2AD2`)
 
@@ -2041,7 +2043,7 @@ measures Echenon's figure with the 4-connection override.
 > Android centrals can drop the link with GATT CONN TIMEOUT (error 147/133)
 > if they are.
 
-**Concurrent FTMS and overlay traffic.** During a ride the overlay and FTMS
+**Concurrent FTMS and ride page traffic.** During a ride the ride page and FTMS
 are both active; this is the primary case, not an edge case.
 
 | Stream | Protocol | Rate | Payload |
@@ -2049,7 +2051,7 @@ are both active; this is the primary case, not an edge case.
 | FTMS Indoor Bike Data | BLE notify | 2 Hz | 11 bytes |
 | HR from the strap | BLE notify (Central) | ~1 Hz | 2–4 bytes |
 | HR re-broadcast | BLE notify | ~1 Hz | 2–4 bytes |
-| Overlay WebSocket push | WiFi TCP | 2 Hz | ~100 bytes JSON |
+| Ride page WebSocket push | WiFi TCP | 2 Hz | ~100 bytes JSON |
 
 Payload airtime is small (on the order of 1 % of the radio), but every BLE
 connection also fires a connection event each interval, and WiFi beacons, ACKs
@@ -2061,7 +2063,7 @@ the coexistence arbiter works per event type and priority.
 
 | Burst scenario | WiFi burst | BLE impact | Mitigation |
 |---|---|---|---|
-| Initial `/overlay` load | ~15 KB gzipped | FTMS may miss one notification | Acceptable; happens before riding |
+| Initial `/ride` load | ~15 KB gzipped | FTMS may miss one notification | Acceptable; happens before riding |
 | Portal tab navigation | ~5 KB per tab script | Negligible | gzip + PROGMEM assets |
 | Strava upload | ~30–50 KB `tcx.gz` over HTTPS | 2–3 FTMS notifications may jitter | Runs after the session ends |
 | OTA update | ~1.5 MB sustained | BLE paused | Rider is not riding |
@@ -2073,7 +2075,7 @@ verification at **maximum configuration** belongs to **PR-09** (§13.10):
 1. **3 Peripheral connections** (FTMS notifying at 2 Hz on at least one, plus
    the Echelon tablet and one more app, e.g. nRF Connect × 2 + Zwift)
 2. **1 Central connection** (HR strap relaying at ~1 Hz)
-3. Portal `/overlay` open via WebSocket (2 Hz push)
+3. `/ride` page open via WebSocket (2 Hz push)
 4. A Strava upload triggered (or simulated with a large HTTPS POST)
 5. **5 minutes continuous**
 6. **Pass criteria:**
@@ -2101,7 +2103,7 @@ verification at **maximum configuration** belongs to **PR-09** (§13.10):
 
 ### 9.1 Overview
 
-The session manager records ride data independently of the overlay and FTMS
+The session manager records ride data independently of the ride page and FTMS
 paths. It buffers data points in PSRAM during the ride and hands the completed
 session to `UploadQueue` when the ride ends.
 
@@ -2257,7 +2259,7 @@ requires authentication.
 
 Upload is the third independent output path. When a session ends, the
 recorded data goes to each configured cloud service. The upload path knows
-nothing about the overlay or FTMS; it receives a completed session file.
+nothing about the ride page or FTMS; it receives a completed session file.
 
 ### 10.2 Extensible Architecture
 
@@ -2338,7 +2340,7 @@ tab (via `IWebContributor`):
 └──────────────────────────────────────────────┘
 ```
 
-This tab is separate from the overlay; it is a settings concern, not a
+This tab is separate from the ride page; it is a settings concern, not a
 training-session concern.
 
 ### 10.4 Strava Integration (v1)
@@ -2442,25 +2444,48 @@ signature, with no Xert-specific code on the ESP32.
 
 ---
 
-## 11. Session Overlay
+## 11. Session UI — Ride Page & Portal Tabs
 
-### 11.1 Overview
+Echenon's web UI is a **two-surface model**:
 
-The session overlay is a lightweight web training-computer UI. It is
-independent of FTMS and upload: it does not know what consumes the BLE data or
-where sessions go. It is a live monitor and session controller.
+| Surface | URL | Purpose | When |
+|---|---|---|---|
+| **Ride page** | `echenon.local/ride` | Daily-use rider control surface: live metrics, session controls, ride history | Every ride — PWA or browser |
+| **Portal** | `echenon.local` | Configuration, setup, diagnostics | Initial setup and occasional changes |
 
-It is designed to run as a **floating window** on the Android tablet (Lenovo
-P12), over whatever app runs the class: Echelon, Zwift, YouTube or nothing.
+The ride page is where the rider spends time; the portal is where
+configuration happens. A ⚙️ gear icon on the ride page links to the portal;
+the portal's Echenon tab links back with an "Open Ride Page →" button.
 
-It is served at `http://echenon.local/overlay` (or the device IP). For
-networks where mDNS does not resolve, the IP address is printed in the serial
-log, shown as a QR code and shown on the AP captive page. PR-01 verifies that
-`echenon.local` resolves in Chrome on the P12.
+### 11.1 Ride Page
 
-### 11.2 Live Ride View
+The ride page is a standalone, lightweight training-computer UI served at
+`http://echenon.local/ride` (or the device IP). It is independent of FTMS and
+upload: it does not know what consumes the BLE data or where sessions go. It is
+a live monitor and session controller.
 
-Updated in real time via WebSocket:
+It is designed to run in two primary contexts:
+
+- **Split-screen** (280–430 px): Android's freeform or split-screen mode;
+  Chrome alongside the Echelon app, Zwift, YouTube or nothing
+- **Full phone screen**: standalone PWA via "Add to Home Screen"
+
+For networks where mDNS does not resolve, the IP address is printed in the
+serial log, shown as a QR code and shown on the AP captive page. PR-01 verifies
+that `echenon.local` resolves in Chrome on the P12.
+
+**Features:**
+
+- Live metrics via WebSocket at 2 Hz (`/ws/echenon/live`)
+- Session controls (start / pause / resume / stop) via REST API
+- Ride history with TCX download
+- Upload queue mini-status from `/api/strava/status`
+- ⚙️ gear icon → portal
+- PWA manifest (`display: standalone`, dark theme)
+- Dark theme, responsive 280–430 px layout
+- Flash budget: ≤ 3 KB gzipped
+
+**Live Ride View.** Updated in real time via WebSocket:
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -2495,9 +2520,7 @@ Updated in real time via WebSocket:
 - HR zone indicator (Z1–Z5, colour-coded)
 - Running averages and peaks
 
-### 11.3 Post-Ride Summary
-
-Shown after a session ends:
+**Post-Ride Summary.** Shown after a session ends:
 
 - Duration and estimated distance
 - Average and maximum power, cadence and heart rate
@@ -2506,19 +2529,40 @@ Shown after a session ends:
 - Upload status (uploaded ✓ / pending / failed)
 - "Discard" (delete the session without uploading; authenticated)
 
-### 11.4 Technical Implementation
+### 11.2 Portal Tabs
 
-**Portal tabs versus the standalone overlay.** The Echenon web UI has two
-surfaces:
+The portal at `echenon.local` uses a **6-tab bottom navigation** layout. The
+default App tab is disabled (`app.disableDefaultAppTab()`).
 
-1. **Portal tabs**: Calibration, Upload Services, Session History (plus the
-   framework's BLE tab). These are standard `IWebContributor` tabs inside the
-   framework's SPA. Each is a JavaScript file that injects its own markup into
-   the SPA's tab container and is registered via `registerTabs()`. There are
-   no separate HTML files.
-2. **Session overlay**: a standalone page at `/overlay` for floating-window
-   use. It is not a portal tab; it has its own minimal HTML entry point sized
-   for a small window.
+| Tab | Order | Content |
+|---|---|---|
+| **WiFi** | 10 | Framework WiFi management |
+| **Bluetooth** | 15 | Framework BLE pairing and status |
+| **Echenon** | 50 | Device status summary + "Open Ride Page →" button |
+| **Setup** | 60 | PillBar sub-navigation (see below) |
+| **Security** | — | Framework authentication settings |
+| **System** | — | Framework system info, OTA, diagnostics |
+
+**Echenon tab (order 50):** Shows device connection status, sensor readings and
+a prominent "Open Ride Page →" button that links to `/ride`.
+
+**Setup tab (order 60):** Uses a PillBar for sub-navigation with three pills:
+
+| Pill | Order | Content |
+|---|---|---|
+| **Apps** | 10 | Strava OAuth configuration (moved from Upload Services) |
+| **Level Mapping** | 20 | Calibration wizard (moved from Calibration tab) |
+| **Power Tuning** | 30 | Recalibration (moved from Recalibration tab) |
+
+**Removed from top-level tabs:** The default App tab, Calibration, Recalibration,
+Session (history), and Upload Services are no longer top-level tabs. Session
+history is accessible from the ride page. Calibration and upload configuration
+are consolidated under the Setup tab.
+
+Signal-logger content is compiled behind `WITH_SIGNAL_LOGGER` and is not visible
+in production builds.
+
+### 11.3 Technical Implementation
 
 **Asset delivery: gzip + PROGMEM (canonical).** All consumer web assets use
 the framework's gzip + PROGMEM pipeline. Sources live in `web/`;
@@ -2530,25 +2574,25 @@ DRAM cost and ETag caching.
 > `app.js`). Echenon places no files there.
 
 ```cpp
-// SessionOverlay.cpp — registerRoutes()
+// SessionUI.cpp — registerRoutes()
 #include "utils/serveGzipAsset.hpp"
-#include "portal_assets/overlay_js.hpp"      // from web/overlay.js
-#include "portal_assets/overlay_html.hpp"    // from web/overlay.html
+#include "portal_assets/ride_js.hpp"      // from web/ride.js
+#include "portal_assets/ride_html.hpp"    // from web/ride.html
 
-void SessionOverlay::registerRoutes(PsychicHttpServer& server) {
-    // Standalone overlay page (not a portal tab)
-    server.on("/overlay", HTTP_GET, [](PsychicRequest* req, PsychicResponse* res) {
+void SessionUI::registerRoutes(PsychicHttpServer& server) {
+    // Standalone ride page (not a portal tab)
+    server.on("/ride", HTTP_GET, [](PsychicRequest* req, PsychicResponse* res) {
         return serveGzipAsset(req, res,
-            overlay_html_gz, overlay_html_gz_len, overlay_html_gz_etag,
+            ride_html_gz, ride_html_gz_len, ride_html_gz_etag,
             "text/html");
     });
-    server.on("/overlay.js", HTTP_GET, [](PsychicRequest* req, PsychicResponse* res) {
+    server.on("/ride.js", HTTP_GET, [](PsychicRequest* req, PsychicResponse* res) {
         return serveGzipAsset(req, res,
-            overlay_js_gz, overlay_js_gz_len, overlay_js_gz_etag,
+            ride_js_gz, ride_js_gz_len, ride_js_gz_etag,
             "application/javascript");
     });
 
-    // REST API (mutations require authentication, §11.5)
+    // REST API (mutations require authentication, §11.4)
     server.on("/api/session/start",   HTTP_POST, ...);
     server.on("/api/session/stop",    HTTP_POST, ...);
     server.on("/api/session/status",  HTTP_GET,  ...);
@@ -2559,19 +2603,19 @@ void SessionOverlay::registerRoutes(PsychicHttpServer& server) {
     _ws->onOpen([this](PsychicWebSocketClient* client) { ... });
 }
 
-void SessionOverlay::registerTabs(ITabRegistry& registry) {
+void SessionUI::registerTabs(ITabRegistry& registry) {
     // Session History tab in the main portal
     registry.addTab("Session", nullptr, 60, kSessionIcon, "/session.js");
 }
 ```
 
 **Real-time data.** WebSocket push at 2 Hz on the PsychicHttp endpoint
-`/ws/session`; the overlay script opens the socket on page load.
+`/ws/session`; the ride page script opens the socket on page load.
 
 **Charts.** Lightweight `<canvas>` drawing, with no Chart.js or similar
-library, so the overlay loads quickly in a small window.
+library, so the ride page loads quickly in a small window.
 
-**DRAM.** WebSocket frame buffers consume DRAM. The overlay's larger data
+**DRAM.** WebSocket frame buffers consume DRAM. The ride page's larger data
 structures (rolling chart history, session summary) are allocated in PSRAM to
 keep DRAM free for the WiFi and BLE stacks:
 
@@ -2581,12 +2625,12 @@ _chartBuffer = (PowerPoint*)ps_malloc(CHART_POINTS * sizeof(PowerPoint));
 ```
 
 The WebSocket JSON payloads (~100 bytes per update) stay in DRAM. The
-framework's `DeepStackExecutor` is not needed; overlay requests are
+framework's `DeepStackExecutor` is not needed; ride page requests are
 lightweight.
 
-### 11.5 Trust Boundaries
+### 11.4 Trust Boundaries
 
-- **Read-only live data** (overlay page, `/ws/session`, `/api/session/status`):
+- **Read-only live data** (ride page, `/ws/session`, `/api/session/status`):
   no authentication.
 - **Mutations, downloads and motor commands** (session start/stop/discard,
   calibration, uploader credentials, `GET /api/session/download`,
@@ -2638,19 +2682,20 @@ Echenon/
 │       ├── IUploader.h                  PR-06
 │       ├── UploadQueue.h / .cpp         PR-06
 │       ├── StravaUploader.h / .cpp      PR-06
-│       ├── SessionOverlay.h / .cpp      PR-06 / PR-09
+│       ├── SessionUI.h / .cpp          PR-06 / PR-09
 │       ├── InterceptController.h / .cpp PR-07
 │       ├── ResistanceMotor.h / .cpp     PR-07
 │       └── ERGController.h / .cpp       PR-08
 ├── test/
 │   └── test_native/                     googletest suites for pure-logic modules (§13.1)
 ├── web/                                 gzip + PROGMEM pipeline sources
-│   ├── overlay.html                     → portal_assets/overlay_html.hpp
-│   ├── overlay.js                       → portal_assets/overlay_js.hpp
-│   ├── overlay.css                      → portal_assets/overlay_css.hpp
+│   ├── ride.html                        → portal_assets/ride_html.hpp
+│   ├── ride.js                          → portal_assets/ride_js.hpp
+│   ├── ride.css                         → portal_assets/ride_css.hpp
 │   ├── session.js                       → portal_assets/session_js.hpp
 │   ├── calibration.js                   → portal_assets/calibration_js.hpp
-│   └── upload_settings.js               → portal_assets/upload_settings_js.hpp
+│   ├── upload_settings.js               → portal_assets/upload_settings_js.hpp
+│   └── manifest.json                    → portal_assets/manifest_json.hpp (PWA)
 ├── include/
 │   └── portal_assets/                   generated by portalBuilder.py
 ├── SPEC.md
@@ -3010,7 +3055,7 @@ fitted.
 | 3.1 | Install the passive tap board between frame and console. | Console powers on normally from its own supply path; the ESP32 runs from VIN with the selector in the VIN position. |
 | 3.1a | Before soldering: PR-04a WO1 power-path check. Then on the built board: selector in the USB position with USB-C connected. | WO1 schematic finding and selector design committed. In the USB position the 9 V line is disconnected from VIN and the board runs from USB alone; VIN and USB are never connected together. |
 | 3.1b | Inspect GPIO 43/44. | Unconnected and marked reserved (UART0). |
-| 3.2 | Echelon class with knob changes (UC1). | Class, resistance changes and motor behaviour identical to stock; overlay tracks cadence and level. |
+| 3.2 | Echelon class with knob changes (UC1). | Class, resistance changes and motor behaviour identical to stock; ride page tracks cadence and level. |
 | 3.3 | Compare console behaviour with and without the board. | No difference at power-on, during rides or in sleep (taps are invisible). |
 | 3.4 | Manual OTA from the System tab. | Update applies; device reboots into the new firmware. |
 | 3.5 | Reboot, then factory reset. | `autoCheck` is `false` after each; no automatic update at boot. |
@@ -3024,9 +3069,9 @@ fitted.
 | 3.8 | Read Fitness Machine Feature. | Target Setting Features field = 0. |
 | 3.9 | Inspect the FTMS service for `0x2AD9`. | Absent if FTMS v1.0 allows omission; otherwise present, Request Control only, every target opcode returns `0x02`. Resistance never changes. |
 | 3.9a | Connect Zwift, TrainerRoad, Xert EBC and two other §7.7 apps. | Each pairs and shows telemetry; behaviour without resistance control (manual/level mode, ERG refused, warning) recorded per app. |
-| 3.10 | Pair a fitness app (e.g. Xert EBC) as FTMS device while the Echelon class runs (UC3). | App shows live power, cadence and HR matching the overlay. |
+| 3.10 | Pair a fitness app (e.g. Xert EBC) as FTMS device while the Echelon class runs (UC3). | App shows live power, cadence and HR matching the ride page. |
 | 3.11 | Echelon tablet (HR) plus a fitness app (FTMS) at the same time. | Both connections coexist; data flows to both. |
-| 3.12 | Progressive coexistence check: 3 peripherals + HR central + overlay, 5 minutes. | FTMS gap ≤ 600 ms; HR gap ≤ 2.5 s; free DRAM recorded. |
+| 3.12 | Progressive coexistence check: 3 peripherals + HR central + ride page, 5 minutes. | FTMS gap ≤ 600 ms; HR gap ≤ 2.5 s; free DRAM recorded. |
 
 ### 13.7 PR-06 — Phase 4: Session, TCX and Strava (UC2) — v1
 
@@ -3074,7 +3119,7 @@ fitted.
 | # | Test | Expected result |
 |---|---|---|
 | 6.1 | Override Mode, console connected but idle (UC4). Pair an FTMS app. | Feature target bits set; Request Control succeeds. |
-| 6.2 | App sends Set Target Power 200 W. | ERG `ACTIVE`; motor moves; overlay shows ~200 W; Status `0x08` Target Power Changed sent. |
+| 6.2 | App sends Set Target Power 200 W. | ERG `ACTIVE`; motor moves; ride page shows ~200 W; Status `0x08` Target Power Changed sent. |
 | 6.3 | Vary cadence 60–100 RPM. | Resistance adjusts to hold 200 W without hunting (deadband and rate limit). |
 | 6.4 | Turn the knob mid-ERG. | ERG → `SUSPENDED_BY_RIDER`; the knob sets resistance; new target writes are stored, not applied. |
 | 6.5 | App sends Request Control again, or the hold time expires. | ERG → `ACTIVE` with the latest stored target. |
@@ -3089,12 +3134,13 @@ fitted.
 | # | Test | Expected result |
 |---|---|---|
 | 7.1 | **v1 coexistence verification** (§8.5) at the maximum v1 configuration. | All pass criteria met; results documented. |
-| 7.3 | Floating window: Chrome on the P12 over the Echelon app. | Overlay shows live data without interfering with the class. |
+| 7.3 | Split-screen: Chrome showing `/ride` on the P12 alongside the Echelon app. | Ride page shows live data without interfering with the class. |
 | 7.4 | Dual-app: Xert EBC + Zwift (visuals) over read-only FTMS. | Both receive telemetry; neither can change resistance. |
 | 7.5 | Ride in Zwift, which also uploads to Strava. | Echenon auto-upload disabled for the session, or Strava reports a duplicate that Echenon treats as success. |
 | 7.6 | Power-cycle mid-ride. | Reboot; session recovered; no corruption. |
 | 7.7 | Manual OTA. | Update applies; new version runs; no automatic check at boot. |
 | 7.8 | UC1–UC3 end-to-end runs from [`docs/use_case_analysis.md`](docs/use_case_analysis.md). | Each use case passes on the installed passive tap board. |
+| 7.9 | **P12 Split-Screen Acceptance**: Open `/ride` on the Lenovo Tab P12 in Android split-screen with the Echelon app. | Metrics update at 2 Hz; session start/stop works from the ride page; PWA "Add to Home Screen" installs and launches in standalone mode. |
 
 Test 7.2 (mode switching) moved to §13.12 (v2).
 
@@ -3150,10 +3196,10 @@ they need the **active intercept board**.
    (factory BLE).
 4. In the Echelon app's HR settings, pair `Echenon-XXXX` as the heart-rate
    device (one time only).
-5. Optionally open `echenon.local/overlay` as a floating window.
+5. Optionally open `echenon.local/ride` as a floating window.
 6. **Start pedalling**; Echenon starts recording automatically.
-7. Ride the class: HR in the Echelon app, live power and charts in the
-   overlay.
+7. Ride the class: HR in the Echelon app, live power and charts on the
+   ride page.
 8. Class ends → stop pedalling → dismount.
 9. After 3 minutes the session ends and uploads to the rider's Strava.
 10. Later, Strava shows the full ride with power, cadence and HR.
@@ -3167,8 +3213,8 @@ they need the **active intercept board**.
 > Exclude the warm-up; start and stop explicitly.
 
 1–5. As Journey 1.
-6. Warm up. The overlay shows live data with status "Idle".
-7. Tap **Start** in the overlay (logged in).
+6. Warm up. The ride page shows live data with status "Idle".
+7. Tap **Start** on the ride page (logged in).
 8. Ride the class.
 9. Tap **Stop** and review the post-ride summary.
 10. The session uploads automatically, or tap **Discard**.
@@ -3249,7 +3295,7 @@ both connected to `Echenon-XXXX` (up to 3 peripheral connections).
    through the standalone supports.
 4. The red knob controls resistance directly on the Override scale.
 5. Optionally connect Zwift, Xert or any FTMS app; ERG is available.
-6. Open the overlay for live power, HR and cadence.
+6. Open the ride page for live power, HR and cadence.
 7. Pedal; recording starts automatically.
 8. Stop; the session uploads to Strava.
 
@@ -3292,13 +3338,14 @@ never conflicts with Override Mode.
 3. Connect a phone or tablet to it; the captive portal opens.
 4. Enter home WiFi credentials; Echenon connects.
 5. Open `http://echenon.local` (or the IP shown on the captive page).
-6. **Calibration tab:** run the passive calibration (step the console through
-   its 32 levels as prompted) and choose the power source.
-7. **BLE tab:** Scan → select the HR strap → paired.
-8. **Upload Services tab:** create a Strava API application, set its
+6. **Setup tab → Level Mapping pill:** run the passive calibration (step the
+   console through its 32 levels as prompted) and choose the power source.
+7. **Bluetooth tab:** Scan → select the HR strap → paired.
+8. **Setup tab → Apps pill:** create a Strava API application, set its
    Authorization Callback Domain to `echenon.local`, enter the Client ID and
    Client Secret, then **Connect Strava** and authorize.
-9. Done. Everything is automatic from now on.
+9. Done. For daily use, open `echenon.local/ride` (or install as a PWA).
+   Everything is automatic from now on.
 
 ---
 
@@ -3308,9 +3355,9 @@ never conflicts with Override Mode.
 
 1. Put on the HR armband; switch on the bike; Echenon boots.
 2. **Tablet:** open anything, or nothing.
-3. Optionally open the overlay as a floating window.
+3. Optionally open the ride page alongside the Echelon app.
 4. Pedal; Echenon starts recording.
-5. Ride as long as you like; the overlay shows live data.
+5. Ride as long as you like; the ride page shows live data.
 6. Stop; after 3 minutes the session ends and uploads to Strava.
 
 **The simplest case.** No fitness apps are involved; Echenon records the ride

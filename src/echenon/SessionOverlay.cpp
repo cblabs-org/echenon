@@ -27,6 +27,9 @@
 #else
 #include "include/portal_assets/upload_settings_js.hpp"
 #endif
+#include "include/portal_assets/ride_html.hpp"
+#include "include/portal_assets/ride_js.hpp"
+#include "include/portal_assets/manifest_json.hpp"
 #endif
 
 namespace echenon {
@@ -809,19 +812,10 @@ SessionOverlay::HttpResponse SessionOverlay::handleStravaDisconnect() {
 // =============================================================================
 
 void SessionOverlay::registerTabs(ITabRegistry& registry) {
-    registry.addTab(
-        "Session",
-        nullptr,
-        80,
-        "<circle cx=\"12\" cy=\"12\" r=\"10\"></circle><polyline points=\"12 6 12 12 16 14\"></polyline>",
-        "/session.js");
-
-    registry.addTab(
-        "Upload Services",
-        nullptr,
-        90,
-        "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\"></path><polyline points=\"17 8 12 3 7 8\"></polyline><line x1=\"12\" y1=\"3\" x2=\"12\" y2=\"15\"></line>",
-        "/upload_settings.js");
+    // Session and Upload Services tabs removed — content moves to /ride page
+    // (WO-15.3) and Setup pill (WO-15.2). Route registrations in registerRoutes()
+    // are preserved — REST APIs and JS asset serving remain functional.
+    (void)registry;
 }
 
 void SessionOverlay::registerRoutes(PsychicHttpServer& server) {
@@ -845,6 +839,17 @@ void SessionOverlay::registerRoutes(PsychicHttpServer& server) {
                               upload_settings_js_gz_len,
                               upload_settings_js_gz_etag,
                               "application/javascript");
+    });
+
+    // Standalone /ride page assets
+    server.on("/ride", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
+        return serveGzipAsset(request, response, ride_html_gz, ride_html_gz_len, ride_html_gz_etag, "text/html");
+    });
+    server.on("/ride.js", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
+        return serveGzipAsset(request, response, ride_js_gz, ride_js_gz_len, ride_js_gz_etag, "application/javascript");
+    });
+    server.on("/manifest.json", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
+        return serveGzipAsset(request, response, manifest_json_gz, manifest_json_gz_len, manifest_json_gz_etag, "application/manifest+json");
     });
 
     auto checkAuth = [this](PsychicRequest* request, PsychicResponse* response) -> bool {

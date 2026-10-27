@@ -1,0 +1,152 @@
+---
+id: WO-15.6
+pr_id: PR-15
+title: Portal Bug Fixes from Hardware Verification
+complexity: standard
+status: PENDING
+attempts: 0
+max_attempts: 3
+verification_command: cd /Users/mcneillm/Documents/Projects/Echenon && pio test -e native
+allowed_files:
+  - web/calibration-wizard.js
+  - web/recalibration.js
+  - web/upload_settings.js
+  - web/echenon-dashboard.js
+  - src/echenon/EchenonModule.cpp
+  - src/echenon/StravaUploader.cpp
+  - platformio.ini
+parent_branch: pr-15-portal-ride/wo5-hw-verification
+branch: pr-15-portal-ride/wo6-portal-bugfixes
+---
+
+# WO-15.6: Portal Bug Fixes from Hardware Verification
+
+## Goal
+
+Fix 6 bugs found during bench testing of v0.3.0-dev.25. All are consumer-code portal issues.
+
+## Strict Boundary Box
+
+Only the files listed in `allowed_files` above may be modified. No framework files.
+
+## Tasks
+
+### T1: CSS Dark Mode Fix (HIGH PRIORITY)
+
+Three JS files use wrong CSS variable names, causing white cards on dark background:
+
+**Find-replace in `web/calibration-wizard.js`, `web/recalibration.js`, `web/upload_settings.js`:**
+
+| Find | Replace With |
+|------|-------------|
+| `var(--bg-card, #fff)` | `var(--card-bg)` |
+| `var(--bg-card, #fafafa)` | `var(--card-bg)` |
+| `var(--text-secondary, #666)` | `var(--text-muted)` |
+
+Remove the hardcoded fallback values — the framework's `app.css` always provides `--card-bg` and `--text-muted` via `:root` and `[data-theme="dark"]` selectors.
+
+**Also fix input backgrounds:** Any `background:var(--bg-card, #fff)` on `<input>` elements should become `background:var(--card-bg)`.
+
+### T2: Setup Tab Icon → Sliders
+
+In `src/echenon/EchenonModule.cpp`, in `registerTabs()`, replace the Setup tab's gear/cog SVG icon (the `<circle>` + `<path>` for the settings gear) with the Feather **"sliders"** icon:
+
+```cpp
+    registry.addTab(
+        "Setup",
+        nullptr,
+        60,
+        "<line x1=\"4\" y1=\"21\" x2=\"4\" y2=\"14\"></line>"
+        "<line x1=\"4\" y1=\"10\" x2=\"4\" y2=\"3\"></line>"
+        "<line x1=\"12\" y1=\"21\" x2=\"12\" y2=\"12\"></line>"
+        "<line x1=\"12\" y1=\"8\" x2=\"12\" y2=\"3\"></line>"
+        "<line x1=\"20\" y1=\"21\" x2=\"20\" y2=\"16\"></line>"
+        "<line x1=\"20\" y1=\"12\" x2=\"20\" y2=\"3\"></line>"
+        "<line x1=\"1\" y1=\"14\" x2=\"7\" y2=\"14\"></line>"
+        "<line x1=\"9\" y1=\"8\" x2=\"15\" y2=\"8\"></line>"
+        "<line x1=\"17\" y1=\"16\" x2=\"23\" y2=\"16\"></line>",
+        nullptr
+    );
+```
+
+### T3: Strava BYOA UX Improvements (HIGH PRIORITY)
+
+**In `web/upload_settings.js`:**
+
+1. **Reorder the UI** in `buildUI()`: Put the "Strava API Credentials" card FIRST (with Client ID / Secret / Save), then the "Strava Integration" card SECOND (with Authorize button, status, auto-upload toggle). This guides the user to save credentials before trying to authorize.
+
+2. **Add a setup guide** at the very top of the pill, before both cards:
+   ```html
+   <div class="card" style="...">
+     <h4>Setup Guide</h4>
+     <ol>
+       <li>Go to <a href="https://www.strava.com/settings/api" target="_blank">strava.com/settings/api</a> and create an API application</li>
+       <li>Set "Authorization Callback Domain" to: <code id="ech-callback-domain"><!-- filled by JS --></code></li>
+       <li>Enter the Client ID and Client Secret below, then click <strong>Save Credentials</strong></li>
+       <li>Click <strong>Authorize with Strava</strong> to connect your account</li>
+     </ol>
+   </div>
+   ```
+   Populate `ech-callback-domain` with `window.location.hostname` in JS.
+
+3. **Disable the "Authorize with Strava" button** initially. In `updateStatusUI()`, enable it only when `data.configured === true`. Add `opacity:0.5; cursor:not-allowed` styling when disabled. Add a small note below the button: "Save your API credentials first" (hide when configured).
+
+4. **Show the full callback URL** next to the domain in the setup guide: `http://<hostname>/api/strava/callback`
+
+**In `src/echenon/StravaUploader.cpp`:**
+
+5. In `buildAuthorizeUrl()`, add a guard at the top:
+   ```cpp
+   if (_clientId.empty()) return {};
+   ```
+   The caller `handleGetStravaAuthUrl()` already handles empty URL → 400 response.
+
+### T4: Power Table Loading Fix
+
+**In `web/recalibration.js`:**
+
+1. Find `fetchActiveTable()`. It likely uses `getApiFetch()` or `window.apiFetch` — check if this is available in the pill's execution context. If not, fall back to plain `fetch()`.
+
+2. Wrap the fetch call in a try/catch. On error, replace the "Loading table details..." placeholder with:
+   ```
+   Could not load power table — check device connection.
+   ```
+
+3. For the "Stored Points" table, when empty show a helpful empty state:
+   ```
+   No power tuning points recorded yet. Ride with an external power meter and record reference points to refine watt accuracy.
+   ```
+
+### T5: Add `-DWITH_TIME` Build Flag
+
+In `platformio.ini`, in the `[env:ex3-waveshare-nano]` section, add `-DWITH_TIME` after `-DWITH_STRAVA`:
+
+```ini
+    -DWITH_STRAVA
+    -DWITH_TIME
+```
+
+### T6: Echenon Tab — Replace Duplicate Device Info
+
+**In `web/echenon-dashboard.js`:**
+
+1. Remove the "Device Status" card that shows generic firmware version, uptime, and WiFi info (these are already in the System tab's Status pill).
+
+2. Replace with an **Echenon-specific status card** showing:
+   - **Bike Connection:** Show BLE connection state. Fetch from existing APIs or WebSocket data. Show "Connected to Echelon EX-3" / "Scanning..." / "Not connected" with a coloured dot indicator.
+   - **Calibration Status:** Show whether the wiper table has been calibrated. Fetch from `/api/echenon/calibration/status` — check if `table` has non-zero entries. Show "Calibrated (32/32 levels)" or "Not calibrated" with a link to the Setup → Level Mapping pill.
+   - **Session State:** Show current session state (Idle/Active/Paused) from `/api/session/status`.
+
+3. Keep the existing "Open Ride Page →" button.
+
+4. Use the correct CSS tokens (`var(--card-bg)`, `var(--text-muted)`, etc.) — NOT `--bg-card`.
+
+## Verification
+
+1. `pio test -e native` — all tests pass
+2. Build succeeds: `pio run -e ex3-waveshare-nano`
+3. Manual check: dark mode cards should use `--card-bg` (dark: `#1e1e1e`), not white
+
+## Completion Report
+
+Fill in after all tasks pass verification.

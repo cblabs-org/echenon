@@ -22,7 +22,7 @@ charter:
   - pio test -e native
   charter_locked: false
   charter_hash: null
-status: REMEDIATION_IN_PROGRESS
+status: AUDIT_APPROVED
 approved_at: '2026-10-24T20:58:10.078370Z'
 github_pr: 7
 work_orders:
@@ -33,21 +33,21 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: ab4525e582475cf19912a14164c3129a3f4289f1
+  commit_sha: 1d171df13958918d2395414d06a3e9c2a4bddcc7
 - id: WO-06.2
   slug: wo2-tcx-generator
   title: Streaming 1 Hz TCX.gz Generator (4 KB Scratch Buffer, Coasting & Pause Gaps)
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 4e988fe56fa2ad6aa18699427ebbd70ffa36a990
+  commit_sha: ab4525e582475cf19912a14164c3129a3f4289f1
 - id: WO-06.3
   slug: wo3-upload-queue
   title: IUploader & Split-Stage UploadQueue IDataSource State Machine
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 172aa9a81f30fb8c3fdb0f3b9fcf19ca55f52d79
+  commit_sha: 4e988fe56fa2ad6aa18699427ebbd70ffa36a990
 - id: WO-06.4
   slug: wo4-strava-uploader
   title: StravaUploader BYOA OAuth 2.0, KeyManager NVS, Rotated Token Persistence
@@ -55,7 +55,7 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 72eaabfbc0b40a5895d0f977d5636dd21555ea2f
+  commit_sha: 172aa9a81f30fb8c3fdb0f3b9fcf19ca55f52d79
 - id: WO-06.5
   slug: wo5-portal-wiring
   title: SessionOverlay REST API, Authenticated TCX Download, Portal Tabs & Module
@@ -63,7 +63,7 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 9556e9c414fc6a6adc78d4a5fa076cd5b200a94e
+  commit_sha: 08ee2f6b358f1b03e9bd62b93ef879e77e1ba3b0
 - id: WO-06.6
   slug: wo6-hw-verification
   title: Hardware Session Lifecycle, Crash Recovery, TCX Download & Live Strava Upload
@@ -71,7 +71,7 @@ work_orders:
   complexity: interactive
   status: COMPLETED
   attempts: 1
-  commit_sha: c5d85a06535273432119fc1542c6b900ea228777
+  commit_sha: 9556e9c414fc6a6adc78d4a5fa076cd5b200a94e
 - id: WO-06.7
   slug: wo7-psram-gzip
   title: Move StreamingGzipEncoder to PSRAM Heap Allocation + EventBus Payload Safety

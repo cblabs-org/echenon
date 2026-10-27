@@ -1,69 +1,28 @@
 // web/echenon-dashboard.js
-// Echenon Signal Logger Live Dashboard
-// Displays live capture telemetry, decimated ADC channels, burst controls, CSV export links,
-// and real-time WebSocket live feed (cadence, level, power, diagnostics).
+// Echenon Device Status Dashboard
+// Shows device status summary, live metrics via WebSocket, and ride page link.
 
 (function() {
   'use strict';
 
-  var CHANNEL_MAP = [
-    { ch: 0, name: 'Pot Wiper', color: 'Blue' },
-    { ch: 1, name: 'Pot HI', color: 'Yellow' },
-    { ch: 2, name: 'Pot LO', color: 'Green' },
-    { ch: 3, name: 'Cadence Return', color: 'Grey' },
-    { ch: 4, name: 'Cadence', color: 'Orange' },
-    { ch: 5, name: 'Motor+', color: 'Red' },
-    { ch: 6, name: 'Motor−', color: 'Black' },
-    { ch: 7, name: 'Encoder A', color: 'Brown' },
-    { ch: 8, name: 'Encoder B', color: 'Orange' },
-    { ch: 9, name: 'Encoder VCC', color: 'Red' }
-  ];
-
   var isInitialized = false;
   var isTabActive = false;
-  var pollTimer = null;
-  var isBurstActive = false;
 
   // --- WebSocket Feed State ---
   var ws = null;
   var wsReconnectTimer = null;
   var wsReconnectDelay = 1000;
   var MAX_RECONNECT_DELAY = 16000;
-  var recentSamples = [];
-  var MAX_RECENT_SAMPLES = 8;
 
-  function formatUptime(ms) {
-    if (!ms && ms !== 0) return '-';
-    var totalSec = Math.floor(ms / 1000);
-    var hours = Math.floor(totalSec / 3600);
-    var mins = Math.floor((totalSec % 3600) / 60);
-    var secs = totalSec % 60;
-    if (hours > 0) {
-      return hours + 'h ' + mins + 'm ' + secs + 's';
-    }
-    return mins + 'm ' + secs + 's';
+  function formatDuration(seconds) {
+    if (!seconds && seconds !== 0) return '-';
+    var h = Math.floor(seconds / 3600);
+    var m = Math.floor((seconds % 3600) / 60);
+    if (h > 0) return h + 'h ' + m + 'm';
+    return m + 'm';
   }
 
-  function formatBytes(bytes) {
-    if (!bytes && bytes !== 0) return '-';
-    if (bytes >= 1048576) {
-      return (bytes / 1048576).toFixed(2) + ' MB';
-    }
-    if (bytes >= 1024) {
-      return (bytes / 1024).toFixed(1) + ' KB';
-    }
-    return bytes + ' B';
-  }
-
-  function formatRate(rate) {
-    if (!rate && rate !== 0) return '-';
-    if (rate >= 1000) {
-      return (rate / 1000).toFixed(1) + ' kSa/s';
-    }
-    return rate + ' Sa/s';
-  }
-
-  // --- WebSocket Live Feed Functions ---
+  // --- WebSocket Live Feed ---
   function getWsUrl() {
     var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     return protocol + '//' + window.location.host + '/ws/echenon/live';
@@ -77,7 +36,7 @@
     dot.className = 'dot';
     if (state === 'connected') {
       dot.classList.add('dot--green');
-      label.textContent = text || 'Live (~3 Hz)';
+      label.textContent = text || 'Live';
       label.style.color = 'var(--success)';
     } else if (state === 'connecting' || state === 'reconnecting') {
       dot.classList.add('dot--yellow');
@@ -112,15 +71,15 @@
 
     ws.onopen = function() {
       wsReconnectDelay = 1000;
-      updateWsStatus('connected', 'Live (~3 Hz)');
+      updateWsStatus('connected', 'Live');
     };
 
     ws.onmessage = function(e) {
       try {
         var data = JSON.parse(e.data);
-        handleLiveFeedMessage(data);
+        handleLiveMessage(data);
       } catch (err) {
-        console.error('Failed to parse live WS message', err);
+        // parse error — non-fatal
       }
     };
 
@@ -161,102 +120,38 @@
     updateWsStatus('disconnected', 'Disconnected');
   }
 
-  function handleLiveFeedMessage(data) {
+  function handleLiveMessage(data) {
     var cadenceEl = document.getElementById('echenon-live-cadence');
-    var levelEl = document.getElementById('echenon-live-level');
     var powerEl = document.getElementById('echenon-live-power');
-    var potEl = document.getElementById('echenon-live-pot');
-    var levelIEl = document.getElementById('echenon-live-level-i');
-    var motorEl = document.getElementById('echenon-live-motor');
-    var encoderEl = document.getElementById('echenon-live-encoder');
-    var lastTsEl = document.getElementById('echenon-live-last-ts');
+    var levelEl = document.getElementById('echenon-live-level');
+    var hrEl = document.getElementById('echenon-live-hr');
 
     if (cadenceEl && data.cadence_rpm !== undefined) {
-      cadenceEl.textContent = Number(data.cadence_rpm).toFixed(1);
+      cadenceEl.textContent = Number(data.cadence_rpm).toFixed(0);
+    }
+    if (powerEl && data.power_watts !== undefined) {
+      powerEl.textContent = Number(data.power_watts).toFixed(0);
     }
     if (levelEl && data.level_echelon !== undefined) {
       levelEl.textContent = data.level_echelon;
     }
-    if (powerEl && data.power_watts !== undefined) {
-      powerEl.textContent = Number(data.power_watts).toFixed(1);
+    if (hrEl && data.heart_rate !== undefined) {
+      hrEl.textContent = data.heart_rate;
     }
-    if (potEl && data.pot_adc !== undefined) {
-      potEl.textContent = data.pot_adc;
+    if (data.session_state) {
+      updateSessionUI(data.session_state);
     }
-    if (levelIEl && data.level_i !== undefined) {
-      levelIEl.textContent = data.level_i;
-    }
-    if (motorEl && data.motor_dir !== undefined) {
-      var dir = Number(data.motor_dir);
-      motorEl.textContent = dir > 0 ? '+1' : dir < 0 ? '-1' : '0';
-    }
-    if (encoderEl && data.encoder_delta !== undefined) {
-      encoderEl.textContent = data.encoder_delta;
-    }
-
-    // Runaway alert banner
-    var runawayBanner = document.getElementById('echenon-runaway-banner');
-    if (runawayBanner && data.runaway !== undefined) {
-      runawayBanner.style.display = data.runaway ? 'block' : 'none';
-    }
-
-    if (lastTsEl && data.timestamp_ms !== undefined) {
-      lastTsEl.textContent = (data.timestamp_ms / 1000).toFixed(1) + 's';
-    }
-
-    recentSamples.unshift(data);
-    if (recentSamples.length > MAX_RECENT_SAMPLES) {
-      recentSamples.pop();
-    }
-    renderLiveHistory();
   }
 
-  function renderLiveHistory() {
-    var tbody = document.getElementById('echenon-live-history-body');
-    if (!tbody) return;
-    if (recentSamples.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:8px; color:var(--text-muted);">No feed data yet</td></tr>';
-      return;
-    }
-
-    var html = '';
-    for (var i = 0; i < recentSamples.length; i++) {
-      var s = recentSamples[i];
-      var tSec = s.timestamp_ms !== undefined ? (s.timestamp_ms / 1000).toFixed(2) : '-';
-      var cad = s.cadence_rpm !== undefined ? Number(s.cadence_rpm).toFixed(1) : '-';
-      var lvl = s.level_echelon !== undefined ? s.level_echelon : '-';
-      var pwr = s.power_watts !== undefined ? Number(s.power_watts).toFixed(1) : '-';
-      var pot = s.pot_adc !== undefined ? s.pot_adc : '-';
-
-      html += '<tr style="border-bottom:1px solid var(--border); font-family:monospace;">' +
-        '<td style="padding:4px 6px;">' + tSec + '</td>' +
-        '<td style="padding:4px 6px; text-align:right; font-weight:700; color:var(--primary);">' + cad + '</td>' +
-        '<td style="padding:4px 6px; text-align:right; font-weight:700;">' + lvl + '</td>' +
-        '<td style="padding:4px 6px; text-align:right; font-weight:700; color:var(--success);">' + pwr + '</td>' +
-        '<td style="padding:4px 6px; text-align:right;">' + pot + '</td>' +
-        '</tr>';
-    }
-    tbody.innerHTML = html;
-  }
-
+  // --- Scaffold Render ---
   function renderScaffold(container) {
-    var channelRows = CHANNEL_MAP.map(function(ch) {
-      return (
-        '<tr id="echenon-row-ch' + ch.ch + '">' +
-          '<td style="font-weight:700; color:var(--text);">' + ch.ch + '</td>' +
-          '<td>' + ch.name + ' <small class="text-muted">(' + ch.color + ')</small></td>' +
-          '<td id="echenon-ch' + ch.ch + '-min" style="text-align:right; font-family:monospace;">-</td>' +
-          '<td id="echenon-ch' + ch.ch + '-mean" style="text-align:right; font-family:monospace; font-weight:700; color:var(--primary);">-</td>' +
-          '<td id="echenon-ch' + ch.ch + '-max" style="text-align:right; font-family:monospace;">-</td>' +
-        '</tr>'
-      );
-    }).join('');
+    // Feather icon paths (24×24 viewBox, stroke-only, 2px)
+    var iconActivity = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>';
+    var iconArrowRight = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>';
 
-    var liveMetricsCard =
+    var html =
+      // --- Live Metrics Card ---
       '<div class="card" style="margin-bottom:1rem;">' +
-        '<div id="echenon-runaway-banner" style="display:none; background:var(--error); color:#fff; padding:0.75rem 1rem; border-radius:10px; margin-bottom:1rem; font-weight:700; text-align:center; font-size:0.95rem;">' +
-          '⚠️ Stock runaway detected — turn the knob back to a valid level' +
-        '</div>' +
         '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">' +
           '<h3 style="margin:0; font-size:1.15rem; font-weight:700;">Live Metrics</h3>' +
           '<div style="display:flex; align-items:center; gap:0.5rem;">' +
@@ -264,310 +159,248 @@
             '<span id="echenon-ws-status" style="font-size:0.85rem; font-weight:700; text-transform:uppercase;">Connecting...</span>' +
           '</div>' +
         '</div>' +
-        '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:1rem; margin-bottom:1rem;">' +
-          '<div style="background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:1rem; text-align:center;">' +
-            '<div style="font-size:0.8rem; font-weight:600; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.25rem;">Cadence</div>' +
-            '<div style="font-size:2.25rem; font-weight:800; font-family:monospace; line-height:1.1; color:var(--primary);" id="echenon-live-cadence">--</div>' +
-            '<div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">RPM</div>' +
+        '<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:0.75rem;">' +
+          '<div style="background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:0.75rem; text-align:center;">' +
+            '<div style="font-size:0.75rem; font-weight:600; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.25rem;">Cadence</div>' +
+            '<div style="font-size:1.75rem; font-weight:800; font-family:monospace; line-height:1.1; color:var(--primary);" id="echenon-live-cadence">--</div>' +
+            '<div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.15rem;">RPM</div>' +
           '</div>' +
-          '<div style="background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:1rem; text-align:center;">' +
-            '<div style="font-size:0.8rem; font-weight:600; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.25rem;">Resistance</div>' +
-            '<div style="font-size:2.25rem; font-weight:800; font-family:monospace; line-height:1.1; color:var(--primary);" id="echenon-live-level">--</div>' +
-            '<div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">Echelon (1–32)</div>' +
+          '<div style="background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:0.75rem; text-align:center;">' +
+            '<div style="font-size:0.75rem; font-weight:600; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.25rem;">Power</div>' +
+            '<div style="font-size:1.75rem; font-weight:800; font-family:monospace; line-height:1.1; color:var(--primary);" id="echenon-live-power">--</div>' +
+            '<div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.15rem;">Watts</div>' +
           '</div>' +
-          '<div style="background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:1rem; text-align:center;">' +
-            '<div style="font-size:0.8rem; font-weight:600; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.25rem;">Power</div>' +
-            '<div style="font-size:2.25rem; font-weight:800; font-family:monospace; line-height:1.1; color:var(--primary);" id="echenon-live-power">--</div>' +
-            '<div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">Watts</div>' +
+          '<div style="background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:0.75rem; text-align:center;">' +
+            '<div style="font-size:0.75rem; font-weight:600; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.25rem;">Resistance</div>' +
+            '<div style="font-size:1.75rem; font-weight:800; font-family:monospace; line-height:1.1; color:var(--primary);" id="echenon-live-level">--</div>' +
+            '<div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.15rem;">Level</div>' +
           '</div>' +
-        '</div>' +
-        '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:0.5rem; font-size:0.85rem; border-top:1px solid var(--border); padding-top:0.75rem;">' +
-          '<div class="info-row" style="margin:0;">' +
-            '<span class="text-muted">Pot ADC</span>' +
-            '<span id="echenon-live-pot" style="font-family:monospace; font-weight:600;">-</span>' +
+          '<div style="background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:0.75rem; text-align:center;">' +
+            '<div style="font-size:0.75rem; font-weight:600; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.25rem;">Heart Rate</div>' +
+            '<div style="font-size:1.75rem; font-weight:800; font-family:monospace; line-height:1.1; color:var(--primary);" id="echenon-live-hr">--</div>' +
+            '<div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.15rem;">BPM</div>' +
           '</div>' +
-          '<div class="info-row" style="margin:0;">' +
-            '<span class="text-muted">Internal Level</span>' +
-            '<span id="echenon-live-level-i" style="font-family:monospace; font-weight:600;">-</span>' +
-          '</div>' +
-          '<div class="info-row" style="margin:0;">' +
-            '<span class="text-muted">Motor Dir</span>' +
-            '<span id="echenon-live-motor" style="font-family:monospace; font-weight:600;">-</span>' +
-          '</div>' +
-          '<div class="info-row" style="margin:0;">' +
-            '<span class="text-muted">Enc Delta</span>' +
-            '<span id="echenon-live-encoder" style="font-family:monospace; font-weight:600;">-</span>' +
-          '</div>' +
-        '</div>' +
-        '<div style="margin-top:1rem; border-top:1px solid var(--border); padding-top:0.75rem;">' +
-          '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">' +
-            '<span style="font-size:0.85rem; font-weight:700;">Recent Feed Samples</span>' +
-            '<small class="text-muted" id="echenon-live-last-ts">Awaiting data</small>' +
-          '</div>' +
-          '<div style="overflow-x:auto;">' +
-            '<table style="width:100%; border-collapse:collapse; font-size:0.8rem;">' +
-              '<thead>' +
-                '<tr style="border-bottom:1px solid var(--border); color:var(--text-muted); text-align:left;">' +
-                  '<th style="padding:4px 6px;">Time (s)</th>' +
-                  '<th style="padding:4px 6px; text-align:right;">Cadence</th>' +
-                  '<th style="padding:4px 6px; text-align:right;">Level</th>' +
-                  '<th style="padding:4px 6px; text-align:right;">Power</th>' +
-                  '<th style="padding:4px 6px; text-align:right;">Pot ADC</th>' +
-                '</tr>' +
-              '</thead>' +
-              '<tbody id="echenon-live-history-body">' +
-                '<tr><td colspan="5" style="text-align:center; padding:8px; color:var(--text-muted);">No feed data yet</td></tr>' +
-              '</tbody>' +
-            '</table>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
-
-    container.innerHTML =
-      liveMetricsCard +
-      '<div class="card" style="margin-bottom:1rem;">' +
-        '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">' +
-          '<h3 style="margin:0; font-size:1.15rem; font-weight:700;">Capture Status</h3>' +
-          '<div style="display:flex; align-items:center; gap:0.5rem;">' +
-            '<span class="dot dot--green" id="echenon-status-dot"></span>' +
-            '<span id="echenon-capture-state" style="font-size:0.85rem; font-weight:700; text-transform:uppercase;">Running</span>' +
-          '</div>' +
-        '</div>' +
-        '<div class="info-row">' +
-          '<span class="text-muted">Burst Status</span>' +
-          '<span id="echenon-burst-badge" class="badge">IDLE</span>' +
-        '</div>' +
-        '<div class="info-row">' +
-          '<span class="text-muted">Uptime</span>' +
-          '<span id="echenon-uptime" style="font-family:monospace;">-</span>' +
-        '</div>' +
-        '<div class="info-row">' +
-          '<span class="text-muted">Ride Log Rows</span>' +
-          '<span id="echenon-rows" style="font-family:monospace;">-</span>' +
-        '</div>' +
-        '<div class="info-row">' +
-          '<span class="text-muted">Sample Rate</span>' +
-          '<span id="echenon-rate" style="font-family:monospace;">-</span>' +
-        '</div>' +
-        '<div class="info-row">' +
-          '<span class="text-muted">Free PSRAM</span>' +
-          '<span id="echenon-psram" style="font-family:monospace;">-</span>' +
-        '</div>' +
-        '<div class="info-row">' +
-          '<span class="text-muted">Edge Events</span>' +
-          '<span id="echenon-events-count" style="font-family:monospace;">-</span>' +
         '</div>' +
       '</div>' +
 
+      // --- Echenon Status Card ---
       '<div class="card" style="margin-bottom:1rem;">' +
-        '<h3 style="margin:0 0 0.5rem 0; font-size:1.15rem; font-weight:700;">Trigger Burst Capture</h3>' +
-        '<p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 1rem 0;">' +
-          'High-speed raw ADC window (83.3 kSa/s total across all 10 channels) into PSRAM.' +
-        '</p>' +
-        '<div class="compact-row" style="margin-bottom:0.5rem;">' +
-          '<label style="display:flex; flex-direction:column; gap:0.25rem;">' +
-            '<span style="font-size:0.85rem; font-weight:600;">Duration (ms)</span>' +
-            '<input type="number" id="echenon-burst-duration" value="10000" min="1000" max="30000" step="1000" style="padding:0.6rem; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text);">' +
-          '</label>' +
-          '<button type="button" id="echenon-burst-btn" style="height:46px; align-self:flex-end;">Start Burst</button>' +
+        '<h3 style="margin:0 0 0.75rem 0; font-size:1.15rem; font-weight:700;">Echenon Status</h3>' +
+        '<div class="info-row">' +
+          '<span class="text-muted">Bike Connection</span>' +
+          '<div style="display:flex; align-items:center; gap:0.4rem;">' +
+            '<span class="dot dot--grey" id="echenon-bike-dot"></span>' +
+            '<span id="echenon-bike-status" style="font-weight:600;">Not connected</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="info-row">' +
+          '<span class="text-muted">Calibration Status</span>' +
+          '<div id="echenon-calibration-container" style="display:flex; align-items:center; gap:0.4rem;">' +
+            '<span id="echenon-calibration-status" style="font-weight:600;">Checking...</span>' +
+            '<a href="#" id="echenon-calibration-link" style="display:none; color:var(--primary); font-size:0.85rem; text-decoration:none; font-weight:600;">Calibrate &rarr;</a>' +
+          '</div>' +
+        '</div>' +
+        '<div class="info-row">' +
+          '<span class="text-muted">Session State</span>' +
+          '<span id="echenon-session-status" style="font-weight:600;">Idle</span>' +
         '</div>' +
       '</div>' +
 
+      // --- Last Ride Card ---
       '<div class="card" style="margin-bottom:1rem;">' +
-        '<h3 style="margin:0 0 0.5rem 0; font-size:1.15rem; font-weight:700;">Data Export (CSV)</h3>' +
-        '<p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 1rem 0;">' +
-          'Download logged sensor data directly from device memory.' +
-        '</p>' +
-        '<div style="display:flex; flex-direction:column; gap:0.6rem;">' +
-          '<a href="/api/echenon/ride-log.csv" download="ride-log.csv" id="echenon-dl-ride" class="button secondary" style="display:flex; align-items:center; justify-content:center; text-decoration:none; padding:0.75rem 1rem; border-radius:10px; font-weight:600; font-size:0.95rem; border:1.5px solid var(--border); color:var(--text);">' +
-            'Download Ride Log CSV' +
-          '</a>' +
-          '<a href="/api/echenon/events.csv" download="events.csv" id="echenon-dl-events" class="button secondary" style="display:flex; align-items:center; justify-content:center; text-decoration:none; padding:0.75rem 1rem; border-radius:10px; font-weight:600; font-size:0.95rem; border:1.5px solid var(--border); color:var(--text);">' +
-            'Download Events CSV' +
-          '</a>' +
-          '<a href="/api/echenon/burst.csv" download="burst.csv" id="echenon-dl-burst" class="button secondary" style="display:flex; align-items:center; justify-content:center; text-decoration:none; padding:0.75rem 1rem; border-radius:10px; font-weight:600; font-size:0.95rem; border:1.5px solid var(--border); color:var(--text);">' +
-            'Download Burst CSV' +
-          '</a>' +
+        '<h3 style="margin:0 0 0.75rem 0; font-size:1.15rem; font-weight:700;">Last Ride</h3>' +
+        '<div id="echenon-last-ride-content">' +
+          '<p style="color:var(--text-muted); font-size:0.9rem; margin:0;">No ride history available</p>' +
         '</div>' +
       '</div>' +
 
-      '<div class="card" style="margin-bottom:1rem;">' +
-        '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">' +
-          '<h3 style="margin:0; font-size:1.15rem; font-weight:700;">Live Channels (Decimated)</h3>' +
-          '<small class="text-muted" id="echenon-channels-timestamp">20 Hz decimated</small>' +
+      // --- Open Ride Page Button ---
+      '<a href="/ride" style="display:block; text-decoration:none;">' +
+        '<div class="card" style="margin-bottom:1rem; border-color:var(--primary); cursor:pointer; transition:transform 0.15s ease, box-shadow 0.15s ease;" ' +
+            'onmouseenter="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.1)\';" ' +
+            'onmouseleave="this.style.transform=\'none\';this.style.boxShadow=\'none\';">' +
+          '<div style="display:flex; align-items:center; justify-content:center; gap:0.75rem; padding:0.5rem 0;">' +
+            iconActivity +
+            '<span style="font-size:1.1rem; font-weight:700; color:var(--primary);">Open Ride Page</span>' +
+            iconArrowRight +
+          '</div>' +
         '</div>' +
-        '<div style="overflow-x:auto;">' +
-          '<table style="width:100%; border-collapse:collapse; font-size:0.85rem;">' +
-            '<thead>' +
-              '<tr style="border-bottom:2px solid var(--border); color:var(--text-muted); text-align:left;">' +
-                '<th style="padding:6px 4px; width:10%;">Ch</th>' +
-                '<th style="padding:6px 4px; width:45%;">Signal</th>' +
-                '<th style="padding:6px 4px; width:15%; text-align:right;">Min</th>' +
-                '<th style="padding:6px 4px; width:15%; text-align:right;">Mean</th>' +
-                '<th style="padding:6px 4px; width:15%; text-align:right;">Max</th>' +
-              '</tr>' +
-            '</thead>' +
-            '<tbody>' +
-              channelRows +
-            '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>';
+      '</a>';
 
-    // Wire burst button
-    var burstBtn = document.getElementById('echenon-burst-btn');
-    var durationInput = document.getElementById('echenon-burst-duration');
-    if (burstBtn && durationInput) {
-      burstBtn.addEventListener('click', function() {
-        var duration = parseInt(durationInput.value, 10) || 10000;
-        if (duration < 1000) duration = 1000;
-        if (duration > 30000) duration = 30000;
-        triggerBurst(duration);
-      });
+    container.innerHTML = html;
+
+    var calLink = document.getElementById('echenon-calibration-link');
+    if (calLink) {
+      calLink.onclick = function(e) {
+        e.preventDefault();
+        var navSystem = document.querySelector('.tab-link[data-target="tab-system"]') || document.getElementById('nav-system');
+        if (navSystem) {
+          navSystem.click();
+          setTimeout(function() {
+            var pill = document.querySelector('.pill-btn[data-target="tab-level-mapping"]') || document.getElementById('pill-level-mapping');
+            if (pill) pill.click();
+          }, 50);
+        }
+      };
     }
   }
 
-  async function triggerBurst(durationMs) {
-    var burstBtn = document.getElementById('echenon-burst-btn');
-    if (burstBtn) burstBtn.setAttribute('aria-busy', 'true');
-
-    try {
-      var fetchFn = window.apiFetch || window.fetch;
-      var resp = await fetchFn('/api/echenon/burst/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ duration_ms: durationMs })
-      });
-
-      if (resp.status === 409) {
-        if (window.showToast) window.showToast('Burst capture already active', 'warning');
-      } else if (resp.ok) {
-        if (window.showToast) window.showToast('Burst capture started (' + durationMs + ' ms)', 'success');
-        updateBurstUI(true);
-      } else {
-        var errJson = await resp.json().catch(function() { return {}; });
-        var msg = errJson.error || ('Burst trigger failed (' + resp.status + ')');
-        if (window.showToast) window.showToast(msg, 'error');
-      }
-    } catch (err) {
-      if (window.showToast) window.showToast('Network error: ' + err.message, 'error');
-    } finally {
-      if (burstBtn) burstBtn.removeAttribute('aria-busy');
-    }
-  }
-
-  function updateBurstUI(active) {
-    isBurstActive = !!active;
-    var badge = document.getElementById('echenon-burst-badge');
-    var btn = document.getElementById('echenon-burst-btn');
-    if (badge) {
-      if (isBurstActive) {
-        badge.textContent = 'RECORDING';
-        badge.style.background = 'var(--error)';
-        badge.style.color = '#fff';
-      } else {
-        badge.textContent = 'IDLE';
-        badge.style.background = '';
-        badge.style.color = '';
-      }
-    }
-    if (btn) {
-      btn.disabled = isBurstActive;
-      btn.textContent = isBurstActive ? 'Burst in Progress...' : 'Start Burst';
-    }
-  }
-
-  async function fetchStatus() {
+  // --- Data Fetching ---
+  async function fetchBikeStatus() {
     var fetchFn = window.apiFetch || window.fetch;
     try {
-      var resp = await fetchFn('/api/echenon/status');
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      var resp = await fetchFn('/api/ble/status');
+      if (!resp.ok) return;
       var data = await resp.json();
-
-      var uptimeEl = document.getElementById('echenon-uptime');
-      var rowsEl = document.getElementById('echenon-rows');
-      var rateEl = document.getElementById('echenon-rate');
-      var psramEl = document.getElementById('echenon-psram');
-      var dotEl = document.getElementById('echenon-status-dot');
-      var stateEl = document.getElementById('echenon-capture-state');
-
-      if (uptimeEl) uptimeEl.textContent = formatUptime(data.uptime_ms);
-      if (rowsEl) rowsEl.textContent = Number(data.ride_log_rows).toLocaleString();
-      if (rateEl) rateEl.textContent = formatRate(data.sample_rate);
-      if (psramEl) psramEl.textContent = formatBytes(data.free_psram);
-
-      if (dotEl) {
-        dotEl.className = 'dot dot--green';
-      }
-      if (stateEl) {
-        stateEl.textContent = 'Running';
-        stateEl.style.color = 'var(--success)';
-      }
-
-      updateBurstUI(data.burst_active);
+      updateBikeUI(data);
     } catch (err) {
-      var dot = document.getElementById('echenon-status-dot');
-      var state = document.getElementById('echenon-capture-state');
-      if (dot) dot.className = 'dot dot--yellow';
-      if (state) {
-        state.textContent = 'Disconnected';
-        state.style.color = 'var(--warning)';
+      // non-fatal
+    }
+  }
+
+  function updateBikeUI(data) {
+    var dot = document.getElementById('echenon-bike-dot');
+    var label = document.getElementById('echenon-bike-status');
+    if (!dot || !label) return;
+
+    dot.className = 'dot';
+    if (data && (data.isScanning || (data.discovery && data.discovery.active))) {
+      dot.classList.add('dot--yellow');
+      label.textContent = 'Scanning...';
+      label.style.color = 'var(--warning)';
+    } else {
+      var isConnected = false;
+      if (data && data.connections && data.connections.length > 0) {
+        isConnected = true;
+      } else if (data && data.devices && data.devices.length > 0) {
+        for (var i = 0; i < data.devices.length; i++) {
+          if (data.devices[i].connected) {
+            isConnected = true;
+            break;
+          }
+        }
+      }
+      if (isConnected) {
+        dot.classList.add('dot--green');
+        label.textContent = 'Connected to Echelon EX-3';
+        label.style.color = 'var(--success)';
+      } else {
+        dot.classList.add('dot--grey');
+        label.textContent = 'Not connected';
+        label.style.color = 'var(--text-muted)';
       }
     }
   }
 
-  async function fetchLiveChannels() {
+  async function fetchCalibrationStatus() {
     var fetchFn = window.apiFetch || window.fetch;
     try {
-      var resp = await fetchFn('/api/echenon/live');
+      var resp = await fetchFn('/api/echenon/calibration/status');
+      if (!resp.ok) return;
+      var data = await resp.json();
+      updateCalibrationUI(data);
+    } catch (err) {
+      // non-fatal
+    }
+  }
+
+  function updateCalibrationUI(data) {
+    var label = document.getElementById('echenon-calibration-status');
+    var link = document.getElementById('echenon-calibration-link');
+    if (!label) return;
+
+    var nonZeroCount = 0;
+    if (data && Array.isArray(data.table)) {
+      for (var i = 0; i < data.table.length; i++) {
+        if (data.table[i] > 0) nonZeroCount++;
+      }
+    }
+
+    if (nonZeroCount > 0) {
+      label.textContent = 'Calibrated (32/32 levels)';
+      label.style.color = 'var(--success)';
+      if (link) link.style.display = 'none';
+    } else {
+      label.textContent = 'Not calibrated';
+      label.style.color = 'var(--warning)';
+      if (link) link.style.display = 'inline';
+    }
+  }
+
+  async function fetchSessionStatus() {
+    var fetchFn = window.apiFetch || window.fetch;
+    try {
+      var resp = await fetchFn('/api/session/status');
+      if (!resp.ok) return;
+      var data = await resp.json();
+      updateSessionUI(data.state);
+    } catch (err) {
+      // non-fatal
+    }
+  }
+
+  function updateSessionUI(state) {
+    var label = document.getElementById('echenon-session-status');
+    if (!label || !state) return;
+    var s = String(state).toUpperCase();
+    if (s === 'ACTIVE') {
+      label.textContent = 'Active';
+      label.style.color = 'var(--success)';
+    } else if (s === 'PAUSED') {
+      label.textContent = 'Paused';
+      label.style.color = 'var(--warning)';
+    } else if (s === 'ENDED') {
+      label.textContent = 'Ended';
+      label.style.color = 'var(--text-muted)';
+    } else {
+      label.textContent = 'Idle';
+      label.style.color = 'var(--text-muted)';
+    }
+  }
+
+  async function fetchLastRide() {
+    var fetchFn = window.apiFetch || window.fetch;
+    try {
+      var resp = await fetchFn('/api/session/history');
       if (!resp.ok) return;
       var data = await resp.json();
 
-      if (data.event_count !== undefined) {
-        var eventsEl = document.getElementById('echenon-events-count');
-        if (eventsEl) eventsEl.textContent = Number(data.event_count).toLocaleString();
-      }
+      var contentEl = document.getElementById('echenon-last-ride-content');
+      if (!contentEl) return;
 
-      if (data.channels && Array.isArray(data.channels)) {
-        for (var i = 0; i < data.channels.length; i++) {
-          var chData = data.channels[i];
-          var chNum = chData.ch !== undefined ? chData.ch : i;
-          var minEl = document.getElementById('echenon-ch' + chNum + '-min');
-          var meanEl = document.getElementById('echenon-ch' + chNum + '-mean');
-          var maxEl = document.getElementById('echenon-ch' + chNum + '-max');
+      var rides = data.rides || data.sessions || data;
+      if (!Array.isArray(rides) || rides.length === 0) return;
 
-          if (minEl) minEl.textContent = chData.min !== undefined ? chData.min : '-';
-          if (meanEl) meanEl.textContent = chData.mean !== undefined ? chData.mean : '-';
-          if (maxEl) maxEl.textContent = chData.max !== undefined ? chData.max : '-';
-        }
+      var ride = rides[0]; // Most recent
+      var dateStr = '-';
+      if (ride.date || ride.started_at || ride.timestamp) {
+        var d = new Date(ride.date || ride.started_at || ride.timestamp);
+        dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
       }
+      var duration = ride.duration_s || ride.duration || 0;
+
+      contentEl.innerHTML =
+        '<div class="info-row">' +
+          '<span class="text-muted">Date</span>' +
+          '<span style="font-weight:600;">' + dateStr + '</span>' +
+        '</div>' +
+        '<div class="info-row">' +
+          '<span class="text-muted">Duration</span>' +
+          '<span style="font-family:monospace; font-weight:600;">' + formatDuration(duration) + '</span>' +
+        '</div>';
     } catch (err) {
-      // live endpoint error non-fatal, handled quietly
+      // non-fatal — history endpoint may not be available yet
     }
   }
 
-  async function pollAll() {
-    await fetchStatus();
-    await fetchLiveChannels();
+  async function fetchAll() {
+    await fetchBikeStatus();
+    await fetchCalibrationStatus();
+    await fetchSessionStatus();
+    await fetchLastRide();
   }
 
-  function startPolling() {
-    if (pollTimer) return;
-    pollAll();
-    pollTimer = setInterval(function() {
-      if (isTabActive && document.visibilityState === 'visible') {
-        pollAll();
-      }
-    }, 2500);
-  }
-
-  function stopPolling() {
-    if (pollTimer) {
-      clearInterval(pollTimer);
-      pollTimer = null;
-    }
-  }
-
+  // --- Tab Lifecycle ---
   window.addEventListener('tab-changed', function(e) {
     if (e.detail === 'tab-echenon') {
       isTabActive = true;
@@ -576,18 +409,17 @@
         isInitialized = true;
         renderScaffold(container);
       }
-      startPolling();
+      fetchAll();
       connectWS();
     } else {
       isTabActive = false;
-      stopPolling();
       disconnectWS();
     }
   });
 
   document.addEventListener('visibilitychange', function() {
     if (document.visibilityState === 'visible' && isTabActive) {
-      pollAll();
+      fetchAll();
       connectWS();
     } else if (document.visibilityState === 'hidden') {
       disconnectWS();

@@ -1,0 +1,47 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta name="theme-color" content="#121212"><link rel="manifest" href="/manifest.json"><title>Echenon Ride</title><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:#121212;color:#fff;max-width:480px;margin:0 auto;padding:8px;font-size:14px}
+header{display:flex;align-items:center;justify-content:space-between;padding:4px 0 8px}
+header h1{font-size:18px;font-weight:600}
+header a{color:rgba(255,255,255,.7);text-decoration:none;font-size:22px}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;text-transform:uppercase}
+.b-idle{background:#555;color:#fff}
+.b-active{background:#4CAF50;color:#fff;animation:pulse 1.5s infinite}
+.b-paused{background:#FF9800;color:#000}
+@keyframes pulse{50%{opacity:.7}}
+.card{background:#1e1e1e;border-radius:12px;border:1px solid #333;padding:10px;margin:6px 0}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.metric{text-align:center}
+.metric .v{font-size:28px;font-weight:700;line-height:1.1}
+.metric .l{font-size:10px;color:rgba(255,255,255,.7);text-transform:uppercase}
+.btns{display:flex;gap:6px;margin:6px 0}
+.btns button{flex:1;min-height:48px;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;color:#fff}
+.btn-start{background:#4CAF50}
+.btn-pause{background:#FF9800;color:#000}
+.btn-stop{background:#f44336}
+button:disabled{opacity:.35;cursor:default}
+.stats{display:flex;justify-content:space-around;font-size:13px;color:rgba(255,255,255,.7)}
+.stats span{text-align:center}
+.stats b{display:block;color:#fff;font-size:16px}
+#upload{font-size:12px;color:rgba(255,255,255,.7)}
+#history .r{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #333;font-size:13px}
+#history .r:last-child{border:none}
+#history a{color:#2196F3;text-decoration:none;font-size:12px}
+#empty{color:rgba(255,255,255,.5);text-align:center;padding:12px;font-size:13px}
+.conn{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+.conn.on{background:#4CAF50}
+.conn.off{background:#f44336}
+</style></head><body>
+<header><h1>Echenon</h1><div><span class="conn off" id="ws-dot"></span><span class="badge b-idle" id="badge">IDLE</span></div><a href="/" title="Settings">⚙️</a></header>
+<div class="card"><div class="grid" id="m">
+<div class="metric"><div class="v" id="cad">--</div><div class="l">RPM</div></div>
+<div class="metric"><div class="v" id="pwr">--</div><div class="l">Watts</div></div>
+<div class="metric"><div class="v" id="spd">--</div><div class="l">km/h</div></div>
+<div class="metric"><div class="v" id="hr">--</div><div class="l">BPM</div></div>
+<div class="metric"><div class="v" id="lvl">--</div><div class="l">Level</div></div>
+<div class="metric"><div class="v" id="tmr">0:00</div><div class="l">Time</div></div>
+</div></div>
+<div class="btns"><button class="btn-start" id="b-start" onclick="R.cmd('start')">Start</button><button class="btn-pause" id="b-pause" onclick="R.cmd('pause')" disabled>Pause</button><button class="btn-stop" id="b-stop" onclick="R.cmd('stop')" disabled>Stop</button></div>
+<div class="card"><div class="stats" id="st"><span>Avg Power<b id="ap">-- W</b></span><span>Distance<b id="dst">-- km</b></span></div><div id="upload"></div></div>
+<div class="card"><b style="font-size:13px">Recent Rides</b><div id="history"><div id="empty">No rides yet — start your first session!</div></div></div>
+<script src="/ride.js"></script></body></html>

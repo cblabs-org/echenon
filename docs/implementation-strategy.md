@@ -514,7 +514,7 @@ No hardware changes. Passive tap board.
 | `RideStore` | PSRAM ride buffer with LittleFS checkpoints |
 | `TCXGenerator` | Streams TCX trackpoints and produces `tcx.gz` |
 | `StravaUploader` | Implements `IUploader` (capabilities only): BYOA OAuth, token refresh, upload request |
-| `SessionOverlay` (part) | Session REST API, authenticated TCX download, Session History tab (the `/overlay` page follows in PR-09) |
+| `SessionUI` (part) | Session REST API, authenticated TCX download, Session History tab (the `/ride` page follows in PR-09) |
 | `UploadQueue` | The only upload execution path (an `IDataSource`). Runs the split pipeline as separate `fetchUpdate()` calls, each within the 15 s deadline: generate `tcx.gz` → refresh token → POST /uploads → poll GET /uploads/{id}. A duplicate is treated as success. |
 
 `ScanInhibit` (suppress BLE scans during upload) is compiled only under
@@ -716,7 +716,7 @@ commands from any app.
 - **Final BLE / WiFi coexistence test** (progressive checks already done in
   Phases 2 and 3)
 - **Portal polish** — calibration wizard, settings, session history
-- **`SessionOverlay`** — standalone `/overlay` floating window with live data for the tablet (WebSocket)
+- **`SessionUI`** — standalone `/ride` page with live data for the tablet (WebSocket)
 - **Edge cases** — power cycling, WiFi reconnection, BLE reconnection,
   multiple riders, factory reset
 - **v2: Standalone sensor power verification** — disconnect console, close the
@@ -746,7 +746,7 @@ UC4–UC6 validated (PR-13); edge cases handled, portal polished.
 | **5a** (v2) | PR-07 | Intercept board (build) | "Can we relay the motor transparently?" | InterceptController, ResistanceMotor |
 | **5b** (v2) | PR-07, PR-10 | Same | "Can we control resistance ourselves?" | EncoderModule integration, CalibrationWizard motor-driven sweep |
 | **6** (v2) | PR-08, PR-11, PR-12 | Same | "Can apps control us?" | ERGController, FTMSServer Control Point targets |
-| **7** | PR-09 (v1), PR-13 (v2) | Passive tap board (v1); active board (v2) | "Do all 6 use cases work end-to-end?" | SessionOverlay (`/overlay`), portal polish, edge cases |
+| **7** | PR-09 (v1), PR-13 (v2) | Passive tap board (v1); active board (v2) | "Do all 6 use cases work end-to-end?" | SessionUI (`/ride`), portal polish, edge cases |
 
 ### Risk Profile
 

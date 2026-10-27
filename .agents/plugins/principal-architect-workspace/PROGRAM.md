@@ -33,9 +33,10 @@ provisional, decomposed after DR-2).
 | v1 | PR-03 | 2 | BLE Foundation + HR Relay | PR-01 ✅ | ✅ Merged 2026-10-20 (PR #3, `e930314`) |
 | v1 | PR-04a | 3 | Passive Tap Board (VIN + VIN/USB switch, manual OTA, UART0 reserved) | PR-02, DR-1 | ⬜ Deferred to pre-PR-09 (bench stays on USB-C during PR-05/06) |
 | v1 | PR-05 | 3 | FTMS Telemetry, **read-only** (Target Setting Features = 0) | PR-02, PR-03 | ✅ Merged 2026-10-26 (PR #6, `a6c7a88`) |
-| v1 | PR-06 | 4 | Session + TCX + Strava | PR-02 | 📋 Charter Reviewed & Refined 2026-10-26 (`WO-06.1`–`WO-06.6`, ready for execution) |
+| v1 | PR-06 | 4 | Session + TCX + Strava | PR-02 | ✅ Audit Approved 2026-10-26 (8/8 WOs complete, PR #7 pushed `aecdc97`, ready to merge) |
+| v1 | PR-15 | 4 | Portal Rework & Ride Page ([charter](pr-15-portal-ride/PROJECT.md)) | PR-06 | 📋 Charter drafted 2026-10-26 |
 | v1 | PR-14 | 4 | Diagnostics & Run-Data Persistence ([stub](pr-14-diagnostics/PROJECT.md)) | PR-06 | ⬜ Not started |
-| v1 | PR-09 | 7 | v1 Integration & Release (UC1–UC3) | PR-04a, PR-05, PR-14 | ⬜ Not started |
+| v1 | PR-09 | 7 | v1 Integration & Release (UC1–UC3) | PR-04a, PR-05, PR-14, PR-15 | ⬜ Not started |
 | v2 | DR-2 prep | — | Active-design bench evidence ([project](pr-dr2-prep/PROJECT.md)) | DR-1 (timing: owner) | ⬜ Provisional |
 | v2 | DR-2 | — | v2 Active Design Freeze ([record](reviews/DR-2-design-freeze.md)) | DR-2 prep | ⬜ Not started |
 | v2 | PR-07 | 5 | Active Intercept Board + Motor Control + Safety | **DR-2**, v1 release (PR-09) | ⬜ Provisional |
@@ -479,3 +480,18 @@ Decisions on the v1 Passive / v2 Active restructure:
   3. **Virtual Road Speed $v(P)$ & Distance Integration + Xert MPA 1 Hz Continuity (`WO-06.2`):** `TCXGenerator` integrates `PowerEngine::computeVirtualSpeedKph(rec.power_watts) / 3.6f` at 1 Hz to emit `<DistanceMeters>` and `<ns3:Speed>` alongside `<ns3:Watts>`. Coasting (`cadence == 0` while `ACTIVE`) always emits 1 Hz `<ns3:Watts>0</ns3:Watts>` trackpoints with no timestamp gaps so Xert MPA differential equations are never corrupted.
   4. **Pure Capability `IUploader` & Transport-Owning `UploadQueue` (`WO-06.3`, `WO-06.4`):** Aligned `IUploader` with `SPEC.md` §10.2 (`buildRequest` / `handleResponse` capability contract with `IHttpTransport` owned by `UploadQueue`), added `Redactor::registerSecret()` return-value check (`SPEC.md` §10.4), and added resumable deadline awareness in `STAGE_GENERATE_TCX_GZ`.
   5. **Portal Tab Ordering & Post-Ride Discard Endpoint (`WO-06.5`):** Assigned non-colliding tab orders (`Session = 80`, `Upload Services = 90`, after `Calibration = 60` and `Recalibration = 70`), added `POST /api/session/discard` (`SPEC.md` §11.3/§11.5), and supported `/api/session/stop` as an alias for `/api/session/end`.
+
+### 2026-10-26 (Session 2): PR-06 Audit Approved & Pushed; Portal UX Audit; PR-15 Chartered
+
+- **PR-06 Remediation Complete & Pushed:**
+  - WO-06.7 (`05a6ca6`): `StreamingGzipEncoder` moved to PSRAM heap; EventBus payload safety.
+  - WO-06.8 (`a497649`): File headers, `std::function` GRAVE-05 comments, CSS design tokens.
+  - Tagged `v0.3.0-dev.24`, flashed and verified on bench (PSRAM 98.6% free, heap 111,903 B).
+  - All 8/8 WOs `COMPLETED`. Pushed to origin (`b74b354..aecdc97`). PR #7 ready to merge.
+- **Portal UX Audit (Live on `192.168.1.100`):**
+  - Catalogued 9 bottom-bar tabs + 5 sub-tabs via `/api/tabs` — 9 icons unusable on phone.
+  - Owner decisions: two-surface model (standalone `/ride` page for daily use, portal for config only), drop `/overlay` (OBS irrelevant), 6-tab portal (WiFi/Bluetooth/Echenon/Setup/Security/System), Setup tab with pills (Apps/Level Mapping/Power Tuning), `app.disableDefaultAppTab()`, strip signal logger from production.
+  - Ride page: standalone `/ride` HTML, PWA manifest, dark theme, responsive 280–430px, designed for Android split-screen with Echelon app on Lenovo P12 and iPad Slide Over.
+- **PR-15 Chartered:** Portal Rework & Ride Page (5 WOs: Portal Cleanup, Setup Tab, Ride Page, SPEC Updates, HW Verification). Inserted before PR-09 in programme table. PR-09 now depends on PR-15.
+- **SPEC.md Update:** 12 sections identified for `/overlay` → `/ride` rename and §11 major rewrite.
+

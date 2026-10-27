@@ -600,18 +600,21 @@ void EchenonModule::registerTabs(ITabRegistry& registry) {
         "<polyline points=\"22 12 18 12 15 21 9 3 6 12 2 12\"></polyline>",
         "/echenon-dashboard.js"
     );
+
+    // Apps tab (order 60) with Feather "grid" icon
     registry.addTab(
-        "Calibration",
+        "Apps",
         nullptr,
         60,
-        "<circle cx=\"12\" cy=\"12\" r=\"10\"></circle><path d=\"m10 15 5-3-5-3v6z\"></path>",
-        "/calibration-wizard.js"
+        "<rect x=\"3\" y=\"3\" width=\"7\" height=\"7\"></rect>"
+        "<rect x=\"14\" y=\"3\" width=\"7\" height=\"7\"></rect>"
+        "<rect x=\"14\" y=\"14\" width=\"7\" height=\"7\"></rect>"
+        "<rect x=\"3\" y=\"14\" width=\"7\" height=\"7\"></rect>",
+        nullptr
     );
-    registry.addTab(
-        "Recalibration",
-        nullptr,
-        70,
-        "<path d=\"M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7\"></path><path d=\"M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z\"></path>",
-        "/recalibration.js"
-    );
+
+    // Sub-pills under Apps and System
+    registry.addTab("Strava",        "Apps",   10, nullptr, "/upload_settings.js");
+    registry.addTab("Level Mapping", "System", 25, nullptr, "/calibration-wizard.js");
+    registry.addTab("Power Tuning",  "System", 30, nullptr, "/recalibration.js");
 }

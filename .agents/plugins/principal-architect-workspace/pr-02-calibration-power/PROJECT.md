@@ -1,21 +1,28 @@
 ---
 schema_version: 1
 charter:
-  pr_id: "PR-02"
-  slug: "pr-02-calibration-power"
-  title: "Calibration + Power Engine"
-  branch: "feat/pr-02-calibration-power"
-  base_branch: "main"
+  pr_id: PR-02
+  programme_id: null
+  slug: pr-02-calibration-power
+  title: Calibration + Power Engine
+  branch: feat/pr-02-calibration-power
+  base_branch: main
+  depends_on: []
   allowed_modules:
-    - "src/echenon/"
-    - "docs/"
-    - "hardware/"
-    - "framework/"
-    - "platformio.ini"
-    - "tools/calibration-rig/"
-    - "test/"
+  - src/echenon/
+  - docs/
+  - hardware/
+  - framework/
+  - platformio.ini
+  - tools/calibration-rig/
+  - test/
+  required_skills: []
+  verification_floor: []
   charter_locked: true
+  charter_hash: null
 status: APPROVED
+approved_at: null
+github_pr: null
 work_orders:
 - id: WO-02.1
   slug: wo1-sensors
@@ -79,7 +86,7 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 9477ab9
+  commit_sha: ec4328a9f9f3b9643730f56d554f6c1c6b5b8312
 ---
 
 ## 2. Scope
