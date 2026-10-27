@@ -4,7 +4,7 @@ wo_id: WO-15.4
 pr_id: PR-15
 title: SPEC & Design Doc Updates
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - SPEC.md
 - docs/implementation-strategy.md
@@ -20,7 +20,21 @@ verification_command: pio test -e native
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: d0a96ed095bace613ae48d105410d1e53a995d7ff6856cdf79963b80a598bb49
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_258b700caf58
+  commit_sha: 61a177371b074820c2a4f4bb3a057c077d85bcab
+  files_modified:
+  - SPEC.md
+  - docs/implementation-strategy.md
+  - docs/measurements/phase4/wo15-portal-ride/README.md
+  verification_summary: 'pio test -e native: ================ 199 test cases: 199
+    succeeded in 00:00:00.369 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-15.4: SPEC & Design Doc Updates

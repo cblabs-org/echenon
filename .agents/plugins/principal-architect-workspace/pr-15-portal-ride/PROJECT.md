@@ -54,9 +54,9 @@ work_orders:
   slug: wo4-spec-updates
   title: SPEC & Design Doc Updates
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 61a177371b074820c2a4f4bb3a057c077d85bcab
 - id: WO-15.5
   slug: wo5-hw-verification
   title: Hardware Verification — P12 Split-Screen
