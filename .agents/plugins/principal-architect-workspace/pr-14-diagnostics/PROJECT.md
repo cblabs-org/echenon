@@ -26,7 +26,7 @@ charter:
   charter_hash: 26aaafe1dd55bab0490bbc71e7fecdabffbdaf645fcc4c070b4d7e3f952e4108
 status: STAGED_FOR_AUDIT
 approved_at: '2026-10-27T17:09:34.409212Z'
-github_pr: null
+github_pr: 11
 work_orders:
 - id: WO-14.1
   slug: wo1-diagnostics-module
