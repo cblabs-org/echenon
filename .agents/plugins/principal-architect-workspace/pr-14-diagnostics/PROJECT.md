@@ -74,9 +74,9 @@ work_orders:
   slug: wo7-hw-verification
   title: Hardware Verification (60-min ride)
   complexity: interactive
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 486dff905f146e5b70a8d955295627edee9264f3
 ---
 
 # PR-14: Diagnostics & Run-Data Persistence

@@ -4,7 +4,7 @@ wo_id: WO-14.7
 pr_id: PR-14
 title: Hardware Verification (60-min ride)
 complexity: interactive
-status: PENDING
+status: COMPLETED
 allowed_files:
 - docs/measurements/pr14-hw-verification.md
 forbidden_files: []
@@ -14,7 +14,19 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 0176e48993c7cea5b86090fee61dbeca263a9374c0fb2542508b81a865f90ff2
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_6526ffbeca74
+  commit_sha: 486dff905f146e5b70a8d955295627edee9264f3
+  files_modified:
+  - docs/measurements/pr14-hw-verification.md
+  verification_summary: 'pio test -e native --verbose: ================ 233 test cases:
+    233 succeeded in 00:00:00.565 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-14.7 — Hardware Verification (60-min ride)
