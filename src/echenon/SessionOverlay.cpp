@@ -809,19 +809,10 @@ SessionOverlay::HttpResponse SessionOverlay::handleStravaDisconnect() {
 // =============================================================================
 
 void SessionOverlay::registerTabs(ITabRegistry& registry) {
-    registry.addTab(
-        "Session",
-        nullptr,
-        80,
-        "<circle cx=\"12\" cy=\"12\" r=\"10\"></circle><polyline points=\"12 6 12 12 16 14\"></polyline>",
-        "/session.js");
-
-    registry.addTab(
-        "Upload Services",
-        nullptr,
-        90,
-        "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\"></path><polyline points=\"17 8 12 3 7 8\"></polyline><line x1=\"12\" y1=\"3\" x2=\"12\" y2=\"15\"></line>",
-        "/upload_settings.js");
+    // Session and Upload Services tabs removed — content moves to /ride page
+    // (WO-15.3) and Setup pill (WO-15.2). Route registrations in registerRoutes()
+    // are preserved — REST APIs and JS asset serving remain functional.
+    (void)registry;
 }
 
 void SessionOverlay::registerRoutes(PsychicHttpServer& server) {

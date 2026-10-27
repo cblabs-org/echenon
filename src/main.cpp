@@ -110,6 +110,8 @@ void setup() {
     app.registerModule(&sessionOverlay);
 #endif
 
+    app.disableDefaultAppTab();
+
     FrameworkConfig config;
     app.begin(config);
 

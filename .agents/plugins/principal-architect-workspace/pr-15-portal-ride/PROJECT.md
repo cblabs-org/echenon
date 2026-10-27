@@ -33,9 +33,9 @@ work_orders:
   slug: wo1-portal-cleanup
   title: Portal Cleanup & Tab Restructure
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 911d660847a54e714a284338df175946338868b2
 - id: WO-15.2
   slug: wo2-setup-tab
   title: Setup Tab — Apps & Calibration Pills

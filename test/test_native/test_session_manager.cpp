@@ -853,16 +853,10 @@ TEST(SessionOverlayTest, StravaCredentialsOAuthFlowTabsAndLiveFeedJson) {
     EXPECT_EQ(discStrava.status_code, 200);
     EXPECT_FALSE(strava.isAuthenticated());
 
-    // 3. Verify portal tab registrations
+    // 3. Verify portal tab registrations (tabs removed — content moved to /ride and Setup)
     MockTabRegistry tabReg;
     overlay.registerTabs(tabReg);
-    ASSERT_EQ(tabReg.tabs.size(), 2u);
-    EXPECT_STREQ(tabReg.tabs[0].name, "Session");
-    EXPECT_EQ(tabReg.tabs[0].order, 80);
-    EXPECT_STREQ(tabReg.tabs[0].script, "/session.js");
-    EXPECT_STREQ(tabReg.tabs[1].name, "Upload Services");
-    EXPECT_EQ(tabReg.tabs[1].order, 90);
-    EXPECT_STREQ(tabReg.tabs[1].script, "/upload_settings.js");
+    ASSERT_EQ(tabReg.tabs.size(), 0u);
 
     // 4. Verify 13-field LiveFeed JSON includes session_state and session_elapsed_s
     std::string liveJson = SessionOverlay::formatLiveFeedJson(
