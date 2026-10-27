@@ -4,7 +4,7 @@ wo_id: WO-15.2
 pr_id: PR-15
 title: Setup Tab — Apps & Calibration Pills
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/EchenonModule.cpp
 - src/echenon/EchenonModule.h
@@ -31,7 +31,22 @@ verification_command: pio test -e native
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 14af6e79e4e6eee50ac02be5a7450de22f92dbc8dd847e0b8cbb464b1f480c02
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_ae6482394dde
+  commit_sha: 9c3e53ab2e4e865db749f9401db22bbe8de7d122
+  files_modified:
+  - src/echenon/EchenonModule.cpp
+  - web/calibration-wizard.js
+  - web/recalibration.js
+  - web/upload_settings.js
+  verification_summary: 'pio test -e native: ================ 199 test cases: 199
+    succeeded in 00:00:00.404 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-15.2: Setup Tab — Apps & Calibration Pills

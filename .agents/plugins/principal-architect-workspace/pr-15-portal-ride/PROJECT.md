@@ -40,9 +40,9 @@ work_orders:
   slug: wo2-setup-tab
   title: Setup Tab — Apps & Calibration Pills
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 9c3e53ab2e4e865db749f9401db22bbe8de7d122
 - id: WO-15.3
   slug: wo3-ride-page
   title: Ride Page — Standalone /ride
