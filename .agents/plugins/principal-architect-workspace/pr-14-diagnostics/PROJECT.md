@@ -32,9 +32,9 @@ work_orders:
   slug: wo1-diagnostics-module
   title: DiagnosticsModule + Bounded Event Log
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 116a292f54c853b07c6496d5f99fae1ef7afd56e
 - id: WO-14.2
   slug: wo2-ride-persistence
   title: Run-Data Persistence (LittleFS + Gzip)
