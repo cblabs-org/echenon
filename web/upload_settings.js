@@ -1,7 +1,7 @@
 /**
  * Echenon Apps — Strava OAuth2 Configuration
  *
- * Pill panel under Setup tab.
+ * Pill panel under Apps tab.
  * Manages Strava API credentials and OAuth authorization.
  *
  * Endpoints consumed:
@@ -14,53 +14,69 @@
 (function () {
     'use strict';
 
-    var TAB_ID = 'tab-apps';
+    var TAB_ID = 'tab-strava';
     var initialized = false;
 
     function buildUI(container) {
         container.innerHTML = [
-            '<div style="background:var(--bg-card, #fff); border:1px solid var(--border, #e0e0e0); border-radius:16px; padding:1.25rem; margin-bottom:1rem;">',
-            '  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">',
-            '    <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:var(--text, #212121);">Strava Integration</h3>',
-            '    <span id="ech-strava-badge" style="display:inline-block; padding:2px 10px; font-size:0.75rem; font-weight:700; border-radius:20px; background:var(--border, #e0e0e0); color:var(--text-secondary, #666);">Checking...</span>',
-            '  </div>',
-            '  <p style="margin:0 0 0.75rem 0; font-size:0.85rem; color:var(--text-secondary, #666); line-height:1.5;">',
-            '    Connect your Strava account to automatically upload completed rides. Create a Strava API application at ',
-            '    <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener" style="color:var(--primary, #2196F3);">strava.com/settings/api</a>, ',
-            '    then enter the Client ID and Client Secret below.',
-            '  </p>',
-            '  <div id="ech-strava-details" style="font-size:0.85rem;color:var(--text-secondary, #666);margin-bottom:1rem;"></div>',
-            '  <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">',
-            '    <button id="ech-btn-strava-auth" type="button" style="padding:8px 16px; font-size:0.85rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:#fff; cursor:pointer;">Authorize with Strava</button>',
-            '    <button id="ech-btn-strava-disconnect" type="button" style="padding:8px 16px; font-size:0.85rem; font-weight:600; border:1px solid var(--danger, #c62828); border-radius:10px; background:transparent; color:var(--danger, #c62828); cursor:pointer;">Disconnect Strava</button>',
-            '    <button id="ech-btn-strava-refresh" type="button" style="padding:8px 16px; font-size:0.85rem; font-weight:600; border:1px solid var(--border, #e0e0e0); border-radius:10px; background:transparent; color:var(--text, #212121); cursor:pointer;">Refresh Status</button>',
-            '  </div>',
-            '  <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;font-size:0.85rem;color:var(--text, #212121);">',
-            '    <input type="checkbox" id="ech-strava-autoupload" checked>',
-            '    <span>Auto-upload completed rides to Strava</span>',
-            '  </label>',
+            '<div style="background:var(--card-bg); border:1px solid var(--border, #e0e0e0); border-radius:16px; padding:1.25rem; margin-bottom:1rem;">',
+            '  <h4 style="margin:0 0 0.5rem 0; font-size:1rem; font-weight:700; color:var(--text, #212121);">Setup Guide</h4>',
+            '  <ol style="margin:0; padding-left:1.25rem; font-size:0.85rem; color:var(--text-muted); line-height:1.6;">',
+            '    <li>Go to <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener" style="color:var(--primary, #2196F3);">strava.com/settings/api</a> and create an API application</li>',
+            '    <li>Set "Authorization Callback Domain" to: <code id="ech-callback-domain" style="font-family:monospace; background:var(--border, #e0e0e0); padding:2px 6px; border-radius:4px;"></code><br><span style="font-size:0.8rem; color:var(--text-muted);">Full callback URL: <code id="ech-callback-url" style="font-family:monospace;"></code></span></li>',
+            '    <li>Enter the Client ID and Client Secret below, then click <strong>Save Credentials</strong></li>',
+            '    <li>Click <strong>Authorize with Strava</strong> to connect your account</li>',
+            '  </ol>',
             '</div>',
-            '<div style="background:var(--bg-card, #fff); border:1px solid var(--border, #e0e0e0); border-radius:16px; padding:1.25rem;">',
+            '<div style="background:var(--card-bg); border:1px solid var(--border, #e0e0e0); border-radius:16px; padding:1.25rem; margin-bottom:1rem;">',
             '  <h4 style="margin:0 0 0.5rem 0; font-size:1rem; font-weight:700; color:var(--text, #212121);">Strava API Credentials</h4>',
-            '  <p style="font-size:0.8rem;color:var(--text-secondary, #666);margin:0 0 0.75rem 0; line-height:1.5;">',
+            '  <p style="font-size:0.8rem;color:var(--text-muted);margin:0 0 0.75rem 0; line-height:1.5;">',
             '    Enter your Strava API Application Client ID and Client Secret. The secret is stored encrypted in NVS and is write-only.',
             '  </p>',
             '  <div style="display:grid;gap:0.75rem;max-width:420px;">',
             '    <div>',
-            '      <label for="ech-strava-client-id" style="display:block;font-size:0.8rem;font-weight:600;margin-bottom:0.25rem;color:var(--text-secondary, #666);">Client ID</label>',
-            '      <input type="text" id="ech-strava-client-id" placeholder="e.g. 12345" autocomplete="off" style="width:100%;padding:8px 10px;border:1px solid var(--border, #e0e0e0);border-radius:10px;font-size:0.9rem;color:var(--text, #212121);background:var(--bg-card, #fff);">',
+            '      <label for="ech-strava-client-id" style="display:block;font-size:0.8rem;font-weight:600;margin-bottom:0.25rem;color:var(--text-muted);">Client ID</label>',
+            '      <input type="text" id="ech-strava-client-id" placeholder="e.g. 12345" autocomplete="off" style="width:100%;padding:8px 10px;border:1px solid var(--border, #e0e0e0);border-radius:10px;font-size:0.9rem;color:var(--text, #212121);background:var(--card-bg);">',
             '    </div>',
             '    <div>',
-            '      <label for="ech-strava-client-secret" style="display:block;font-size:0.8rem;font-weight:600;margin-bottom:0.25rem;color:var(--text-secondary, #666);">Client Secret (write-only)</label>',
-            '      <input type="password" id="ech-strava-client-secret" placeholder="Enter new client secret" autocomplete="new-password" style="width:100%;padding:8px 10px;border:1px solid var(--border, #e0e0e0);border-radius:10px;font-size:0.9rem;color:var(--text, #212121);background:var(--bg-card, #fff);">',
+            '      <label for="ech-strava-client-secret" style="display:block;font-size:0.8rem;font-weight:600;margin-bottom:0.25rem;color:var(--text-muted);">Client Secret (write-only)</label>',
+            '      <input type="password" id="ech-strava-client-secret" placeholder="Enter new client secret" autocomplete="new-password" style="width:100%;padding:8px 10px;border:1px solid var(--border, #e0e0e0);border-radius:10px;font-size:0.9rem;color:var(--text, #212121);background:var(--card-bg);">',
             '    </div>',
             '    <div>',
             '      <button id="ech-btn-strava-save" type="button" style="padding:8px 20px; font-size:0.85rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:#fff; cursor:pointer;">Save Credentials</button>',
             '    </div>',
             '  </div>',
-            '  <div id="ech-strava-msg" style="font-size:0.85rem;color:var(--text-secondary, #666);margin-top:0.75rem;min-height:1.2em;"></div>',
+            '  <div id="ech-strava-msg" style="font-size:0.85rem;color:var(--text-muted);margin-top:0.75rem;min-height:1.2em;"></div>',
+            '</div>',
+            '<div style="background:var(--card-bg); border:1px solid var(--border, #e0e0e0); border-radius:16px; padding:1.25rem;">',
+            '  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">',
+            '    <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:var(--text, #212121);">Strava Integration</h3>',
+            '    <span id="ech-strava-badge" style="display:inline-block; padding:2px 10px; font-size:0.75rem; font-weight:700; border-radius:20px; background:var(--border, #e0e0e0); color:var(--text-muted);">Checking...</span>',
+            '  </div>',
+            '  <p style="margin:0 0 0.75rem 0; font-size:0.85rem; color:var(--text-muted); line-height:1.5;">',
+            '    Connect your Strava account to automatically upload completed rides. Create a Strava API application at ',
+            '    <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener" style="color:var(--primary, #2196F3);">strava.com/settings/api</a>, ',
+            '    then enter the Client ID and Client Secret above.',
+            '  </p>',
+            '  <div id="ech-strava-details" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;"></div>',
+            '  <div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;margin-bottom:0.5rem;">',
+            '    <button id="ech-btn-strava-auth" type="button" disabled style="padding:8px 16px; font-size:0.85rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:#fff; cursor:not-allowed; opacity:0.5;">Authorize with Strava</button>',
+            '    <button id="ech-btn-strava-disconnect" type="button" style="padding:8px 16px; font-size:0.85rem; font-weight:600; border:1px solid var(--danger, #c62828); border-radius:10px; background:transparent; color:var(--danger, #c62828); cursor:pointer;">Disconnect Strava</button>',
+            '    <button id="ech-btn-strava-refresh" type="button" style="padding:8px 16px; font-size:0.85rem; font-weight:600; border:1px solid var(--border, #e0e0e0); border-radius:10px; background:transparent; color:var(--text, #212121); cursor:pointer;">Refresh Status</button>',
+            '  </div>',
+            '  <div id="ech-strava-auth-note" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">Save your API credentials first</div>',
+            '  <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;font-size:0.85rem;color:var(--text, #212121);">',
+            '    <input type="checkbox" id="ech-strava-autoupload" checked>',
+            '    <span>Auto-upload completed rides to Strava</span>',
+            '  </label>',
             '</div>'
         ].join('\n');
+
+        var host = window.location.hostname || 'echenon.local';
+        var domainEl = document.getElementById('ech-callback-domain');
+        if (domainEl) domainEl.textContent = host;
+        var urlEl = document.getElementById('ech-callback-url');
+        if (urlEl) urlEl.textContent = 'http://' + host + '/api/strava/callback';
 
         document.getElementById('ech-btn-strava-save').addEventListener('click', saveCredentials);
         document.getElementById('ech-btn-strava-auth').addEventListener('click', startOAuth);
@@ -79,6 +95,8 @@
         var badge = document.getElementById('ech-strava-badge');
         var details = document.getElementById('ech-strava-details');
         var clientIdInput = document.getElementById('ech-strava-client-id');
+        var authBtn = document.getElementById('ech-btn-strava-auth');
+        var authNote = document.getElementById('ech-strava-auth-note');
 
         if (badge) {
             if (data.authenticated) {
@@ -92,8 +110,24 @@
             } else {
                 badge.textContent = 'NOT CONFIGURED';
                 badge.style.background = 'var(--border, #e0e0e0)';
-                badge.style.color = 'var(--text-secondary, #666)';
+                badge.style.color = 'var(--text-muted)';
             }
+        }
+
+        if (authBtn) {
+            if (data.configured) {
+                authBtn.disabled = false;
+                authBtn.style.opacity = '1';
+                authBtn.style.cursor = 'pointer';
+            } else {
+                authBtn.disabled = true;
+                authBtn.style.opacity = '0.5';
+                authBtn.style.cursor = 'not-allowed';
+            }
+        }
+
+        if (authNote) {
+            authNote.style.display = data.configured ? 'none' : 'block';
         }
 
         if (details) {

@@ -401,6 +401,7 @@ std::string StravaUploader::urlEncode(const std::string& value) {
 std::string StravaUploader::buildAuthorizeUrl(
     const std::string& redirect_uri,
     uint32_t now_ms) {
+    if (_clientId.empty()) return {};
     _pendingState  = generateRandomStateHex();
     _stateIssuedMs = now_ms;
     _stateActive   = true;

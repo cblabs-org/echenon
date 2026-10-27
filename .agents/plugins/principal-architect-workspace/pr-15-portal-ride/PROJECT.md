@@ -68,9 +68,9 @@ work_orders:
   slug: wo6-portal-bugfixes
   title: Portal Bug Fixes from Hardware Verification
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 053511d0cc5522ea95b32132d5830a0c009eb846
 ---
 
 # PR-15: Portal Rework & Ride Page (Phase 4, v1 Passive)

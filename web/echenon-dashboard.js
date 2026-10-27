@@ -14,18 +14,6 @@
   var wsReconnectDelay = 1000;
   var MAX_RECONNECT_DELAY = 16000;
 
-  function formatUptime(ms) {
-    if (!ms && ms !== 0) return '-';
-    var totalSec = Math.floor(ms / 1000);
-    var d = Math.floor(totalSec / 86400);
-    var h = Math.floor((totalSec % 86400) / 3600);
-    var m = Math.floor((totalSec % 3600) / 60);
-    var s = totalSec % 60;
-    if (d > 0) return d + 'd ' + h + 'h ' + m + 'm';
-    if (h > 0) return h + 'h ' + m + 'm ' + s + 's';
-    return m + 'm ' + s + 's';
-  }
-
   function formatDuration(seconds) {
     if (!seconds && seconds !== 0) return '-';
     var h = Math.floor(seconds / 3600);
@@ -150,6 +138,9 @@
     if (hrEl && data.heart_rate !== undefined) {
       hrEl.textContent = data.heart_rate;
     }
+    if (data.session_state) {
+      updateSessionUI(data.session_state);
+    }
   }
 
   // --- Scaffold Render ---
@@ -192,20 +183,26 @@
         '</div>' +
       '</div>' +
 
-      // --- Device Status Card ---
+      // --- Echenon Status Card ---
       '<div class="card" style="margin-bottom:1rem;">' +
-        '<h3 style="margin:0 0 0.75rem 0; font-size:1.15rem; font-weight:700;">Device Status</h3>' +
+        '<h3 style="margin:0 0 0.75rem 0; font-size:1.15rem; font-weight:700;">Echenon Status</h3>' +
         '<div class="info-row">' +
-          '<span class="text-muted">Firmware</span>' +
-          '<span id="echenon-fw-version" style="font-family:monospace; font-weight:600;">-</span>' +
+          '<span class="text-muted">Bike Connection</span>' +
+          '<div style="display:flex; align-items:center; gap:0.4rem;">' +
+            '<span class="dot dot--grey" id="echenon-bike-dot"></span>' +
+            '<span id="echenon-bike-status" style="font-weight:600;">Not connected</span>' +
+          '</div>' +
         '</div>' +
         '<div class="info-row">' +
-          '<span class="text-muted">Uptime</span>' +
-          '<span id="echenon-uptime" style="font-family:monospace; font-weight:600;">-</span>' +
+          '<span class="text-muted">Calibration Status</span>' +
+          '<div id="echenon-calibration-container" style="display:flex; align-items:center; gap:0.4rem;">' +
+            '<span id="echenon-calibration-status" style="font-weight:600;">Checking...</span>' +
+            '<a href="#" id="echenon-calibration-link" style="display:none; color:var(--primary); font-size:0.85rem; text-decoration:none; font-weight:600;">Calibrate &rarr;</a>' +
+          '</div>' +
         '</div>' +
         '<div class="info-row">' +
-          '<span class="text-muted">WiFi</span>' +
-          '<span id="echenon-wifi-status" style="font-weight:600;">-</span>' +
+          '<span class="text-muted">Session State</span>' +
+          '<span id="echenon-session-status" style="font-weight:600;">Idle</span>' +
         '</div>' +
       '</div>' +
 
@@ -231,44 +228,133 @@
       '</a>';
 
     container.innerHTML = html;
+
+    var calLink = document.getElementById('echenon-calibration-link');
+    if (calLink) {
+      calLink.onclick = function(e) {
+        e.preventDefault();
+        var navSystem = document.querySelector('.tab-link[data-target="tab-system"]') || document.getElementById('nav-system');
+        if (navSystem) {
+          navSystem.click();
+          setTimeout(function() {
+            var pill = document.querySelector('.pill-btn[data-target="tab-level-mapping"]') || document.getElementById('pill-level-mapping');
+            if (pill) pill.click();
+          }, 50);
+        }
+      };
+    }
   }
 
   // --- Data Fetching ---
-  async function fetchDeviceStatus() {
+  async function fetchBikeStatus() {
     var fetchFn = window.apiFetch || window.fetch;
     try {
-      var resp = await fetchFn('/api/system');
+      var resp = await fetchFn('/api/ble/status');
       if (!resp.ok) return;
       var data = await resp.json();
-
-      var fwEl = document.getElementById('echenon-fw-version');
-      var uptimeEl = document.getElementById('echenon-uptime');
-      var wifiEl = document.getElementById('echenon-wifi-status');
-
-      if (fwEl && data.version) fwEl.textContent = data.version;
-      if (uptimeEl && data.uptime_ms !== undefined) uptimeEl.textContent = formatUptime(data.uptime_ms);
-
-      if (wifiEl) {
-        if (data.wifi && data.wifi.ssid) {
-          var ssid = data.wifi.ssid;
-          var ip = data.wifi.ip || '';
-          var rssi = data.wifi.rssi;
-          var qual = '';
-          if (rssi !== undefined) {
-            if (rssi >= -50) qual = ' (Excellent)';
-            else if (rssi >= -60) qual = ' (Good)';
-            else if (rssi >= -70) qual = ' (Fair)';
-            else qual = ' (Weak)';
-          }
-          wifiEl.textContent = ssid + (ip ? ' · ' + ip : '') + (rssi !== undefined ? ' · ' + rssi + ' dBm' + qual : '');
-          wifiEl.style.color = 'var(--success)';
-        } else {
-          wifiEl.textContent = 'Not connected';
-          wifiEl.style.color = 'var(--warning)';
-        }
-      }
+      updateBikeUI(data);
     } catch (err) {
       // non-fatal
+    }
+  }
+
+  function updateBikeUI(data) {
+    var dot = document.getElementById('echenon-bike-dot');
+    var label = document.getElementById('echenon-bike-status');
+    if (!dot || !label) return;
+
+    dot.className = 'dot';
+    if (data && (data.isScanning || (data.discovery && data.discovery.active))) {
+      dot.classList.add('dot--yellow');
+      label.textContent = 'Scanning...';
+      label.style.color = 'var(--warning)';
+    } else {
+      var isConnected = false;
+      if (data && data.connections && data.connections.length > 0) {
+        isConnected = true;
+      } else if (data && data.devices && data.devices.length > 0) {
+        for (var i = 0; i < data.devices.length; i++) {
+          if (data.devices[i].connected) {
+            isConnected = true;
+            break;
+          }
+        }
+      }
+      if (isConnected) {
+        dot.classList.add('dot--green');
+        label.textContent = 'Connected to Echelon EX-3';
+        label.style.color = 'var(--success)';
+      } else {
+        dot.classList.add('dot--grey');
+        label.textContent = 'Not connected';
+        label.style.color = 'var(--text-muted)';
+      }
+    }
+  }
+
+  async function fetchCalibrationStatus() {
+    var fetchFn = window.apiFetch || window.fetch;
+    try {
+      var resp = await fetchFn('/api/echenon/calibration/status');
+      if (!resp.ok) return;
+      var data = await resp.json();
+      updateCalibrationUI(data);
+    } catch (err) {
+      // non-fatal
+    }
+  }
+
+  function updateCalibrationUI(data) {
+    var label = document.getElementById('echenon-calibration-status');
+    var link = document.getElementById('echenon-calibration-link');
+    if (!label) return;
+
+    var nonZeroCount = 0;
+    if (data && Array.isArray(data.table)) {
+      for (var i = 0; i < data.table.length; i++) {
+        if (data.table[i] > 0) nonZeroCount++;
+      }
+    }
+
+    if (nonZeroCount > 0) {
+      label.textContent = 'Calibrated (32/32 levels)';
+      label.style.color = 'var(--success)';
+      if (link) link.style.display = 'none';
+    } else {
+      label.textContent = 'Not calibrated';
+      label.style.color = 'var(--warning)';
+      if (link) link.style.display = 'inline';
+    }
+  }
+
+  async function fetchSessionStatus() {
+    var fetchFn = window.apiFetch || window.fetch;
+    try {
+      var resp = await fetchFn('/api/session/status');
+      if (!resp.ok) return;
+      var data = await resp.json();
+      updateSessionUI(data.state);
+    } catch (err) {
+      // non-fatal
+    }
+  }
+
+  function updateSessionUI(state) {
+    var label = document.getElementById('echenon-session-status');
+    if (!label || !state) return;
+    var s = String(state).toUpperCase();
+    if (s === 'ACTIVE') {
+      label.textContent = 'Active';
+      label.style.color = 'var(--success)';
+    } else if (s === 'PAUSED') {
+      label.textContent = 'Paused';
+      label.style.color = 'var(--warning)';
+    } else if (s === 'ENDED') {
+      label.textContent = 'Ended';
+      label.style.color = 'var(--text-muted)';
+    } else {
+      label.textContent = 'Idle';
+      label.style.color = 'var(--text-muted)';
     }
   }
 
@@ -308,7 +394,9 @@
   }
 
   async function fetchAll() {
-    await fetchDeviceStatus();
+    await fetchBikeStatus();
+    await fetchCalibrationStatus();
+    await fetchSessionStatus();
     await fetchLastRide();
   }
 

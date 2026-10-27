@@ -4,7 +4,7 @@ wo_id: WO-15.6
 pr_id: PR-15
 title: Portal Bug Fixes from Hardware Verification
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - web/calibration-wizard.js
 - web/recalibration.js
@@ -26,7 +26,25 @@ verification_command: pio test -e native
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 1edc752b40cfa7ec65611c3a50bf00de020a84050be7002953aa157d27e196f7
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_b467ac37e0ac
+  commit_sha: 053511d0cc5522ea95b32132d5830a0c009eb846
+  files_modified:
+  - platformio.ini
+  - src/echenon/EchenonModule.cpp
+  - src/echenon/StravaUploader.cpp
+  - web/calibration-wizard.js
+  - web/echenon-dashboard.js
+  - web/recalibration.js
+  - web/upload_settings.js
+  verification_summary: 'pio test -e native: ================ 199 test cases: 199
+    succeeded in 00:00:00.651 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-15.6: Portal Bug Fixes from Hardware Verification
