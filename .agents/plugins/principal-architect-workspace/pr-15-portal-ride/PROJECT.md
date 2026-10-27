@@ -23,7 +23,7 @@ charter:
   - pio test -e native
   charter_locked: false
   charter_hash: null
-status: CHARTER_DRAFTED
+status: PLANNED
 approved_at: null
 github_pr: 8
 work_orders:
@@ -31,35 +31,35 @@ work_orders:
   slug: wo1-portal-cleanup
   title: Portal Cleanup & Tab Restructure
   complexity: standard
-  status: NOT_STARTED
+  status: PENDING
   attempts: 0
   commit_sha: null
 - id: WO-15.2
   slug: wo2-setup-tab
   title: Setup Tab — Apps & Calibration Pills
   complexity: standard
-  status: NOT_STARTED
+  status: PENDING
   attempts: 0
   commit_sha: null
 - id: WO-15.3
   slug: wo3-ride-page
   title: Ride Page — Standalone /ride
   complexity: standard
-  status: NOT_STARTED
+  status: PENDING
   attempts: 0
   commit_sha: null
 - id: WO-15.4
   slug: wo4-spec-updates
   title: SPEC & Design Doc Updates
   complexity: standard
-  status: NOT_STARTED
+  status: PENDING
   attempts: 0
   commit_sha: null
 - id: WO-15.5
   slug: wo5-hw-verification
   title: Hardware Verification — P12 Split-Screen
   complexity: interactive
-  status: NOT_STARTED
+  status: PENDING
   attempts: 0
   commit_sha: null
 ---
