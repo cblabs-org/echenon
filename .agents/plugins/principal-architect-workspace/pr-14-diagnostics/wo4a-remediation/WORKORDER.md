@@ -1,6 +1,6 @@
 ---
 schema_version: 1
-wo_id: WO-14.4a
+wo_id: WO-14a.4
 pr_id: PR-14
 title: "Remediation — Session Persistence Trigger + Epoch Propagation"
 complexity: standard
