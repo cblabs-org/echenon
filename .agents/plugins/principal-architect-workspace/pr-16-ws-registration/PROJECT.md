@@ -20,7 +20,7 @@ charter:
   verification_floor:
   - pio test -e native --verbose
   charter_locked: true
-  charter_hash: 5d2052c1825931b5eb015d28c89f462c4f84fdf43a56600b87e419ea381f2382
+  charter_hash: f842c883e009be8951be5a0c6e2e7b55e65312654f0cc85260770e468bbb79b2
 status: GRADUATED
 approved_at: '2026-10-27T22:39:52Z'
 github_pr: null
@@ -30,21 +30,21 @@ work_orders:
   title: WebSocket Registration Frame, Keepalive & Fallback Watchdog
   complexity: standard
   status: COMPLETED
-  attempts: 0
+  attempts: 1
   commit_sha: 50357110bf530c0866c20aacfd42e1bb55ad1019
 - id: WO-16.2
   slug: wo2-hw-verification
   title: Hardware Verification — Tag, Build, Flash & Live Test
   complexity: interactive
   status: COMPLETED
-  attempts: 0
+  attempts: 1
   commit_sha: null
 - id: WO-16.3
   slug: wo3-hr-field-fix
   title: Dashboard HR field name mismatch fix
   complexity: mechanical
   status: COMPLETED
-  attempts: 0
+  attempts: 1
   commit_sha: null
 ---
 

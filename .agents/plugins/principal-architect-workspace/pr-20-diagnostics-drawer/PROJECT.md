@@ -20,26 +20,32 @@ charter:
   verification_floor:
   - pio test -e native --verbose
   charter_locked: true
-  charter_hash: f8e905b22ba4317fcd267af6b1d5d81d711680dbefb8fa36c066cfc851b3a3dc
-status: APPROVED
-approved_at: "2026-10-27T23:07:00Z"
+  charter_hash: 6224bfed8b0e455edf6486d3d6bce5660808c404949e02555fd84098a9b968c2
+status: IN_PROGRESS
+approved_at: '2026-10-27T23:07:00Z'
 github_pr: null
 work_orders:
-  - id: WO-20.1
-    slug: wo1-livefeed-payload
-    title: LiveFeed Payload Extension
-    complexity: standard
-    status: COMPLETED
-  - id: WO-20.2
-    slug: wo2-dashboard-drawer
-    title: Dashboard Diagnostics Drawer
-    complexity: standard
-    status: COMPLETED
-  - id: WO-20.3
-    slug: wo3-hw-verification
-    title: Hardware Verification
-    complexity: interactive
-    status: IN_PROGRESS
+- id: WO-20.1
+  slug: wo1-livefeed-payload
+  title: LiveFeed Payload Extension
+  complexity: standard
+  status: COMPLETED
+  attempts: 1
+  commit_sha: null
+- id: WO-20.2
+  slug: wo2-dashboard-drawer
+  title: Dashboard Diagnostics Drawer
+  complexity: standard
+  status: COMPLETED
+  attempts: 1
+  commit_sha: null
+- id: WO-20.3
+  slug: wo3-hw-verification
+  title: Hardware Verification
+  complexity: interactive
+  status: IN_PROGRESS
+  attempts: 0
+  commit_sha: null
 ---
 
 # PR-20 — Echelon Tab Live Diagnostics Drawer
