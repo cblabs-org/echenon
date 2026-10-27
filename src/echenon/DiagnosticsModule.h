@@ -8,8 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <climits>
-
-class ITickable;  // Forward declaration; actual interface in AppFoundation.h
+#include "interfaces/ITickable.hpp"
 
 namespace echenon {
 

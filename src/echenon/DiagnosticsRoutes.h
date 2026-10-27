@@ -88,14 +88,22 @@ inline void decodeFirmwarePayload(const uint8_t payload[3],
 int formatPayloadJson(DiagEventType type, const uint8_t payload[3],
                       char* buf, size_t buf_size);
 
+} // namespace echenon
+
 // =============================================================================
-// DiagnosticsRoutes Class
+// Forward declarations in global namespace (PsychicHttp, AuthManager)
 // =============================================================================
 
 #ifndef UNIT_TEST
 class PsychicHttpServer;
 class AuthManager;
 #endif
+
+// =============================================================================
+// DiagnosticsRoutes Class
+// =============================================================================
+
+namespace echenon {
 
 class DiagnosticsRoutes {
 public:

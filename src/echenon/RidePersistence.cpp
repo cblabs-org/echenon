@@ -9,9 +9,10 @@
 
 #if defined(ESP_PLATFORM)
 #include <esp_log.h>
-// miniz is available on ESP-IDF builds
+// ESP-IDF bundles miniz in esp_rom — only raw tinfl/tdefl APIs are available
+// (MINIZ_NO_ZLIB_APIS and MINIZ_NO_MALLOC are set).
 #include <miniz.h>
-#define RIDE_PERSIST_HAS_MINIZ 1
+#define RIDE_PERSIST_HAS_COMPRESSION 1
 #else
 #include <cstdio>
 // Stub ESP_LOG macros for native test builds (provided by test stubs)
@@ -23,7 +24,7 @@
 #define ESP_LOGI(tag, fmt, ...) printf("I (%s): " fmt "\n", tag, ##__VA_ARGS__)
 #define ESP_LOGD(tag, fmt, ...) printf("D (%s): " fmt "\n", tag, ##__VA_ARGS__)
 #endif
-#define RIDE_PERSIST_HAS_MINIZ 0
+#define RIDE_PERSIST_HAS_COMPRESSION 0
 #endif
 
 namespace {
@@ -217,20 +218,22 @@ bool RidePersistence::loadRide(uint32_t session_id,
 // Compression / Decompression
 // =============================================================================
 
-#if RIDE_PERSIST_HAS_MINIZ
+#if RIDE_PERSIST_HAS_COMPRESSION
 
 bool RidePersistence::compressAndWrite(const char* path, const uint8_t* data, size_t len) {
-    // Use miniz streaming deflation with gzip wrapper.
-    // Compress into an output buffer using mz_compress2 for simplicity,
-    // keeping scratch usage bounded.
-    mz_ulong compBound = mz_compressBound(static_cast<mz_ulong>(len));
-    std::vector<uint8_t> compressed(compBound);
-    mz_ulong compLen = compBound;
+    // Use miniz tdefl raw deflate (no zlib/gzip wrapper).
+    // tdefl_compress_mem_to_mem returns 0 on failure, else compressed size.
+    // Worst case, deflate output ≤ input + overhead; allocate input + 256 bytes.
+    const size_t maxOut = len + 256;
+    std::vector<uint8_t> compressed(maxOut);
 
-    int status = mz_compress2(compressed.data(), &compLen, data,
-                              static_cast<mz_ulong>(len), MZ_DEFAULT_COMPRESSION);
-    if (status != MZ_OK) {
-        ESP_LOGE(TAG, "mz_compress2 failed: %d", status);
+    size_t compLen = tdefl_compress_mem_to_mem(
+        compressed.data(), maxOut,
+        data, len,
+        TDEFL_DEFAULT_MAX_PROBES);  // Default compression level
+
+    if (compLen == 0) {
+        ESP_LOGE(TAG, "tdefl_compress_mem_to_mem failed");
         return false;
     }
     compressed.resize(compLen);
@@ -245,30 +248,26 @@ bool RidePersistence::readAndDecompress(const char* path,
         return false;
     }
 
-    // Estimate decompressed size: start with 4x compressed, grow if needed
-    mz_ulong decompLen = static_cast<mz_ulong>(compressed.size()) * 4u;
+    // Estimate decompressed size: start with 4x compressed, grow if needed.
+    // tinfl_decompress_mem_to_mem returns TINFL_DECOMPRESS_MEM_TO_MEM_FAILED on error.
+    size_t decompLen = compressed.size() * 4u;
     if (decompLen < 256) decompLen = 256;
 
     for (int attempts = 0; attempts < 4; ++attempts) {
         out.resize(decompLen);
-        mz_ulong actualLen = decompLen;
-        int status = mz_uncompress(out.data(), &actualLen,
-                                   compressed.data(),
-                                   static_cast<mz_ulong>(compressed.size()));
-        if (status == MZ_OK) {
-            out.resize(actualLen);
+        size_t result = tinfl_decompress_mem_to_mem(
+            out.data(), decompLen,
+            compressed.data(), compressed.size(), 0);
+
+        if (result != TINFL_DECOMPRESS_MEM_TO_MEM_FAILED) {
+            out.resize(result);
             return true;
         }
-        if (status == MZ_BUF_ERROR) {
-            decompLen *= 2u;
-            continue;
-        }
-        ESP_LOGE(TAG, "mz_uncompress failed: %d", status);
-        out.clear();
-        return false;
+        // Buffer may be too small — double and retry
+        decompLen *= 2u;
     }
 
-    ESP_LOGE(TAG, "Decompression buffer too small after retries");
+    ESP_LOGE(TAG, "Decompression failed after retries");
     out.clear();
     return false;
 }
@@ -288,7 +287,7 @@ bool RidePersistence::readAndDecompress(const char* path,
     return _fs.readFile(path, out) && !out.empty();
 }
 
-#endif // RIDE_PERSIST_HAS_MINIZ
+#endif // RIDE_PERSIST_HAS_COMPRESSION
 
 // =============================================================================
 // Eviction & Scanning
