@@ -38,6 +38,7 @@
 
 #ifdef WITH_SESSION
 #include "echenon/SessionManager.h"
+#include "echenon/IntervalsIcuUploader.h"
 #endif
 
 class PsychicHttpServer;
@@ -158,6 +159,7 @@ public:
 #ifdef WITH_SESSION
     void setSessionManager(echenon::SessionManager* sm) { _sessionManager = sm; }
     echenon::SessionManager* getSessionManager() const { return _sessionManager; }
+    echenon::IntervalsIcuUploader& intervalsUploader() { return _intervalsUploader; }
 #endif
 
 private:
@@ -206,5 +208,6 @@ private:
 
 #ifdef WITH_SESSION
     echenon::SessionManager* _sessionManager = nullptr;
+    echenon::IntervalsIcuUploader _intervalsUploader;
 #endif
 };

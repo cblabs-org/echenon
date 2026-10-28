@@ -2,8 +2,17 @@
 /// @brief Session and upload REST API endpoints, portal tab registration, and IWebContributor wiring.
 
 #include "echenon/SessionOverlay.h"
+#include "echenon/IntervalsIcuUploader.h"
 #include "echenon/LiveFeed.h"
 #include "interfaces/ITabRegistry.hpp"
+
+// Unity-build inclusion: In native test builds, SessionOverlay.cpp is included
+// directly from the test file. IntervalsIcuUploader.cpp is not included by any
+// test file, so we pull it in here to satisfy linker symbols for the Intervals
+// route handlers.
+#ifdef UNIT_TEST
+#include "echenon/IntervalsIcuUploader.cpp"
+#endif
 
 #include <ArduinoJson.h>
 #include <cstdio>
@@ -30,6 +39,10 @@
 #include "include/portal_assets/ride_html.hpp"
 #include "include/portal_assets/ride_js.hpp"
 #include "include/portal_assets/manifest_json.hpp"
+#include "include/portal_assets/stored_rides_js.hpp"
+#if __has_include("include/portal_assets/intervals_settings_js.h")
+#include "include/portal_assets/intervals_settings_js.h"
+#endif
 #endif
 
 namespace echenon {
@@ -460,6 +473,33 @@ SessionOverlay::HttpResponse SessionOverlay::handleGetHistory() const {
                         obj["activity_id"] = job->remote_activity_id;
                     }
                 }
+
+                // Per-sink sync status array for multi-sink reporting
+                JsonArray syncArr = obj["sync"].to<JsonArray>();
+                for (size_t si = 0; si < _uploadQueue->getSinkCount(); ++si) {
+                    IUploader* sink = _uploadQueue->getSink(si);
+                    if (sink == nullptr) continue;
+                    const UploadJob* sinkJob = _uploadQueue->findJob(r.session_id, sink->serviceId());
+                    JsonObject syncObj = syncArr.add<JsonObject>();
+                    syncObj["service_id"] = sink->serviceId();
+                    if (sinkJob != nullptr) {
+                        if (sinkJob->stage == UploadStage::STAGE_COMPLETE) {
+                            syncObj["status"] = "COMPLETE";
+                        } else if (sinkJob->stage == UploadStage::STAGE_FAILED) {
+                            syncObj["status"] = "FAILED";
+                        } else {
+                            syncObj["status"] = "PENDING";
+                        }
+                        syncObj["remote_id"] = sinkJob->remote_activity_id;
+                        syncObj["remote_url"] = "";  // URL construction is sink-specific
+                        syncObj["error"] = sinkJob->last_error;
+                    } else {
+                        syncObj["status"] = "NONE";
+                        syncObj["remote_id"] = "";
+                        syncObj["remote_url"] = "";
+                        syncObj["error"] = "";
+                    }
+                }
             }
             obj["upload_state"] = uploadState;
         }
@@ -536,6 +576,60 @@ SessionOverlay::HttpResponse SessionOverlay::handleUpload(uint32_t session_id, u
 
     doc["ok"]         = true;
     doc["session_id"] = session_id;
+    doc["state"]      = "PENDING";
+    serializeJson(doc, resp.body);
+    return resp;
+}
+
+SessionOverlay::HttpResponse SessionOverlay::handleUpload(uint32_t session_id, const std::string& service_id, uint32_t now_ms) {
+    HttpResponse resp;
+    JsonDocument doc;
+
+    // If no service_id, fall back to all-sinks enqueue
+    if (service_id.empty()) {
+        return handleUpload(session_id, now_ms);
+    }
+
+    const RideStore* rs = resolveRideStore();
+    if (rs == nullptr || session_id == 0 || rs->findStoredRide(session_id) == nullptr) {
+        resp.status_code = 404;
+        doc["ok"] = false;
+        doc["error"] = "Ride session not found";
+        serializeJson(doc, resp.body);
+        return resp;
+    }
+
+    if (_uploadQueue == nullptr) {
+        resp.status_code = 503;
+        doc["ok"] = false;
+        doc["error"] = "Upload queue not available";
+        serializeJson(doc, resp.body);
+        return resp;
+    }
+
+    // Verify the requested sink exists
+    IUploader* sink = _uploadQueue->findSinkById(service_id.c_str());
+    if (sink == nullptr) {
+        resp.status_code = 404;
+        doc["ok"] = false;
+        doc["error"] = "Unknown service_id";
+        serializeJson(doc, resp.body);
+        return resp;
+    }
+
+    // Remove any existing job for this (session_id, service_id) and re-enqueue
+    // For now, enqueue all sinks — the job will be created for any missing sinks
+    if (!_uploadQueue->enqueueSession(session_id, now_ms)) {
+        resp.status_code = 409;
+        doc["ok"] = false;
+        doc["error"] = "Failed to enqueue session for upload";
+        serializeJson(doc, resp.body);
+        return resp;
+    }
+
+    doc["ok"]         = true;
+    doc["session_id"] = session_id;
+    doc["service_id"] = service_id;
     doc["state"]      = "PENDING";
     serializeJson(doc, resp.body);
     return resp;
@@ -735,6 +829,189 @@ SessionOverlay::HttpResponse SessionOverlay::handleStravaDisconnect() {
 }
 
 // =============================================================================
+// Multi-Sink Upload Status Handlers (Native-Testable)
+// =============================================================================
+
+SessionOverlay::HttpResponse SessionOverlay::handleGetUploadSinks() const {
+    HttpResponse resp;
+    JsonDocument doc;
+    JsonArray sinksArr = doc["sinks"].to<JsonArray>();
+
+    if (_uploadQueue != nullptr) {
+        for (size_t i = 0; i < _uploadQueue->getSinkCount(); ++i) {
+            IUploader* sink = _uploadQueue->getSink(i);
+            if (sink == nullptr) continue;
+            JsonObject sObj = sinksArr.add<JsonObject>();
+            sObj["service_id"]    = sink->serviceId();
+            sObj["name"]          = sink->name();
+            sObj["configured"]    = sink->isConfigured();
+            sObj["authenticated"] = sink->isAuthenticated();
+            sObj["enabled"]       = sink->isEnabled();
+        }
+    }
+
+    serializeJson(doc, resp.body);
+    return resp;
+}
+
+SessionOverlay::HttpResponse SessionOverlay::handleGetUploadStatus() const {
+    HttpResponse resp;
+    JsonDocument doc;
+
+    doc["pending_count"] = (_uploadQueue != nullptr) ? static_cast<uint32_t>(_uploadQueue->getPendingCount()) : 0u;
+
+    JsonArray sinksArr = doc["sinks"].to<JsonArray>();
+    if (_uploadQueue != nullptr) {
+        for (size_t i = 0; i < _uploadQueue->getSinkCount(); ++i) {
+            IUploader* sink = _uploadQueue->getSink(i);
+            if (sink == nullptr) continue;
+            JsonObject sObj = sinksArr.add<JsonObject>();
+            sObj["service_id"]    = sink->serviceId();
+            sObj["configured"]    = sink->isConfigured();
+            sObj["authenticated"] = sink->isAuthenticated();
+            sObj["enabled"]       = sink->isEnabled();
+        }
+    }
+
+    // Aggregate last_error: pick the most recent error from any job in the queue
+    std::string lastError;
+    if (_uploadQueue != nullptr) {
+        const auto& jobs = _uploadQueue->getJobs();
+        for (const auto& job : jobs) {
+            if (!job.last_error.empty()) {
+                lastError = job.last_error;
+            }
+        }
+    }
+    doc["last_error"] = lastError;
+
+    serializeJson(doc, resp.body);
+    return resp;
+}
+
+// =============================================================================
+// Intervals.icu Credential Management Handlers (Native-Testable)
+// =============================================================================
+
+SessionOverlay::HttpResponse SessionOverlay::handleGetIntervalsStatus() const {
+    HttpResponse resp;
+    JsonDocument doc;
+
+    bool configured    = (_intervalsUploader != nullptr) && _intervalsUploader->isConfigured();
+    bool authenticated = (_intervalsUploader != nullptr) && _intervalsUploader->isAuthenticated();
+
+    doc["configured"]    = configured;
+    doc["authenticated"] = authenticated;
+    doc["athlete_id"]    = (_intervalsUploader != nullptr) ? _intervalsUploader->getAthleteId() : "";
+    doc["athlete_name"]  = (_intervalsUploader != nullptr) ? _intervalsUploader->getAthleteName() : "";
+    doc["enabled"]       = (_intervalsUploader != nullptr) ? _intervalsUploader->isEnabled() : false;
+
+    serializeJson(doc, resp.body);
+    return resp;
+}
+
+SessionOverlay::HttpResponse SessionOverlay::handleSaveIntervalsCredentials(const std::string& json_body) {
+    HttpResponse resp;
+    JsonDocument inDoc;
+    DeserializationError err = deserializeJson(inDoc, json_body);
+    if (err || !inDoc.is<JsonObject>()) {
+        resp.status_code = 400;
+        JsonDocument errDoc;
+        errDoc["ok"] = false;
+        errDoc["error"] = "Invalid JSON body";
+        serializeJson(errDoc, resp.body);
+        return resp;
+    }
+
+    std::string athleteId = inDoc["athlete_id"] | "";
+    std::string apiKey    = inDoc["api_key"] | "";
+
+    if (athleteId.empty() || apiKey.empty()) {
+        resp.status_code = 400;
+        JsonDocument errDoc;
+        errDoc["ok"] = false;
+        errDoc["error"] = "athlete_id and api_key are required";
+        serializeJson(errDoc, resp.body);
+        return resp;
+    }
+
+    if (_intervalsUploader == nullptr) {
+        resp.status_code = 500;
+        JsonDocument errDoc;
+        errDoc["ok"] = false;
+        errDoc["error"] = "IntervalsIcuUploader not initialized";
+        serializeJson(errDoc, resp.body);
+        return resp;
+    }
+
+    if (!_intervalsUploader->setApiCredentials(apiKey, athleteId)) {
+        resp.status_code = 500;
+        JsonDocument errDoc;
+        errDoc["ok"] = false;
+        errDoc["error"] = "Failed to store Intervals.icu credentials";
+        serializeJson(errDoc, resp.body);
+        return resp;
+    }
+
+#ifndef UNIT_TEST
+    if (_configManager != nullptr) {
+        _configManager->saveModuleConfig(_intervalsUploader);
+    }
+#endif
+
+    JsonDocument outDoc;
+    outDoc["ok"]         = true;
+    outDoc["configured"] = _intervalsUploader->isConfigured();
+    outDoc["athlete_id"] = _intervalsUploader->getAthleteId();
+    serializeJson(outDoc, resp.body);
+    return resp;
+}
+
+SessionOverlay::HttpResponse SessionOverlay::handleTestIntervalsConnection() const {
+    HttpResponse resp;
+    JsonDocument doc;
+
+    if (_intervalsUploader == nullptr) {
+        resp.status_code = 500;
+        doc["ok"] = false;
+        doc["error"] = "IntervalsIcuUploader not initialized";
+        serializeJson(doc, resp.body);
+        return resp;
+    }
+
+    bool success = _intervalsUploader->testConnection();
+    doc["ok"]      = success;
+    doc["message"] = success ? "Connection test passed" : "Connection test failed";
+    serializeJson(doc, resp.body);
+    return resp;
+}
+
+SessionOverlay::HttpResponse SessionOverlay::handleIntervalsDisconnect() {
+    HttpResponse resp;
+    JsonDocument doc;
+
+    if (_intervalsUploader == nullptr) {
+        resp.status_code = 500;
+        doc["ok"] = false;
+        doc["error"] = "IntervalsIcuUploader not initialized";
+        serializeJson(doc, resp.body);
+        return resp;
+    }
+
+    _intervalsUploader->disconnect();
+
+#ifndef UNIT_TEST
+    if (_configManager != nullptr) {
+        _configManager->saveModuleConfig(_intervalsUploader);
+    }
+#endif
+
+    doc["ok"] = true;
+    serializeJson(doc, resp.body);
+    return resp;
+}
+
+// =============================================================================
 // IWebContributor — Tab & Route Registration
 // =============================================================================
 
@@ -777,6 +1054,15 @@ void SessionOverlay::registerRoutes(PsychicHttpServer& server) {
     });
     server.on("/manifest.json", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
         return serveGzipAsset(request, response, manifest_json_gz, manifest_json_gz_len, manifest_json_gz_etag, "application/manifest+json");
+    });
+
+    // Serve Stored Rides pill JavaScript
+    server.on("/stored_rides.js", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
+        return serveGzipAsset(request, response,
+                              stored_rides_js_gz,
+                              stored_rides_js_gz_len,
+                              stored_rides_js_gz_etag,
+                              "application/javascript");
     });
 
     auto checkAuth = [this](PsychicRequest* request, PsychicResponse* response) -> bool {
@@ -907,6 +1193,20 @@ void SessionOverlay::registerRoutes(PsychicHttpServer& server) {
     server.on("/api/session/upload", HTTP_POST, [this, checkAuth, sendResp, extractSessionId](PsychicRequest* request, PsychicResponse* response) {
         if (!checkAuth(request, response)) return ESP_OK;
         uint32_t sid = extractSessionId(request);
+        // Extract optional service_id for single-sink retry
+        std::string serviceId;
+        const char* body = request->bodyCStr();
+        if (body != nullptr && body[0] != '\0') {
+            JsonDocument bdoc;
+            if (!deserializeJson(bdoc, body) && bdoc.is<JsonObject>()) {
+                if (bdoc["service_id"].is<const char*>()) {
+                    serviceId = bdoc["service_id"].as<std::string>();
+                }
+            }
+        }
+        if (!serviceId.empty()) {
+            return sendResp(response, handleUpload(sid, serviceId, millis()));
+        }
         return sendResp(response, handleUpload(sid, millis()));
     });
 
@@ -972,6 +1272,54 @@ void SessionOverlay::registerRoutes(PsychicHttpServer& server) {
         if (!checkAuth(request, response)) return ESP_OK;
         return sendResp(response, handleStravaDisconnect());
     });
+
+    // --- Multi-Sink Upload Status Routes ---
+
+    server.on("/api/upload/sinks", HTTP_GET, [this, checkAuth, sendResp](PsychicRequest* request, PsychicResponse* response) {
+        if (!checkAuth(request, response)) return ESP_OK;
+        return sendResp(response, handleGetUploadSinks());
+    });
+
+    server.on("/api/upload/status", HTTP_GET, [this, checkAuth, sendResp](PsychicRequest* request, PsychicResponse* response) {
+        if (!checkAuth(request, response)) return ESP_OK;
+        return sendResp(response, handleGetUploadStatus());
+    });
+
+    // --- Intervals.icu Credential Routes ---
+
+    server.on("/api/intervals/status", HTTP_GET, [this, checkAuth, sendResp](PsychicRequest* request, PsychicResponse* response) {
+        if (!checkAuth(request, response)) return ESP_OK;
+        return sendResp(response, handleGetIntervalsStatus());
+    });
+
+    server.on("/api/intervals/credentials", HTTP_POST, [this, checkAuth, sendResp](PsychicRequest* request, PsychicResponse* response) {
+        if (!checkAuth(request, response)) return ESP_OK;
+        const char* body = request->bodyCStr();
+        return sendResp(response, handleSaveIntervalsCredentials(body ? body : ""));
+    });
+
+    server.on("/api/intervals/test", HTTP_POST, [this, checkAuth, sendResp](PsychicRequest* request, PsychicResponse* response) {
+        if (!checkAuth(request, response)) return ESP_OK;
+        return sendResp(response, handleTestIntervalsConnection());
+    });
+
+    server.on("/api/intervals/disconnect", HTTP_POST, [this, checkAuth, sendResp](PsychicRequest* request, PsychicResponse* response) {
+        if (!checkAuth(request, response)) return ESP_OK;
+        return sendResp(response, handleIntervalsDisconnect());
+    });
+
+    // --- Intervals.icu Settings JS Asset (PROGMEM, WO-19.5 creates the asset) ---
+#if __has_include("include/portal_assets/intervals_settings_js.h")
+    server.on("/intervals_settings.js", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
+        return serveGzipAsset(request,
+                              response,
+                              intervals_settings_js_gz,
+                              intervals_settings_js_gz_len,
+                              intervals_settings_js_gz_etag,
+                              "application/javascript");
+    });
+#endif
+
 #endif // UNIT_TEST
 }
 

@@ -20,7 +20,7 @@ charter:
   verification_floor:
   - pio test -e native --verbose
   charter_locked: true
-  charter_hash: 6224bfed8b0e455edf6486d3d6bce5660808c404949e02555fd84098a9b968c2
+  charter_hash: 2cfe9f44515bf9eb1e2b67fd876235190df70286542d4480b13371ae102c8892
 status: IN_PROGRESS
 approved_at: '2026-10-27T23:07:00Z'
 github_pr: null
@@ -31,14 +31,14 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: null
+  commit_sha: fc2fd861c2c5fd18aa52f4e32c3952cf2500a9b8
 - id: WO-20.2
   slug: wo2-dashboard-drawer
   title: Dashboard Diagnostics Drawer
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: null
+  commit_sha: 38d7a227628d0ac5e58aee16ceb3f0f5c857b561
 - id: WO-20.3
   slug: wo3-hw-verification
   title: Hardware Verification

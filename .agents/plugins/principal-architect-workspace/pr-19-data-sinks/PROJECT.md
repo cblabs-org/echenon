@@ -12,6 +12,7 @@ charter:
   - PR-06
   allowed_modules:
   - src/echenon/
+  - src/main.cpp
   - web/
   - test/
   - docs/
@@ -21,11 +22,81 @@ charter:
   verification_floor:
   - pio test -e native --verbose
   charter_locked: true
-  charter_hash: beff024fe51a320d151d6c21427ad72f9afa3f5d89bb9f2b08b5ea8ef4d3d752
-status: PLANNED
-approved_at: null
-github_pr: 12
-work_orders: []
+  charter_hash: 53b172290b1e083d9c229f456eb68bbf34fe552befc3505ed2539edda2aedb36
+status: GRADUATED
+approved_at: '2026-10-28T18:21:42.991677Z'
+github_pr: 17
+work_orders:
+- id: WO-19.1
+  slug: wo1-multi-sink-engine
+  title: Multi-Sink UploadQueue Engine
+  complexity: standard
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 488469a61d17d4ed709d59fbe2ecc1287d10a6a5
+- id: WO-19.2
+  slug: wo2-intervals-icu-sink
+  title: Intervals.icu API-Key Sink
+  complexity: standard
+  status: COMPLETED
+  attempts: 1
+  commit_sha: c28c5f9f0301337cb43a490e945ebc168a99eb77
+- id: WO-19.3
+  slug: wo3-rest-api-extensions
+  title: REST API Extensions
+  complexity: standard
+  status: COMPLETED
+  attempts: 1
+  commit_sha: fcd437d373fb11a503afa64530ff5f359241e06f
+- id: WO-19.4
+  slug: wo4-stored-rides-pill
+  title: Stored Rides Portal Pill
+  complexity: standard
+  status: COMPLETED
+  attempts: 1
+  commit_sha: a4a065913f8667de01d264546e7193bb954b8c5e
+- id: WO-19.5
+  slug: wo5-strava-pill-refactor
+  title: Strava Pill Refactor & Connected Apps Polish
+  complexity: standard
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 2f64605a748818444d8fa521ea0bbe014d8192e5
+- id: WO-19.9
+  slug: wo9-main-cpp-wiring
+  title: IntervalsIcuUploader main.cpp Wiring
+  complexity: mechanical
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 6ccc63811fcb08a762b4b34c62794301f3209a87
+- id: WO-19.6
+  slug: wo6-native-tests
+  title: Native Unit Tests
+  complexity: standard
+  status: COMPLETED
+  attempts: 1
+  commit_sha: ff8982ec0eb68444ec70158b0ac428720e0104a1
+- id: WO-19.7
+  slug: wo7-spec-doc-sync
+  title: SPEC & Doc Sync
+  complexity: mechanical
+  status: COMPLETED
+  attempts: 1
+  commit_sha: d869a2b2d6d06b7b25b7fc701d942a49c4d87319
+- id: WO-19.8
+  slug: wo8-hardware-verification
+  title: Hardware Verification & Soak
+  complexity: interactive
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 6525cc62bf10bcbe9326fa56c01c8093dbeae5ac
+- id: WO-19.10
+  slug: wo10-build-fixes
+  title: Firmware Build Fixes
+  complexity: mechanical
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 41978fba3551cb8b4ae697c76857a5202c5c9252
 ---
 
 # PR-19 — Pluggable Data Sinks & Ride History Management
@@ -288,6 +359,11 @@ a modular per-sink pill pattern. Register Strava and Intervals.icu pills
 under the **Apps** tab via `ITabRegistry::addTab()`. Ensure consistent
 card layout, status badges, and auto-sync toggle across all sink pills.
 
+### WO-19.9 — IntervalsIcuUploader main.cpp Wiring
+Add DI wiring in `src/main.cpp` `setup()` to connect `IntervalsIcuUploader`
+to `KeyManager`, `Redactor`, `UploadQueue`, and `SessionOverlay`. Six lines
+inside the existing `#ifdef WITH_SESSION` block.
+
 ### WO-19.6 — Native Unit Tests
 Native test suite covering:
 - Multi-sink `UploadQueue` dispatch (fan-out, sequential execution, shared
@@ -312,6 +388,15 @@ Bench test ride with concurrent dual-sink sync (Strava + Intervals.icu):
 - Verify Stored Rides pill shows per-sink sync badges with direct links.
 - Verify force-push/retry from Stored Rides pill.
 - Verify Strava and Intervals.icu pills display correct connection state.
+
+### WO-19.10 — Firmware Build Fixes
+Fix two compilation errors in the hardware target (`ex3-waveshare-nano`):
+1. `src/main.cpp`: Add `setKeyManager(KeyManager*)` to `IntervalsIcuUploader`
+   (following `StravaUploader`'s `KeyManagerSecretStore` adapter pattern) and
+   update main.cpp wiring to call `setKeyManager()` instead of `setSecretStore()`.
+2. `src/echenon/SessionOverlay.cpp`: Fix PROGMEM asset lambda capture for
+   `intervals_settings_js.h` — move `#include` before the lambda or add
+   explicit captures.
 
 ---
 
@@ -360,6 +445,26 @@ Bench test ride with concurrent dual-sink sync (Strava + Intervals.icu):
 
 ---
 
+<!-- pa:graduation-summary start -->
+### Graduation Summary (`PR-19` / `pr-19-data-sinks` — `GRADUATED`)
+
+- **Completed Date:** 2026-10-28
+- **Graduation Mode:** `external`
+- **Latest Audit:** Round 1 — `APPROVED` (`16c0c7aa429c`)
+
+| WO-ID | Status | Attempts | Commit SHA |
+|---|---|---|---|
+| WO-19.1 | COMPLETED | 1 | `488469a61d17` |
+| WO-19.2 | COMPLETED | 1 | `c28c5f9f0301` |
+| WO-19.3 | COMPLETED | 1 | `fcd437d373fb` |
+| WO-19.4 | COMPLETED | 1 | `a4a065913f86` |
+| WO-19.5 | COMPLETED | 1 | `2f64605a7488` |
+| WO-19.9 | COMPLETED | 1 | `6ccc63811fcb` |
+| WO-19.6 | COMPLETED | 1 | `ff8982ec0eb6` |
+| WO-19.7 | COMPLETED | 1 | `d869a2b2d6d0` |
+| WO-19.8 | COMPLETED | 1 | `6525cc62bf10` |
+| WO-19.10 | COMPLETED | 1 | `41978fba3551` |
+<!-- pa:graduation-summary end -->
 ## 5. Portal Tab Structure (Post PR-19)
 
 ```

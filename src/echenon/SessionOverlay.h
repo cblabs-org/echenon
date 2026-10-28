@@ -17,6 +17,8 @@ class ConfigManager;
 class PsychicRequest;
 class PsychicResponse;
 
+namespace echenon { class IntervalsIcuUploader; }
+
 namespace echenon {
 
 /**
@@ -79,6 +81,7 @@ public:
     void setStravaUploader(StravaUploader* su) { _stravaUploader = su; }
     void setAuthManager(AuthManager* am) { _authManager = am; }
     void setConfigManager(ConfigManager* cm) { _configManager = cm; }
+    void setIntervalsUploader(IntervalsIcuUploader* iu) { _intervalsUploader = iu; }
 
     // IWebContributor
     void registerRoutes(PsychicHttpServer& server) override;
@@ -98,6 +101,7 @@ public:
     HttpResponse handleGetHistory() const;
     HttpResponse handleDownload(uint32_t session_id, bool gzip = false) const;
     HttpResponse handleUpload(uint32_t session_id, uint32_t now_ms = 0);
+    HttpResponse handleUpload(uint32_t session_id, const std::string& service_id, uint32_t now_ms = 0);
 
     HttpResponse handleGetStravaStatus(uint32_t now_epoch_s = 0) const;
     HttpResponse handleSaveStravaCredentials(const std::string& json_body);
@@ -106,6 +110,16 @@ public:
                                       const std::string& state,
                                       uint32_t now_ms = 0);
     HttpResponse handleStravaDisconnect();
+
+    // Multi-sink upload status endpoints
+    HttpResponse handleGetUploadSinks() const;
+    HttpResponse handleGetUploadStatus() const;
+
+    // Intervals.icu credential management endpoints
+    HttpResponse handleGetIntervalsStatus() const;
+    HttpResponse handleSaveIntervalsCredentials(const std::string& json_body);
+    HttpResponse handleTestIntervalsConnection() const;
+    HttpResponse handleIntervalsDisconnect();
 
     /**
      * Format the 14-field /ws/echenon/live JSON telemetry frame including
@@ -141,6 +155,7 @@ private:
     RideStore*      _rideStore      = nullptr;
     UploadQueue*    _uploadQueue    = nullptr;
     StravaUploader* _stravaUploader = nullptr;
+    IntervalsIcuUploader* _intervalsUploader = nullptr;
     AuthManager*    _authManager    = nullptr;
     ConfigManager*  _configManager  = nullptr;
 };

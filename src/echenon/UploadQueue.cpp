@@ -1,5 +1,6 @@
 /// @file UploadQueue.cpp
-/// @brief Split-stage background upload queue state machine and LittleFS job persistence.
+/// @brief Split-stage background upload state machine and LittleFS job persistence.
+///        Multi-sink architecture with sequential execution and shared .tcx.gz lifecycle.
 
 #include "echenon/UploadQueue.h"
 
@@ -136,16 +137,73 @@ bool uploadStageFromString(const char* str, UploadStage& out_stage) {
 // =============================================================================
 
 UploadQueue::UploadQueue(IUploader* uploader, RideStore* rideStore, EventBus* eventBus)
-    : _uploader(uploader)
-    , _rideStore(rideStore)
+    : _rideStore(rideStore)
     , _eventBus(eventBus)
-    , _fs(rideStore ? &rideStore->fileSystem() : nullptr) {}
+    , _fs(rideStore ? &rideStore->fileSystem() : nullptr) {
+    if (uploader) {
+        registerSink(uploader);
+    }
+}
 
 UploadQueue::UploadQueue(RideStore& rideStore, IUploader* uploader, EventBus* eventBus)
-    : _uploader(uploader)
-    , _rideStore(&rideStore)
+    : _rideStore(&rideStore)
     , _eventBus(eventBus)
-    , _fs(&rideStore.fileSystem()) {}
+    , _fs(&rideStore.fileSystem()) {
+    if (uploader) {
+        registerSink(uploader);
+    }
+}
+
+// =============================================================================
+// Multi-Sink Registry
+// =============================================================================
+
+bool UploadQueue::registerSink(IUploader* sink) {
+    if (!sink || _sinkCount >= MAX_SINKS) {
+        return false;
+    }
+    // Prevent duplicate registration by checking serviceId
+    for (size_t i = 0; i < _sinkCount; ++i) {
+        if (_sinks[i] && std::strcmp(_sinks[i]->serviceId(), sink->serviceId()) == 0) {
+            _sinks[i] = sink; // Replace existing registration
+            return true;
+        }
+    }
+    _sinks[_sinkCount++] = sink;
+    return true;
+}
+
+IUploader* UploadQueue::getSink(size_t index) const {
+    return (index < _sinkCount) ? _sinks[index] : nullptr;
+}
+
+IUploader* UploadQueue::findSinkById(const char* service_id) const {
+    if (!service_id) return nullptr;
+    for (size_t i = 0; i < _sinkCount; ++i) {
+        if (_sinks[i] && std::strcmp(_sinks[i]->serviceId(), service_id) == 0) {
+            return _sinks[i];
+        }
+    }
+    return nullptr;
+}
+
+void UploadQueue::setUploader(IUploader* uploader) {
+    if (uploader) {
+        registerSink(uploader);
+    }
+}
+
+IUploader* UploadQueue::sinkForJob(const UploadJob& job) const {
+    if (!job.service_id.empty()) {
+        return findSinkById(job.service_id.c_str());
+    }
+    // Fallback for legacy jobs without service_id: use first sink
+    return (_sinkCount > 0) ? _sinks[0] : nullptr;
+}
+
+// =============================================================================
+// Lifecycle Helpers
+// =============================================================================
 
 void UploadQueue::setRideStore(RideStore* rideStore) {
     _rideStore = rideStore;
@@ -215,6 +273,42 @@ uint32_t UploadQueue::computeBackoffMs(uint8_t attempt_count) {
 }
 
 // =============================================================================
+// Multi-Sink Job Helpers
+// =============================================================================
+
+const UploadJob* UploadQueue::findJob(uint32_t session_id, const std::string& service_id) const {
+    for (const auto& j : _jobs) {
+        if (j.session_id == session_id && j.service_id == service_id) {
+            return &j;
+        }
+    }
+    return nullptr;
+}
+
+UploadJob* UploadQueue::findJobMutable(uint32_t session_id, const std::string& service_id) {
+    for (auto& j : _jobs) {
+        if (j.session_id == session_id && j.service_id == service_id) {
+            return &j;
+        }
+    }
+    return nullptr;
+}
+
+bool UploadQueue::allSinkJobsTerminal(uint32_t session_id) const {
+    bool found = false;
+    for (const auto& j : _jobs) {
+        if (j.session_id == session_id) {
+            found = true;
+            if (j.stage != UploadStage::STAGE_COMPLETE &&
+                j.stage != UploadStage::STAGE_FAILED) {
+                return false;
+            }
+        }
+    }
+    return found; // true if all terminal (or false if no jobs found)
+}
+
+// =============================================================================
 // Queue Management (Enqueue / Discard / Accessors)
 // =============================================================================
 
@@ -223,50 +317,117 @@ bool UploadQueue::enqueueSession(uint32_t session_id, uint32_t now_ms) {
         return false;
     }
 
-    // Check if session_id is already present in the queue
-    for (auto& existing : _jobs) {
-        if (existing.session_id == session_id) {
-            if (existing.stage == UploadStage::STAGE_COMPLETE ||
-                existing.stage == UploadStage::STAGE_FAILED) {
-                existing.stage              = UploadStage::STAGE_GENERATE_TCX_GZ;
-                existing.attempt_count      = 0;
-                existing.next_attempt_ms    = now_ms;
-                existing.remote_upload_id.clear();
-                existing.remote_activity_id.clear();
-                existing.last_error.clear();
-                saveQueue();
-            }
-            return true;
-        }
-    }
+    // If no sinks are registered, fall back to legacy behavior:
+    // enqueue a single job with "strava" service_id for backward compatibility.
+    const bool hasSinks = (_sinkCount > 0);
 
-    // Enforce MAX_QUEUE_ENTRIES (5): evict oldest completed or failed job first
-    if (_jobs.size() >= MAX_QUEUE_ENTRIES) {
-        auto completeIt = std::find_if(_jobs.begin(), _jobs.end(),
-            [](const UploadJob& j) { return j.stage == UploadStage::STAGE_COMPLETE; });
-        if (completeIt != _jobs.end()) {
-            _jobs.erase(completeIt);
-        } else {
-            auto failedIt = std::find_if(_jobs.begin(), _jobs.end(),
-                [](const UploadJob& j) { return j.stage == UploadStage::STAGE_FAILED; });
-            if (failedIt != _jobs.end()) {
-                _jobs.erase(failedIt);
+    bool any_enqueued = false;
+
+    if (hasSinks) {
+        // Multi-sink fan-out: create a job for each configured and enabled sink
+        for (size_t i = 0; i < _sinkCount; ++i) {
+            IUploader* sink = _sinks[i];
+            if (!sink || !sink->isConfigured() || !sink->isEnabled()) {
+                continue;
+            }
+
+            const std::string sid = sink->serviceId();
+
+            // Check if (session_id, service_id) composite key already exists
+            UploadJob* existing = findJobMutable(session_id, sid);
+            if (existing) {
+                if (existing->stage == UploadStage::STAGE_COMPLETE ||
+                    existing->stage == UploadStage::STAGE_FAILED) {
+                    existing->stage              = UploadStage::STAGE_GENERATE_TCX_GZ;
+                    existing->attempt_count      = 0;
+                    existing->next_attempt_ms    = now_ms;
+                    existing->remote_upload_id.clear();
+                    existing->remote_activity_id.clear();
+                    existing->last_error.clear();
+                }
+                any_enqueued = true;
+                continue;
+            }
+
+            // Enforce MAX_QUEUE_ENTRIES: evict oldest completed or failed job first
+            if (_jobs.size() >= MAX_QUEUE_ENTRIES) {
+                auto completeIt = std::find_if(_jobs.begin(), _jobs.end(),
+                    [](const UploadJob& j) { return j.stage == UploadStage::STAGE_COMPLETE; });
+                if (completeIt != _jobs.end()) {
+                    _jobs.erase(completeIt);
+                } else {
+                    auto failedIt = std::find_if(_jobs.begin(), _jobs.end(),
+                        [](const UploadJob& j) { return j.stage == UploadStage::STAGE_FAILED; });
+                    if (failedIt != _jobs.end()) {
+                        _jobs.erase(failedIt);
+                    } else {
+                        // Queue is full of active jobs; skip this sink
+                        continue;
+                    }
+                }
+            }
+
+            UploadJob job{};
+            job.session_id      = session_id;
+            job.service_id      = sid;
+            job.stage           = UploadStage::STAGE_GENERATE_TCX_GZ;
+            job.attempt_count   = 0;
+            job.next_attempt_ms = now_ms;
+            _jobs.push_back(job);
+            any_enqueued = true;
+        }
+    } else {
+        // Legacy no-sink mode: single job with "strava" default service_id
+        const std::string default_sid = "strava";
+
+        // Check if session_id already present (legacy: match by session_id only)
+        for (auto& existing : _jobs) {
+            if (existing.session_id == session_id) {
+                if (existing.stage == UploadStage::STAGE_COMPLETE ||
+                    existing.stage == UploadStage::STAGE_FAILED) {
+                    existing.stage              = UploadStage::STAGE_GENERATE_TCX_GZ;
+                    existing.attempt_count      = 0;
+                    existing.next_attempt_ms    = now_ms;
+                    existing.remote_upload_id.clear();
+                    existing.remote_activity_id.clear();
+                    existing.last_error.clear();
+                    saveQueue();
+                }
+                return true;
+            }
+        }
+
+        // Enforce MAX_QUEUE_ENTRIES
+        if (_jobs.size() >= MAX_QUEUE_ENTRIES) {
+            auto completeIt = std::find_if(_jobs.begin(), _jobs.end(),
+                [](const UploadJob& j) { return j.stage == UploadStage::STAGE_COMPLETE; });
+            if (completeIt != _jobs.end()) {
+                _jobs.erase(completeIt);
             } else {
-                // Queue is full of 5 active jobs
-                return false;
+                auto failedIt = std::find_if(_jobs.begin(), _jobs.end(),
+                    [](const UploadJob& j) { return j.stage == UploadStage::STAGE_FAILED; });
+                if (failedIt != _jobs.end()) {
+                    _jobs.erase(failedIt);
+                } else {
+                    return false; // Queue full of active jobs
+                }
             }
         }
+
+        UploadJob job{};
+        job.session_id      = session_id;
+        job.service_id      = default_sid;
+        job.stage           = UploadStage::STAGE_GENERATE_TCX_GZ;
+        job.attempt_count   = 0;
+        job.next_attempt_ms = now_ms;
+        _jobs.push_back(job);
+        any_enqueued = true;
     }
 
-    UploadJob job{};
-    job.session_id      = session_id;
-    job.stage           = UploadStage::STAGE_GENERATE_TCX_GZ;
-    job.attempt_count   = 0;
-    job.next_attempt_ms = now_ms;
-    _jobs.push_back(job);
-
-    saveQueue();
-    return true;
+    if (any_enqueued) {
+        saveQueue();
+    }
+    return any_enqueued;
 }
 
 bool UploadQueue::discardSession(uint32_t session_id) {
@@ -353,12 +514,16 @@ UpdateStatus UploadQueue::stepQueue(
     uint32_t remaining_budget_ms,
     uint32_t now_ms,
     const DeadlineCheckFn& check_deadline) {
-    if (!_autoUploadEnabled || !_uploader || !_uploader->isConfigured()) {
+
+    if (!_autoUploadEnabled) {
         return UpdateStatus::Skipped;
     }
-    if (!_uploader->isAuthenticated()) {
-        return UpdateStatus::AuthError;
+
+    // Multi-sink: need at least one registered sink to proceed
+    if (_sinkCount == 0) {
+        return UpdateStatus::Skipped;
     }
+
     if (remaining_budget_ms == 0 || (check_deadline && !check_deadline())) {
         return UpdateStatus::Skipped;
     }
@@ -376,46 +541,72 @@ UpdateStatus UploadQueue::stepQueue(
         return UpdateStatus::Skipped;
     }
 
+    // Look up the sink for this job
+    IUploader* sink = sinkForJob(*readyJob);
+    if (!sink) {
+        // No matching sink registered for this job's service_id — skip
+        return UpdateStatus::Skipped;
+    }
+
+    // Check sink preconditions
+    if (!sink->isConfigured()) {
+        return UpdateStatus::Skipped;
+    }
+    if (!sink->isAuthenticated()) {
+        return UpdateStatus::AuthError;
+    }
+
     switch (readyJob->stage) {
         case UploadStage::STAGE_GENERATE_TCX_GZ: {
             // Stage 1: Generate /rides/ride_<id>.tcx.gz (No network I/O, no BLE ScanInhibit)
+            // Skip generation if .tcx.gz already exists (shared across sink jobs)
             const std::string tcx_path = getTcxGzPath(readyJob->session_id);
-            bool generated = false;
+            bool file_already_exists = fileExistsEverywhere(tcx_path);
 
-            if (_tcxGeneratorFn) {
-                generated = _tcxGeneratorFn(readyJob->session_id, tcx_path, check_deadline);
-            } else if (_rideStore) {
-                const std::string store_tcx_path = RideStore::getRideTcxGzPath(readyJob->session_id);
-                generated = TCXGenerator::generateTcxGzToFile(
-                    *_rideStore, readyJob->session_id, store_tcx_path, check_deadline);
-                if (generated && tcx_path != store_tcx_path) {
-                    std::vector<uint8_t> gz_bytes;
-                    if (_rideStore->fileSystem().readFile(store_tcx_path.c_str(), gz_bytes)) {
-                        _rideStore->fileSystem().writeFile(
-                            tcx_path.c_str(),
-                            gz_bytes.empty() ? nullptr : gz_bytes.data(),
-                            gz_bytes.size());
+            if (!file_already_exists) {
+                // Check canonical path too
+                const std::string canonical_tcx = RideStore::getRideTcxGzPath(readyJob->session_id);
+                file_already_exists = (canonical_tcx != tcx_path && fileExistsEverywhere(canonical_tcx));
+            }
+
+            bool generated = file_already_exists;
+
+            if (!generated) {
+                if (_tcxGeneratorFn) {
+                    generated = _tcxGeneratorFn(readyJob->session_id, tcx_path, check_deadline);
+                } else if (_rideStore) {
+                    const std::string store_tcx_path = RideStore::getRideTcxGzPath(readyJob->session_id);
+                    generated = TCXGenerator::generateTcxGzToFile(
+                        *_rideStore, readyJob->session_id, store_tcx_path, check_deadline);
+                    if (generated && tcx_path != store_tcx_path) {
+                        std::vector<uint8_t> gz_bytes;
+                        if (_rideStore->fileSystem().readFile(store_tcx_path.c_str(), gz_bytes)) {
+                            _rideStore->fileSystem().writeFile(
+                                tcx_path.c_str(),
+                                gz_bytes.empty() ? nullptr : gz_bytes.data(),
+                                gz_bytes.size());
 #if !defined(ESP_PLATFORM)
-                        writePosixFile(
-                            tcx_path,
-                            gz_bytes.empty() ? nullptr : gz_bytes.data(),
-                            gz_bytes.size());
+                            writePosixFile(
+                                tcx_path,
+                                gz_bytes.empty() ? nullptr : gz_bytes.data(),
+                                gz_bytes.size());
+#endif
+                        }
+                    } else if (generated) {
+#if !defined(ESP_PLATFORM)
+                        std::vector<uint8_t> gz_bytes;
+                        if (_rideStore->fileSystem().readFile(store_tcx_path.c_str(), gz_bytes)) {
+                            writePosixFile(
+                                tcx_path,
+                                gz_bytes.empty() ? nullptr : gz_bytes.data(),
+                                gz_bytes.size());
+                        }
 #endif
                     }
-                } else if (generated) {
-#if !defined(ESP_PLATFORM)
-                    std::vector<uint8_t> gz_bytes;
-                    if (_rideStore->fileSystem().readFile(store_tcx_path.c_str(), gz_bytes)) {
-                        writePosixFile(
-                            tcx_path,
-                            gz_bytes.empty() ? nullptr : gz_bytes.data(),
-                            gz_bytes.size());
-                    }
-#endif
+                } else {
+                    // Standalone mode without RideStore: allow progression if file exists or mock mode
+                    generated = true;
                 }
-            } else {
-                // Standalone mode without RideStore: allow progression if file exists or mock mode
-                generated = true;
             }
 
             if (!generated) {
@@ -429,7 +620,7 @@ UpdateStatus UploadQueue::stepQueue(
             }
 
             const uint32_t now_epoch_s = currentEpochS();
-            if (_uploader->needsTokenRefresh(now_epoch_s)) {
+            if (sink->needsTokenRefresh(now_epoch_s)) {
                 readyJob->stage = UploadStage::STAGE_REFRESH_TOKEN;
             } else {
                 readyJob->stage = UploadStage::STAGE_POST_UPLOAD;
@@ -445,13 +636,13 @@ UpdateStatus UploadQueue::stepQueue(
             // Stage 2: Refresh OAuth token (Network/TLS -> acquire BLE ScanInhibit)
 #ifdef WITH_BLE
             auto scan_inhibit = _bleManager
-                ? _bleManager->inhibitScanning("strava_upload")
+                ? _bleManager->inhibitScanning("upload_queue")
                 : BLEManager::ScanInhibit{};
 #endif
             const uint32_t stage_timeout_ms =
                 std::min<uint32_t>(remaining_budget_ms, REFRESH_STAGE_BUDGET_MS);
             std::string err_msg;
-            const UploadStageResult res = _uploader->refreshToken(stage_timeout_ms, err_msg);
+            const UploadStageResult res = sink->refreshToken(stage_timeout_ms, err_msg);
 
             if (res == UploadStageResult::SUCCESS) {
                 readyJob->stage           = UploadStage::STAGE_POST_UPLOAD;
@@ -478,7 +669,7 @@ UpdateStatus UploadQueue::stepQueue(
             // Stage 3: POST multipart .tcx.gz (Network/TLS -> acquire BLE ScanInhibit)
 #ifdef WITH_BLE
             auto scan_inhibit = _bleManager
-                ? _bleManager->inhibitScanning("strava_upload")
+                ? _bleManager->inhibitScanning("upload_queue")
                 : BLEManager::ScanInhibit{};
 #endif
             const uint32_t stage_timeout_ms =
@@ -487,7 +678,7 @@ UpdateStatus UploadQueue::stepQueue(
             std::string upload_id;
             std::string err_msg;
 
-            const UploadStageResult res = _uploader->postUpload(
+            const UploadStageResult res = sink->postUpload(
                 readyJob->session_id,
                 tcx_path,
                 stage_timeout_ms,
@@ -518,7 +709,7 @@ UpdateStatus UploadQueue::stepQueue(
             // Stage 4: Poll remote processing status (Network/TLS -> acquire BLE ScanInhibit)
 #ifdef WITH_BLE
             auto scan_inhibit = _bleManager
-                ? _bleManager->inhibitScanning("strava_upload")
+                ? _bleManager->inhibitScanning("upload_queue")
                 : BLEManager::ScanInhibit{};
 #endif
             const uint32_t stage_timeout_ms =
@@ -526,7 +717,7 @@ UpdateStatus UploadQueue::stepQueue(
             std::string activity_id;
             std::string err_msg;
 
-            const UploadStageResult res = _uploader->pollUploadStatus(
+            const UploadStageResult res = sink->pollUploadStatus(
                 readyJob->remote_upload_id,
                 stage_timeout_ms,
                 activity_id,
@@ -537,12 +728,15 @@ UpdateStatus UploadQueue::stepQueue(
                 readyJob->stage              = UploadStage::STAGE_COMPLETE;
                 readyJob->last_error.clear();
 
-                // Delete temporary .tcx.gz artifact upon completion
-                const std::string tcx_path = getTcxGzPath(readyJob->session_id);
-                removeFileEverywhere(tcx_path);
-                const std::string canonical_tcx = RideStore::getRideTcxGzPath(readyJob->session_id);
-                if (canonical_tcx != tcx_path) {
-                    removeFileEverywhere(canonical_tcx);
+                // Shared .tcx.gz lifecycle: delete only when ALL sink jobs
+                // for this session are terminal.
+                if (allSinkJobsTerminal(readyJob->session_id)) {
+                    const std::string tcx_path = getTcxGzPath(readyJob->session_id);
+                    removeFileEverywhere(tcx_path);
+                    const std::string canonical_tcx = RideStore::getRideTcxGzPath(readyJob->session_id);
+                    if (canonical_tcx != tcx_path) {
+                        removeFileEverywhere(canonical_tcx);
+                    }
                 }
 
                 saveQueue();
@@ -557,6 +751,18 @@ UpdateStatus UploadQueue::stepQueue(
             }
 
             handleStageFailure(*readyJob, res, err_msg, now_ms);
+
+            // If this failure makes all sink jobs terminal, clean up .tcx.gz
+            if (readyJob->stage == UploadStage::STAGE_FAILED &&
+                allSinkJobsTerminal(readyJob->session_id)) {
+                const std::string tcx_path = getTcxGzPath(readyJob->session_id);
+                removeFileEverywhere(tcx_path);
+                const std::string canonical_tcx = RideStore::getRideTcxGzPath(readyJob->session_id);
+                if (canonical_tcx != tcx_path) {
+                    removeFileEverywhere(canonical_tcx);
+                }
+            }
+
             saveQueue();
             return mapFailureToUpdateStatus(res, err_msg);
         }
@@ -614,6 +820,8 @@ void UploadQueue::publishUploadEvent(const UploadJob& job) {
     evt.session_id    = job.session_id;
     evt.stage         = job.stage;
     evt.attempt_count = job.attempt_count;
+    std::snprintf(evt.service_id, sizeof(evt.service_id),
+                  "%s", job.service_id.c_str());
     std::snprintf(evt.remote_upload_id, sizeof(evt.remote_upload_id),
                   "%s", job.remote_upload_id.c_str());
     std::snprintf(evt.remote_activity_id, sizeof(evt.remote_activity_id),
@@ -638,6 +846,7 @@ bool UploadQueue::serializeQueueJson(std::string& out_json) const {
     for (const auto& job : _jobs) {
         JsonObject obj = jobsArr.add<JsonObject>();
         obj["session_id"]         = job.session_id;
+        obj["service_id"]         = job.service_id;
         obj["stage"]              = uploadStageToString(job.stage);
         obj["attempt_count"]      = job.attempt_count;
         obj["next_attempt_ms"]    = job.next_attempt_ms;
@@ -680,6 +889,10 @@ bool UploadQueue::deserializeQueueJson(const std::string& json_str) {
         if (job.session_id == 0) {
             continue;
         }
+
+        // service_id with backward compat: default to "strava" for legacy JSON
+        const char* sid = obj["service_id"] | "strava";
+        job.service_id = sid;
 
         const char* stageStr = obj["stage"] | "STAGE_GENERATE_TCX_GZ";
         UploadStage parsedStage = UploadStage::STAGE_GENERATE_TCX_GZ;
@@ -819,8 +1032,11 @@ bool UploadQueue::fileExistsEverywhere(const std::string& path) const {
 
 UpdateStatus UploadQueue::fetchUpdate(const FetchContext& ctx) {
 #ifdef ESP_PLATFORM
-    if (_uploader) {
-        _uploader->setTransportContext(ctx.client);
+    // Supply transport context to all registered sinks
+    for (size_t i = 0; i < _sinkCount; ++i) {
+        if (_sinks[i]) {
+            _sinks[i]->setTransportContext(ctx.client);
+        }
     }
 #endif
     return stepQueue(
@@ -850,7 +1066,7 @@ void UploadQueue::resetConfig() {
 }
 
 // =============================================================================
-// IPreconditionContributor Implementation ("strava_configured", "ntp_synced")
+// IPreconditionContributor Implementation (generic multi-sink)
 // =============================================================================
 
 uint32_t UploadQueue::currentEpochS() const {
@@ -872,29 +1088,44 @@ bool UploadQueue::isNtpSynced() const {
     return epoch >= RideStore::VALID_EPOCH_THRESHOLD;
 }
 
-PreconditionStatus UploadQueue::evalStravaConfigured(void* ctx) {
+PreconditionStatus UploadQueue::evalSinkConfigured(void* ctx) {
     const auto* self = static_cast<const UploadQueue*>(ctx);
-    if (!self || !self->_uploader || !self->_uploader->isConfigured()) {
+    if (!self || self->_sinkCount == 0) {
         return {false, Cause::NotConfigured};
     }
-    if (!self->_uploader->isAuthenticated()) {
+    // Check if any registered sink is configured and authenticated
+    bool any_configured = false;
+    bool any_authenticated = false;
+    for (size_t i = 0; i < self->_sinkCount; ++i) {
+        if (self->_sinks[i] && self->_sinks[i]->isConfigured()) {
+            any_configured = true;
+            if (self->_sinks[i]->isAuthenticated()) {
+                any_authenticated = true;
+                break;
+            }
+        }
+    }
+    if (!any_configured) {
+        return {false, Cause::NotConfigured};
+    }
+    if (!any_authenticated) {
         return {false, Cause::Rejected};
     }
     return {true, Cause::Met};
 }
 
-void UploadQueue::describeStravaConfigured(Cause cause, char* buf, size_t len, void* ctx) {
+void UploadQueue::describeSinkConfigured(Cause cause, char* buf, size_t len, void* ctx) {
     (void)ctx;
     if (!buf || len == 0) return;
     switch (cause) {
         case Cause::NotConfigured:
-            std::snprintf(buf, len, "Configure Strava Client ID & Secret in Upload Services tab");
+            std::snprintf(buf, len, "Configure at least one upload service in Upload Services tab");
             break;
         case Cause::Rejected:
-            std::snprintf(buf, len, "Connect Strava account via OAuth in Upload Services tab");
+            std::snprintf(buf, len, "Connect an upload service account via OAuth or API key");
             break;
         default:
-            std::snprintf(buf, len, "Strava uploader ready");
+            std::snprintf(buf, len, "Upload service ready");
             break;
     }
 }
@@ -921,8 +1152,8 @@ void UploadQueue::registerPreconditions(IPreconditionRegistry& registry) {
     registry.add(
         "strava_configured",
         PreconditionRole::Operational,
-        &UploadQueue::evalStravaConfigured,
-        &UploadQueue::describeStravaConfigured,
+        &UploadQueue::evalSinkConfigured,
+        &UploadQueue::describeSinkConfigured,
         this);
 
     registry.add(

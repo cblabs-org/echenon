@@ -80,6 +80,10 @@ public:
         std::string& out_activity_id,
         std::string& err_msg) = 0;
 
+    /// Returns true if this sink is enabled for auto-upload (default: true).
+    /// Disabled sinks are skipped during enqueueSession() fan-out.
+    virtual bool isEnabled() const { return true; }
+
     /// Optional hook allowing UploadQueue::fetchUpdate() to supply the framework's
     /// pre-configured transport client (e.g. WiFiClientSecure* from FetchContext).
     virtual void setTransportContext(void* client_ctx) {

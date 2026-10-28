@@ -4,6 +4,10 @@
 /// @brief Split-stage background upload queue implementing IDataSource,
 ///        IConfigurable ("echenon_upload"), and IPreconditionContributor
 ///        (SPEC.md §10.1–§10.2, §10.6).
+///
+///        Multi-sink architecture: up to MAX_SINKS IUploader implementations
+///        are dispatched sequentially with per-job (session_id, service_id)
+///        composite keys and shared .tcx.gz lifecycle.
 
 #include "echenon/IUploader.h"
 #include "echenon/RideStore.h"
@@ -47,8 +51,10 @@ const char* uploadStageToString(UploadStage stage);
 bool uploadStageFromString(const char* str, UploadStage& out_stage);
 
 /// Persistent state for a single queued session upload (SPEC.md §10.2).
+/// Multi-sink: (session_id, service_id) is the composite key.
 struct UploadJob {
     uint32_t    session_id         = 0;
+    std::string service_id;               ///< Sink identifier (e.g. "strava", "intervals")
     UploadStage stage              = UploadStage::STAGE_GENERATE_TCX_GZ;
     uint8_t     attempt_count      = 0;
     uint32_t    next_attempt_ms    = 0;
@@ -61,6 +67,7 @@ struct UploadJob {
 /// Stored in a persistent ring buffer on UploadQueue to satisfy EventBus async dispatch safety.
 struct UploadEvent {
     uint32_t    session_id         = 0;
+    char        service_id[16]{};          ///< Sink identifier for multi-sink dispatch
     UploadStage stage              = UploadStage::STAGE_COMPLETE;
     uint8_t     attempt_count      = 0;
     char        remote_upload_id[32]{};
@@ -75,11 +82,17 @@ struct UploadEvent {
  * every step remains strictly bounded within the 15 s `DeadlineToken` budget.
  * Acquires `BLEManager::ScanInhibit` (under `#ifdef WITH_BLE`) during network
  * stages (`STAGE_REFRESH_TOKEN`, `STAGE_POST_UPLOAD`, `STAGE_POLL_STATUS`).
+ *
+ * Multi-sink: dispatches upload jobs across up to MAX_SINKS registered
+ * IUploader implementations. Sequential sink execution in registration order,
+ * one network stage at a time. Shared .tcx.gz lifecycle: generate once per
+ * session, delete when all sink jobs for that session terminate.
  */
 class UploadQueue : public IDataSource,
                     public IConfigurable,
                     public IPreconditionContributor {
 public:
+    static constexpr size_t   MAX_SINKS                  = 4;
     static constexpr size_t   MAX_QUEUE_ENTRIES          = 5;
     static constexpr uint8_t  MAX_ATTEMPTS               = 5;
     static constexpr uint32_t POLL_DELAY_MS              = 3000u;
@@ -108,8 +121,25 @@ public:
 
     // --- Lifecycle & Dependency Wiring ---
     bool begin();
-    void setUploader(IUploader* uploader) { _uploader = uploader; }
-    IUploader* getUploader() const { return _uploader; }
+
+    // --- Multi-Sink Registry ---
+    /// Register an IUploader sink (up to MAX_SINKS). Returns false if full.
+    bool registerSink(IUploader* sink);
+
+    /// Number of registered sinks.
+    size_t getSinkCount() const { return _sinkCount; }
+
+    /// Get sink by index (nullptr if out of range).
+    IUploader* getSink(size_t index) const;
+
+    /// Find a registered sink by serviceId (nullptr if not found).
+    IUploader* findSinkById(const char* service_id) const;
+
+    /// Legacy single-uploader API: calls registerSink() if not already registered.
+    void setUploader(IUploader* uploader);
+
+    /// Legacy single-uploader API: returns first registered sink (or nullptr).
+    IUploader* getUploader() const { return _sinkCount > 0 ? _sinks[0] : nullptr; }
 
     void setRideStore(RideStore* rideStore);
     RideStore* getRideStore() const { return _rideStore; }
@@ -136,12 +166,14 @@ public:
 #endif
 
     // --- Queue Operations ---
+
+    /// Enqueue upload jobs for a session across all registered, configured, and enabled sinks.
     bool enqueueSession(uint32_t session_id, uint32_t now_ms = 0);
     bool enqueue(uint32_t session_id, uint32_t now_ms = 0) {
         return enqueueSession(session_id, now_ms);
     }
 
-    /// Remove a session from the queue and delete its .tcx.gz / .bin artifacts.
+    /// Remove all jobs for a session from the queue and delete its .tcx.gz / .bin artifacts.
     bool discardSession(uint32_t session_id);
 
     /// Execute at most ONE stage of the first ready job in the queue.
@@ -168,8 +200,18 @@ public:
     void clearQueue();
 
     const std::vector<UploadJob>& getJobs() const { return _jobs; }
+
+    /// Find job by session_id only (returns first match — legacy single-sink compat).
     const UploadJob* findJob(uint32_t session_id) const;
     UploadJob* findJobMutable(uint32_t session_id);
+
+    /// Find job by composite key (session_id, service_id).
+    const UploadJob* findJob(uint32_t session_id, const std::string& service_id) const;
+    UploadJob* findJobMutable(uint32_t session_id, const std::string& service_id);
+
+    /// Returns true if all jobs for a given session are in a terminal state
+    /// (STAGE_COMPLETE or STAGE_FAILED).
+    bool allSinkJobsTerminal(uint32_t session_id) const;
 
     bool isAutoUploadEnabled() const { return _autoUploadEnabled; }
     void setAutoUploadEnabled(bool enabled) { _autoUploadEnabled = enabled; }
@@ -218,12 +260,18 @@ private:
     bool isNtpSynced() const;
     uint32_t currentEpochS() const;
 
-    static PreconditionStatus evalStravaConfigured(void* ctx);
-    static void describeStravaConfigured(Cause cause, char* buf, size_t len, void* ctx);
+    /// Look up the IUploader* for a job's service_id from the registered sinks.
+    IUploader* sinkForJob(const UploadJob& job) const;
+
+    static PreconditionStatus evalSinkConfigured(void* ctx);
+    static void describeSinkConfigured(Cause cause, char* buf, size_t len, void* ctx);
     static PreconditionStatus evalNtpSynced(void* ctx);
     static void describeNtpSynced(Cause cause, char* buf, size_t len, void* ctx);
 
-    IUploader*       _uploader   = nullptr;
+    // Multi-sink registry: static array, no heap allocation (GRAVE-05 safe).
+    IUploader*       _sinks[MAX_SINKS]{};
+    size_t           _sinkCount  = 0;
+
     RideStore*       _rideStore  = nullptr;
     EventBus*        _eventBus   = nullptr;
     IRideFileSystem* _fs         = nullptr;
