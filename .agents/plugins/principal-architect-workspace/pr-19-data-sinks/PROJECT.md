@@ -33,35 +33,35 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 8811905812b403bd236bf1eb2609aab2bca9fb51
+  commit_sha: 488469a61d17d4ed709d59fbe2ecc1287d10a6a5
 - id: WO-19.2
   slug: wo2-intervals-icu-sink
   title: Intervals.icu API-Key Sink
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 2e3020d61058d46f73e50e9b47c136b0e802bf94
+  commit_sha: c28c5f9f0301337cb43a490e945ebc168a99eb77
 - id: WO-19.3
   slug: wo3-rest-api-extensions
   title: REST API Extensions
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: c28c5f9f0301337cb43a490e945ebc168a99eb77
+  commit_sha: fcd437d373fb11a503afa64530ff5f359241e06f
 - id: WO-19.4
   slug: wo4-stored-rides-pill
   title: Stored Rides Portal Pill
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: fcd437d373fb11a503afa64530ff5f359241e06f
+  commit_sha: a4a065913f8667de01d264546e7193bb954b8c5e
 - id: WO-19.5
   slug: wo5-strava-pill-refactor
   title: Strava Pill Refactor & Connected Apps Polish
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: a4a065913f8667de01d264546e7193bb954b8c5e
+  commit_sha: 2f64605a748818444d8fa521ea0bbe014d8192e5
 - id: WO-19.6
   slug: wo6-native-tests
   title: Native Unit Tests
