@@ -82,4 +82,29 @@ Author a comprehensive native unit test suite for `WahooUploader` and its integr
 
 ## Completion Report
 
-_Pending execution._
+### Summary of Completed Work
+Implemented the complete native unit test suite for `WahooUploader` and multi-sink `UploadQueue` integration in `test/test_native/test_wahoo_uploader.cpp`.
+
+### Test Suite Deliverables
+1. **Mock Infrastructures:**
+   - `OrderedSpySecretStore`: Chronological logging of all secret store operations (`putSecret`, `deleteSecret`) and simulated NVS failure toggles (`fail_refresh_token_write`, `fail_access_token_write`, `fail_client_secret_write`).
+   - `MockWahooHttpClient`: Captures and inspects form POSTs, multipart TCX upload requests, and status GET requests.
+   - `MockProgressionSink`: Configurable mock sink verifying multi-sink orchestration and failure isolation.
+   - `populateTestRide`: Test fixture populating deterministic `RideStore` records for end-to-end TCX generation.
+
+2. **Test Cases Verified:**
+   - `WahooUploaderTest.BuildAuthorizeUrlAndValidateSingleUseStateNonce`: Verified 128-bit (32 hex) state nonce generation, URL parameter encoding, mismatch rejection, TTL consumption, and replay rejection.
+   - `WahooUploaderTest.StateNonceTtlExpiryAndMillisWraparound`: Verified rejection beyond 10-minute (600,000 ms) TTL and signed 32-bit `millis()` integer overflow / wraparound handling.
+   - `WahooUploaderTest.RotatedRefreshTokenPersistedFirstBeforeAccessTokenAndExpiresAt`: Verified strict write order (`wahoo.refresh_token` first, `wahoo.access_token` second, metadata third) across authorization code exchange and token refresh.
+   - `WahooUploaderTest.RefreshTokenWriteFailureAbortsImmediatelyWithoutOverwritingTokens`: Verified atomic rollback when NVS persistence of `wahoo.refresh_token` fails, preserving existing valid credentials.
+   - `WahooUploaderTest.RegistersAllSecretsOnLoadSaveExchangeAndRefreshAndHandlesFullRedactor`: Verified secret registration with `Redactor` on boot load, credentials save, auth code exchange, and token refresh, plus non-leaking warnings upon redactor saturation.
+   - `WahooUploaderTest.PostUploadMultipartFramingAndStatusResponses`: Verified multipart framing (`workout[workout_type_id]=1`, `Content-Type: application/gzip`, `.tcx.gz` filename and body), and status mapping (200/201 SUCCESS, 401 PERMANENT_ERROR, 429 RETRYABLE_ERROR, 500 RETRYABLE_ERROR, 422 PERMANENT_ERROR).
+   - `WahooUploaderTest.PollUploadStatusReturnsSuccessImmediately`: Verified synchronous upload ID mapping and empty ID error handling.
+   - `WahooUploaderTest.ThreeSinkQueueProgression`: Verified `UploadQueue` multi-sink fan-out into 3 jobs (Strava, Intervals.icu, Wahoo), sequential execution across steps, isolated sink failure (Intervals 401 failure without blocking Strava or Wahoo), and single `.tcx.gz` lifecycle preserved until all 3 sinks reach terminal state.
+
+### Verification Receipt
+- **Command:** `pio test -e native --verbose`
+- **Results:** 269 test cases ran, 269 succeeded (0 failures).
+- **Receipt ID:** `rcpt_df5b94c49242`
+- **Tree Hash:** `df5b94c492426a5134f84c51e8cfbde612dfe66b3bc65bf2f8b5bb36163a5958`
+- **Commit SHA:** `d079e3309a4d09c0bc12c5e477c28c936df54b28`
