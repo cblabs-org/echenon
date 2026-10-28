@@ -4,7 +4,7 @@ wo_id: WO-19.8
 pr_id: PR-19
 title: Hardware Verification & Soak
 complexity: interactive
-status: ESCALATED_TO_PA
+status: PENDING
 allowed_files:
 - docs/measurements/phase3/evidence/
 forbidden_files: []
@@ -14,17 +14,7 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: da3d626213495e68ed34ef9e0f64cf18efaf16a679462310778358a22b4b302b
-completion:
-  escalation_request:
-    reason: "Firmware build FAILED — 2 compilation errors in source files forbidden by this WO"
-    errors:
-      - "src/main.cpp:148 — cannot convert KeyManager* to echenon::ISecretStore* (KeyManager must implement ISecretStore interface)"
-      - "src/echenon/SessionOverlay.cpp — PsychicHttpServer::on() lambda signature mismatch (expects PsychicHttpHandler, got incompatible lambda)"
-    required_fix_files:
-      - src/main.cpp
-      - src/echenon/SessionOverlay.cpp
-      - framework/modules/KeyManager/KeyManager.h (needs ISecretStore inheritance)
-    action_needed: "Fix compilation errors in a preceding WO, then re-run WO-19.8"
+completion: null
 ---
 
 # WO-19.8 — Hardware Verification & Soak
