@@ -21,7 +21,7 @@ charter:
   verification_floor:
   - pio test -e native --verbose
   charter_locked: true
-  charter_hash: beff024fe51a320d151d6c21427ad72f9afa3f5d89bb9f2b08b5ea8ef4d3d752
+  charter_hash: 76ed6c8b58f1185be755d03d7a694bf44cd122a1669c1a3653896dde1acf69ff
 status: PLANNED
 approved_at: null
 github_pr: 12
