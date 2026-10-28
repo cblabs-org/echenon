@@ -22,10 +22,52 @@ charter:
   - pio test -e native --verbose
   charter_locked: true
   charter_hash: 9ec62b7477a848e655aa2335bc510eaa87914b68f5f1a8009216327f1e8a2ce0
-status: PLANNED
-approved_at: null
+status: APPROVED
+approved_at: '2026-10-28T22:58:39.349600Z'
 github_pr: null
-work_orders: []
+work_orders:
+- id: WO-21.1
+  slug: wo1-wahoo-uploader
+  title: WahooUploader Engine
+  complexity: standard
+  status: PENDING
+  attempts: 0
+  commit_sha: null
+- id: WO-21.2
+  slug: wo2-system-wiring
+  title: System Wiring & REST Endpoints
+  complexity: standard
+  status: PENDING
+  attempts: 0
+  commit_sha: null
+- id: WO-21.3
+  slug: wo3-portal-ui
+  title: Portal UI — Wahoo Pill & Stored Rides Badges
+  complexity: standard
+  status: PENDING
+  attempts: 0
+  commit_sha: null
+- id: WO-21.4
+  slug: wo4-native-tests
+  title: Native Unit Tests
+  complexity: standard
+  status: PENDING
+  attempts: 0
+  commit_sha: null
+- id: WO-21.5
+  slug: wo5-spec-doc-sync
+  title: SPEC & Documentation Sync
+  complexity: mechanical
+  status: PENDING
+  attempts: 0
+  commit_sha: null
+- id: WO-21.6
+  slug: wo6-hardware-verification
+  title: Hardware Verification & Soak
+  complexity: interactive
+  status: PENDING
+  attempts: 0
+  commit_sha: null
 ---
 
 # PR-21 — Wahoo Cloud Data Sink
@@ -128,30 +170,91 @@ without requiring intermediary third-party relay tools.
 ## 3. Implementation Plan & Work Order Breakdown
 
 ### WO-21.1 — WahooUploader Engine
-Implement `WahooUploader` conforming to `IUploader` and `IConfigurable`. Include
-OAuth 2.0 URL construction, token exchange, refresh logic, multipart TCX upload framing,
-and `KeyManagerSecretStore` adapter.
+- **Slug:** `wo1-wahoo-uploader`
+- **Complexity:** Standard (`Model: "flash"`)
+- **Allowed Files:** `src/echenon/WahooUploader.h`, `src/echenon/WahooUploader.cpp`
+- **Required Skills:** `framework-expert`
+- **Verification Command:** `pio test -e native --verbose`
+- **Scope:**
+  - Implement `WahooUploader` conforming to `IUploader` and `IConfigurable` (`"echenon_wahoo"`, schema v1).
+  - OAuth 2.0 authorization URL construction with 128-bit single-use state nonce (10-minute TTL, wraparound-safe).
+  - Token exchange (`POST https://api.wahooligan.com/oauth/token`) and token refresh.
+  - Rotated refresh-token-first persistence order in `ISecretStore` (`wahoo.refresh_token` stored before `wahoo.access_token`).
+  - Zero heap `std::function` (GRAVE-05).
+  - `Redactor::registerSecret()` integration on credential load, exchange, and refresh.
+  - Multipart TCX upload (`POST https://api.wahooligan.com/v1/workouts`) with `workout[workout_type_id]=1` (Cycling) and `.tcx.gz` payload.
+  - Synchronous upload completion in `pollUploadStatus()` mapping remote workout ID.
+  - Status handling: 200/201 -> `SUCCESS`, 401 -> `PERMANENT_ERROR`, 429/5xx -> `RETRYABLE_ERROR`.
 
 ### WO-21.2 — System Wiring & REST Endpoints
-Wire `WahooUploader` into `EchenonModule`, `src/main.cpp`, and `UploadQueue`.
-Implement `/api/wahoo/*` REST endpoints in `SessionOverlay` and register route handlers.
+- **Slug:** `wo2-system-wiring`
+- **Complexity:** Standard (`Model: "flash"`)
+- **Allowed Files:** `src/echenon/EchenonModule.h`, `src/echenon/EchenonModule.cpp`, `src/echenon/SessionOverlay.h`, `src/echenon/SessionOverlay.cpp`, `src/main.cpp`
+- **Required Skills:** `framework-expert`
+- **Verification Command:** `pio test -e native --verbose`
+- **Scope:**
+  - Wire `WahooUploader` into `EchenonModule` (member & accessor).
+  - Register Wahoo tab in `setupTabs()` (`registry.addTab("Wahoo Cloud", "Apps", 30, nullptr, "/wahoo_settings.js")`).
+  - Wire `WahooUploader` in `src/main.cpp`: inject `KeyManager`, register with `UploadQueue` (Sink #3) and `app.registerModule()`, and inject into `SessionOverlay`.
+  - Include `echenon/WahooUploader.cpp` under `#ifdef UNIT_TEST` in `SessionOverlay.cpp`.
+  - Implement REST API endpoints:
+    - `GET /api/wahoo/status`
+    - `POST /api/wahoo/credentials`
+    - `GET /api/wahoo/auth-url`
+    - `GET /api/wahoo/callback` (redirecting to `/#tab-apps`)
+    - `POST /api/wahoo/disconnect`
+  - Serve `/wahoo_settings.js` under `#if __has_include("include/portal_assets/wahoo_settings_js.hpp")`.
 
 ### WO-21.3 — Portal UI: Apps Tab Pill & Stored Rides Badges
-Create `web/wahoo_settings.js` (order 30 under Apps tab). Update `web/stored_rides.js`
-to render per-sink badges and retry actions for Wahoo. PROGMEM asset compilation.
+- **Slug:** `wo3-portal-ui`
+- **Complexity:** Standard (`Model: "flash"`)
+- **Allowed Files:** `web/wahoo_settings.js`, `web/stored_rides.js`
+- **Required Skills:** `framework-expert`
+- **Verification Command:** `pio test -e native --verbose`
+- **Scope:**
+  - Author `web/wahoo_settings.js`: configuration pill under Apps tab (order 30) featuring connection status badge, client ID/secret form, `[Connect with Wahoo]` button, auto-sync toggle, and disconnect button.
+  - Update `web/stored_rides.js`: update `buildRemoteUrl()` for `sid === 'wahoo'` and support multi-sink sync status badges (`Wahoo: ✅ Synced`, `⏳ Pending`, `❌ Failed`) with retry trigger.
 
 ### WO-21.4 — Native Unit Tests
-Author `test/test_native/test_wahoo_uploader.cpp`. Test authorization, refresh,
-multipart framing, status parsing, and 3-sink queue progression. Verify verification floor.
+- **Slug:** `wo4-native-tests`
+- **Complexity:** Standard (`Model: "flash"`)
+- **Allowed Files:** `test/test_native/test_wahoo_uploader.cpp`
+- **Required Skills:** `framework-expert`
+- **Verification Command:** `pio test -e native --verbose`
+- **Scope:**
+  - Full GoogleTest coverage for `WahooUploader`:
+    - `BuildAuthorizeUrlAndValidateSingleUseStateNonce`
+    - `StateNonceTtlExpiryAndMillisWraparound`
+    - `RotatedRefreshTokenPersistedFirstBeforeAccessTokenAndExpiresAt`
+    - `RefreshTokenWriteFailureAbortsImmediatelyWithoutOverwritingTokens`
+    - `RegistersAllSecretsOnLoadSaveExchangeAndRefreshAndHandlesFullRedactor`
+    - `PostUploadMultipartFramingAndStatusResponses`
+    - `PollUploadStatusReturnsSuccessImmediately`
+    - `ThreeSinkQueueProgression` (UploadQueue integration testing 3 simultaneous sinks).
 
 ### WO-21.5 — SPEC & Documentation Sync
-Update SPEC.md §10 and `docs/data-sinks.md` with Wahoo Cloud sink documentation.
+- **Slug:** `wo5-spec-doc-sync`
+- **Complexity:** Mechanical (`Model: "flash_lite"`)
+- **Allowed Files:** `SPEC.md`, `docs/data-sinks.md`
+- **Required Skills:** None
+- **Verification Command:** `pio test -e native --verbose`
+- **Scope:**
+  - Update SPEC.md §10.3 and §10.5 with Wahoo Cloud sink specification and portal tab table (§11.2).
+  - Update `docs/data-sinks.md` with complete documentation for Wahoo Cloud integration.
 
 ### WO-21.6 — Hardware Verification & Soak
-Build firmware for `ex3-waveshare-nano`, flash to test device, verify boot,
-portal pills, and multi-sink queue readiness.
+- **Slug:** `wo6-hardware-verification`
+- **Complexity:** Interactive (`Model: "inherit"`)
+- **Allowed Files:** `docs/`
+- **Required Skills:** `framework-expert`
+- **Verification Command:** `pio test -e native --verbose`
+- **Scope:**
+  - Dev tag increment per Rule 03 (`v0.X.Y-dev.N`).
+  - Build and flash firmware for `ex3-waveshare-nano`.
+  - Serial monitor verification of 3-sink registration, route registration, portal asset serving, and heap health.
 
 ---
 
 ## 4. Outcome & Session Log
 - **2026-10-28:** PR-21 chartered and locked by Chief Architect following PR-19 graduation.
+- **2026-10-28:** Tier 2 Principal Architect authored Part II Work Order decomposition (WO-21.1 to WO-21.6) and initialized all specification work orders.

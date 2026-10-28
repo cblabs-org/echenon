@@ -1,0 +1,97 @@
+---
+schema_version: 1
+wo_id: WO-21.2
+pr_id: PR-21
+title: System Wiring & REST Endpoints
+complexity: standard
+status: PENDING
+allowed_files:
+- src/echenon/EchenonModule.h
+- src/echenon/EchenonModule.cpp
+- src/echenon/SessionOverlay.h
+- src/echenon/SessionOverlay.cpp
+- src/main.cpp
+forbidden_files:
+- src/echenon/WahooUploader.*
+- web/**
+- test/**
+required_skills:
+- framework-expert
+verification_command: pio test -e native --verbose
+max_attempts: 5
+max_structural_failures: 2
+spec_hash: e8f3ec5630621dff121fdf022691fc6c1f3d1a884b68cfa320a5d02e1ba92261
+completion: null
+---
+
+# WO-21.2 — System Wiring & REST Endpoints
+
+## 1. Role & Objective
+
+Integrate `WahooUploader` into the application lifecycle across `EchenonModule`, `src/main.cpp`,
+`UploadQueue`, and `SessionOverlay`, exposing the required REST API endpoints for Wahoo OAuth 2.0
+and configuration management.
+
+**Deliverables:**
+- `EchenonModule`: own `_wahooUploader`, provide accessor `wahooUploader()`, register Wahoo tab under `Apps` tab (`order 30`, route `"/wahoo_settings.js"`).
+- `src/main.cpp`: wire `_wahooUploader` dependencies (`KeyManager`, `Redactor`, config persistence, `begin()`), register `_wahooUploader` with `UploadQueue` (Sink #3) and `app.registerModule()`, and inject into `SessionOverlay`.
+- `SessionOverlay`:
+  - Pull in `WahooUploader.cpp` under `#ifdef UNIT_TEST` for native test builds.
+  - Implement handlers: `handleGetWahooStatus()`, `handleSaveWahooCredentials()`, `handleGetWahooAuthUrl()`, `handleWahooCallback()`, `handleWahooDisconnect()`.
+  - Register endpoints: `GET /api/wahoo/status`, `POST /api/wahoo/credentials`, `GET /api/wahoo/auth-url`, `GET /api/wahoo/callback`, `POST /api/wahoo/disconnect`.
+  - Serve `/wahoo_settings.js` under `#if __has_include("include/portal_assets/wahoo_settings_js.hpp")`.
+
+## 2. Strict Boundary Box & Constraints
+
+1. **Sink Index Invariant:** Wahoo is Sink #3 (`_sinks[2]`, within `MAX_SINKS = 4`). Strava (Sink #1) and Intervals.icu (Sink #2) must remain unchanged.
+2. **Zero Heap `std::function` (GRAVE-05):** All route handler lambdas must use existing capture patterns (`[this, checkAuth, sendResp]` or non-capturing).
+3. **Unity Test Inclusion:** In `SessionOverlay.cpp`, add `#include "echenon/WahooUploader.cpp"` under `#ifdef UNIT_TEST` so native test binaries resolve linker symbols without duplicate definitions.
+4. **OAuth Redirect:** In `handleWahooCallback()`, redirect to `/#tab-apps` on success or `/#tab-apps?wahoo_error=...` on failure.
+
+**Forbidden:** No modifications to `WahooUploader.*`, `web/**`, `test/**`.
+
+## 3. Line-Item Instructions
+
+- [ ] In `src/echenon/EchenonModule.h`:
+  - Include `"echenon/WahooUploader.h"`.
+  - Add `WahooUploader _wahooUploader;` member variable.
+  - Add `WahooUploader& wahooUploader() { return _wahooUploader; }` accessor.
+- [ ] In `src/echenon/EchenonModule.cpp`:
+  - In `setupTabs(ITabRegistry& registry)`, register:
+    `registry.addTab("Wahoo Cloud", "Apps", 30, nullptr, "/wahoo_settings.js");`
+- [ ] In `src/main.cpp`:
+  - In the session/upload wiring block:
+    ```cpp
+    echenonModule.wahooUploader().setKeyManager(&app.getKeyManager());
+    echenonModule.wahooUploader().setSecretRegistrar(echenon::WahooUploader::defaultRegisterSecret);
+    echenonModule.wahooUploader().setMetadataSaveCallback([](uint32_t, const std::string&) {
+        return app.getConfigManager().saveModuleConfig(&echenonModule.wahooUploader());
+    });
+    echenonModule.wahooUploader().begin();
+    uploadQueue.registerSink(&echenonModule.wahooUploader());
+    app.registerModule(&echenonModule.wahooUploader());
+    sessionOverlay.setWahooUploader(&echenonModule.wahooUploader());
+    ```
+- [ ] In `src/echenon/SessionOverlay.h`:
+  - Forward declare `class WahooUploader;`.
+  - Add `setWahooUploader(WahooUploader* wu)` and `WahooUploader* _wahooUploader = nullptr;`.
+  - Declare handlers: `handleGetWahooStatus(uint32_t now_epoch_s)`, `handleSaveWahooCredentials(const std::string& body_json)`, `handleGetWahooAuthUrl(const std::string& redirect_uri, uint32_t now_ms)`, `handleWahooCallback(const std::string& code, const std::string& state, uint32_t now_ms)`, `handleWahooDisconnect()`.
+- [ ] In `src/echenon/SessionOverlay.cpp`:
+  - Include `#include "echenon/WahooUploader.cpp"` under `#ifdef UNIT_TEST`.
+  - Implement the declared Wahoo handlers using `ArduinoJson` (mirroring Strava handler patterns).
+  - Register the routes in `registerRoutes()`:
+    - `/api/wahoo/status` (GET)
+    - `/api/wahoo/credentials` (POST)
+    - `/api/wahoo/auth-url` (GET)
+    - `/api/wahoo/callback` (GET)
+    - `/api/wahoo/disconnect` (POST)
+  - Under `#if __has_include("include/portal_assets/wahoo_settings_js.hpp")`, serve `/wahoo_settings.js`.
+
+## 4. Verification, Cryptographic Receipt & Issue Surfacing
+
+- Run `pio test -e native --verbose` to confirm clean compilation and zero test regression.
+- Run `pa wo verify WO-21.2` to generate cryptographic receipt.
+
+## Completion Report
+
+_Pending execution._
