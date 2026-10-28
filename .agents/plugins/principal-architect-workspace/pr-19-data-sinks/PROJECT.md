@@ -80,9 +80,9 @@ work_orders:
   slug: wo7-spec-doc-sync
   title: SPEC & Doc Sync
   complexity: mechanical
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: d869a2b2d6d06b7b25b7fc701d942a49c4d87319
 - id: WO-19.8
   slug: wo8-hardware-verification
   title: Hardware Verification & Soak

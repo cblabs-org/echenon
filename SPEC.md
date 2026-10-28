@@ -146,7 +146,7 @@ fetch pipeline, the module composition architecture and the optional
   44, reserved** on every board (§4.4)
 - On-device physical display
 - Custom PCB manufacture (v1 uses perfboard or protoboard)
-- Direct upload to platforms other than Strava (§10.6)
+- Direct upload to platforms other than Strava and Intervals.icu (§10.5)
 
 **Out of scope for v2 "Active"** (provisional):
 
@@ -400,6 +400,9 @@ phase and are never driver outputs; the driver uses GPIO 10 and 17.
 | `TCXGenerator` | Streams 1 Hz TCX to a gzip file on LittleFS | — | PR-06 |
 | `UploadQueue` | The only upload execution path: runs one pipeline stage per `fetchUpdate()` | `IDataSource` | PR-06 |
 | `StravaUploader` | Describes the Strava service: BYOA OAuth, request building, response parsing | `IUploader` (Echenon), `IWebContributor` | PR-06 |
+| `IntervalsIcuUploader` | Describes the Intervals.icu service: API-key auth, request building, response parsing | `IUploader` (Echenon), `IConfigurable` | PR-19 |
+| `SessionOverlay` | REST API overlay for multi-sink upload management: `/api/upload/sinks`, `/api/upload/status`, `/api/intervals/*`, per-sink force-push/retry, session history with sync status | `IWebContributor` | PR-19 |
+| `StoredRides` | Portal pill in the Echenon tab showing ride history with per-sink sync badges, TCX download, delete, and force-push/retry actions | — | PR-19 |
 | `SessionUI` | Session REST API, authenticated TCX download and Session History tab (PR-06); standalone `/ride` page and `/ws/session` WebSocket push (PR-09) | `IWebContributor` | PR-06 / PR-09 |
 | `DiagnosticsModule` | PSRAM-backed bounded event log with ring-buffer semantics; records boot, session, runaway, calibration and firmware-change events (§13) | `ITickable` | PR-14 |
 | `RidePersistence` | Saves completed rides as gzip-compressed `.ride.gz` binary files to LittleFS with configurable cap and oldest-first eviction (§14) | — | PR-14 |
@@ -2261,17 +2264,37 @@ requires authentication.
 
 ## 10. Upload Services
 
-### 10.1 Overview
+### 10.1 Overview — Multi-Sink UploadQueue Architecture
 
 Upload is the third independent output path. When a session ends, the
-recorded data goes to each configured cloud service. The upload path knows
-nothing about the ride page or FTMS; it receives a completed session file.
+recorded data goes to **each configured and enabled cloud service**.
+The upload path knows nothing about the ride page or FTMS; it receives
+a completed session file and fans it out across all registered sinks.
+
+**Multi-sink registry.** `UploadQueue` holds up to `MAX_SINKS = 4`
+registered `IUploader` implementations, managed via
+`registerSink(IUploader*)`. Upon session completion,
+`enqueueSession(session_id)` creates one `UploadJob` per configured and
+enabled sink, each keyed by `(session_id, service_id)`.
+
+**Sequential execution.** At most one sink performs TLS I/O at any time.
+`UploadQueue::fetchUpdate()` processes the front job in the queue, gated
+by `BLEManager::ScanInhibit`, so BLE FTMS / HRM streams never experience
+radio starvation during mid-ride uploads or post-ride queue draining.
+Jobs drain in FIFO order; within a session, sinks execute in registration
+order.
+
+**Per-sink auto-sync toggles.** Each sink has an independent auto-sync
+preference (`auto_sync_strava`, `auto_sync_intervals`) stored via
+`ConfigManager`. A disabled sink is skipped during `enqueueSession()`
+fan-out but can still receive manually triggered uploads from the Stored
+Rides pill.
 
 ### 10.2 Extensible Architecture
 
 Each cloud service is described by an `IUploader`. `IUploader` **describes
-capabilities only**: identity, configuration state, and how to build each
-stage's request and interpret its response. It performs no I/O.
+capabilities only**: identity, configuration state, and how to execute
+each stage (token refresh, upload, poll). It performs no scheduling.
 `UploadQueue`, an `IDataSource`, is the **only execution path**: it owns the
 transport, holds the `ScanInhibit` token and runs one stage per
 `fetchUpdate()`.
@@ -2279,75 +2302,141 @@ transport, holds the `ScanInhibit` token and runs one stage per
 ```cpp
 namespace echenon {
 
-enum class UploadStage : uint8_t { Generate, Refresh, Upload, Poll, Done, Failed };
-
 class IUploader {
 public:
     virtual ~IUploader() = default;
-    virtual const char* name() const = 0;              // "Strava"
-    virtual bool isConfigured() const = 0;             // credentials and tokens present
-    virtual bool needsRefresh(uint32_t nowEpoch) const = 0;
-    // Pure request building and response parsing; no network I/O here.
-    virtual bool buildRequest(UploadStage stage, const UploadJob& job,
-                              HttpRequestSpec& out) const = 0;
-    virtual StageResult handleResponse(UploadStage stage, UploadJob& job,
-                                       int httpStatus, const char* body,
-                                       size_t len) = 0;
-};
-
-class UploadQueue : public IDataSource {
-public:
-    UpdateStatus fetchUpdate(const FetchContext& ctx) override;
-    uint32_t     getUpdateIntervalMs() const override;
-    const char*  getSourceName() const override { return "upload_queue"; }
-    PriorityTier getPriorityTier() const override { return PriorityTier::Low; }
+    virtual const char* serviceId() const = 0;         // "strava", "intervals"
+    virtual const char* name() const { return serviceId(); }
+    virtual bool isConfigured() const = 0;             // credentials present
+    virtual bool isAuthenticated() const = 0;          // tokens / keys valid
+    virtual bool needsTokenRefresh(uint32_t now_epoch_s) const = 0;
+    virtual bool isEnabled() const { return true; }    // auto-sync toggle
+    virtual UploadStageResult refreshToken(uint32_t timeout_ms, std::string& err_msg) = 0;
+    virtual UploadStageResult postUpload(
+        uint32_t session_id, const std::string& tcx_gz_path,
+        uint32_t timeout_ms, std::string& out_upload_id,
+        std::string& err_msg) = 0;
+    virtual UploadStageResult pollUploadStatus(
+        const std::string& upload_id, uint32_t timeout_ms,
+        std::string& out_activity_id, std::string& err_msg) = 0;
 };
 
 } // namespace echenon
 ```
 
-`UploadQueue::fetchUpdate()` maps stage outcomes onto `UpdateStatus`:
+**`UploadJob` composite key.** Each job is uniquely identified by the
+pair `(session_id, service_id)`. This allows multiple sinks to upload the
+same session independently, each with its own stage progression, retry
+count, and remote activity ID:
 
-| Outcome | `UpdateStatus` | DataManager effect |
-|---|---|---|
-| Queue empty or uploads disabled | `Skipped` | No health change |
-| Stage completed | `Success` | Healthy; the next stage follows on a priority fetch |
-| Network or TLS failure, 5xx | `FetchError` | Degraded, exponential backoff |
-| HTTP 429 | `RateLimited` | Backoff |
-| Unparseable response | `ParseError` | Degraded |
-| Token refresh rejected (401 / revoked) | `AuthError` | Suspended until the rider reconnects Strava |
+```cpp
+struct UploadJob {
+    uint32_t    session_id;                // session epoch timestamp
+    std::string service_id;               // "strava", "intervals"
+    UploadStage stage;                     // Generate → Refresh → Upload → Poll → Done
+    uint8_t     attempt;                   // retry count for this stage
+    std::string upload_id;                 // remote upload ID (set after POST)
+    std::string activity_id;              // remote activity ID (set after POLL)
+    std::string activity_url;             // remote activity URL
+    std::string error;                     // last error message
+};
+```
 
-**Duplicates.** If Strava reports the file as a duplicate of an existing
-activity, the job is marked `Done` and counted as a success.
+**Shared `.tcx.gz` lifecycle.** TCX generation is expensive (PSRAM
+streaming gzip via `StreamingGzipEncoder`). The `UploadQueue` generates
+the `.tcx.gz` file **once** per session in `STAGE_GENERATE_TCX_GZ`. All
+registered sinks reference the same file path. Artifact cleanup
+(`removeFileEverywhere()`) occurs only when **every** sink job for that
+session has reached `STAGE_COMPLETE` or `STAGE_FAILED`.
 
-**Naming.** No Echenon class or header shares a name with a framework class
-or header; in particular Echenon defines no `ConfigManager` or `DataManager`,
-and has no separate configuration header.
+**Multi-sink `UploadQueue`:**
+
+```cpp
+class UploadQueue : public IDataSource {
+public:
+    static constexpr size_t MAX_SINKS = 4;
+
+    bool registerSink(IUploader* sink);                // adds to _sinks[]
+    IUploader* findSinkById(const char* service_id) const;
+
+    UpdateStatus fetchUpdate(const FetchContext& ctx) override;
+    uint32_t     getUpdateIntervalMs() const override;
+    const char*  getSourceName() const override { return "upload_queue"; }
+    PriorityTier getPriorityTier() const override { return PriorityTier::Low; }
+};
+```
 
 ### 10.3 Settings Pages
 
-Each uploader contributes its own section to the **Upload Services** portal
-tab (via `IWebContributor`):
+Each uploader contributes its own pill to the **Apps** tab via
+`ITabRegistry::addTab()`. Per-sink pills are ordered sequentially:
 
 ```
-┌──────────────────────────────────────────────┐
-│  Upload Services                             │
-│                                              │
-│  ── Strava ──                                │
-│  Status: ✅ Connected (athlete name)         │
-│  Auto-upload: ☑ Enabled                      │
-│  Last upload: 17 Sep 2026, 19:45             │
-│  Queue: 0 pending                            │
-│  [ Disconnect ]                              │
-│                                              │
-│  API application: Client ID 12345            │
-│  Callback domain: echenon.local              │
-│  [ Edit credentials ]                        │
-└──────────────────────────────────────────────┘
+Apps (order 60)
+├── Strava         (order 10, /upload_settings.js)   — OAuth 2.0 config pill
+├── Intervals.icu  (order 20, /intervals_settings.js) — API key config pill
+└── [Future sinks at order 30+]
 ```
 
-This tab is separate from the ride page; it is a settings concern, not a
-training-session concern.
+Each pill displays:
+
+- Service name, icon, and connection status (`Connected: <Athlete>`,
+  `Not Configured`, `Token Expired`)
+- Auto-sync toggle per service (`auto_sync_strava`, `auto_sync_intervals`)
+- Authentication controls appropriate to the service type:
+  - **OAuth sinks (Strava):** `[Connect]` redirect → consent → callback,
+    `[Disconnect]` to revoke and clear tokens
+  - **API-key sinks (Intervals.icu):** Inline form for athlete ID and
+    API key, `[Test Connection]` button, `[Remove]` to clear
+- Upload queue status: pending count, last upload result, last error
+
+### 10.3a Intervals.icu Sink (API-Key Reference)
+
+`IntervalsIcuUploader` conforms to `IUploader` and `IConfigurable`
+(`"echenon_intervals"`) and serves as the reference API-key sink
+implementation.
+
+**Authentication.** Intervals.icu uses a personal API key (no OAuth
+redirect dance). The rider pastes their athlete ID and API key into the
+Intervals.icu pill in the Apps tab. Credentials are stored encrypted via
+`KeyManager` NVS with namespaced keys (`intervals.api_key`,
+`intervals.athlete_id`) and registered with
+`Redactor::instance().registerSecret()`.
+
+**Upload endpoint:**
+
+```
+POST https://intervals.icu/api/v1/athlete/{athlete_id}/activities
+Content-Type: application/octet-stream
+Authorization: Basic base64(API_KEY:{api_key})
+Body: <.tcx.gz binary>
+```
+
+**Stage behaviour:**
+
+| Stage | Intervals.icu behaviour |
+|---|---|
+| `refreshToken()` | No-op → `SUCCESS` (API keys do not expire) |
+| `postUpload()` | `POST` the `.tcx.gz` file; returns `SUCCESS` with the activity ID on 200/201 |
+| `pollUploadStatus()` | Returns `SUCCESS` immediately (Intervals.icu processes synchronously; no async poll needed) |
+
+**Error handling:**
+
+| HTTP Status | `UploadStageResult` | Meaning |
+|---|---|---|
+| 200 / 201 | `SUCCESS` | Activity created |
+| 401 | `PERMANENT_ERROR` | Invalid API key |
+| 429 | `RETRYABLE_ERROR` | Rate limited; backoff and retry |
+| 5xx | `RETRYABLE_ERROR` | Server error; backoff and retry |
+
+**REST API routes (Intervals.icu configuration):**
+
+| Route | Method | Auth | Description |
+|---|---|---|---|
+| `/api/intervals/status` | `GET` | ✓ | Connection status and athlete info |
+| `/api/intervals/credentials` | `POST` | ✓ | Save athlete ID and API key |
+| `/api/intervals/test` | `POST` | ✓ | Test connection with saved credentials |
+| `/api/intervals/disconnect` | `POST` | ✓ | Clear saved credentials |
 
 ### 10.4 Strava Integration (v1)
 
@@ -2425,28 +2514,59 @@ This gives the upload:
 - **Diagnostic visibility**: upload health appears in the portal Status tab,
   the MCP `get_data_sources` tool and the EventBus (`data.source.health`)
 
-### 10.5 Downstream Platform Sync
+### 10.5 Downstream Platform Sync — Provider Tier Taxonomy
+
+Not every external platform requires a direct cloud uploader on the ESP32.
+The design distinguishes four integration tiers:
+
+#### Tier A — Downstream Platform Sync (No ESP32 Code Required)
 
 Some platforms ingest data from Strava automatically and need no direct
 Echenon integration:
 
-| Platform | Sync method | Setup |
+| Platform | Sync Method | Setup |
 |---|---|---|
 | **Xert** | Automatic Strava webhook | Connect Xert to Strava once in Xert Online → Sync settings |
 | **Relive** | Automatic Strava sync | Connect in Relive settings |
 | **VeloViewer** | Automatic Strava sync | Connect in VeloViewer settings |
 
-When Echenon uploads a ride to Strava, Xert pulls the full 1 Hz power stream,
-runs its MPA model, checks for breakthroughs and updates the athlete's fitness
-signature, with no Xert-specific code on the ESP32.
+When Echenon uploads a ride to Strava, Xert pulls the full 1 Hz power
+stream, runs its MPA model, checks for breakthroughs and updates the
+athlete's fitness signature — with zero Xert-specific code on the ESP32.
 
-### 10.6 Future Direct Integrations (Post-v1)
+Additionally, Xert captures rides live when the rider uses the Xert EBC
+app on the tablet: the app connects to Echenon's BLE FTMS service
+(`0x1826`, `0x2ACC`, `0x2AD2` at 2 Hz) and records the session directly,
+syncing to Xert Online on completion. This means Xert has **two
+independent ingest paths** — live BLE FTMS capture and Strava webhook
+sync — neither requiring a dedicated `IUploader` implementation.
 
-| Platform | Auth type |
-|---|---|
-| Garmin Connect | OAuth 2.0 |
-| TrainingPeaks | OAuth 2.0 |
-| Intervals.icu | API key |
+#### Tier B — Direct ESP32 Cloud Uploaders (On-Device `IUploader`)
+
+These services benefit from direct upload because the rider may not
+always have the tablet open (console-off standalone rides, quick free
+rides), the session recording in `RideStore` captures the full 1 Hz data
+stream with internal resistance, HR, and calibrated power, and auto-upload
+on session completion provides a "ride and forget" experience.
+
+| Service | Auth Type | Status | Notes |
+|---|---|---|---|
+| **Strava** | OAuth 2.0 (BYOA) | **Core (live)** | Reference OAuth sink (§10.4) |
+| **Intervals.icu** | REST API key | **Core (live)** | Reference API-key sink (§10.3a) |
+
+#### Tier C — Future / Manual Export
+
+| Service | Status | Reason |
+|---|---|---|
+| **Garmin Connect** | Manual TCX export | Garmin Health API requires corporate enterprise partner approval; manual upload via Stored Rides pill works seamlessly |
+| **Wahoo Cloud** | Future PR | OAuth 2.0 developer registration available; deferred to post-v1 |
+| **Generic Webhook** | Future PR | HTTP POST multipart/TCX for Home Assistant / NAS / InfluxDB integrations |
+
+#### Tier D — BLE FTMS Clients (Not Upload Targets)
+
+Zwift, Xert EBC, TrainerRoad, and SYSTM connect to Echenon's BLE FTMS
+service as real-time clients. They originate their own activity records.
+Echenon does not upload to them.
 
 ---
 
@@ -2544,29 +2664,78 @@ default App tab is disabled (`app.disableDefaultAppTab()`).
 |---|---|---|
 | **WiFi** | 10 | Framework WiFi management |
 | **Bluetooth** | 15 | Framework BLE pairing and status |
-| **Echenon** | 50 | Device status summary + "Open Ride Page →" button |
-| **Setup** | 60 | PillBar sub-navigation (see below) |
+| **Echenon** | 50 | Device status summary, Stored Rides, "Open Ride Page →" button |
+| **Apps** | 60 | Per-sink configuration pills (see below) |
 | **Security** | — | Framework authentication settings |
 | **System** | — | Framework system info, OTA, diagnostics; event log viewer (PR-14) |
 
-**Echenon tab (order 50):** Shows device connection status, sensor readings and
-a prominent "Open Ride Page →" button that links to `/ride`.
+**Echenon tab (order 50):** Shows device connection status, sensor readings,
+a prominent "Open Ride Page →" button that links to `/ride`, and the
+**Stored Rides** card:
 
-**Setup tab (order 60):** Uses a PillBar for sub-navigation with three pills:
+```
+┌─────────────────────────────────────────────────────────┐
+│  Echenon                                                │
+│                                                         │
+│  ┌─ Live Metrics ─────────────────────────────────────┐ │
+│  │  Power: 187W  Cadence: 82 rpm  HR: 145 bpm        │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                         │
+│  ┌─ Stored Rides ─────────────────────────────────────┐ │
+│  │  Oct 28, 2026 18:32  │  42 min  │  178W avg       │ │
+│  │    Strava: ✅ Synced  Intervals: ✅ Synced         │ │
+│  │    [Download TCX]  [Delete]  [Force Push ▾]        │ │
+│  │──────────────────────────────────────────────────── │ │
+│  │  Oct 27, 2026 07:15  │  35 min  │  162W avg       │ │
+│  │    Strava: ✅ Synced  Intervals: ⏳ Pending        │ │
+│  │    [Download TCX]  [Delete]  [Force Push ▾]        │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                         │
+│  [ Open Ride Page → ]                                   │
+└─────────────────────────────────────────────────────────┘
+```
+
+The Stored Rides card fetches data from `GET /api/session/history`
+(extended with per-sink sync status) and `GET /api/echenon/runs`. Each
+ride shows date/time, duration, average power, per-sink sync badges
+with clickable links, and one-click `[Download TCX]`, `[Delete]`, and
+per-sink `[Force Push / Retry]` actions.
+
+**Apps tab (order 60):** Uses a PillBar for sub-navigation with per-sink
+configuration pills and system pills:
 
 | Pill | Order | Content |
 |---|---|---|
-| **Apps** | 10 | Strava OAuth configuration (moved from Upload Services) |
-| **Level Mapping** | 20 | Calibration wizard (moved from Calibration tab) |
+| **Strava** | 10 | OAuth 2.0 configuration: connect/disconnect, auto-sync toggle, upload status |
+| **Intervals.icu** | 20 | API key configuration: athlete ID, API key form, test connection, auto-sync toggle |
+| **Level Mapping** | 25 | Calibration wizard (moved from Calibration tab) |
 | **Power Tuning** | 30 | Recalibration (moved from Recalibration tab) |
+| **Diagnostics** | 35 | Event log viewer (PR-14) |
 
-**Removed from top-level tabs:** The default App tab, Calibration, Recalibration,
-Session (history), and Upload Services are no longer top-level tabs. Session
-history is accessible from the ride page. Calibration and upload configuration
-are consolidated under the Setup tab.
+Future sinks are registered at order 30+ (before Level Mapping) to keep
+connected-apps pills grouped at the top.
 
-Signal-logger content is compiled behind `WITH_SIGNAL_LOGGER` and is not visible
-in production builds.
+**REST API extensions (PR-19):**
+
+| Route | Method | Auth | Description |
+|---|---|---|---|
+| `/api/upload/sinks` | `GET` | ✓ | List all registered sinks with connection status, enabled state, and pending job counts |
+| `/api/upload/status` | `GET` | ✓ | Aggregate upload health: total pending, last error, per-sink summary |
+| `/api/session/upload` | `POST` | ✓ | Force-push / retry: `{session_id, service_id}` for single-sink or `{session_id}` for all sinks |
+| `/api/session/history` | `GET` | ✓ | Session list with per-sink sync status array: `[{service_id, status, remote_id, remote_url, error}]` |
+| `/api/intervals/status` | `GET` | ✓ | Intervals.icu connection status |
+| `/api/intervals/credentials` | `POST` | ✓ | Save Intervals.icu athlete ID and API key |
+| `/api/intervals/test` | `POST` | ✓ | Test Intervals.icu connection |
+| `/api/intervals/disconnect` | `POST` | ✓ | Clear Intervals.icu credentials |
+
+**Removed from top-level tabs:** The default App tab, Calibration,
+Recalibration, Session (history), and Upload Services are no longer
+top-level tabs. Session history is accessible from the Stored Rides card
+in the Echenon tab. Calibration and upload configuration are consolidated
+under the Apps tab.
+
+Signal-logger content is compiled behind `WITH_SIGNAL_LOGGER` and is not
+visible in production builds.
 
 ### 11.3 Technical Implementation
 
