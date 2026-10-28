@@ -44,9 +44,9 @@ work_orders:
   slug: wo3-portal-ui
   title: Portal UI — Wahoo Pill & Stored Rides Badges
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 2c059c3a37b8185490986182e57a43007be32676
 - id: WO-21.4
   slug: wo4-native-tests
   title: Native Unit Tests

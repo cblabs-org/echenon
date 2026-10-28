@@ -4,7 +4,7 @@ wo_id: WO-21.3
 pr_id: PR-21
 title: Portal UI — Wahoo Pill & Stored Rides Badges
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - web/wahoo_settings.js
 - web/stored_rides.js
@@ -18,7 +18,20 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: b7ff9e3a73b6d2b1aa67419a8d6f0c4eda205f4c539cd93b6c7e6e6d880bca30
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_565992969d95
+  commit_sha: 2c059c3a37b8185490986182e57a43007be32676
+  files_modified:
+  - web/stored_rides.js
+  - web/wahoo_settings.js
+  verification_summary: 'pio test -e native --verbose: ================ 261 test cases:
+    261 succeeded in 00:00:00.497 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-21.3 — Portal UI: Wahoo Pill & Stored Rides Badges
@@ -70,4 +83,13 @@ update `web/stored_rides.js` to render per-sink badges and retry actions for Wah
 
 ## Completion Report
 
-_Pending execution._
+All line-item deliverables completed and verified:
+1. `web/wahoo_settings.js`:
+   - Authored Wahoo Cloud settings panel conforming to modular IIFE structure matching `intervals_settings.js` and `upload_settings.js`.
+   - Setup Guide: Instructions for creating application in Wahoo Developer Portal, setting redirect URI (`/api/wahoo/callback`), and scopes (`workouts_read workouts_write`).
+   - Wahoo API Credentials card: Form inputs for Client ID and write-only Client Secret, with Save Credentials action (`POST /api/wahoo/credentials`).
+   - Wahoo Cloud Integration card: Status badge (`Connected as <name>`, `Not Connected`, `Token Expired`), user & token expiry details, `[Connect with Wahoo]` action (`GET /api/wahoo/auth-url`), auto-sync toggle (`auto_sync_wahoo` via `/api/session/config` and `/api/upload/settings`), and `[Disconnect]` action (`POST /api/wahoo/disconnect`).
+   - URL error handling: Detects and displays `wahoo_error` query parameters from hash or search query.
+2. `web/stored_rides.js`:
+   - Updated `buildRemoteUrl()` to return `'https://api.wahooligan.com/v1/workouts/' + remoteId` for `sid === 'wahoo'`.
+   - Updated per-sink sync status rendering with `formatServiceLabel()` to display appropriate "Wahoo" service label while preserving `service_id: "wahoo"` for retry triggers.
