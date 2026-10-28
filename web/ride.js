@@ -37,15 +37,35 @@ $('b-pause').disabled=!isA;
 $('b-pause').textContent=isP?'Resume':'Pause';
 $('b-stop').disabled=!isA&&!isP;
 }
-window.R={cmd:function(c){
-if(c==='stop'){if(!confirm('Stop this ride?'))return;st='IDLE';ub()}
+window.R={
+cmd:function(c){
+if(c==='stop'){var m=$('stop-modal');if(m)m.style.display='flex';return}
 if(c==='pause'&&st==='PAUSED')c='resume';
 fetch('/api/session/'+c,{method:'POST'}).then(function(r){return r.json()}).then(function(d){
-if(c==='stop'||(d&&d.state==='ENDED')){st='IDLE'}
+if(d&&d.state==='ENDED'){st='IDLE'}
 else if(d&&d.state){st=d.state}
 ub();ss();lh();
 }).catch(function(){ub();});
-}};
+},
+stopAction:function(a){
+if(a==='cancel'){$('stop-modal').style.display='none';return}
+if(a==='discard'){
+if(!confirm('Discard this ride? It will not be recorded or sent to Strava.'))return;
+$('stop-modal').style.display='none';
+fetch('/api/session/discard',{method:'POST'}).then(function(r){return r.json()}).then(function(d){
+st='IDLE';ub();ss();lh();
+}).catch(function(){ub();});
+return;
+}
+if(a==='save'){
+$('stop-modal').style.display='none';
+fetch('/api/session/stop',{method:'POST'}).then(function(r){return r.json()}).then(function(d){
+st='IDLE';ub();ss();lh();
+}).catch(function(){ub();});
+return;
+}
+}
+};
 function ss(){
 fetch('/api/session/status').then(function(r){return r.json()}).then(function(d){
 if(d.state==='ENDED'){st='IDLE'}else if(d.state){st=d.state}
@@ -71,7 +91,7 @@ var rides=d.rides||d;if(!rides||!rides.length){$('history').innerHTML='<div id="
 var h='';rides.slice(-5).reverse().forEach(function(r){
 var dt=r.start_epoch_s?new Date(r.start_epoch_s*1e3).toLocaleDateString():'--';
 var dur=fmt(r.duration_s||0);
-h+='<div class="r"><span>'+dt+' · '+dur+' · '+((r.avg_power_w||0))+'W</span><a href="/api/session/download?id='+r.session_id+'">TCX</a>'+(r.activity_id?'<a href="https://www.strava.com/activities/'+r.activity_id+'" target="_blank">Strava ↗</a>':'')+'</div>';
+h+='<div class="r"><span>'+dt+' · '+dur+' · '+((r.avg_power_w||0))+'W</span><a href="/api/session/download?id='+r.session_id+'" download="echenon_'+r.session_id+'.tcx">TCX</a>'+(r.activity_id?'<a href="https://www.strava.com/activities/'+r.activity_id+'" target="_blank">Strava ↗</a>':'')+'</div>';
 });$('history').innerHTML=h;
 }).catch(function(){});
 }
@@ -85,5 +105,12 @@ body:JSON.stringify({auto_start:asInit.checked})
 }).catch(function(){});
 };
 }
+var sm=$('stop-modal');
+if(sm){
+sm.addEventListener('click',function(e){if(e.target===sm)sm.style.display='none'});
+}
+document.addEventListener('keydown',function(e){
+if(e.key==='Escape'){var m=$('stop-modal');if(m&&m.style.display==='flex')m.style.display='none'}
+});
 ws();setInterval(function(){if(w&&w.readyState===1)try{w.send('ping')}catch(e){}},15e3);ss();lh();setInterval(pl,2500);setInterval(ss,5e3);setInterval(lh,30e3);
 })();
