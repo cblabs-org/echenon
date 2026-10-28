@@ -39,7 +39,7 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 08d48b685954205719d0809f2572f3b31935bce5
+  commit_sha: 3e9b495da64eeea315f389aa0fc289e092f66a58
 - id: WO-21.3
   slug: wo3-portal-ui
   title: Portal UI — Wahoo Pill & Stored Rides Badges

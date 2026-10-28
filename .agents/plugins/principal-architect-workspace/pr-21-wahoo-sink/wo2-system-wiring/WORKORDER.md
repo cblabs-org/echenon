@@ -25,7 +25,7 @@ completion:
   status: COMPLETED
   attempt_num: 1
   receipt_id: rcpt_bac5b101d302
-  commit_sha: 08d48b685954205719d0809f2572f3b31935bce5
+  commit_sha: 3e9b495da64eeea315f389aa0fc289e092f66a58
   files_modified:
   - src/echenon/EchenonModule.cpp
   - src/echenon/EchenonModule.h
@@ -110,4 +110,11 @@ and configuration management.
 
 ## Completion Report
 
-_Pending execution._
+All line-item deliverables completed and verified:
+1. `src/echenon/EchenonModule.h`: Included `"echenon/WahooUploader.h"`, added `_wahooUploader` instance and `wahooUploader()` accessor.
+2. `src/echenon/EchenonModule.cpp`: Registered Wahoo tab in `registerTabs()`: `registry.addTab("Wahoo Cloud", "Apps", 30, nullptr, "/wahoo_settings.js")`.
+3. `src/main.cpp`: Configured `wahooUploader()` with `KeyManager`, default secret registrar, config persistence callback, called `begin()`, registered as Sink #3 in `UploadQueue`, registered with `app.registerModule()`, and injected into `sessionOverlay.setWahooUploader()`.
+4. `src/echenon/SessionOverlay.h`: Forward declared `WahooUploader`, added setter and member, declared testable handler methods (`handleGetWahooStatus`, `handleSaveWahooCredentials`, `handleGetWahooAuthUrl`, `handleWahooCallback`, `handleWahooDisconnect`).
+5. `src/echenon/SessionOverlay.cpp`: Added `#include "echenon/WahooUploader.cpp"` under `#ifdef UNIT_TEST` for clean native unit test linking, implemented all five Wahoo handler methods, registered endpoints `/api/wahoo/status`, `/api/wahoo/credentials`, `/api/wahoo/auth-url`, `/api/wahoo/callback` (with redirect to `/#tab-apps`), `/api/wahoo/disconnect`, and served `/wahoo_settings.js` under `#if __has_include("include/portal_assets/wahoo_settings_js.hpp")`.
+
+Verified cleanly via `pio test -e native --verbose` with 261/261 tests passing and receipt `rcpt_bac5b101d302` stamped.
