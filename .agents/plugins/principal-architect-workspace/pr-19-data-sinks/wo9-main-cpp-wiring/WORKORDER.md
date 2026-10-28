@@ -4,7 +4,7 @@ wo_id: WO-19.9
 pr_id: PR-19
 title: IntervalsIcuUploader main.cpp Wiring
 complexity: mechanical
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/main.cpp
 forbidden_files: []
@@ -14,7 +14,19 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 7d290ef50e4766993754ee3b5bee84a48269311a950bd3bb6241eb5d329ab9df
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_ae273c94ea82
+  commit_sha: 6ccc63811fcb08a762b4b34c62794301f3209a87
+  files_modified:
+  - src/main.cpp
+  verification_summary: 'pio test -e native --verbose: ================ 234 test cases:
+    234 succeeded in 00:00:00.556 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-19.9 — IntervalsIcuUploader main.cpp Wiring

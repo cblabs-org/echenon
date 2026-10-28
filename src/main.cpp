@@ -145,6 +145,12 @@ void setup() {
     sessionOverlay.setStravaUploader(&stravaUploader);
     app.registerModule(&stravaUploader);
 #endif
+    echenonModule.intervalsUploader().setSecretStore(&app.getKeyManager());
+    echenonModule.intervalsUploader().setSecretRegistrar(echenon::IntervalsIcuUploader::defaultRegisterSecret);
+    echenonModule.intervalsUploader().begin();
+    uploadQueue.registerSink(&echenonModule.intervalsUploader());
+    app.registerModule(&echenonModule.intervalsUploader());
+    sessionOverlay.setIntervalsUploader(&echenonModule.intervalsUploader());
     sessionOverlay.setSessionManager(&sessionManager);
     sessionOverlay.setRideStore(&rideStore);
     sessionOverlay.setUploadQueue(&uploadQueue);

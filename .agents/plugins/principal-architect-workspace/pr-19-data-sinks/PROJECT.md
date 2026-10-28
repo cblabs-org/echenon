@@ -66,9 +66,9 @@ work_orders:
   slug: wo9-main-cpp-wiring
   title: IntervalsIcuUploader main.cpp Wiring
   complexity: mechanical
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 6ccc63811fcb08a762b4b34c62794301f3209a87
 - id: WO-19.6
   slug: wo6-native-tests
   title: Native Unit Tests
