@@ -284,9 +284,6 @@ void EchenonModule::syncPhysicsCalibration() {
 }
 
 void EchenonModule::applyConfig(const JsonObject& config) {
-    if (config["cal_pos_done"].is<bool>()) {
-        _calibrationWizard.setPosDone(config["cal_pos_done"].as<bool>());
-    }
     if (config["runaway_timeout_s"].is<int>()) {
         _runawayDetector.setTimeoutSeconds(config["runaway_timeout_s"].as<uint16_t>());
     }
@@ -335,7 +332,6 @@ void EchenonModule::applyConfig(const JsonObject& config) {
 }
 
 void EchenonModule::serializeConfig(JsonObject& config) const {
-    config["cal_pos_done"] = _calibrationWizard.isPosDone();
     config["runaway_timeout_s"] = _runawayDetector.getTimeoutSeconds();
     JsonArray tableArr = config["cal_level_table"].to<JsonArray>();
     for (uint8_t l = 1; l <= 32; ++l) {

@@ -51,8 +51,7 @@ public:
     uint16_t getTableEntry(uint8_t level) const; // 1-indexed (1..32)
     void setTableEntry(uint8_t level, uint16_t wiper);
 
-    bool isPosDone() const { return _posDone; }
-    void setPosDone(bool done);
+    bool isPosDone() const;
 
     bool fitLinearEndpoints(float& outPotMin, float& outPotMax) const;
     float getPotMin() const { return _potMin; }
@@ -77,7 +76,6 @@ private:
     State _state = State::IDLE;
     uint8_t _currentStep = 0;
     bool _isComplete = false;
-    bool _posDone = false;
     uint16_t _table[TOTAL_LEVELS] = {};
     float _potMin = static_cast<float>(LevelMapping::WORKING_RANGE_MIN);
     float _potMax = static_cast<float>(LevelMapping::WORKING_RANGE_MAX);
