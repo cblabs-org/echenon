@@ -4,7 +4,7 @@ wo_id: WO-19.5
 pr_id: PR-19
 title: Strava Pill Refactor & Connected Apps Polish
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - web/upload_settings.js
 - web/intervals_settings.js
@@ -19,7 +19,21 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 42447e1950f89412ab400fd00fd615b6f3219454843f985663b7952c2a12fb19
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_fefec0664c53
+  commit_sha: a4a065913f8667de01d264546e7193bb954b8c5e
+  files_modified:
+  - src/echenon/EchenonModule.cpp
+  - src/echenon/EchenonModule.h
+  - web/intervals_settings.js
+  verification_summary: 'pio test -e native --verbose: ================ 234 test cases:
+    234 succeeded in 00:00:03.459 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-19.5 — Strava Pill Refactor & Connected Apps Polish

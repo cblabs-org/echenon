@@ -58,9 +58,9 @@ work_orders:
   slug: wo5-strava-pill-refactor
   title: Strava Pill Refactor & Connected Apps Polish
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: a4a065913f8667de01d264546e7193bb954b8c5e
 - id: WO-19.6
   slug: wo6-native-tests
   title: Native Unit Tests
