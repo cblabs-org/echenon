@@ -8,8 +8,7 @@ CalibrationWizard::CalibrationWizard(ResistanceSensor* sensor)
     : _sensor(sensor),
       _state(State::IDLE),
       _currentStep(0),
-      _isComplete(false),
-      _posDone(false) {
+      _isComplete(false) {
     std::memset(_table, 0, sizeof(_table));
 }
 
@@ -48,7 +47,6 @@ bool CalibrationWizard::recordLevel(uint8_t consoleLevel, uint16_t wiperCount) {
     } else {
         _state = State::COMPLETED;
         _isComplete = true;
-        _posDone = true;
     }
     updateFittedEndpoints();
     return true;
@@ -68,16 +66,31 @@ void CalibrationWizard::setTableEntry(uint8_t level, uint16_t wiper) {
     }
 }
 
-void CalibrationWizard::setPosDone(bool done) {
-    _posDone = done;
-    updateFittedEndpoints();
+bool CalibrationWizard::isPosDone() const {
+    // Check all 32 entries populated and at least one differs from default
+    bool anyDiffers = false;
+    for (uint8_t l = 1; l <= TOTAL_LEVELS; ++l) {
+        if (_table[l - 1] == 0) {
+            return false;  // incomplete table
+        }
+        // Default linear interpolation: min + (max - min) * (l - 1) / 31
+        uint16_t defaultVal = static_cast<uint16_t>(
+            LevelMapping::WORKING_RANGE_MIN +
+            (LevelMapping::WORKING_RANGE_MAX - LevelMapping::WORKING_RANGE_MIN) *
+            (l - 1) / (TOTAL_LEVELS - 1));
+        int16_t diff = static_cast<int16_t>(_table[l - 1]) - static_cast<int16_t>(defaultVal);
+        if (diff > 2 || diff < -2) {
+            anyDiffers = true;
+        }
+    }
+    return anyDiffers;
 }
 
 bool CalibrationWizard::fitLinearEndpoints(float& outPotMin, float& outPotMax) const {
     const float defaultMin = static_cast<float>(LevelMapping::WORKING_RANGE_MIN);
     const float defaultMax = static_cast<float>(LevelMapping::WORKING_RANGE_MAX);
 
-    if (!_posDone) {
+    if (!isPosDone()) {
         outPotMin = defaultMin;
         outPotMax = defaultMax;
         return false;
@@ -146,7 +159,6 @@ void CalibrationWizard::reset() {
     _state = State::IDLE;
     _currentStep = 0;
     _isComplete = false;
-    _posDone = false;
     std::memset(_table, 0, sizeof(_table));
     updateFittedEndpoints();
 }
