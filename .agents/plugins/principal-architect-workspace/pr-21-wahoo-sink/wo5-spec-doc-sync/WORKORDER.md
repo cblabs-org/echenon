@@ -78,4 +78,42 @@ to incorporate Wahoo Cloud as Sink #3 within Echenon's pluggable multi-sink arch
 
 ## Completion Report
 
-_Pending execution._
+### Summary of Completed Work
+Updated `SPEC.md` and `docs/data-sinks.md` to fully document Wahoo Cloud as Sink #3 in Echenon's pluggable multi-sink architecture, matching the implementation delivered across WO-21.1 through WO-21.4.
+
+### Key Changes & Documentation Synchronized
+1. **`SPEC.md` Architectural Specification:**
+   - **§1.4 (Scope & Non-Goals):** Updated non-goals to reflect active on-device direct upload support for Strava, Intervals.icu, and Wahoo Cloud.
+   - **§2.1 (System Architecture & Module Table):** Documented `WahooUploader` implementing `IUploader` and `IConfigurable` (`"echenon_wahoo"`, schema v1) and updated `SessionOverlay` description to include `/api/wahoo/*` routes.
+   - **§10.1 & §10.2 (Multi-Sink UploadQueue Architecture):** Updated documentation and code snippets to include `auto_sync_wahoo` and `wahoo` as a registered sink identifier.
+   - **§10.3 (Settings Pages):** Updated Apps tab pill hierarchy tree to include `Wahoo Cloud` (`/wahoo_settings.js`, order 30) and multi-sink toggle list.
+   - **§10.3b (Wahoo Cloud Sink — OAuth 2.0 Sink #3):** Added dedicated specification section covering:
+     - Bring-Your-Own-App (BYOA) developer setup and OAuth scopes (`user_read workouts_write`).
+     - Authorization endpoints (`https://api.wahooligan.com/oauth/authorize`, `/oauth/token`).
+     - Cryptographically secure 128-bit (32 hex) CSRF state nonce generation and single-use 10-minute TTL validation.
+     - Token exchange and rotated refresh-token-first persistence writing `wahoo.refresh_token` before `wahoo.access_token` and metadata.
+     - Multipart workout creation endpoint (`POST https://api.wahooligan.com/v1/workouts`) with `workout[workout_type_id]=1`, `workout[file]`, and boundary framing.
+     - Synchronous status handling (`pollUploadStatus()` completes immediately with `SUCCESS` without async polling round-trips).
+     - HTTP status code mapping to `UploadStageResult` (200/201 SUCCESS, 401 PERMANENT_ERROR, 429/5xx RETRYABLE_ERROR).
+     - REST configuration routes (`/api/wahoo/status`, `/api/wahoo/credentials`, `/api/wahoo/auth-url`, `/api/wahoo/callback`, `/api/wahoo/disconnect`).
+   - **§10.5 (Downstream Platform Sync — Provider Tier Taxonomy):** Promoted Wahoo Cloud to **Tier B (Core live)**; removed from Tier C.
+   - **§11.2 (Portal Tabs & REST API Routes):** Added Wahoo Cloud pill (order 30) to Apps tab table and documented all 5 `/api/wahoo/*` REST endpoints.
+
+2. **`docs/data-sinks.md` Multi-Sink Design Guide:**
+   - **Section 1 & 2:** Updated multi-sink architecture diagram to show 3 registered uploaders plus future webhook sink; added Wahoo Cloud to Tier B table and removed from Tier C table.
+   - **Section 4 & 5:** Added Wahoo Cloud encrypted NVS keys (`wahoo.client_secret`, `wahoo.refresh_token`, `wahoo.access_token`) under namespace `echenon_wahoo`, auto-sync toggle `auto_sync_wahoo`, and Apps tab pill order (order 30).
+   - **Section 6 & 7:** Updated JSON payload examples for `/api/upload/sinks` and `/api/session/history` showing Wahoo Cloud sync status; updated sequential queue drain diagram to include Wahoo stages.
+   - **Section 8 (Wahoo Cloud Sink — Sink #3):** Added comprehensive guide with subsections on:
+     - Architectural role as Sink #3 in the 4-sink registry (`UploadQueue`).
+     - Step-by-step BYOA registration on Wahoo Developer Portal.
+     - Scope requirements (`user_read workouts_write`).
+     - OAuth 2.0 flow sequence diagram, CSRF state nonce defense, and rotated refresh-token-first crash resilience.
+     - Redactor secret registration for all sensitive tokens.
+     - Multipart TCX upload framing and synchronous workout creation response handling.
+     - HTTP error code taxonomy and backoff retry policy.
+     - Multi-sink interaction and shared `.tcx.gz` file lifecycle.
+     - Configuration keys and secret storage partition.
+
+### Verification
+- Ran `pio test -e native --verbose`: all 269 tests across 29 test suites passed in 0.54s with zero errors or warnings.
+- Ran `pa wo verify WO-21.5`: verified scope hygiene, computed canonical tree hash `87a73884958e8b09befa44cce25118ea6eeac7e3db02f8db9deed4d22d529e50`, and committed receipt `rcpt_87a73884958e`.
