@@ -412,9 +412,7 @@
   async function fetchSessionStatus() {
     var fetchFn = window.apiFetch || window.fetch;
     try {
-      var resp = await fetchFn('/api/session/status');
-      if (!resp.ok) return;
-      var data = await resp.json();
+      var data = await fetchFn('/api/session/status');
       updateSessionUI(data.state);
     } catch (err) {
       // non-fatal
@@ -443,9 +441,7 @@
   async function fetchLastRide() {
     var fetchFn = window.apiFetch || window.fetch;
     try {
-      var resp = await fetchFn('/api/session/history');
-      if (!resp.ok) return;
-      var data = await resp.json();
+      var data = await fetchFn('/api/session/history');
 
       var contentEl = document.getElementById('echenon-last-ride-content');
       if (!contentEl) return;
