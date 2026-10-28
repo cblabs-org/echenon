@@ -158,18 +158,7 @@
       hrEl.textContent = data.heart_rate;
     }
 
-    // --- Diagnostics Drawer: Lid ---
-    var diagDot = document.getElementById('echenon-diag-dot');
-    var diagLabel = document.getElementById('echenon-diag-label');
-    if (diagDot && data.ble_conn !== undefined) {
-      if (data.ble_conn) {
-        diagDot.style.background = 'var(--success)';
-        if (diagLabel) diagLabel.textContent = 'Bike Connected';
-      } else {
-        diagDot.style.background = 'var(--border)';
-        if (diagLabel) diagLabel.textContent = 'Not Connected';
-      }
-    }
+    // (Lid dot and label updated at end of function via aggregate health)
 
     // --- Diagnostics Drawer: Status Section ---
     var calEl = document.getElementById('echenon-diag-cal');
@@ -223,6 +212,11 @@
       encVccEl.innerHTML = '<span style="color:' + vccColour + ';">' + data.enc_vcc + '</span>';
     }
 
+    var resSecDot = document.getElementById('echenon-diag-sec-res');
+    if (resSecDot && data.enc_vcc !== undefined) {
+      resSecDot.className = 'dot ' + (data.enc_vcc < 100 ? 'dot--red' : data.enc_vcc < 500 ? 'dot--yellow' : 'dot--green');
+    }
+
     var encDeltaEl = document.getElementById('echenon-diag-enc-delta');
     if (encDeltaEl && data.encoder_delta !== undefined) {
       encDeltaEl.textContent = data.encoder_delta;
@@ -237,6 +231,11 @@
     var cadPinEl = document.getElementById('echenon-diag-cad-pin');
     if (cadPinEl && data.cad_pin !== undefined) {
       cadPinEl.textContent = data.cad_pin ? 'HIGH' : 'LOW';
+    }
+
+    var cadSecDot = document.getElementById('echenon-diag-sec-cad');
+    if (cadSecDot) {
+      cadSecDot.className = 'dot dot--green';
     }
 
     // --- Diagnostics Drawer: Motor Sense Section ---
@@ -260,6 +259,27 @@
       } else {
         motDirEl.textContent = 'IDLE';
       }
+    }
+
+    var motSecDot = document.getElementById('echenon-diag-sec-mot');
+    if (motSecDot) {
+      motSecDot.className = 'dot dot--green';
+    }
+
+    // --- Diagnostics Drawer: Lid (aggregate health) ---
+    var diagDot = document.getElementById('echenon-diag-dot');
+    var diagLabel = document.getElementById('echenon-diag-label');
+    if (diagDot) {
+      // Determine worst section status: red > yellow > green > grey
+      var level = 'green'; // default when data is flowing
+      if (data.enc_vcc !== undefined) {
+        if (data.enc_vcc < 100) level = 'red';
+        else if (data.enc_vcc < 500 && level !== 'red') level = 'yellow';
+      }
+      diagDot.className = 'dot dot--' + level;
+    }
+    if (diagLabel) {
+      diagLabel.textContent = 'Diagnostics: Live';
     }
 
     // --- Session state (legacy WS field fallback) ---
@@ -333,11 +353,10 @@
       '<article class="info-drawer">' +
         '<details id="echenon-diag-drawer">' +
           '<summary class="info-summary">' +
-            '<span id="echenon-diag-dot" style="' +
-              'width:8px; height:8px; border-radius:50%; background:var(--border);' +
-              'display:inline-block; margin-right:0.5rem; flex-shrink:0;' +
-            '"></span>' +
-            '<span id="echenon-diag-label">Bike Status</span>' +
+            '<span style="display:flex; align-items:center; gap:0.5rem;">' +
+              '<span id="echenon-diag-dot" class="dot dot--grey" style="--dot-size:8px;"></span>' +
+              '<span id="echenon-diag-label">Diagnostics</span>' +
+            '</span>' +
           '</summary>' +
           '<div class="info-drawer-content">' +
 
@@ -353,7 +372,10 @@
             '</div>' +
 
             // Section: Resistance Knob
-            '<div style="font-weight:600; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); margin:0.75rem 0 0.25rem;">Resistance Knob</div>' +
+            '<div style="font-weight:600; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); margin:0.75rem 0 0.25rem; display:flex; align-items:center; gap:0.4rem;">' +
+              '<span id="echenon-diag-sec-res" class="dot dot--grey" style="--dot-size:6px;"></span>' +
+              'Resistance Knob' +
+            '</div>' +
             '<div class="info-row">' +
               '<span class="text-muted">Raw ADC</span>' +
               '<span id="echenon-diag-pot-raw" style="font-family:monospace;">--</span>' +
@@ -376,7 +398,10 @@
             '</div>' +
 
             // Section: Cadence Sensor
-            '<div style="font-weight:600; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); margin:0.75rem 0 0.25rem;">Cadence Sensor</div>' +
+            '<div style="font-weight:600; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); margin:0.75rem 0 0.25rem; display:flex; align-items:center; gap:0.4rem;">' +
+              '<span id="echenon-diag-sec-cad" class="dot dot--grey" style="--dot-size:6px;"></span>' +
+              'Cadence Sensor' +
+            '</div>' +
             '<div class="info-row">' +
               '<span class="text-muted">Pulse &mu;s</span>' +
               '<span id="echenon-diag-cad-us" style="font-family:monospace;">--</span>' +
@@ -387,7 +412,10 @@
             '</div>' +
 
             // Section: Motor Sense
-            '<div style="font-weight:600; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); margin:0.75rem 0 0.25rem;">Motor Sense</div>' +
+            '<div style="font-weight:600; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); margin:0.75rem 0 0.25rem; display:flex; align-items:center; gap:0.4rem;">' +
+              '<span id="echenon-diag-sec-mot" class="dot dot--grey" style="--dot-size:6px;"></span>' +
+              'Motor Sense' +
+            '</div>' +
             '<div class="info-row">' +
               '<span class="text-muted">Sense +</span>' +
               '<span id="echenon-diag-mot-p" style="font-family:monospace;">--</span>' +
