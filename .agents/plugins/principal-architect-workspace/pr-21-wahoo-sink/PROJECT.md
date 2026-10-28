@@ -65,9 +65,9 @@ work_orders:
   slug: wo6-hardware-verification
   title: Hardware Verification & Soak
   complexity: interactive
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: cd4c6deaa4ec38aceea264ed89982bfae7efbd2d
 ---
 
 # PR-21 — Wahoo Cloud Data Sink

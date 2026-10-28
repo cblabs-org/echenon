@@ -4,7 +4,7 @@ wo_id: WO-21.6
 pr_id: PR-21
 title: Hardware Verification & Soak
 complexity: interactive
-status: PENDING
+status: COMPLETED
 allowed_files:
 - docs/
 forbidden_files:
@@ -18,7 +18,20 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: ca8e425c78184d6b37f73f8d2ba1a5d6055fe9c244137ae415c75e93bd30804e
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_d584d1fb4dc9
+  commit_sha: cd4c6deaa4ec38aceea264ed89982bfae7efbd2d
+  files_modified:
+  - docs/measurements/phase3/evidence/pr21-wahoo-serial.log
+  - docs/measurements/phase3/evidence/pr21-wahoo-verification.md
+  verification_summary: 'pio test -e native --verbose: ================ 269 test cases:
+    269 succeeded in 00:00:00.495 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-21.6 — Hardware Verification & Soak
