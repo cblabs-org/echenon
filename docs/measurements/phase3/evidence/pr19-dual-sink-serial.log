@@ -1,0 +1,187 @@
+================================================================================
+PR-19 Dual-Sink Hardware Verification — Boot & Pre-Flight Serial Log
+Firmware: v0.3.0-dev.44
+Date: 2026-10-28T20:25Z
+Device: EX-3 Waveshare NanoS3 @ /dev/cu.usbmodem101
+IP: 192.168.1.100
+================================================================================
+
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0x28 (SPI_FAST_FLASH_BOOT)
+Saved PC:0x4037fbb6
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x119c
+load:0x403c8700,len:0xcd0
+load:0x403cb700,len:0x2ea8
+entry 0x403c8908
+I (24) boot: ESP-IDF 5.5.5 2nd stage bootloader
+I (24) boot: compile time Oct 28 2026 20:23:20
+I (25) boot: Multicore bootloader
+I (25) boot: chip revision: v0.2
+I (25) boot: efuse block revision: v1.3
+I (25) boot.esp32s3: Boot SPI Speed : 80MHz
+I (25) boot.esp32s3: SPI Mode       : DIO
+I (26) boot.esp32s3: SPI Flash Size : 16MB
+I (26) boot: Enabling RNG early entropy source...
+I (26) boot: Partition Table:
+I (26) boot: ## Label            Usage          Type ST Offset   Length
+I (27) boot:  0 nvs              WiFi data        01 02 00009000 00005000
+I (27) boot:  1 otadata          OTA data         01 00 0000e000 00002000
+I (27) boot:  2 app0             OTA app          00 10 00010000 00600000
+I (28) boot:  3 app1             OTA app          00 11 00610000 00600000
+I (28) boot:  4 config           Unknown data     01 82 00c10000 00100000
+I (28) boot:  5 storage          Unknown data     01 82 00d10000 002c0000
+I (29) boot:  6 coredump         Unknown data     01 03 00fd0000 00010000
+I (29) boot: End of partition table
+I (30) esp_image: segment 0: paddr=00010020 vaddr=3c130020 size=549fch (346620) map
+I (94) esp_image: segment 1: paddr=00064a24 vaddr=3fca0e00 size=04e2ch ( 20012) load
+I (99) esp_image: segment 2: paddr=00069858 vaddr=40374000 size=067c0h ( 26560) load
+I (106) esp_image: segment 3: paddr=00070020 vaddr=42000020 size=12c5e8h (1230312) map
+I (334) esp_image: segment 4: paddr=0019c610 vaddr=4037a7c0 size=165e0h ( 91616) load
+I (356) esp_image: segment 5: paddr=001b2bf8 vaddr=50000000 size=00020h (    32) load
+I (367) boot: Loaded app from partition at offset 0x10000
+I (367) boot: Disabling RNG early entropy source...
+I (368) octal_psram: vendor id    : 0x0d (AP)
+I (368) octal_psram: dev id       : 0x02 (generation 3)
+I (369) octal_psram: density      : 0x03 (64 Mbit)
+I (369) octal_psram: good-die     : 0x01 (Pass)
+I (369) octal_psram: Latency      : 0x01 (Fixed)
+I (369) octal_psram: VCC          : 0x01 (3V)
+I (369) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (370) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (370) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (370) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (370) octal_psram: DriveStrength: 0x00 (1/1)
+I (371) MSPI Timing: Enter psram timing tuning
+I (371) esp_psram: Found 8MB PSRAM device
+I (372) esp_psram: Speed: 80MHz
+I (372) cpu_start: Multicore app
+I (795) esp_psram: SPI SRAM memory test OK
+I (804) cpu_start: Pro cpu start user code
+I (804) cpu_start: cpu freq: 160000000 Hz
+I (804) app_init: Application information:
+I (804) app_init: Project name:     echenon
+I (804) app_init: App version:      v0.3.0-dev.44
+I (804) app_init: Compile time:     Oct 28 2026 20:22:35
+I (804) app_init: ELF file SHA256:  22d7702ec...
+I (805) app_init: ESP-IDF:          5.5.5
+I (805) efuse_init: Min chip rev:     v0.0
+I (805) efuse_init: Max chip rev:     v0.99
+I (805) efuse_init: Chip rev:         v0.2
+I (805) heap_init: Initializing. RAM available for dynamic allocation:
+I (806) heap_init: At 3FCAF2A0 len 0003A470 (233 KiB): RAM
+I (806) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (806) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (806) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (807) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (808) spi_flash: detected chip: generic
+I (808) spi_flash: flash io: dio
+I (810) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (810) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (812) main_task: Started on CPU0
+I (812) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (813) main_task: Calling app_main()
+I (833) main_task: Returned from app_main()
+I (833) ConfigManager: Registered module 'echenon' (slot 1)
+I (834) EncoderModule: Initialized EncoderModule for 'knob': unit pinA=8, pinB=9, stepsPerDetent=4, reversed=0
+I (835) ConfigManager: Registered module 'ble' (slot 2)
+I (835) ConfigManager: Registered module 'echenon_strava' (slot 3)
+E (835) KeyManager: DeviceCrypto not initialized.
+E (836) KeyManager: DeviceCrypto not initialized.
+I (836) ConfigManager: Registered module 'echenon_intervals' (slot 4)
+I (836) ConfigManager: Registered module 'echenon_session' (slot 5)
+I (836) ConfigManager: Registered module 'echenon_upload' (slot 6)
+I (836) ConfigManager: Registered module 'time' (slot 7)
+I (837) Application: ESP32 App Foundation v0.3.0-dev.44 — Echenon — booting
+I (837) Application: State → BOOT
+I (837) EventBus: Initializing EventBus
+I (842) Application: LittleFS (storage) mounted successfully
+I (850) Application: LittleFS (config) mounted successfully
+I (850) Application: FrameworkConfig stored
+I (851) KeyManager: Initialized with DeviceCrypto reference.
+I (851) AuthManager: AuthManager initialised (WO2 — full auth implementation)
+I (852) AuthManager: AuthManager initialised (WO3 — cert generation enabled)
+I (852) ConfigManager: Registered module 'wifi' (slot 8)
+I (852) ConfigManager: Registered module 'auth' (slot 9)
+I (852) ConfigManager: beginAll() — loading config for 9 module(s)
+I (874) ConfigManifest: Loaded manifest with 9 module slot(s)
+I (874) ConfigManager: Loading config for 'echenon' from /config/mod/echenon.json
+I (892) ConfigManager: Loading config for 'ble' from /config/mod/ble.json
+I (911) ConfigManager: Loading config for 'echenon_strava' from /config/mod/echenon_strava.json
+I (929) ConfigManager: Loading config for 'echenon_intervals' from /config/mod/echenon_intervals.json
+I (938) ConfigManager: Loading config for 'echenon_session' from /config/mod/echenon_session.json
+I (951) ConfigManager: Loading config for 'echenon_upload' from /config/mod/echenon_upload.json
+I (963) ConfigManager: Loading config for 'time' from /config/mod/time.json
+I (977) TimeManager: Config applied — timezone: Europe/London (GMT0BST,M3.5.0/1,M10.5.0), NTP: pool.ntp.org
+I (978) ConfigManager: Loading config for 'wifi' from /config/mod/wifi.json
+I (996) WifiManager: Config applied — SSID: <REDACTED_SSID>
+I (997) WifiManager: Config applied — Hostname: echenon
+I (1010) WifiManager: Config applied — password retrieved from KeyManager
+I (1011) ConfigManager: Loading config for 'auth' from /config/mod/auth.json
+I (1030) AuthManager: Auth config applied — enabled=false tlsEnabled=false passwordSet=false certPresent=false
+I (1050) ConfigManifest: Manifest saved with 9 module slot(s)
+I (1050) ConfigManager: beginAll() complete
+I (1051) WifiManager: WiFi Manager initialized in NON-BLOCKING mode. Hostname: echenon
+I (1051) Application: WiFi setup initiated
+I (1052) DataManager: Creating worker task (stack=12288, priority=5, core=any, DRAM)
+I (1053) DataManager: Worker stack high water mark: 11532 B free (of 12288)
+I (1053) DataManager: Registered source: echenon.upload
+I (1053) WebServerManager: Initializing WebServerManager (apMode=0)
+I (1058) TimeManager: REST API routes registered
+I (1060) AuthManager: Auth routes registered (WO2 full implementation — 5 routes)
+I (1064) WebServerManager: Global auth middleware registered
+I (1064) WebServerManager: Global body-size middleware registered (default=4096, zu overrides)
+I (1064) WebServerManager: WebServer configured (TLS=0, AP=0), registered 11 contributors
+I (1065) Application: Registry locked — tickables=9 webContributors=11 mcpContributors=5 dataSources=1 statusReporter=registered
+I (1065) PreconditionEngine: Graph: [BLE Stack]
+I (1066) PreconditionEngine: Graph: [BLE Advertising]
+I (1066) PreconditionEngine: Graph: [BLE: Heart Rate Monitor]
+I (1066) PreconditionEngine: Graph: [strava_configured]
+I (1066) PreconditionEngine: Graph: [ntp_synced]
+I (1066) PreconditionEngine: Graph: [Timezone]
+I (1066) PreconditionEngine: Graph: [Time Sync] -> [WiFi Station]
+I (1067) PreconditionEngine: Graph: [WiFi Station]
+I (1067) PreconditionEngine: Graph: [Redactor Health]
+I (1067) Application: ✅ Firmware self-test PASSED — (app validation delegated to consumer)
+I (1067) Application: Heap report — free: 8603123 B  min-free: 8563416 B
+I (1068) Application: State → CONFIGURING
+I (1068) Application: Precondition unsatisfied: WiFi Station (cause=1, severity=0)
+I (1068) Application: Boot sequence complete — awaiting configuration
+I (1069) TimeManager: Setting timezone: GMT0BST,M3.5.0/1,M10.5.0
+I (1069) TimeManager: Configuring NTP servers: pool.ntp.org, time.nist.gov, time.windows.com
+I (1071) BLEManager: BLEManager wired to Application. Providers locked.
+I (1072) FTMSServer: FTMSServer started — subscribed to HR topic
+I (1132) RidePersistence: Scanned zu persisted rides (0 bytes total)
+I (3052) WifiManager: Connecting to <REDACTED_SSID> (attempt 1)...
+I (6652) wifi:connected with <REDACTED_SSID>, aid = 4, channel 1, BW20, bssid = XX:XX:XX:XX:XX:XX
+I (6653) wifi:security: WPA2-PSK, phy: bgn, rssi: -88
+I (9688) esp_netif_handlers: sta ip: 192.168.1.100, mask: 255.255.255.0, gw: 192.168.1.100
+I (9692) EchenonModule: mDNS responder started: http://echenon.local
+I (9693) WifiManager: Connected successfully. IP: 192.168.1.100
+I (9707) WifiManager: mDNS started: echenon.local
+I (9711) psychic: Server started on port 80
+I (9711) WebServerManager: HTTP server started on port 80
+I (9713) Application: State → RUNNING
+I (9714) Application: All startup preconditions satisfied — entering RUNNING state
+I (9715) BLEManager: Transitioning Idle -> Starting. Initializing stack...
+I (9725) NimBLEDevice: NimBLE Started!
+I (9735) BLEStack: NimBLE stack initialized successfully. Host task running.
+I (9736) HRMRepeater: Heart Rate Service (0x180D) registered successfully
+I (9737) FTMSServer: FTMS Service (0x1826) registered successfully
+I (9737) DeviceInfoService: Device Information Service (0x180A) registered
+I (9744) BLEManager: BLE stack active and ready.
+I (9899) BLEStack: >>> Central connected: handle=1, addr=4A:FE:87:2A:14:3F
+I (10896) NimBLEServer: subscribe event; attr_handle=24, subscribed: 1
+I (11072) HRMRepeater: HR Measurement subscription changed: SUBSCRIBED
+I (60811) Application: ♥ uptime=60s  free_heap=8370907B  dram=103375B  dram_min=59812B
+I (61089) DataManager: Worker stack high water mark: 10732 B free (of 12288)
+
+================================================================================
+Build Summary:
+  RAM:   17.9% (58,524 / 327,680 bytes)
+  Flash: 27.3% (1,714,863 / 6,291,456 bytes)
+  Build time: 1m 58.6s
+  Flash time: 50.6s (1,715,264 bytes, 1,503.9 kbit/s)
+================================================================================

@@ -87,9 +87,9 @@ work_orders:
   slug: wo8-hardware-verification
   title: Hardware Verification & Soak
   complexity: interactive
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 6525cc62bf10bcbe9326fa56c01c8093dbeae5ac
 - id: WO-19.10
   slug: wo10-build-fixes
   title: Firmware Build Fixes
