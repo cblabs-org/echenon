@@ -90,6 +90,13 @@ work_orders:
   status: PENDING
   attempts: 0
   commit_sha: null
+- id: WO-19.10
+  slug: wo10-build-fixes
+  title: Firmware Build Fixes
+  complexity: mechanical
+  status: PENDING
+  attempts: 0
+  commit_sha: null
 ---
 
 # PR-19 — Pluggable Data Sinks & Ride History Management
@@ -381,6 +388,15 @@ Bench test ride with concurrent dual-sink sync (Strava + Intervals.icu):
 - Verify Stored Rides pill shows per-sink sync badges with direct links.
 - Verify force-push/retry from Stored Rides pill.
 - Verify Strava and Intervals.icu pills display correct connection state.
+
+### WO-19.10 — Firmware Build Fixes
+Fix two compilation errors in the hardware target (`ex3-waveshare-nano`):
+1. `src/main.cpp`: Add `setKeyManager(KeyManager*)` to `IntervalsIcuUploader`
+   (following `StravaUploader`'s `KeyManagerSecretStore` adapter pattern) and
+   update main.cpp wiring to call `setKeyManager()` instead of `setSecretStore()`.
+2. `src/echenon/SessionOverlay.cpp`: Fix PROGMEM asset lambda capture for
+   `intervals_settings_js.h` — move `#include` before the lambda or add
+   explicit captures.
 
 ---
 

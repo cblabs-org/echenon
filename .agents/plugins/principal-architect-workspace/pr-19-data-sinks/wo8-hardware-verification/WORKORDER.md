@@ -4,7 +4,7 @@ wo_id: WO-19.8
 pr_id: PR-19
 title: Hardware Verification & Soak
 complexity: interactive
-status: PENDING
+status: ESCALATED_TO_PA
 allowed_files:
 - docs/measurements/phase3/evidence/
 forbidden_files: []
@@ -14,7 +14,17 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: da3d626213495e68ed34ef9e0f64cf18efaf16a679462310778358a22b4b302b
-completion: null
+completion:
+  escalation_request:
+    reason: "Firmware build FAILED — 2 compilation errors in source files forbidden by this WO"
+    errors:
+      - "src/main.cpp:148 — cannot convert KeyManager* to echenon::ISecretStore* (KeyManager must implement ISecretStore interface)"
+      - "src/echenon/SessionOverlay.cpp — PsychicHttpServer::on() lambda signature mismatch (expects PsychicHttpHandler, got incompatible lambda)"
+    required_fix_files:
+      - src/main.cpp
+      - src/echenon/SessionOverlay.cpp
+      - framework/modules/KeyManager/KeyManager.h (needs ISecretStore inheritance)
+    action_needed: "Fix compilation errors in a preceding WO, then re-run WO-19.8"
 ---
 
 # WO-19.8 — Hardware Verification & Soak
@@ -75,4 +85,22 @@ This is an interactive WO. Run `pa wo verify WO-19.8` after evidence is captured
 
 ## Completion Report
 
-_Pending execution._
+**Status:** ESCALATED_TO_PA
+
+**Escalation Summary:**
+Firmware build for `ex3-waveshare-nano` fails with 2 compilation errors. This WO is forbidden from editing source code, so these must be fixed in a prior WO.
+
+**Error 1:** `src/main.cpp:148` — `cannot convert 'KeyManager*' to 'echenon::ISecretStore*'`
+- `IntervalsIcuUploader::setSecretStore()` expects `ISecretStore*` but `KeyManager` does not implement `ISecretStore`.
+- Fix: Make `KeyManager` inherit from `echenon::ISecretStore`, or cast appropriately.
+
+**Error 2:** `src/echenon/SessionOverlay.cpp` — `PsychicHttpServer::on()` lambda mismatch
+- Route registration lambda has wrong signature for `PsychicHttpServer::on()`.
+- Fix: Update lambda signature to match `PsychicHttpHandler` typedef.
+
+**Pre-conditions met:**
+- ✅ Branch `pr-19-data-sinks/wo8-hardware-verification` checked out
+- ✅ PROJECT.md status: APPROVED
+- ✅ Hardware connected at `/dev/cu.usbmodem101`
+- ✅ PlatformIO CLI available (v6.1.19)
+- ❌ Firmware does not compile — blocked on source fixes
