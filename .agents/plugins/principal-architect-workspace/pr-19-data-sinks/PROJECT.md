@@ -22,10 +22,66 @@ charter:
   - pio test -e native --verbose
   charter_locked: true
   charter_hash: 76ed6c8b58f1185be755d03d7a694bf44cd122a1669c1a3653896dde1acf69ff
-status: PLANNED
-approved_at: null
+status: APPROVED
+approved_at: '2026-10-28T18:21:42.991677Z'
 github_pr: 12
-work_orders: []
+work_orders:
+- id: WO-19.1
+  slug: wo1-multi-sink-engine
+  title: Multi-Sink UploadQueue Engine
+  complexity: standard
+  status: PENDING
+  attempts: 0
+  commit_sha: null
+- id: WO-19.2
+  slug: wo2-intervals-icu-sink
+  title: Intervals.icu API-Key Sink
+  complexity: standard
+  status: PENDING
+  attempts: 0
+  commit_sha: null
+- id: WO-19.3
+  slug: wo3-rest-api-extensions
+  title: REST API Extensions
+  complexity: standard
+  status: PENDING
+  attempts: 0
+  commit_sha: null
+- id: WO-19.4
+  slug: wo4-stored-rides-pill
+  title: Stored Rides Portal Pill
+  complexity: standard
+  status: PENDING
+  attempts: 0
+  commit_sha: null
+- id: WO-19.5
+  slug: wo5-strava-pill-refactor
+  title: Strava Pill Refactor & Connected Apps Polish
+  complexity: standard
+  status: PENDING
+  attempts: 0
+  commit_sha: null
+- id: WO-19.6
+  slug: wo6-native-tests
+  title: Native Unit Tests
+  complexity: standard
+  status: PENDING
+  attempts: 0
+  commit_sha: null
+- id: WO-19.7
+  slug: wo7-spec-doc-sync
+  title: SPEC & Doc Sync
+  complexity: mechanical
+  status: PENDING
+  attempts: 0
+  commit_sha: null
+- id: WO-19.8
+  slug: wo8-hardware-verification
+  title: Hardware Verification & Soak
+  complexity: interactive
+  status: PENDING
+  attempts: 0
+  commit_sha: null
 ---
 
 # PR-19 — Pluggable Data Sinks & Ride History Management
