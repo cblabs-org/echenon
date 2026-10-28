@@ -39,6 +39,7 @@
 #include "include/portal_assets/ride_html.hpp"
 #include "include/portal_assets/ride_js.hpp"
 #include "include/portal_assets/manifest_json.hpp"
+#include "include/portal_assets/stored_rides_js.hpp"
 #endif
 
 namespace echenon {
@@ -1050,6 +1051,15 @@ void SessionOverlay::registerRoutes(PsychicHttpServer& server) {
     });
     server.on("/manifest.json", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
         return serveGzipAsset(request, response, manifest_json_gz, manifest_json_gz_len, manifest_json_gz_etag, "application/manifest+json");
+    });
+
+    // Serve Stored Rides pill JavaScript
+    server.on("/stored_rides.js", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
+        return serveGzipAsset(request, response,
+                              stored_rides_js_gz,
+                              stored_rides_js_gz_len,
+                              stored_rides_js_gz_etag,
+                              "application/javascript");
     });
 
     auto checkAuth = [this](PsychicRequest* request, PsychicResponse* response) -> bool {

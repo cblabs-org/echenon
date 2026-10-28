@@ -4,7 +4,7 @@ wo_id: WO-19.4
 pr_id: PR-19
 title: Stored Rides Portal Pill
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - web/stored_rides.js
 - src/echenon/SessionOverlay.cpp
@@ -17,7 +17,21 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: a40472003ddf289d3a51a469b266207dee8517d4f078fce2935271f827aa3fa6
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_ff16a6cb7dcb
+  commit_sha: fcd437d373fb11a503afa64530ff5f359241e06f
+  files_modified:
+  - src/echenon/EchenonModule.cpp
+  - src/echenon/SessionOverlay.cpp
+  - web/stored_rides.js
+  verification_summary: 'pio test -e native --verbose: ================ 234 test cases:
+    234 succeeded in 00:00:03.269 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-19.4 — Stored Rides Portal Pill

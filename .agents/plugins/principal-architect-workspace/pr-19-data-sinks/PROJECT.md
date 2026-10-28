@@ -51,9 +51,9 @@ work_orders:
   slug: wo4-stored-rides-pill
   title: Stored Rides Portal Pill
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: fcd437d373fb11a503afa64530ff5f359241e06f
 - id: WO-19.5
   slug: wo5-strava-pill-refactor
   title: Strava Pill Refactor & Connected Apps Polish
