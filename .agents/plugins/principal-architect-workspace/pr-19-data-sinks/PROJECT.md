@@ -30,9 +30,9 @@ work_orders:
   slug: wo1-multi-sink-engine
   title: Multi-Sink UploadQueue Engine
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 8811905812b403bd236bf1eb2609aab2bca9fb51
 - id: WO-19.2
   slug: wo2-intervals-icu-sink
   title: Intervals.icu API-Key Sink
