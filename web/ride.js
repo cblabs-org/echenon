@@ -71,7 +71,7 @@ var rides=d.rides||d;if(!rides||!rides.length){$('history').innerHTML='<div id="
 var h='';rides.slice(-5).reverse().forEach(function(r){
 var dt=r.start_epoch_s?new Date(r.start_epoch_s*1e3).toLocaleDateString():'--';
 var dur=fmt(r.duration_s||0);
-h+='<div class="r"><span>'+dt+' · '+dur+' · '+((r.avg_power_w||0))+'W</span><a href="/api/session/download?id='+r.session_id+'">TCX</a>'+(r.activity_id?'<a href="https://www.strava.com/activities/'+r.activity_id+'" target="_blank">Strava ↗</a>':'')+'</div>';
+h+='<div class="r"><span>'+dt+' · '+dur+' · '+((r.avg_power_w||0))+'W</span><a href="/api/session/download?id='+r.session_id+'" download="echenon_'+r.session_id+'.tcx">TCX</a>'+(r.activity_id?'<a href="https://www.strava.com/activities/'+r.activity_id+'" target="_blank">Strava ↗</a>':'')+'</div>';
 });$('history').innerHTML=h;
 }).catch(function(){});
 }

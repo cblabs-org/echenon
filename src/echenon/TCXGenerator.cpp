@@ -14,9 +14,29 @@
 #include <esp_heap_caps.h>
 #endif
 
+#ifndef BUILD_VERSION
+#define BUILD_VERSION "0.0.0"
+#endif
+
 namespace echenon {
 
 namespace {
+
+struct FwVersion {
+    unsigned major;
+    unsigned minor;
+    unsigned build;
+};
+
+static FwVersion parseBuildVersion() {
+    FwVersion v{0, 0, 0};
+    const char* s = BUILD_VERSION;
+    // Skip leading 'v' if present
+    if (*s == 'v' || *s == 'V') ++s;
+    // Parse "major.minor.build" — ignore anything after (like "-dev.39")
+    sscanf(s, "%u.%u.%u", &v.major, &v.minor, &v.build);
+    return v;
+}
 
 // =============================================================================
 // Bounded 4 KB Scratch Buffer Writer
@@ -750,6 +770,7 @@ bool TCXGenerator::generateTcx(
     }
 
     // Format </Track>, <Extensions><ns3:LX>, <Creator>, and <Author> footer
+    FwVersion fwv = parseBuildVersion();
     int foot_n = std::snprintf(
         writer->fmt,
         sizeof(writer->fmt),
@@ -766,9 +787,9 @@ bool TCXGenerator::generateTcx(
         "        <UnitId>0</UnitId>\n"
         "        <ProductID>0</ProductID>\n"
         "        <Version>\n"
-        "          <VersionMajor>1</VersionMajor>\n"
-        "          <VersionMinor>0</VersionMinor>\n"
-        "          <BuildMajor>0</BuildMajor>\n"
+        "          <VersionMajor>%u</VersionMajor>\n"
+        "          <VersionMinor>%u</VersionMinor>\n"
+        "          <BuildMajor>%u</BuildMajor>\n"
         "          <BuildMinor>0</BuildMinor>\n"
         "        </Version>\n"
         "      </Creator>\n"
@@ -778,9 +799,9 @@ bool TCXGenerator::generateTcx(
         "    <Name>Echenon Firmware</Name>\n"
         "    <Build>\n"
         "      <Version>\n"
-        "        <VersionMajor>1</VersionMajor>\n"
-        "        <VersionMinor>0</VersionMinor>\n"
-        "        <BuildMajor>0</BuildMajor>\n"
+        "        <VersionMajor>%u</VersionMajor>\n"
+        "        <VersionMinor>%u</VersionMinor>\n"
+        "        <BuildMajor>%u</BuildMajor>\n"
         "        <BuildMinor>0</BuildMinor>\n"
         "      </Version>\n"
         "    </Build>\n"
@@ -789,7 +810,9 @@ bool TCXGenerator::generateTcx(
         "  </Author>\n"
         "</TrainingCenterDatabase>\n",
         static_cast<unsigned>(eff.avg_power_w),
-        static_cast<unsigned>(eff.max_power_w));
+        static_cast<unsigned>(eff.max_power_w),
+        fwv.major, fwv.minor, fwv.build,
+        fwv.major, fwv.minor, fwv.build);
     if (foot_n <= 0 || static_cast<size_t>(foot_n) >= sizeof(writer->fmt) ||
         !writer->append(writer->fmt, static_cast<size_t>(foot_n))) {
         return false;

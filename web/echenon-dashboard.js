@@ -174,12 +174,12 @@
     // --- Diagnostics Drawer: Status Section ---
     var calEl = document.getElementById('echenon-diag-cal');
     if (calEl && data.p_tilde !== undefined) {
-      if (data.p_tilde !== 0) {
-        calEl.textContent = 'Calibrated';
+      if (data.cal) {
+        calEl.textContent = 'Custom';
         calEl.style.color = 'var(--success)';
       } else {
-        calEl.textContent = 'Not Calibrated';
-        calEl.style.color = 'var(--warning)';
+        calEl.textContent = 'Default';
+        calEl.style.color = 'var(--text-muted)';
       }
     }
 

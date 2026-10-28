@@ -199,7 +199,8 @@ void EchenonModule::tick(uint32_t currentMillis) {
                    liveEncVcc,
                    liveMotP,
                    liveMotN,
-                   liveBleConn);
+                   liveBleConn,
+                   _calibrationWizard.isPosDone());
 #else
     _liveFeed.tick(currentMillis,
                    cadenceRpm,
@@ -223,7 +224,8 @@ void EchenonModule::tick(uint32_t currentMillis) {
                    liveEncVcc,
                    liveMotP,
                    liveMotN,
-                   liveBleConn);
+                   liveBleConn,
+                   false);
 #endif
 #endif
 #ifdef WITH_SIGNAL_LOGGER
