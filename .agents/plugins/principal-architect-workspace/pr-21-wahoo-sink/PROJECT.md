@@ -24,7 +24,7 @@ charter:
   charter_hash: 9ec62b7477a848e655aa2335bc510eaa87914b68f5f1a8009216327f1e8a2ce0
 status: STAGED_FOR_AUDIT
 approved_at: '2026-10-28T22:58:39.349600Z'
-github_pr: null
+github_pr: 18
 work_orders:
 - id: WO-21.1
   slug: wo1-wahoo-uploader
