@@ -80,4 +80,18 @@ Run `pa wo verify WO-19.1` → `pio test -e native --verbose`. All existing test
 ## Completion Report
 <!-- Written by the Tier 3 Worker at task completion -->
 
-_Pending execution._
+- **status:** COMPLETED
+- **receipt_id:** rcpt_9d01f6b23d1e
+- **commit_sha:** 488469a61d17
+- **tree_hash:** 9d01f6b23d1e920b5afaa89e19a97091cde4f6e4bc6ced117a047f85b9208ce9
+- **files_modified:**
+  - `src/echenon/IUploader.h` — Added `virtual bool isEnabled() const { return true; }`
+  - `src/echenon/UploadQueue.h` — Multi-sink registry, composite-key UploadJob, UploadEvent with service_id
+  - `src/echenon/UploadQueue.cpp` — Multi-sink fan-out, per-job sink lookup, shared .tcx.gz lifecycle, JSON service_id compat
+- **verification_summary:** 234/234 native tests passed (0 failures, 0 errors)
+- **decisions_made:**
+  - Kept precondition name `"strava_configured"` (backward compat with existing tests) while renaming the internal eval/describe functions to generic `evalSinkConfigured`/`describeSinkConfigured` — the eval logic now checks any registered sink rather than a single `_uploader`.
+  - BLE ScanInhibit label changed from `"strava_upload"` to `"upload_queue"` for service-agnostic identification.
+  - Legacy no-sink `enqueueSession()` path defaults `service_id` to `"strava"` for backward compatibility.
+  - `registerSink()` deduplicates by `serviceId()`, replacing existing registrations silently.
+
