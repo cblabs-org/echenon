@@ -23,7 +23,7 @@ charter:
   - pio test -e native --verbose
   charter_locked: true
   charter_hash: 53b172290b1e083d9c229f456eb68bbf34fe552befc3505ed2539edda2aedb36
-status: AUDIT_APPROVED
+status: GRADUATED
 approved_at: '2026-10-28T18:21:42.991677Z'
 github_pr: 17
 work_orders:
@@ -445,6 +445,26 @@ Fix two compilation errors in the hardware target (`ex3-waveshare-nano`):
 
 ---
 
+<!-- pa:graduation-summary start -->
+### Graduation Summary (`PR-19` / `pr-19-data-sinks` — `GRADUATED`)
+
+- **Completed Date:** 2026-10-28
+- **Graduation Mode:** `external`
+- **Latest Audit:** Round 1 — `APPROVED` (`16c0c7aa429c`)
+
+| WO-ID | Status | Attempts | Commit SHA |
+|---|---|---|---|
+| WO-19.1 | COMPLETED | 1 | `488469a61d17` |
+| WO-19.2 | COMPLETED | 1 | `c28c5f9f0301` |
+| WO-19.3 | COMPLETED | 1 | `fcd437d373fb` |
+| WO-19.4 | COMPLETED | 1 | `a4a065913f86` |
+| WO-19.5 | COMPLETED | 1 | `2f64605a7488` |
+| WO-19.9 | COMPLETED | 1 | `6ccc63811fcb` |
+| WO-19.6 | COMPLETED | 1 | `ff8982ec0eb6` |
+| WO-19.7 | COMPLETED | 1 | `d869a2b2d6d0` |
+| WO-19.8 | COMPLETED | 1 | `6525cc62bf10` |
+| WO-19.10 | COMPLETED | 1 | `41978fba3551` |
+<!-- pa:graduation-summary end -->
 ## 5. Portal Tab Structure (Post PR-19)
 
 ```
