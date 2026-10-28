@@ -298,3 +298,26 @@ TEST(RecalibrationUITest, ApplyToPhysicsParamsScalesEddyCoefficient) {
     float pL20Expected = PowerEngine::computePowerPhysics(20.0f, 85.0f, targetParams);
     EXPECT_NEAR(pL20, pL20Expected, 0.5f);
 }
+
+// =============================================================================
+// PR-20 Audit N1: isPosDone() rejects an exactly-default table
+// =============================================================================
+
+TEST(CalibrationWizardTest, IsPosDoneFalseForDefaultTable) {
+    CalibrationWizard wizard;
+
+    // Fill all 32 entries with the exact default linear interpolation values:
+    //   defaultVal(l) = WORKING_RANGE_MIN + (WORKING_RANGE_MAX - WORKING_RANGE_MIN) * (l - 1) / (TOTAL_LEVELS - 1)
+    // These are the same values isPosDone() computes internally as defaults.
+    for (uint8_t l = 1; l <= CalibrationWizard::TOTAL_LEVELS; ++l) {
+        uint16_t defaultVal = static_cast<uint16_t>(
+            LevelMapping::WORKING_RANGE_MIN +
+            (LevelMapping::WORKING_RANGE_MAX - LevelMapping::WORKING_RANGE_MIN) *
+            (l - 1) / (CalibrationWizard::TOTAL_LEVELS - 1));
+        wizard.setTableEntry(l, defaultVal);
+    }
+
+    // A table that exactly matches the default interpolation should NOT be
+    // considered "done" — it means no real calibration has occurred.
+    EXPECT_FALSE(wizard.isPosDone());
+}

@@ -234,7 +234,7 @@
     }
 
     var cadSecDot = document.getElementById('echenon-diag-sec-cad');
-    if (cadSecDot) {
+    if (cadSecDot && data.cad_us !== undefined) {
       cadSecDot.className = 'dot dot--green';
     }
 
@@ -262,7 +262,7 @@
     }
 
     var motSecDot = document.getElementById('echenon-diag-sec-mot');
-    if (motSecDot) {
+    if (motSecDot && data.mot_p !== undefined) {
       motSecDot.className = 'dot dot--green';
     }
 
