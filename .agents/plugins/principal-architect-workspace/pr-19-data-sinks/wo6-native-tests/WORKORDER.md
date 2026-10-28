@@ -4,7 +4,7 @@ wo_id: WO-19.6
 pr_id: PR-19
 title: Native Unit Tests
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - test/test_native/test_upload_queue.cpp
 - test/test_native/test_intervals_uploader.cpp
@@ -15,7 +15,20 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: a44ff5747bfbad150990c6e22baecec96b766bc05e6235ac641dee079d0c72dd
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_74e9923f9126
+  commit_sha: ff8982ec0eb68444ec70158b0ac428720e0104a1
+  files_modified:
+  - test/test_native/test_intervals_uploader.cpp
+  - test/test_native/test_upload_queue.cpp
+  verification_summary: 'pio test -e native --verbose: ================ 261 test cases:
+    261 succeeded in 00:00:00.531 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-19.6 — Native Unit Tests

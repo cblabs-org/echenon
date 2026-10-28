@@ -23,6 +23,7 @@ public:
     bool configured         = true;
     bool authenticated      = true;
     bool token_needs_refresh = true;
+    bool enabled            = true;
 
     UploadStageResult refresh_result = UploadStageResult::SUCCESS;
     UploadStageResult post_result    = UploadStageResult::SUCCESS;
@@ -45,7 +46,10 @@ public:
     bool post_saw_existing_tcx_file = false;
     IRideFileSystem* fs_to_check = nullptr;
 
-    const char* serviceId() const override { return "strava"; }
+    std::string mock_service_id = "strava";
+
+    const char* serviceId() const override { return mock_service_id.c_str(); }
+    bool isEnabled() const override { return enabled; }
     bool isConfigured() const override { return configured; }
     bool isAuthenticated() const override { return authenticated; }
     bool needsTokenRefresh(uint32_t /*now_epoch_s*/) const override {
@@ -509,4 +513,491 @@ TEST(UploadQueueTest, PreconditionsAndConfigurableSettings) {
 
     queue.resetConfig();
     EXPECT_TRUE(queue.isAutoUploadEnabled());
+}
+
+
+// =============================================================================
+// 6. Multi-Sink Fan-Out: 2 Sinks, 1 Session → 2 Jobs
+// =============================================================================
+
+TEST(UploadQueueTest, MultiSinkFanOutCreatesJobPerSink) {
+    InMemoryRideFileSystem fs;
+    RideStore store(&fs);
+    ASSERT_TRUE(store.begin());
+    populateStoredRide(store, 501u, 8);
+
+    MockUploader sinkA;
+    sinkA.mock_service_id = "strava";
+    sinkA.token_needs_refresh = false;
+
+    MockUploader sinkB;
+    sinkB.mock_service_id = "intervals";
+    sinkB.token_needs_refresh = false;
+
+    UploadQueue queue(nullptr, &store);
+    queue.setBaseDir("./tmp/test_upload_queue");
+    ASSERT_TRUE(queue.registerSink(&sinkA));
+    ASSERT_TRUE(queue.registerSink(&sinkB));
+    EXPECT_EQ(queue.getSinkCount(), 2u);
+
+    ASSERT_TRUE(queue.enqueueSession(501u, 0u));
+
+    // Should have created 2 jobs (one per sink)
+    EXPECT_EQ(queue.size(), 2u);
+
+    const UploadJob* jobA = queue.findJob(501u, "strava");
+    const UploadJob* jobB = queue.findJob(501u, "intervals");
+    ASSERT_NE(jobA, nullptr);
+    ASSERT_NE(jobB, nullptr);
+    EXPECT_EQ(jobA->service_id, "strava");
+    EXPECT_EQ(jobB->service_id, "intervals");
+    EXPECT_EQ(jobA->stage, UploadStage::STAGE_GENERATE_TCX_GZ);
+    EXPECT_EQ(jobB->stage, UploadStage::STAGE_GENERATE_TCX_GZ);
+}
+
+// =============================================================================
+// 7. Sequential Execution: Only One Sink Processes Per stepQueue()
+// =============================================================================
+
+TEST(UploadQueueTest, SequentialExecutionOneStepPerStepQueue) {
+    InMemoryRideFileSystem fs;
+    RideStore store(&fs);
+    ASSERT_TRUE(store.begin());
+    populateStoredRide(store, 601u, 6);
+
+    MockUploader sinkA;
+    sinkA.mock_service_id = "strava";
+    sinkA.token_needs_refresh = false;
+
+    MockUploader sinkB;
+    sinkB.mock_service_id = "intervals";
+    sinkB.token_needs_refresh = false;
+
+    UploadQueue queue(nullptr, &store);
+    queue.setBaseDir("./tmp/test_upload_queue");
+    ASSERT_TRUE(queue.registerSink(&sinkA));
+    ASSERT_TRUE(queue.registerSink(&sinkB));
+
+    ASSERT_TRUE(queue.enqueueSession(601u, 0u));
+    ASSERT_EQ(queue.size(), 2u);
+
+    // Step 1: processes job A (first in FIFO) — GENERATE_TCX_GZ → POST_UPLOAD
+    EXPECT_EQ(queue.stepQueue(15000u, 0u), UpdateStatus::Success);
+    const UploadJob* jobA = queue.findJob(601u, "strava");
+    ASSERT_NE(jobA, nullptr);
+    EXPECT_EQ(jobA->stage, UploadStage::STAGE_POST_UPLOAD);
+
+    // Job B must still be at GENERATE_TCX_GZ (not advanced in same step)
+    const UploadJob* jobB = queue.findJob(601u, "intervals");
+    ASSERT_NE(jobB, nullptr);
+    EXPECT_EQ(jobB->stage, UploadStage::STAGE_GENERATE_TCX_GZ);
+
+    // Step 2: processes job A again (POST → POLL)
+    EXPECT_EQ(queue.stepQueue(15000u, 0u), UpdateStatus::Success);
+    EXPECT_EQ(jobA->stage, UploadStage::STAGE_POLL_STATUS);
+    EXPECT_EQ(jobB->stage, UploadStage::STAGE_GENERATE_TCX_GZ);
+}
+
+// =============================================================================
+// 8. Shared .tcx.gz Lifecycle: Generated Once, Deleted When All Terminal
+// =============================================================================
+
+TEST(UploadQueueTest, SharedTcxGzLifecycleDeletedWhenAllSinksTerminal) {
+    InMemoryRideFileSystem fs;
+    RideStore store(&fs);
+    ASSERT_TRUE(store.begin());
+    populateStoredRide(store, 701u, 6);
+
+    MockUploader sinkA;
+    sinkA.mock_service_id = "strava";
+    sinkA.token_needs_refresh = false;
+
+    MockUploader sinkB;
+    sinkB.mock_service_id = "intervals";
+    sinkB.token_needs_refresh = false;
+
+    UploadQueue queue(nullptr, &store);
+    queue.setBaseDir("./tmp/test_upload_queue");
+    ASSERT_TRUE(queue.registerSink(&sinkA));
+    ASSERT_TRUE(queue.registerSink(&sinkB));
+
+    ASSERT_TRUE(queue.enqueueSession(701u, 0u));
+
+    // Process sinkA all the way to COMPLETE
+    // Step 1: Generate TCX for sinkA (sinkB also gets it for free)
+    EXPECT_EQ(queue.stepQueue(15000u, 0u), UpdateStatus::Success);
+    EXPECT_TRUE(fs.exists(queue.getTcxGzPath(701u).c_str()));
+
+    // Step 2: POST for sinkA
+    EXPECT_EQ(queue.stepQueue(15000u, 0u), UpdateStatus::Success);
+    // Step 3: POLL for sinkA → COMPLETE
+    EXPECT_EQ(queue.stepQueue(15000u, 3100u), UpdateStatus::Success);
+
+    const UploadJob* jobA = queue.findJob(701u, "strava");
+    ASSERT_NE(jobA, nullptr);
+    EXPECT_EQ(jobA->stage, UploadStage::STAGE_COMPLETE);
+
+    // sinkB still active → .tcx.gz must NOT be deleted yet
+    const UploadJob* jobB = queue.findJob(701u, "intervals");
+    ASSERT_NE(jobB, nullptr);
+    EXPECT_NE(jobB->stage, UploadStage::STAGE_COMPLETE);
+    EXPECT_FALSE(queue.allSinkJobsTerminal(701u));
+
+    // Now process sinkB to COMPLETE
+    // Step 4: Generate TCX for sinkB (file already exists, skips generation)
+    EXPECT_EQ(queue.stepQueue(15000u, 3100u), UpdateStatus::Success);
+    // Step 5: POST for sinkB
+    EXPECT_EQ(queue.stepQueue(15000u, 3100u), UpdateStatus::Success);
+    // Step 6: POLL for sinkB → COMPLETE
+    EXPECT_EQ(queue.stepQueue(15000u, 6200u), UpdateStatus::Success);
+
+    EXPECT_EQ(jobB->stage, UploadStage::STAGE_COMPLETE);
+    EXPECT_TRUE(queue.allSinkJobsTerminal(701u));
+
+    // .tcx.gz should now be deleted
+    EXPECT_FALSE(fs.exists(queue.getTcxGzPath(701u).c_str()));
+}
+
+// =============================================================================
+// 9. Per-Sink Job Lookup: findJob(session_id, service_id)
+// =============================================================================
+
+TEST(UploadQueueTest, PerSinkJobLookupReturnCorrectJob) {
+    InMemoryRideFileSystem fs;
+    RideStore store(&fs);
+    ASSERT_TRUE(store.begin());
+    populateStoredRide(store, 801u, 5);
+
+    MockUploader sinkA;
+    sinkA.mock_service_id = "strava";
+
+    MockUploader sinkB;
+    sinkB.mock_service_id = "intervals";
+
+    UploadQueue queue(nullptr, &store);
+    queue.setBaseDir("./tmp/test_upload_queue");
+    ASSERT_TRUE(queue.registerSink(&sinkA));
+    ASSERT_TRUE(queue.registerSink(&sinkB));
+
+    ASSERT_TRUE(queue.enqueueSession(801u, 0u));
+
+    // findJob with composite key returns correct job
+    const UploadJob* jobA = queue.findJob(801u, "strava");
+    const UploadJob* jobB = queue.findJob(801u, "intervals");
+    ASSERT_NE(jobA, nullptr);
+    ASSERT_NE(jobB, nullptr);
+    EXPECT_NE(jobA, jobB);
+    EXPECT_EQ(jobA->service_id, "strava");
+    EXPECT_EQ(jobB->service_id, "intervals");
+
+    // Non-existent service_id returns nullptr
+    EXPECT_EQ(queue.findJob(801u, "garmin"), nullptr);
+
+    // Non-existent session_id returns nullptr
+    EXPECT_EQ(queue.findJob(999u, "strava"), nullptr);
+
+    // Legacy findJob(session_id) returns first match
+    const UploadJob* legacyJob = queue.findJob(801u);
+    ASSERT_NE(legacyJob, nullptr);
+    EXPECT_EQ(legacyJob->session_id, 801u);
+}
+
+// =============================================================================
+// 10. Backward Compat: Single Uploader via setUploader() Still Works
+// =============================================================================
+
+TEST(UploadQueueTest, BackwardCompatSingleUploaderViaSetUploader) {
+    InMemoryRideFileSystem fs;
+    RideStore store(&fs);
+    ASSERT_TRUE(store.begin());
+    populateStoredRide(store, 901u, 5);
+
+    MockUploader uploader;
+    uploader.token_needs_refresh = false;
+
+    UploadQueue queue(nullptr, &store);
+    queue.setBaseDir("./tmp/test_upload_queue");
+
+    // Legacy API: setUploader registers as a sink
+    queue.setUploader(&uploader);
+    EXPECT_EQ(queue.getSinkCount(), 1u);
+    EXPECT_EQ(queue.getUploader(), &uploader);
+
+    ASSERT_TRUE(queue.enqueueSession(901u, 0u));
+    EXPECT_EQ(queue.size(), 1u);
+
+    const UploadJob* job = queue.findJob(901u);
+    ASSERT_NE(job, nullptr);
+    EXPECT_EQ(job->service_id, "strava");
+
+    // Step through to completion
+    EXPECT_EQ(queue.stepQueue(15000u, 0u), UpdateStatus::Success);   // GENERATE
+    EXPECT_EQ(queue.stepQueue(15000u, 0u), UpdateStatus::Success);   // POST
+    EXPECT_EQ(queue.stepQueue(15000u, 3100u), UpdateStatus::Success); // POLL
+    EXPECT_EQ(job->stage, UploadStage::STAGE_COMPLETE);
+}
+
+// =============================================================================
+// 11. Sink Failure Isolation: One Sink Failing Doesn't Block the Other
+// =============================================================================
+
+TEST(UploadQueueTest, SinkFailureIsolationOneFailDoesNotBlockOther) {
+    InMemoryRideFileSystem fs;
+    RideStore store(&fs);
+    ASSERT_TRUE(store.begin());
+    populateStoredRide(store, 1001u, 6);
+
+    MockUploader sinkA;
+    sinkA.mock_service_id = "strava";
+    sinkA.token_needs_refresh = false;
+    sinkA.post_result = UploadStageResult::PERMANENT_ERROR;
+    sinkA.post_err    = "Duplicate activity";
+
+    MockUploader sinkB;
+    sinkB.mock_service_id = "intervals";
+    sinkB.token_needs_refresh = false;
+    sinkB.post_result = UploadStageResult::SUCCESS;
+
+    UploadQueue queue(nullptr, &store);
+    queue.setBaseDir("./tmp/test_upload_queue");
+    ASSERT_TRUE(queue.registerSink(&sinkA));
+    ASSERT_TRUE(queue.registerSink(&sinkB));
+
+    ASSERT_TRUE(queue.enqueueSession(1001u, 0u));
+    ASSERT_EQ(queue.size(), 2u);
+
+    // Process sinkA: GENERATE → POST (fails permanently)
+    EXPECT_EQ(queue.stepQueue(15000u, 0u), UpdateStatus::Success);     // GENERATE
+    EXPECT_EQ(queue.stepQueue(15000u, 0u), UpdateStatus::ParseError);  // POST fails
+
+    const UploadJob* jobA = queue.findJob(1001u, "strava");
+    ASSERT_NE(jobA, nullptr);
+    EXPECT_EQ(jobA->stage, UploadStage::STAGE_FAILED);
+
+    // sinkB should still be processable
+    const UploadJob* jobB = queue.findJob(1001u, "intervals");
+    ASSERT_NE(jobB, nullptr);
+    EXPECT_NE(jobB->stage, UploadStage::STAGE_FAILED);
+
+    // Process sinkB: GENERATE (file exists) → POST → POLL → COMPLETE
+    EXPECT_EQ(queue.stepQueue(15000u, 0u), UpdateStatus::Success);     // GENERATE (skip)
+    EXPECT_EQ(queue.stepQueue(15000u, 0u), UpdateStatus::Success);     // POST
+    EXPECT_EQ(queue.stepQueue(15000u, 3100u), UpdateStatus::Success);  // POLL
+
+    EXPECT_EQ(jobB->stage, UploadStage::STAGE_COMPLETE);
+    EXPECT_TRUE(queue.allSinkJobsTerminal(1001u));
+}
+
+// =============================================================================
+// 12. JSON Serialization: service_id Persisted and Deserialized
+// =============================================================================
+
+TEST(UploadQueueTest, JsonSerializationWithServiceId) {
+    InMemoryRideFileSystem fs;
+    RideStore store(&fs);
+    ASSERT_TRUE(store.begin());
+    populateStoredRide(store, 1101u, 5);
+
+    MockUploader sinkA;
+    sinkA.mock_service_id = "strava";
+
+    MockUploader sinkB;
+    sinkB.mock_service_id = "intervals";
+
+    UploadQueue queue(nullptr, &store);
+    queue.setBaseDir("./tmp/test_upload_queue");
+    ASSERT_TRUE(queue.registerSink(&sinkA));
+    ASSERT_TRUE(queue.registerSink(&sinkB));
+
+    ASSERT_TRUE(queue.enqueueSession(1101u, 0u));
+    ASSERT_EQ(queue.size(), 2u);
+    ASSERT_TRUE(queue.saveQueue());
+
+    // Serialize to JSON and verify service_id fields
+    std::string json;
+    ASSERT_TRUE(queue.serializeQueueJson(json));
+    EXPECT_NE(json.find("\"strava\""), std::string::npos);
+    EXPECT_NE(json.find("\"intervals\""), std::string::npos);
+
+    // Deserialize into a new queue and verify round-trip
+    UploadQueue restored(nullptr, &store);
+    restored.setBaseDir("./tmp/test_upload_queue");
+    ASSERT_TRUE(restored.registerSink(&sinkA));
+    ASSERT_TRUE(restored.registerSink(&sinkB));
+    ASSERT_TRUE(restored.loadQueue());
+
+    EXPECT_EQ(restored.size(), 2u);
+    const UploadJob* rA = restored.findJob(1101u, "strava");
+    const UploadJob* rB = restored.findJob(1101u, "intervals");
+    ASSERT_NE(rA, nullptr);
+    ASSERT_NE(rB, nullptr);
+    EXPECT_EQ(rA->service_id, "strava");
+    EXPECT_EQ(rB->service_id, "intervals");
+}
+
+// =============================================================================
+// 13. Legacy v1 JSON: Missing service_id Defaults to "strava"
+// =============================================================================
+
+TEST(UploadQueueTest, LegacyV1JsonMissingServiceIdDefaultsToStrava) {
+    InMemoryRideFileSystem fs;
+    RideStore store(&fs);
+    ASSERT_TRUE(store.begin());
+
+    MockUploader uploader;
+
+    UploadQueue queue(&uploader, &store);
+    queue.setBaseDir("./tmp/test_upload_queue");
+
+    // Manually inject v1 JSON without service_id
+    const std::string legacyJson = R"({
+        "version": 1,
+        "auto_upload_enabled": true,
+        "jobs": [
+            {
+                "session_id": 42,
+                "stage": "STAGE_POST_UPLOAD",
+                "attempt_count": 1,
+                "next_attempt_ms": 5000,
+                "remote_upload_id": "",
+                "remote_activity_id": "",
+                "last_error": ""
+            }
+        ]
+    })";
+
+    ASSERT_TRUE(queue.deserializeQueueJson(legacyJson));
+    ASSERT_EQ(queue.size(), 1u);
+
+    const UploadJob* job = queue.findJob(42u);
+    ASSERT_NE(job, nullptr);
+    EXPECT_EQ(job->service_id, "strava");
+    EXPECT_EQ(job->stage, UploadStage::STAGE_POST_UPLOAD);
+}
+
+// =============================================================================
+// 14. allSinkJobsTerminal() Returns True Only When All Jobs Terminal
+// =============================================================================
+
+TEST(UploadQueueTest, AllSinkJobsTerminalSemantics) {
+    InMemoryRideFileSystem fs;
+    RideStore store(&fs);
+    ASSERT_TRUE(store.begin());
+    populateStoredRide(store, 1301u, 5);
+
+    MockUploader sinkA;
+    sinkA.mock_service_id = "strava";
+
+    MockUploader sinkB;
+    sinkB.mock_service_id = "intervals";
+
+    UploadQueue queue(nullptr, &store);
+    queue.setBaseDir("./tmp/test_upload_queue");
+    ASSERT_TRUE(queue.registerSink(&sinkA));
+    ASSERT_TRUE(queue.registerSink(&sinkB));
+
+    ASSERT_TRUE(queue.enqueueSession(1301u, 0u));
+
+    // Initially both active → not terminal
+    EXPECT_FALSE(queue.allSinkJobsTerminal(1301u));
+
+    // Mark sinkA as COMPLETE
+    UploadJob* jobA = queue.findJobMutable(1301u, "strava");
+    ASSERT_NE(jobA, nullptr);
+    jobA->stage = UploadStage::STAGE_COMPLETE;
+
+    // sinkB still active → not terminal
+    EXPECT_FALSE(queue.allSinkJobsTerminal(1301u));
+
+    // Mark sinkB as FAILED
+    UploadJob* jobB = queue.findJobMutable(1301u, "intervals");
+    ASSERT_NE(jobB, nullptr);
+    jobB->stage = UploadStage::STAGE_FAILED;
+
+    // Both terminal (one COMPLETE, one FAILED) → terminal
+    EXPECT_TRUE(queue.allSinkJobsTerminal(1301u));
+
+    // Non-existent session → false (no jobs found)
+    EXPECT_FALSE(queue.allSinkJobsTerminal(9999u));
+}
+
+// =============================================================================
+// 15. discardSession() Removes All Jobs Across All Sinks
+// =============================================================================
+
+TEST(UploadQueueTest, DiscardSessionRemovesAllJobsAcrossSinks) {
+    InMemoryRideFileSystem fs;
+    RideStore store(&fs);
+    ASSERT_TRUE(store.begin());
+    populateStoredRide(store, 1401u, 5);
+
+    MockUploader sinkA;
+    sinkA.mock_service_id = "strava";
+
+    MockUploader sinkB;
+    sinkB.mock_service_id = "intervals";
+
+    UploadQueue queue(nullptr, &store);
+    queue.setBaseDir("./tmp/test_upload_queue");
+    ASSERT_TRUE(queue.registerSink(&sinkA));
+    ASSERT_TRUE(queue.registerSink(&sinkB));
+
+    ASSERT_TRUE(queue.enqueueSession(1401u, 0u));
+    ASSERT_EQ(queue.size(), 2u);
+
+    // Generate TCX so files exist
+    EXPECT_EQ(queue.stepQueue(15000u, 0u), UpdateStatus::Success);
+
+    // Discard
+    EXPECT_TRUE(queue.discardSession(1401u));
+    EXPECT_EQ(queue.size(), 0u);
+    EXPECT_EQ(queue.findJob(1401u, "strava"), nullptr);
+    EXPECT_EQ(queue.findJob(1401u, "intervals"), nullptr);
+    EXPECT_EQ(queue.findJob(1401u), nullptr);
+}
+
+// =============================================================================
+// 16. Precondition Eval: Generic Multi-Sink Precondition Check
+// =============================================================================
+
+TEST(UploadQueueTest, GenericMultiSinkPreconditionCheck) {
+    MockUploader sinkA;
+    sinkA.mock_service_id = "strava";
+    sinkA.configured    = false;
+    sinkA.authenticated = false;
+
+    MockUploader sinkB;
+    sinkB.mock_service_id = "intervals";
+    sinkB.configured    = false;
+    sinkB.authenticated = false;
+
+    UploadQueue queue(nullptr);
+    ASSERT_TRUE(queue.registerSink(&sinkA));
+    ASSERT_TRUE(queue.registerSink(&sinkB));
+
+    bool ntp_synced = false;
+    queue.setNtpSyncedCallback([&ntp_synced]() { return ntp_synced; });
+
+    MockPreconditionRegistry reg;
+    queue.registerPreconditions(reg);
+
+    const auto* sinkPre = reg.find("strava_configured");
+    ASSERT_NE(sinkPre, nullptr);
+
+    // No sinks configured → NotConfigured
+    EXPECT_FALSE(sinkPre->evaluate(sinkPre->context).met);
+    EXPECT_EQ(sinkPre->evaluate(sinkPre->context).cause, Cause::NotConfigured);
+
+    // One sink configured but not authenticated → Rejected
+    sinkA.configured = true;
+    EXPECT_FALSE(sinkPre->evaluate(sinkPre->context).met);
+    EXPECT_EQ(sinkPre->evaluate(sinkPre->context).cause, Cause::Rejected);
+
+    // One sink both configured and authenticated → Met
+    sinkA.authenticated = true;
+    EXPECT_TRUE(sinkPre->evaluate(sinkPre->context).met);
+
+    // Even though sinkB is not configured, the precondition passes because sinkA is ready
+    EXPECT_FALSE(sinkB.isConfigured());
+    EXPECT_TRUE(sinkPre->evaluate(sinkPre->context).met);
 }
