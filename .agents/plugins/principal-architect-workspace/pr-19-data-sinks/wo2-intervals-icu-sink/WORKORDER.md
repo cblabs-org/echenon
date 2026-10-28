@@ -4,7 +4,7 @@ wo_id: WO-19.2
 pr_id: PR-19
 title: Intervals.icu API-Key Sink
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/IntervalsIcuUploader.h
 - src/echenon/IntervalsIcuUploader.cpp
@@ -15,7 +15,20 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 8f03946cccc1e18f78968bf59f3093a3927e0047f337e629f9475c242ce49750
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_444fa2471d2e
+  commit_sha: 2e3020d61058d46f73e50e9b47c136b0e802bf94
+  files_modified:
+  - src/echenon/IntervalsIcuUploader.cpp
+  - src/echenon/IntervalsIcuUploader.h
+  verification_summary: 'pio test -e native --verbose: ================ 234 test cases:
+    234 succeeded in 00:00:00.409 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-19.2 — Intervals.icu API-Key Sink

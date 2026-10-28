@@ -37,9 +37,9 @@ work_orders:
   slug: wo2-intervals-icu-sink
   title: Intervals.icu API-Key Sink
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 2e3020d61058d46f73e50e9b47c136b0e802bf94
 - id: WO-19.3
   slug: wo3-rest-api-extensions
   title: REST API Extensions
