@@ -51,9 +51,9 @@ work_orders:
   slug: wo4-native-tests
   title: Native Unit Tests
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: d079e3309a4d09c0bc12c5e477c28c936df54b28
 - id: WO-21.5
   slug: wo5-spec-doc-sync
   title: SPEC & Documentation Sync

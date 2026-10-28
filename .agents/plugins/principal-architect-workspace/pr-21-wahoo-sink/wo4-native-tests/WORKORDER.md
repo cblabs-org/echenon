@@ -4,7 +4,7 @@ wo_id: WO-21.4
 pr_id: PR-21
 title: Native Unit Tests
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - test/test_native/test_wahoo_uploader.cpp
 forbidden_files:
@@ -17,7 +17,19 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 792702da23e31c727bd1b23c8f1fb1500a1b00e330564b37216e2c3105ac0523
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_df5b94c49242
+  commit_sha: d079e3309a4d09c0bc12c5e477c28c936df54b28
+  files_modified:
+  - test/test_native/test_wahoo_uploader.cpp
+  verification_summary: 'pio test -e native --verbose: ================ 269 test cases:
+    269 succeeded in 00:00:00.518 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-21.4 — Native Unit Tests
