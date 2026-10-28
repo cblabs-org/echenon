@@ -62,6 +62,13 @@ work_orders:
   status: COMPLETED
   attempts: 1
   commit_sha: 2f64605a748818444d8fa521ea0bbe014d8192e5
+- id: WO-19.9
+  slug: wo9-main-cpp-wiring
+  title: IntervalsIcuUploader main.cpp Wiring
+  complexity: mechanical
+  status: PENDING
+  attempts: 0
+  commit_sha: null
 - id: WO-19.6
   slug: wo6-native-tests
   title: Native Unit Tests
@@ -344,6 +351,11 @@ Refactor `web/upload_settings.js` from a standalone Strava-only panel to
 a modular per-sink pill pattern. Register Strava and Intervals.icu pills
 under the **Apps** tab via `ITabRegistry::addTab()`. Ensure consistent
 card layout, status badges, and auto-sync toggle across all sink pills.
+
+### WO-19.9 — IntervalsIcuUploader main.cpp Wiring
+Add DI wiring in `src/main.cpp` `setup()` to connect `IntervalsIcuUploader`
+to `KeyManager`, `Redactor`, `UploadQueue`, and `SessionOverlay`. Six lines
+inside the existing `#ifdef WITH_SESSION` block.
 
 ### WO-19.6 — Native Unit Tests
 Native test suite covering:
