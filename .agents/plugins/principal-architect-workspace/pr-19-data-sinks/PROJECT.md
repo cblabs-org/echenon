@@ -44,9 +44,9 @@ work_orders:
   slug: wo3-rest-api-extensions
   title: REST API Extensions
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: c28c5f9f0301337cb43a490e945ebc168a99eb77
 - id: WO-19.4
   slug: wo4-stored-rides-pill
   title: Stored Rides Portal Pill

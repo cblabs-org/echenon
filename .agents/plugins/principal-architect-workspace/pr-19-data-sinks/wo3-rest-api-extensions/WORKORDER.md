@@ -4,7 +4,7 @@ wo_id: WO-19.3
 pr_id: PR-19
 title: REST API Extensions
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/SessionOverlay.h
 - src/echenon/SessionOverlay.cpp
@@ -15,7 +15,20 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 5bebc5361a57fcb00b11ae437ca856921ec7d0d18ff42732f75e6e3868d6e3c9
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_7118f638dab2
+  commit_sha: c28c5f9f0301337cb43a490e945ebc168a99eb77
+  files_modified:
+  - src/echenon/SessionOverlay.cpp
+  - src/echenon/SessionOverlay.h
+  verification_summary: 'pio test -e native --verbose: ================ 234 test cases:
+    234 succeeded in 00:00:00.494 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-19.3 — REST API Extensions
