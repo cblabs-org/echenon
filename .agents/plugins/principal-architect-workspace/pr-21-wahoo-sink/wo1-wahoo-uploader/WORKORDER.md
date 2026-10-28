@@ -24,7 +24,7 @@ completion:
   status: COMPLETED
   attempt_num: 1
   receipt_id: rcpt_aa687d11b5b8
-  commit_sha: c26e2cabe3b69cdc704af8dce9404831c74bd297
+  commit_sha: b738ed5890d3ae574cc9a9b1ebf3be0e9a497e5c
   files_modified:
   - src/echenon/WahooUploader.cpp
   - src/echenon/WahooUploader.h
@@ -92,4 +92,17 @@ for OAuth 2.0-authenticated workout uploads to Wahoo Cloud (`api.wahooligan.com`
 
 ## Completion Report
 
-_Pending execution._
+- **Status**: COMPLETED
+- **Receipt ID**: rcpt_aa687d11b5b8
+- **Commit**: `b738ed5890d3`
+- **Files Implemented**:
+  - `src/echenon/WahooUploader.h`
+  - `src/echenon/WahooUploader.cpp`
+- **Verification Summary**: `pio test -e native --verbose`: all 261 existing tests passed in 0.485s. Standalone translation unit compilation passed with zero errors.
+- **Key Invariants**:
+  - Rotated refresh-token-first write order in `ISecretStore` (`wahoo.refresh_token` before `wahoo.access_token`).
+  - Single-use 128-bit hex CSRF state nonce with wraparound-safe 10-minute TTL.
+  - Zero heap `std::function` DI callbacks adhering to GRAVE-05.
+  - Redactor secret registration on load, save, exchange, and refresh with saturation safety.
+  - Multipart TCX upload framing (`workout[workout_type_id]=1`, `workout[file]`, `.tcx.gz` attachment).
+  - Synchronous immediate upload completion mapping `upload_id` directly in `pollUploadStatus()`.

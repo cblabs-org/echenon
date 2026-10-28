@@ -32,7 +32,7 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: c26e2cabe3b69cdc704af8dce9404831c74bd297
+  commit_sha: b738ed5890d3ae574cc9a9b1ebf3be0e9a497e5c
 - id: WO-21.2
   slug: wo2-system-wiring
   title: System Wiring & REST Endpoints
