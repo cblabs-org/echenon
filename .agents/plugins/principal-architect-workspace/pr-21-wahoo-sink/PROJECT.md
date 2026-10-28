@@ -58,9 +58,9 @@ work_orders:
   slug: wo5-spec-doc-sync
   title: SPEC & Documentation Sync
   complexity: mechanical
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: be5e696c35ce6e51da67d7785bf5d75c257ab49b
 - id: WO-21.6
   slug: wo6-hardware-verification
   title: Hardware Verification & Soak

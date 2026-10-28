@@ -146,7 +146,7 @@ fetch pipeline, the module composition architecture and the optional
   44, reserved** on every board (§4.4)
 - On-device physical display
 - Custom PCB manufacture (v1 uses perfboard or protoboard)
-- Direct upload to platforms other than Strava and Intervals.icu (§10.5)
+- Direct upload to platforms other than Strava, Intervals.icu, and Wahoo Cloud (§10.5)
 
 **Out of scope for v2 "Active"** (provisional):
 
@@ -401,7 +401,8 @@ phase and are never driver outputs; the driver uses GPIO 10 and 17.
 | `UploadQueue` | The only upload execution path: runs one pipeline stage per `fetchUpdate()` | `IDataSource` | PR-06 |
 | `StravaUploader` | Describes the Strava service: BYOA OAuth, request building, response parsing | `IUploader` (Echenon), `IWebContributor` | PR-06 |
 | `IntervalsIcuUploader` | Describes the Intervals.icu service: API-key auth, request building, response parsing | `IUploader` (Echenon), `IConfigurable` | PR-19 |
-| `SessionOverlay` | REST API overlay for multi-sink upload management: `/api/upload/sinks`, `/api/upload/status`, `/api/intervals/*`, per-sink force-push/retry, session history with sync status | `IWebContributor` | PR-19 |
+| `WahooUploader` | Describes the Wahoo Cloud service: BYOA OAuth 2.0, token refresh, multipart TCX upload | `IUploader` (Echenon), `IConfigurable` | PR-21 |
+| `SessionOverlay` | REST API overlay for multi-sink upload management: `/api/upload/sinks`, `/api/upload/status`, `/api/intervals/*`, `/api/wahoo/*`, per-sink force-push/retry, session history with sync status | `IWebContributor` | PR-19 / PR-21 |
 | `StoredRides` | Portal pill in the Echenon tab showing ride history with per-sink sync badges, TCX download, delete, and force-push/retry actions | — | PR-19 |
 | `SessionUI` | Session REST API, authenticated TCX download and Session History tab (PR-06); standalone `/ride` page and `/ws/session` WebSocket push (PR-09) | `IWebContributor` | PR-06 / PR-09 |
 | `DiagnosticsModule` | PSRAM-backed bounded event log with ring-buffer semantics; records boot, session, runaway, calibration and firmware-change events (§13) | `ITickable` | PR-14 |
@@ -2285,7 +2286,7 @@ Jobs drain in FIFO order; within a session, sinks execute in registration
 order.
 
 **Per-sink auto-sync toggles.** Each sink has an independent auto-sync
-preference (`auto_sync_strava`, `auto_sync_intervals`) stored via
+preference (`auto_sync_strava`, `auto_sync_intervals`, `auto_sync_wahoo`) stored via
 `ConfigManager`. A disabled sink is skipped during `enqueueSession()`
 fan-out but can still receive manually triggered uploads from the Stored
 Rides pill.
@@ -2305,7 +2306,7 @@ namespace echenon {
 class IUploader {
 public:
     virtual ~IUploader() = default;
-    virtual const char* serviceId() const = 0;         // "strava", "intervals"
+    virtual const char* serviceId() const = 0;         // "strava", "intervals", "wahoo"
     virtual const char* name() const { return serviceId(); }
     virtual bool isConfigured() const = 0;             // credentials present
     virtual bool isAuthenticated() const = 0;          // tokens / keys valid
@@ -2332,7 +2333,7 @@ count, and remote activity ID:
 ```cpp
 struct UploadJob {
     uint32_t    session_id;                // session epoch timestamp
-    std::string service_id;               // "strava", "intervals"
+    std::string service_id;               // "strava", "intervals", "wahoo"
     UploadStage stage;                     // Generate → Refresh → Upload → Poll → Done
     uint8_t     attempt;                   // retry count for this stage
     std::string upload_id;                 // remote upload ID (set after POST)
@@ -2375,16 +2376,17 @@ Each uploader contributes its own pill to the **Apps** tab via
 Apps (order 60)
 ├── Strava         (order 10, /upload_settings.js)   — OAuth 2.0 config pill
 ├── Intervals.icu  (order 20, /intervals_settings.js) — API key config pill
-└── [Future sinks at order 30+]
+├── Wahoo Cloud    (order 30, /wahoo_settings.js)     — OAuth 2.0 config pill
+└── [Future sinks at order 35+]
 ```
 
 Each pill displays:
 
 - Service name, icon, and connection status (`Connected: <Athlete>`,
   `Not Configured`, `Token Expired`)
-- Auto-sync toggle per service (`auto_sync_strava`, `auto_sync_intervals`)
+- Auto-sync toggle per service (`auto_sync_strava`, `auto_sync_intervals`, `auto_sync_wahoo`)
 - Authentication controls appropriate to the service type:
-  - **OAuth sinks (Strava):** `[Connect]` redirect → consent → callback,
+  - **OAuth sinks (Strava, Wahoo Cloud):** `[Connect]` redirect → consent → callback,
     `[Disconnect]` to revoke and clear tokens
   - **API-key sinks (Intervals.icu):** Inline form for athlete ID and
     API key, `[Test Connection]` button, `[Remove]` to clear
@@ -2437,6 +2439,97 @@ Body: <.tcx.gz binary>
 | `/api/intervals/credentials` | `POST` | ✓ | Save athlete ID and API key |
 | `/api/intervals/test` | `POST` | ✓ | Test connection with saved credentials |
 | `/api/intervals/disconnect` | `POST` | ✓ | Clear saved credentials |
+
+### 10.3b Wahoo Cloud Sink (OAuth 2.0 Sink #3)
+
+`WahooUploader` conforms to `IUploader` and `IConfigurable`
+(`"echenon_wahoo"`, schema v1) and serves as the second OAuth 2.0 sink
+(Sink #3 in the 4-sink registry).
+
+**Authentication & Bring-Your-Own-App (BYOA).** Like Strava, Wahoo Cloud
+uses a Bring-Your-Own-App model to avoid embedding shared client credentials
+in firmware. Riders register an application on the Wahoo Developer Portal
+(`https://developers.wahooligan.com`), configuring:
+- **Redirect URI:** `http://echenon.local/api/wahoo/callback` (or the device IP)
+- **Requested Scopes:** `user_read workouts_write`
+
+Credentials and tokens are stored encrypted via `KeyManager` / `ISecretStore`
+under NVS namespace `echenon_wahoo`:
+- `wahoo.client_secret`: BYOA Client Secret (write-only)
+- `wahoo.refresh_token`: OAuth 2.0 refresh token
+- `wahoo.access_token`: Active bearer access token
+
+Non-secret configuration (`client_id`, `enabled`, `user_name` / `athlete_name`,
+`expires_at`) is persisted via `ConfigManager`. All secrets are registered with
+`Redactor::instance().registerSecret()` so tokens never appear in serial logs
+or crash dumps.
+
+**OAuth 2.0 Authorization & Token Exchange:**
+1. **Authorize URL:** When the rider clicks "Connect with Wahoo", the portal
+   fetches `GET /api/wahoo/auth-url`. `WahooUploader::buildAuthorizeUrl()`
+   generates a 128-bit (32-hex) single-use CSRF state nonce with a 10-minute TTL
+   (`STATE_TTL_MS = 600000u`) and returns:
+   `https://api.wahooligan.com/oauth/authorize?client_id={client_id}&response_type=code&redirect_uri={redirect_uri}&scope=user_read+workouts_write&state={nonce}`
+2. **Consent & Callback:** Wahoo redirects the browser back to
+   `GET /api/wahoo/callback?code={code}&state={state}`.
+3. **State Validation:** `WahooUploader::validateAndConsumeState()` verifies the
+   state nonce and immediately consumes it to eliminate replay attacks.
+4. **Token Exchange:** Echenon POSTs to `https://api.wahooligan.com/oauth/token`
+   with `grant_type=authorization_code`, `code`, `client_id`, `client_secret`,
+   and `redirect_uri`.
+5. **Token Refresh & Rotated Refresh-Token-First Persistence:** When `now >= expires_at - 60`,
+   `refreshToken()` exchanges the refresh token at `https://api.wahooligan.com/oauth/token`
+   with `grant_type=refresh_token`. Wahoo rotates refresh tokens upon exchange.
+   To guarantee crash consistency mid-refresh, the newly issued `refresh_token`
+   is persisted to the secret store *before* the new `access_token` and metadata.
+   Both new tokens are re-registered with `Redactor`.
+
+**Multipart Activity Upload Endpoint:**
+```
+POST https://api.wahooligan.com/v1/workouts
+Content-Type: multipart/form-data; boundary=----EchenonWahooBoundary{session_id}
+Authorization: Bearer {access_token}
+```
+
+Multipart payload fields:
+- `workout[workout_type_id]=1` (Cycling workout)
+- `workout[file]`: filename `echenon_{session_id}.tcx.gz`, `Content-Type: application/gzip`
+- Body: compressed binary payload of the session's `.tcx.gz` file
+
+**Synchronous Status Handling:**
+Unlike Strava (which returns an asynchronous upload ticket requiring polling),
+Wahoo Cloud creates workouts synchronously. A successful `POST /v1/workouts`
+returns HTTP 200 or 201 with the created workout object JSON containing `id` or `id_str`.
+Therefore, `WahooUploader::pollUploadStatus()` completes immediately with `SUCCESS`
+and maps the workout ID directly to `out_activity_id`.
+
+**Stage Behaviour:**
+
+| Stage | Wahoo Cloud Behaviour |
+|---|---|
+| `refreshToken()` | Checks token expiration (`now >= expires_at - 60`); POSTs to `https://api.wahooligan.com/oauth/token` if needed; persists rotated refresh token first |
+| `postUpload()` | Reads session `.tcx.gz`; builds multipart request with `workout[workout_type_id]=1`; POSTs to `https://api.wahooligan.com/v1/workouts`; parses workout ID |
+| `pollUploadStatus()` | Returns `SUCCESS` immediately with `out_activity_id = upload_id` (synchronous processing; no async polling needed) |
+
+**Error Handling & Status Taxonomy:**
+
+| HTTP Status | `UploadStageResult` | Description |
+|---|---|---|
+| 200 / 201 | `SUCCESS` | Workout created synchronously; workout ID captured |
+| 401 | `PERMANENT_ERROR` | Unauthorized; invalid or revoked credentials/tokens |
+| 429 | `RETRYABLE_ERROR` | Rate limited; backoff and retry according to queue policy |
+| 5xx / <= 0 | `RETRYABLE_ERROR` | Server or network transport failure; exponential retry |
+| 400 / 403 / 404 / 422 | `PERMANENT_ERROR` | Rejected payload or invalid external reference |
+
+**REST API Routes (Wahoo Cloud Configuration):**
+
+| Route | Method | Auth | Description |
+|---|---|---|---|
+| `/api/wahoo/status` | `GET` | ✓ | Connection status, athlete name, token expiry, enabled state |
+| `/api/wahoo/credentials` | `POST` | ✓ | Save BYOA client ID and client secret (stored encrypted) |
+| `/api/wahoo/auth-url` | `GET` | ✓ | Generate single-use CSRF state and return OAuth authorize URL |
+| `/api/wahoo/callback` | `GET` | — | OAuth redirect callback receiving code and state |
+| `/api/wahoo/disconnect` | `POST` | ✓ | Clear Wahoo Cloud tokens and disconnect |
 
 ### 10.4 Strava Integration (v1)
 
@@ -2553,13 +2646,13 @@ on session completion provides a "ride and forget" experience.
 |---|---|---|---|
 | **Strava** | OAuth 2.0 (BYOA) | **Core (live)** | Reference OAuth sink (§10.4) |
 | **Intervals.icu** | REST API key | **Core (live)** | Reference API-key sink (§10.3a) |
+| **Wahoo Cloud** | OAuth 2.0 (BYOA) | **Core (live)** | Wahoo Cloud OAuth sink (§10.3b) |
 
 #### Tier C — Future / Manual Export
 
 | Service | Status | Reason |
 |---|---|---|
 | **Garmin Connect** | Manual TCX export | Garmin Health API requires corporate enterprise partner approval; manual upload via Stored Rides pill works seamlessly |
-| **Wahoo Cloud** | Future PR | OAuth 2.0 developer registration available; deferred to post-v1 |
 | **Generic Webhook** | Future PR | HTTP POST multipart/TCX for Home Assistant / NAS / InfluxDB integrations |
 
 #### Tier D — BLE FTMS Clients (Not Upload Targets)
@@ -2708,14 +2801,15 @@ configuration pills and system pills:
 |---|---|---|
 | **Strava** | 10 | OAuth 2.0 configuration: connect/disconnect, auto-sync toggle, upload status |
 | **Intervals.icu** | 20 | API key configuration: athlete ID, API key form, test connection, auto-sync toggle |
+| **Wahoo Cloud** | 30 | OAuth 2.0 configuration: connect/disconnect, auto-sync toggle, upload status (`/wahoo_settings.js`) |
 | **Level Mapping** | 25 | Calibration wizard (moved from Calibration tab) |
 | **Power Tuning** | 30 | Recalibration (moved from Recalibration tab) |
 | **Diagnostics** | 35 | Event log viewer (PR-14) |
 
-Future sinks are registered at order 30+ (before Level Mapping) to keep
+Future sinks are registered at order 35+ (before Level Mapping) to keep
 connected-apps pills grouped at the top.
 
-**REST API extensions (PR-19):**
+**REST API extensions (PR-19 / PR-21):**
 
 | Route | Method | Auth | Description |
 |---|---|---|---|
@@ -2727,6 +2821,11 @@ connected-apps pills grouped at the top.
 | `/api/intervals/credentials` | `POST` | ✓ | Save Intervals.icu athlete ID and API key |
 | `/api/intervals/test` | `POST` | ✓ | Test Intervals.icu connection |
 | `/api/intervals/disconnect` | `POST` | ✓ | Clear Intervals.icu credentials |
+| `/api/wahoo/status` | `GET` | ✓ | Wahoo Cloud connection status, athlete name, expiry, auto-sync |
+| `/api/wahoo/credentials` | `POST` | ✓ | Save Wahoo Cloud Client ID and write-only Client Secret |
+| `/api/wahoo/auth-url` | `GET` | ✓ | Generate single-use CSRF state and return OAuth authorize URL |
+| `/api/wahoo/callback` | `GET` | — | OAuth redirect callback receiving code and state |
+| `/api/wahoo/disconnect` | `POST` | ✓ | Clear Wahoo Cloud tokens and disconnect |
 
 **Removed from top-level tabs:** The default App tab, Calibration,
 Recalibration, Session (history), and Upload Services are no longer

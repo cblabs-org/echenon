@@ -4,7 +4,7 @@ wo_id: WO-21.5
 pr_id: PR-21
 title: SPEC & Documentation Sync
 complexity: mechanical
-status: PENDING
+status: COMPLETED
 allowed_files:
 - SPEC.md
 - docs/data-sinks.md
@@ -17,7 +17,20 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: b06a3ed6217e2bb6eb324be700b30a570950fdb6db3a5f23a82c06bc0120399f
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_87a73884958e
+  commit_sha: be5e696c35ce6e51da67d7785bf5d75c257ab49b
+  files_modified:
+  - SPEC.md
+  - docs/data-sinks.md
+  verification_summary: 'pio test -e native --verbose: ================ 269 test cases:
+    269 succeeded in 00:00:00.487 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-21.5 — SPEC & Documentation Sync
