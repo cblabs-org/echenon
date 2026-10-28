@@ -4,7 +4,7 @@ wo_id: WO-21.1
 pr_id: PR-21
 title: WahooUploader Engine
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/WahooUploader.h
 - src/echenon/WahooUploader.cpp
@@ -20,7 +20,20 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: f9229689ad541fa93417cf04fe10337df5c3f768731965c3468bd51b2ba45268
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_aa687d11b5b8
+  commit_sha: c26e2cabe3b69cdc704af8dce9404831c74bd297
+  files_modified:
+  - src/echenon/WahooUploader.cpp
+  - src/echenon/WahooUploader.h
+  verification_summary: 'pio test -e native --verbose: ================ 261 test cases:
+    261 succeeded in 00:00:00.485 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-21.1 — WahooUploader Engine

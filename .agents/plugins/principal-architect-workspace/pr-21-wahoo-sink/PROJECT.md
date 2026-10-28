@@ -30,9 +30,9 @@ work_orders:
   slug: wo1-wahoo-uploader
   title: WahooUploader Engine
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: c26e2cabe3b69cdc704af8dce9404831c74bd297
 - id: WO-21.2
   slug: wo2-system-wiring
   title: System Wiring & REST Endpoints
