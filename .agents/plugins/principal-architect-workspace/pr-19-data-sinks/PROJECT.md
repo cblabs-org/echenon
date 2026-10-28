@@ -12,6 +12,7 @@ charter:
   - PR-06
   allowed_modules:
   - src/echenon/
+  - src/main.cpp
   - web/
   - test/
   - docs/
@@ -21,7 +22,7 @@ charter:
   verification_floor:
   - pio test -e native --verbose
   charter_locked: true
-  charter_hash: 76ed6c8b58f1185be755d03d7a694bf44cd122a1669c1a3653896dde1acf69ff
+  charter_hash: 53b172290b1e083d9c229f456eb68bbf34fe552befc3505ed2539edda2aedb36
 status: APPROVED
 approved_at: '2026-10-28T18:21:42.991677Z'
 github_pr: 12
