@@ -40,6 +40,9 @@
 #include "include/portal_assets/ride_js.hpp"
 #include "include/portal_assets/manifest_json.hpp"
 #include "include/portal_assets/stored_rides_js.hpp"
+#if __has_include("include/portal_assets/intervals_settings_js.h")
+#include "include/portal_assets/intervals_settings_js.h"
+#endif
 #endif
 
 namespace echenon {
@@ -1307,7 +1310,6 @@ void SessionOverlay::registerRoutes(PsychicHttpServer& server) {
 
     // --- Intervals.icu Settings JS Asset (PROGMEM, WO-19.5 creates the asset) ---
 #if __has_include("include/portal_assets/intervals_settings_js.h")
-#include "include/portal_assets/intervals_settings_js.h"
     server.on("/intervals_settings.js", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
         return serveGzipAsset(request,
                               response,

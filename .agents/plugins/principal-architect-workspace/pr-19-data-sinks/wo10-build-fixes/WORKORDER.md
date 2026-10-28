@@ -4,7 +4,7 @@ wo_id: WO-19.10
 pr_id: PR-19
 title: Firmware Build Fixes
 complexity: mechanical
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/IntervalsIcuUploader.h
 - src/echenon/IntervalsIcuUploader.cpp
@@ -17,7 +17,22 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: a1a0b9562c9c614fd227c77f1c130a947d94996c77367bba5c36dfee22c289b3
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_2148051a3138
+  commit_sha: 41978fba3551cb8b4ae697c76857a5202c5c9252
+  files_modified:
+  - src/echenon/IntervalsIcuUploader.cpp
+  - src/echenon/IntervalsIcuUploader.h
+  - src/echenon/SessionOverlay.cpp
+  - src/main.cpp
+  verification_summary: 'pio test -e native --verbose: ================ 261 test cases:
+    261 succeeded in 00:00:00.725 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-19.10 — Firmware Build Fixes

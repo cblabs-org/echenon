@@ -94,9 +94,9 @@ work_orders:
   slug: wo10-build-fixes
   title: Firmware Build Fixes
   complexity: mechanical
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 41978fba3551cb8b4ae697c76857a5202c5c9252
 ---
 
 # PR-19 — Pluggable Data Sinks & Ride History Management

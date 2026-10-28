@@ -12,6 +12,7 @@
 #include <WiFiClientSecure.h>
 #include <esp_crt_bundle.h>
 #include <esp_log.h>
+#include "modules/KeyManager/KeyManager.hpp"
 #include "types/FrameworkSecureClient.hpp"
 #else
 // Native test builds — no ESP-specific includes needed
@@ -26,6 +27,43 @@ namespace {
 
 #if defined(ESP_PLATFORM)
 static constexpr const char* TAG = "IntervalsIcuUploader";
+
+class KeyManagerSecretStore : public ISecretStore {
+public:
+    explicit KeyManagerSecretStore(KeyManager* keyManager = nullptr)
+        : _keyManager(keyManager) {}
+
+    void setKeyManager(KeyManager* keyManager) { _keyManager = keyManager; }
+    KeyManager* getKeyManager() const { return _keyManager; }
+
+    bool putSecret(const std::string& key, const std::string& value) override {
+        if (!_keyManager || key.empty() || value.empty()) return false;
+        const std::string qualified = qualifyKey(key);
+        return _keyManager->addKey(qualified.c_str(), value.c_str(), "Echenon", true, false);
+    }
+
+    std::string getSecret(const std::string& key) const override {
+        if (!_keyManager || key.empty()) return {};
+        const std::string qualified = qualifyKey(key);
+        return _keyManager->getKeyById(qualified.c_str());
+    }
+
+    bool deleteSecret(const std::string& key) override {
+        if (!_keyManager || key.empty()) return false;
+        const std::string qualified = qualifyKey(key);
+        return _keyManager->deleteKey(qualified.c_str());
+    }
+
+private:
+    static std::string qualifyKey(const std::string& key) {
+        if (key.rfind("intervals.", 0) == 0) {
+            return key;
+        }
+        return "intervals." + key;
+    }
+
+    KeyManager* _keyManager = nullptr;
+};
 
 /// ESP32-specific HTTP client for Intervals.icu API calls.
 /// Uses HTTP Basic Auth with Content-Type: application/octet-stream.
@@ -111,6 +149,7 @@ private:
     WiFiClient* _sharedClient = nullptr;
 };
 
+KeyManagerSecretStore s_espIntervalsKeyManagerStore;
 EspIntervalsHttpClient s_espIntervalsHttpClient;
 #endif
 
@@ -173,6 +212,18 @@ IntervalsIcuUploader::IntervalsIcuUploader(
 
 void IntervalsIcuUploader::setSecretStore(ISecretStore* store) {
     _secretStore = store ? store : &_defaultSecretStore;
+}
+
+void IntervalsIcuUploader::setKeyManager(KeyManager* keyManager) {
+    _keyManager = keyManager;
+#if defined(ESP_PLATFORM)
+    if (_keyManager) {
+        s_espIntervalsKeyManagerStore.setKeyManager(_keyManager);
+        if (_secretStore == &_defaultSecretStore) {
+            _secretStore = &s_espIntervalsKeyManagerStore;
+        }
+    }
+#endif
 }
 
 void IntervalsIcuUploader::setHttpClient(IHttpClient* httpClient) {

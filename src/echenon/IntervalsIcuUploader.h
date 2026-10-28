@@ -18,6 +18,8 @@
 #include <string>
 #include <vector>
 
+class KeyManager;
+
 namespace echenon {
 
 // =============================================================================
@@ -47,6 +49,9 @@ public:
 
     void setSecretStore(ISecretStore* store);
     ISecretStore* getSecretStore() const { return _secretStore; }
+
+    void setKeyManager(KeyManager* keyManager);
+    KeyManager* getKeyManager() const { return _keyManager; }
 
     void setHttpClient(IHttpClient* httpClient);
     IHttpClient* getHttpClient() const { return _httpClient; }
@@ -133,6 +138,7 @@ private:
     ISecretStore*       _secretStore = nullptr;
     IHttpClient*        _httpClient  = nullptr;
     IRideFileSystem*    _fs          = nullptr;
+    KeyManager*         _keyManager  = nullptr;
 
     // GRAVE-05 deviation: DI callback set once at boot, never reallocated.
     // Framework's own DataManager uses the same pattern for IDataSource injection.
