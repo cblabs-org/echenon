@@ -4,7 +4,7 @@ wo_id: WO-21.2
 pr_id: PR-21
 title: System Wiring & REST Endpoints
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/EchenonModule.h
 - src/echenon/EchenonModule.cpp
@@ -21,7 +21,23 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: e8f3ec5630621dff121fdf022691fc6c1f3d1a884b68cfa320a5d02e1ba92261
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_bac5b101d302
+  commit_sha: 08d48b685954205719d0809f2572f3b31935bce5
+  files_modified:
+  - src/echenon/EchenonModule.cpp
+  - src/echenon/EchenonModule.h
+  - src/echenon/SessionOverlay.cpp
+  - src/echenon/SessionOverlay.h
+  - src/main.cpp
+  verification_summary: 'pio test -e native --verbose: ================ 261 test cases:
+    261 succeeded in 00:00:00.432 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-21.2 — System Wiring & REST Endpoints

@@ -746,6 +746,7 @@ void EchenonModule::registerTabs(ITabRegistry& registry) {
     // Sub-pills under Apps and System
     registry.addTab("Strava",         "Apps",    10, nullptr, "/upload_settings.js");
     registry.addTab("Intervals.icu",  "Apps",    20, nullptr, "/intervals_settings.js");
+    registry.addTab("Wahoo Cloud",    "Apps",    30, nullptr, "/wahoo_settings.js");
     registry.addTab("Stored Rides",   "Echenon", 30, nullptr, "/stored_rides.js");
     registry.addTab("Level Mapping", "System",  25, nullptr, "/calibration-wizard.js");
     registry.addTab("Power Tuning",  "System",  30, nullptr, "/recalibration.js");

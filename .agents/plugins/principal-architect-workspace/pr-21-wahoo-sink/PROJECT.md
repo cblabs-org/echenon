@@ -37,9 +37,9 @@ work_orders:
   slug: wo2-system-wiring
   title: System Wiring & REST Endpoints
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 08d48b685954205719d0809f2572f3b31935bce5
 - id: WO-21.3
   slug: wo3-portal-ui
   title: Portal UI — Wahoo Pill & Stored Rides Badges
