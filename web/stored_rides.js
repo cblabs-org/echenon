@@ -158,14 +158,23 @@
                '</div>';
     }
 
+    function formatServiceLabel(serviceId) {
+        var sid = (serviceId || '').toLowerCase();
+        if (sid === 'strava') return 'Strava';
+        if (sid === 'intervals' || sid === 'intervals_icu') return 'Intervals.icu';
+        if (sid === 'wahoo') return 'Wahoo';
+        return serviceId;
+    }
+
     function renderSyncRow(sid, sink) {
         var serviceId = sink.service_id || '';
         var status = (sink.status || 'NONE').toUpperCase();
+        var label = formatServiceLabel(serviceId);
         var row = '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;padding:0.2rem 0;flex-wrap:wrap;">';
 
         // Service name + status badge
         row += '<div style="display:flex;align-items:center;gap:0.4rem;">';
-        row += '<span style="font-size:0.8rem;font-weight:600;color:var(--text, #212121);text-transform:capitalize;">' + serviceId + '</span>';
+        row += '<span style="font-size:0.8rem;font-weight:600;color:var(--text, #212121);">' + escapeHtml(label) + '</span>';
         row += syncStatusBadge(status);
         row += '</div>';
 
@@ -185,7 +194,7 @@
 
         // Retry button for failed or none
         if (status === 'FAILED' || status === 'NONE') {
-            row += '<button data-action="retry" data-sid="' + sid + '" data-service="' + serviceId + '" style="padding:2px 8px;font-size:0.7rem;font-weight:600;border:1px solid var(--warning, #f9a825);border-radius:6px;background:transparent;color:var(--warning, #f9a825);cursor:pointer;">Retry</button>';
+            row += '<button data-action="retry" data-sid="' + sid + '" data-service="' + escapeHtml(serviceId) + '" style="padding:2px 8px;font-size:0.7rem;font-weight:600;border:1px solid var(--warning, #f9a825);border-radius:6px;background:transparent;color:var(--warning, #f9a825);cursor:pointer;">Retry</button>';
         }
 
         // Show error if failed
@@ -206,6 +215,9 @@
         }
         if (sid === 'intervals' || sid === 'intervals_icu') {
             return 'https://intervals.icu/activities/' + remoteId;
+        }
+        if (sid === 'wahoo') {
+            return 'https://api.wahooligan.com/v1/workouts/' + remoteId;
         }
         return '';
     }

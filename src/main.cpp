@@ -151,6 +151,15 @@ void setup() {
     uploadQueue.registerSink(&echenonModule.intervalsUploader());
     app.registerModule(&echenonModule.intervalsUploader());
     sessionOverlay.setIntervalsUploader(&echenonModule.intervalsUploader());
+    echenonModule.wahooUploader().setKeyManager(&app.getKeyManager());
+    echenonModule.wahooUploader().setSecretRegistrar(echenon::WahooUploader::defaultRegisterSecret);
+    echenonModule.wahooUploader().setMetadataSaveCallback([](uint32_t, const std::string&) {
+        return app.getConfigManager().saveModuleConfig(&echenonModule.wahooUploader());
+    });
+    echenonModule.wahooUploader().begin();
+    uploadQueue.registerSink(&echenonModule.wahooUploader());
+    app.registerModule(&echenonModule.wahooUploader());
+    sessionOverlay.setWahooUploader(&echenonModule.wahooUploader());
     sessionOverlay.setSessionManager(&sessionManager);
     sessionOverlay.setRideStore(&rideStore);
     sessionOverlay.setUploadQueue(&uploadQueue);

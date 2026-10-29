@@ -17,7 +17,7 @@ class ConfigManager;
 class PsychicRequest;
 class PsychicResponse;
 
-namespace echenon { class IntervalsIcuUploader; }
+namespace echenon { class IntervalsIcuUploader; class WahooUploader; }
 
 namespace echenon {
 
@@ -82,6 +82,7 @@ public:
     void setAuthManager(AuthManager* am) { _authManager = am; }
     void setConfigManager(ConfigManager* cm) { _configManager = cm; }
     void setIntervalsUploader(IntervalsIcuUploader* iu) { _intervalsUploader = iu; }
+    void setWahooUploader(WahooUploader* wu) { _wahooUploader = wu; }
 
     // IWebContributor
     void registerRoutes(PsychicHttpServer& server) override;
@@ -121,6 +122,15 @@ public:
     HttpResponse handleTestIntervalsConnection() const;
     HttpResponse handleIntervalsDisconnect();
 
+    // Wahoo Cloud OAuth2 & credential management endpoints
+    HttpResponse handleGetWahooStatus(uint32_t now_epoch_s = 0) const;
+    HttpResponse handleSaveWahooCredentials(const std::string& body_json);
+    HttpResponse handleGetWahooAuthUrl(const std::string& redirect_uri, uint32_t now_ms = 0);
+    HttpResponse handleWahooCallback(const std::string& code,
+                                     const std::string& state,
+                                     uint32_t now_ms = 0);
+    HttpResponse handleWahooDisconnect();
+
     /**
      * Format the 14-field /ws/echenon/live JSON telemetry frame including
      * session_state, session_elapsed_s, and instantaneous heart rate (hr).
@@ -156,6 +166,7 @@ private:
     UploadQueue*    _uploadQueue    = nullptr;
     StravaUploader* _stravaUploader = nullptr;
     IntervalsIcuUploader* _intervalsUploader = nullptr;
+    WahooUploader*        _wahooUploader     = nullptr;
     AuthManager*    _authManager    = nullptr;
     ConfigManager*  _configManager  = nullptr;
 };

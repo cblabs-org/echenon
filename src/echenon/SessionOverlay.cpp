@@ -3,15 +3,17 @@
 
 #include "echenon/SessionOverlay.h"
 #include "echenon/IntervalsIcuUploader.h"
+#include "echenon/WahooUploader.h"
 #include "echenon/LiveFeed.h"
 #include "interfaces/ITabRegistry.hpp"
 
 // Unity-build inclusion: In native test builds, SessionOverlay.cpp is included
-// directly from the test file. IntervalsIcuUploader.cpp is not included by any
-// test file, so we pull it in here to satisfy linker symbols for the Intervals
-// route handlers.
+// directly from the test file. IntervalsIcuUploader.cpp and WahooUploader.cpp are
+// not included by any test file, so we pull them in here to satisfy linker symbols
+// for the Intervals and Wahoo route handlers.
 #ifdef UNIT_TEST
 #include "echenon/IntervalsIcuUploader.cpp"
+#include "echenon/WahooUploader.cpp"
 #endif
 
 #include <ArduinoJson.h>
@@ -42,6 +44,11 @@
 #include "include/portal_assets/stored_rides_js.hpp"
 #if __has_include("include/portal_assets/intervals_settings_js.h")
 #include "include/portal_assets/intervals_settings_js.h"
+#endif
+#if __has_include("include/portal_assets/wahoo_settings_js.hpp")
+#include "include/portal_assets/wahoo_settings_js.hpp"
+#elif __has_include("include/portal_assets/wahoo_settings_js.h")
+#include "include/portal_assets/wahoo_settings_js.h"
 #endif
 #endif
 
@@ -1012,6 +1019,196 @@ SessionOverlay::HttpResponse SessionOverlay::handleIntervalsDisconnect() {
 }
 
 // =============================================================================
+// Wahoo Cloud OAuth2 & Credentials Handlers (Native-Testable)
+// =============================================================================
+
+SessionOverlay::HttpResponse SessionOverlay::handleGetWahooStatus(uint32_t now_epoch_s) const {
+    HttpResponse resp;
+    JsonDocument doc;
+
+    bool configured    = (_wahooUploader != nullptr) && _wahooUploader->isConfigured();
+    bool authenticated = (_wahooUploader != nullptr) && _wahooUploader->isAuthenticated();
+    bool tokenValid    = (_wahooUploader != nullptr) && _wahooUploader->isTokenValid(now_epoch_s);
+
+    doc["configured"]    = configured;
+    doc["authenticated"] = authenticated;
+    doc["connected"]     = authenticated;
+    doc["token_valid"]   = tokenValid;
+    doc["client_id"]     = (_wahooUploader != nullptr) ? _wahooUploader->getClientId() : "";
+    doc["athlete_name"]  = (_wahooUploader != nullptr) ? _wahooUploader->getAthleteName() : "";
+    doc["expires_at"]    = (_wahooUploader != nullptr) ? _wahooUploader->getTokenExpiresAt() : 0u;
+    doc["enabled"]       = (_wahooUploader != nullptr) ? _wahooUploader->isEnabled() : true;
+
+    serializeJson(doc, resp.body);
+    return resp;
+}
+
+SessionOverlay::HttpResponse SessionOverlay::handleSaveWahooCredentials(const std::string& body_json) {
+    HttpResponse resp;
+    JsonDocument inDoc;
+    DeserializationError err = deserializeJson(inDoc, body_json);
+    if (err || !inDoc.is<JsonObject>()) {
+        resp.status_code = 400;
+        JsonDocument errDoc;
+        errDoc["ok"] = false;
+        errDoc["error"] = "Invalid JSON body";
+        serializeJson(errDoc, resp.body);
+        return resp;
+    }
+
+    std::string clientId     = inDoc["client_id"] | "";
+    std::string clientSecret = inDoc["client_secret"] | "";
+
+    if (clientId.empty() || clientSecret.empty()) {
+        resp.status_code = 400;
+        JsonDocument errDoc;
+        errDoc["ok"] = false;
+        errDoc["error"] = "client_id and client_secret are required";
+        serializeJson(errDoc, resp.body);
+        return resp;
+    }
+
+    if (_wahooUploader == nullptr) {
+        resp.status_code = 500;
+        JsonDocument errDoc;
+        errDoc["ok"] = false;
+        errDoc["error"] = "WahooUploader not initialized";
+        serializeJson(errDoc, resp.body);
+        return resp;
+    }
+
+    if (!_wahooUploader->setClientCredentials(clientId, clientSecret)) {
+        resp.status_code = 500;
+        JsonDocument errDoc;
+        errDoc["ok"] = false;
+        errDoc["error"] = "Failed to store Wahoo credentials";
+        serializeJson(errDoc, resp.body);
+        return resp;
+    }
+
+#ifndef UNIT_TEST
+    if (_configManager != nullptr) {
+        _configManager->saveModuleConfig(_wahooUploader);
+    }
+#endif
+
+    JsonDocument outDoc;
+    outDoc["ok"]         = true;
+    outDoc["configured"] = _wahooUploader->isConfigured();
+    outDoc["client_id"]  = _wahooUploader->getClientId();
+    serializeJson(outDoc, resp.body);
+    return resp;
+}
+
+SessionOverlay::HttpResponse SessionOverlay::handleGetWahooAuthUrl(const std::string& redirect_uri,
+                                                                   uint32_t now_ms) {
+    HttpResponse resp;
+    JsonDocument doc;
+
+    if (_wahooUploader == nullptr) {
+        resp.status_code = 500;
+        doc["ok"] = false;
+        doc["error"] = "WahooUploader not initialized";
+        serializeJson(doc, resp.body);
+        return resp;
+    }
+
+    std::string url = _wahooUploader->buildAuthorizeUrl(redirect_uri, now_ms);
+    if (url.empty()) {
+        resp.status_code = 400;
+        doc["ok"] = false;
+        doc["error"] = "Wahoo client_id not configured or invalid redirect_uri";
+        serializeJson(doc, resp.body);
+        return resp;
+    }
+
+    doc["ok"]            = true;
+    doc["url"]           = url;
+    doc["authorize_url"] = url;
+    serializeJson(doc, resp.body);
+    return resp;
+}
+
+SessionOverlay::HttpResponse SessionOverlay::handleWahooCallback(const std::string& code,
+                                                                 const std::string& state,
+                                                                 uint32_t now_ms) {
+    HttpResponse resp;
+    JsonDocument doc;
+
+    if (_wahooUploader == nullptr) {
+        resp.status_code = 500;
+        doc["ok"] = false;
+        doc["error"] = "WahooUploader not initialized";
+        serializeJson(doc, resp.body);
+        return resp;
+    }
+
+    if (!_wahooUploader->validateAndConsumeState(state, now_ms)) {
+        resp.status_code = 403;
+        doc["ok"] = false;
+        doc["error"] = "Invalid or expired OAuth state";
+        serializeJson(doc, resp.body);
+        return resp;
+    }
+
+    if (code.empty()) {
+        resp.status_code = 400;
+        doc["ok"] = false;
+        doc["error"] = "Missing authorization code";
+        serializeJson(doc, resp.body);
+        return resp;
+    }
+
+    std::string errMsg;
+    UploadStageResult res = _wahooUploader->exchangeAuthCode(code, 5000, errMsg);
+    if (res != UploadStageResult::SUCCESS) {
+        resp.status_code = 502;
+        doc["ok"] = false;
+        doc["error"] = errMsg.empty() ? "Token exchange failed" : errMsg;
+        serializeJson(doc, resp.body);
+        return resp;
+    }
+
+#ifndef UNIT_TEST
+    if (_configManager != nullptr) {
+        _configManager->saveModuleConfig(_wahooUploader);
+    }
+#endif
+
+    doc["ok"]            = true;
+    doc["authenticated"] = _wahooUploader->isAuthenticated();
+    doc["athlete_name"]  = _wahooUploader->getAthleteName();
+    serializeJson(doc, resp.body);
+    return resp;
+}
+
+SessionOverlay::HttpResponse SessionOverlay::handleWahooDisconnect() {
+    HttpResponse resp;
+    JsonDocument doc;
+
+    if (_wahooUploader == nullptr) {
+        resp.status_code = 500;
+        doc["ok"] = false;
+        doc["error"] = "WahooUploader not initialized";
+        serializeJson(doc, resp.body);
+        return resp;
+    }
+
+    _wahooUploader->disconnect();
+
+#ifndef UNIT_TEST
+    if (_configManager != nullptr) {
+        _configManager->saveModuleConfig(_wahooUploader);
+    }
+#endif
+
+    doc["ok"]            = true;
+    doc["authenticated"] = false;
+    serializeJson(doc, resp.body);
+    return resp;
+}
+
+// =============================================================================
 // IWebContributor — Tab & Route Registration
 // =============================================================================
 
@@ -1316,6 +1513,90 @@ void SessionOverlay::registerRoutes(PsychicHttpServer& server) {
                               intervals_settings_js_gz,
                               intervals_settings_js_gz_len,
                               intervals_settings_js_gz_etag,
+                              "application/javascript");
+    });
+#endif
+
+    // --- Wahoo Cloud Credential & OAuth2 Routes ---
+
+    server.on("/api/wahoo/status", HTTP_GET, [this, checkAuth, sendResp](PsychicRequest* request, PsychicResponse* response) {
+        if (!checkAuth(request, response)) return ESP_OK;
+        return sendResp(response, handleGetWahooStatus());
+    });
+
+    server.on("/api/wahoo/credentials", HTTP_POST, [this, checkAuth, sendResp](PsychicRequest* request, PsychicResponse* response) {
+        if (!checkAuth(request, response)) return ESP_OK;
+        const char* body = request->bodyCStr();
+        return sendResp(response, handleSaveWahooCredentials(body ? body : ""));
+    });
+
+    server.on("/api/wahoo/auth-url", HTTP_GET, [this, checkAuth, sendResp](PsychicRequest* request, PsychicResponse* response) {
+        if (!checkAuth(request, response)) return ESP_OK;
+        std::string redirectUri;
+        if (request->hasParam("redirect_uri")) {
+            redirectUri = request->getParam("redirect_uri")->value().c_str();
+        } else {
+            String host = request->host();
+            std::string hostStr = host.length() > 0 ? host.c_str() : "echenon.local";
+            redirectUri = "http://" + hostStr + "/api/wahoo/callback";
+        }
+        return sendResp(response, handleGetWahooAuthUrl(redirectUri, millis()));
+    });
+
+    server.on("/api/wahoo/callback", HTTP_GET, [this](PsychicRequest* request, PsychicResponse* response) {
+        // No checkAuth — the OAuth state parameter is validated inside handleWahooCallback
+        std::string code  = request->hasParam("code") ? request->getParam("code")->value().c_str() : "";
+        std::string state = request->hasParam("state") ? request->getParam("state")->value().c_str() : "";
+        HttpResponse result = handleWahooCallback(code, state, millis());
+
+        if (result.status_code == 200) {
+            return response->redirect("/#tab-apps");
+        }
+        // Extract error message from JSON body for the redirect query param
+        std::string errMsg = "Authorization failed";
+        JsonDocument errDoc;
+        if (deserializeJson(errDoc, result.body) == DeserializationError::Ok && errDoc.containsKey("error")) {
+            errMsg = errDoc["error"].as<std::string>();
+        }
+        // URL-encode the error message
+        std::string encoded;
+        for (char c : errMsg) {
+            if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+                encoded += c;
+            } else if (c == ' ') {
+                encoded += '+';
+            } else {
+                char hex[4];
+                snprintf(hex, sizeof(hex), "%%%02X", static_cast<unsigned char>(c));
+                encoded += hex;
+            }
+        }
+        std::string redirectUrl = "/#tab-apps?wahoo_error=" + encoded;
+        return response->redirect(redirectUrl.c_str());
+    });
+
+    server.on("/api/wahoo/disconnect", HTTP_POST, [this, checkAuth, sendResp](PsychicRequest* request, PsychicResponse* response) {
+        if (!checkAuth(request, response)) return ESP_OK;
+        return sendResp(response, handleWahooDisconnect());
+    });
+
+    // --- Wahoo Cloud Settings JS Asset (PROGMEM, WO-21.3 creates the asset) ---
+#if __has_include("include/portal_assets/wahoo_settings_js.hpp")
+    server.on("/wahoo_settings.js", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
+        return serveGzipAsset(request,
+                              response,
+                              wahoo_settings_js_gz,
+                              wahoo_settings_js_gz_len,
+                              wahoo_settings_js_gz_etag,
+                              "application/javascript");
+    });
+#elif __has_include("include/portal_assets/wahoo_settings_js.h")
+    server.on("/wahoo_settings.js", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
+        return serveGzipAsset(request,
+                              response,
+                              wahoo_settings_js_gz,
+                              wahoo_settings_js_gz_len,
+                              wahoo_settings_js_gz_etag,
                               "application/javascript");
     });
 #endif
