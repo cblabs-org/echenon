@@ -326,6 +326,17 @@ void EchenonModule::applyConfig(const JsonObject& config) {
         _ridePersistence->setCapKb(_diagRideCapKb);
     }
 
+#ifdef WITH_FTMS
+    if (config["ftms_power_smooth_s"].is<float>()) {
+        _ftmsPowerSmoothS = config["ftms_power_smooth_s"].as<float>();
+        if (_ftmsPowerSmoothS < 0.0f) _ftmsPowerSmoothS = 0.0f;
+        if (_ftmsPowerSmoothS > 10.0f) _ftmsPowerSmoothS = 10.0f;
+        if (_ftmsServer) {
+            _ftmsServer->setPowerSmoothingWindow(_ftmsPowerSmoothS);
+        }
+    }
+#endif
+
 #ifdef WITH_SIGNAL_LOGGER
     _signalLogger.applyConfig(config);
 #endif
@@ -349,6 +360,9 @@ void EchenonModule::serializeConfig(JsonObject& config) const {
     }
     config["save_rides_to_flash"] = _saveRidesToFlash;
     config["diag_ride_cap_kb"] = _diagRideCapKb;
+#ifdef WITH_FTMS
+    config["ftms_power_smooth_s"] = _ftmsPowerSmoothS;
+#endif
 #ifdef WITH_SIGNAL_LOGGER
     _signalLogger.serializeConfig(config);
 #endif
@@ -365,6 +379,12 @@ void EchenonModule::resetConfig() {
         _ridePersistence->setEnabled(false);
         _ridePersistence->setCapKb(echenon::RidePersistence::DEFAULT_CAP_KB);
     }
+#ifdef WITH_FTMS
+    _ftmsPowerSmoothS = 0.0f;
+    if (_ftmsServer) {
+        _ftmsServer->setPowerSmoothingWindow(0.0f);
+    }
+#endif
 #ifdef WITH_SIGNAL_LOGGER
     _signalLogger.resetConfig();
 #endif
@@ -720,16 +740,60 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
         serializeJson(doc, res);
         return response->send(200, "application/json", res.c_str());
     });
+
+#ifdef WITH_FTMS
+    // --- GET /api/echenon/ftms-smoothing — current smoothing window ---
+    server.on("/api/echenon/ftms-smoothing", HTTP_GET, [this](PsychicRequest* request, PsychicResponse* response) {
+        (void)request;
+        JsonDocument doc;
+        doc["ftms_power_smooth_s"] = _ftmsPowerSmoothS;
+        String out;
+        serializeJson(doc, out);
+        return response->send(200, "application/json", out.c_str());
+    });
+
+    // --- POST /api/echenon/ftms-smoothing — set smoothing window ---
+    server.on("/api/echenon/ftms-smoothing", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) {
+        JsonDocument doc;
+        DeserializationError err = deserializeJson(doc, request->body());
+        if (err || !doc["ftms_power_smooth_s"].is<float>()) {
+            return response->send(400, "application/json",
+                                  "{\"error\":\"Missing ftms_power_smooth_s (float)\"}");
+        }
+        float val = doc["ftms_power_smooth_s"].as<float>();
+        if (val < 0.0f) val = 0.0f;
+        if (val > 10.0f) val = 10.0f;
+        _ftmsPowerSmoothS = val;
+        if (_ftmsServer) {
+            _ftmsServer->setPowerSmoothingWindow(val);
+        }
+        // Persist via ConfigManager
+        if (_configManager) {
+            _configManager->saveModuleConfig(this);
+        }
+        JsonDocument resp;
+        resp["success"] = true;
+        resp["ftms_power_smooth_s"] = _ftmsPowerSmoothS;
+        String out;
+        serializeJson(resp, out);
+        return response->send(200, "application/json", out.c_str());
+    });
+#endif
 }
 
 void EchenonModule::registerTabs(ITabRegistry& registry) {
+    // Top-level "Echenon" tab — no script on parent (framework shows pills)
     registry.addTab(
         "Echenon",
         nullptr,
         50,
         "<polyline points=\"22 12 18 12 15 21 9 3 6 12 2 12\"></polyline>",
-        "/echenon-dashboard.js"
+        nullptr
     );
+
+    // Child pills under Echenon
+    registry.addTab("Dashboard",     "Echenon", 10, nullptr, "/echenon-dashboard.js");
+    registry.addTab("Stored Rides",  "Echenon", 30, nullptr, "/stored_rides.js");
 
     // Apps tab (order 60) with Feather "grid" icon
     registry.addTab(
@@ -747,7 +811,6 @@ void EchenonModule::registerTabs(ITabRegistry& registry) {
     registry.addTab("Strava",         "Apps",    10, nullptr, "/upload_settings.js");
     registry.addTab("Intervals.icu",  "Apps",    20, nullptr, "/intervals_settings.js");
     registry.addTab("Wahoo Cloud",    "Apps",    30, nullptr, "/wahoo_settings.js");
-    registry.addTab("Stored Rides",   "Echenon", 30, nullptr, "/stored_rides.js");
     registry.addTab("Level Mapping", "System",  25, nullptr, "/calibration-wizard.js");
     registry.addTab("Power Tuning",  "System",  30, nullptr, "/recalibration.js");
     registry.addTab("Diagnostics",   "System",  35, nullptr, "/diagnostics.js");
