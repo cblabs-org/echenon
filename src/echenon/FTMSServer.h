@@ -50,6 +50,11 @@ public:
     void updateTelemetry(float speed_kph, float cadence_rpm,
                          uint8_t internal_resistance, int16_t power_watts);
 
+    // --- FTMS Power Smoothing (EMA) ---
+    /// Set the smoothing time constant in seconds.  0 = disabled (raw passthrough).
+    void setPowerSmoothingWindow(float windowSeconds);
+    float getPowerSmoothingWindow() const { return _smoothWindowS; }
+
     // --- EventBus lifecycle ---
     void begin();
     void end();
@@ -81,6 +86,12 @@ private:
     float    _cadenceRpm         = 0.0f;
     uint8_t  _internalResistance = 0;
     int16_t  _powerWatts         = 0;
+
+    // EMA power smoothing — applied only to FTMS BLE output
+    float    _smoothWindowS      = 0.0f;   // 0 = disabled (raw passthrough)
+    float    _smoothedPower      = 0.0f;   // running EMA state
+    uint32_t _lastSmoothMs       = 0;      // timestamp for dt calculation
+    bool     _smoothSeeded       = false;  // first sample seeds without filtering
 
     // HR from EventBus
     uint8_t  _lastHrBpm  = 0;

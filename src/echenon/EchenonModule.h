@@ -198,6 +198,7 @@ private:
 
 #ifdef WITH_FTMS
     echenon::FTMSServer* _ftmsServer = nullptr;
+    float _ftmsPowerSmoothS = 0.0f;         // FTMS power EMA window (seconds)
 #endif
 
 #ifdef WITH_HR_SYNTHETIC

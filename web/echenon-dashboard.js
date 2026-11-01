@@ -431,9 +431,100 @@
 
           '</div>' +
         '</details>' +
-      '</article>';
+      '</article>' +
+
+      // --- FTMS Power Smoothing Card ---
+      '<div class="card" style="margin-bottom:1rem;">' +
+        '<h3 style="margin:0 0 0.75rem 0; font-size:1.15rem; font-weight:700;">BLE Power Smoothing</h3>' +
+        '<p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 0.75rem 0;">' +
+          'Rolling average applied to the power value sent over Bluetooth (FTMS). ' +
+          'Higher values = smoother power in apps like Xert, Zwift, etc. ' +
+          'Does not affect ride recording.' +
+        '</p>' +
+        '<div style="display:flex; align-items:center; gap:1rem;">' +
+          '<select id="echenon-ftms-smooth" style="' +
+            'flex:1; padding:0.6rem 0.75rem; font-size:1rem; font-weight:600; ' +
+            'background:var(--bg); color:var(--text); border:1px solid var(--border); ' +
+            'border-radius:0.5rem; appearance:auto; cursor:pointer;' +
+          '">' +
+            '<option value="0">Off (raw)</option>' +
+            '<option value="0.25">0.25 s</option>' +
+            '<option value="0.5">0.5 s</option>' +
+            '<option value="1">1 s</option>' +
+            '<option value="2">2 s</option>' +
+            '<option value="3">3 s</option>' +
+          '</select>' +
+          '<span id="echenon-ftms-smooth-status" style="font-size:0.85rem; font-weight:600; color:var(--text-muted);">Loading...</span>' +
+        '</div>' +
+      '</div>';
 
     container.innerHTML = html;
+
+    // --- Wire up FTMS smoothing control ---
+    fetchFtmsSmoothing();
+    var smoothSelect = document.getElementById('echenon-ftms-smooth');
+    if (smoothSelect) {
+      smoothSelect.addEventListener('change', function() {
+        var val = parseFloat(this.value);
+        setFtmsSmoothing(val);
+      });
+    }
+  }
+
+  async function fetchFtmsSmoothing() {
+    var fetchFn = window.apiFetch || window.fetch;
+    var statusEl = document.getElementById('echenon-ftms-smooth-status');
+    try {
+      var data = await fetchFn('/api/echenon/ftms-smoothing');
+      var sel = document.getElementById('echenon-ftms-smooth');
+      if (sel && data.ftms_power_smooth_s !== undefined) {
+        // Find closest option
+        var val = data.ftms_power_smooth_s;
+        var best = '0';
+        var bestDist = 999;
+        for (var i = 0; i < sel.options.length; i++) {
+          var optVal = parseFloat(sel.options[i].value);
+          var dist = Math.abs(optVal - val);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = sel.options[i].value;
+          }
+        }
+        sel.value = best;
+      }
+      if (statusEl) statusEl.textContent = data.ftms_power_smooth_s > 0 ? 'Active' : '';
+    } catch (err) {
+      if (statusEl) statusEl.textContent = 'Error';
+    }
+  }
+
+  async function setFtmsSmoothing(windowS) {
+    var fetchFn = window.apiFetch || window.fetch;
+    var statusEl = document.getElementById('echenon-ftms-smooth-status');
+    if (statusEl) {
+      statusEl.textContent = 'Saving...';
+      statusEl.style.color = 'var(--warning)';
+    }
+    try {
+      var data = await fetchFn('/api/echenon/ftms-smoothing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ftms_power_smooth_s: windowS })
+      });
+      if (statusEl) {
+        statusEl.textContent = windowS > 0 ? 'Saved ✓' : 'Off';
+        statusEl.style.color = 'var(--success)';
+      }
+    } catch (err) {
+      if (statusEl) {
+        statusEl.textContent = 'Error';
+        statusEl.style.color = 'var(--error)';
+      }
+    }
+    // Reset colour after 2s
+    setTimeout(function() {
+      if (statusEl) statusEl.style.color = 'var(--text-muted)';
+    }, 2000);
   }
 
   // --- Data Fetching ---
@@ -509,9 +600,9 @@
 
   // --- Tab Lifecycle ---
   window.addEventListener('tab-changed', function(e) {
-    if (e.detail === 'tab-echenon') {
+    if (e.detail === 'tab-dashboard') {
       isTabActive = true;
-      var container = document.getElementById('tab-echenon');
+      var container = document.getElementById('tab-dashboard');
       if (container && !isInitialized) {
         isInitialized = true;
         renderScaffold(container);

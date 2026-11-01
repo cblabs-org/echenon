@@ -18,6 +18,14 @@
 #endif
 
 #include <cstring>
+#include <cmath>
+
+#if defined(ESP_PLATFORM)
+#include <Arduino.h>     // millis()
+#elif defined(UNIT_TEST)
+// Native test stub — millis() expected from test harness
+extern uint32_t millis();
+#endif
 
 namespace {
 constexpr const char* FTMS_TAG = "FTMSServer";
@@ -74,6 +82,35 @@ void FTMSServer::updateTelemetry(float speed_kph, float cadence_rpm,
     _cadenceRpm         = cadence_rpm;
     _internalResistance = internal_resistance;
     _powerWatts         = power_watts;
+
+    // --- EMA smoothing (applied only to FTMS BLE output) ---
+    if (_smoothWindowS > 0.0f) {
+        const uint32_t now = millis();
+        if (!_smoothSeeded) {
+            // First sample — seed without filtering
+            _smoothedPower = static_cast<float>(power_watts);
+            _lastSmoothMs  = now;
+            _smoothSeeded  = true;
+        } else {
+            const float dtS = static_cast<float>(now - _lastSmoothMs) / 1000.0f;
+            if (dtS > 0.0f) {
+                // EMA: alpha = dt / (tau + dt) — smaller tau = less smoothing
+                const float alpha = dtS / (_smoothWindowS + dtS);
+                _smoothedPower = alpha * static_cast<float>(power_watts)
+                               + (1.0f - alpha) * _smoothedPower;
+                _lastSmoothMs = now;
+            }
+        }
+    }
+}
+
+void FTMSServer::setPowerSmoothingWindow(float windowSeconds) {
+    if (windowSeconds < 0.0f) windowSeconds = 0.0f;
+    if (windowSeconds > 10.0f) windowSeconds = 10.0f;
+    _smoothWindowS = windowSeconds;
+    // Reset EMA state so next sample seeds cleanly
+    _smoothSeeded  = false;
+    _smoothedPower = 0.0f;
 }
 
 void FTMSServer::tick(uint32_t currentMillis) {
@@ -86,7 +123,9 @@ void FTMSServer::tick(uint32_t currentMillis) {
     t.speed_kph           = _speedKph;
     t.cadence_rpm         = _cadenceRpm;
     t.internal_resistance = _internalResistance;
-    t.power_watts         = _powerWatts;
+    t.power_watts         = (_smoothWindowS > 0.0f && _smoothSeeded)
+                          ? static_cast<int16_t>(std::round(_smoothedPower))
+                          : _powerWatts;
     t.heart_rate_bpm      = getEffectiveHrBpm(currentMillis);
 
     encodeIndoorBikeData(t, _lastPacket);
