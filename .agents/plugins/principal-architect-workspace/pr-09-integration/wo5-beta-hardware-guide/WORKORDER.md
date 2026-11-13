@@ -4,7 +4,7 @@ wo_id: WO-09.5
 pr_id: PR-09
 title: Standalone v1 Passive Tap Board Build Guide & Hardware Spec Errata
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - docs/beta-build-guide.md
 - docs/hardware_specification.md
@@ -18,7 +18,20 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 4aa530a1257e4766e618ff75d8a2d7694e9a9672250f886fdc4cf34528d146fc
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_011b654df3ad
+  commit_sha: 07b89b5fb9aa30f4da3b8e8acfaa012d70545231
+  files_modified:
+  - docs/beta-build-guide.md
+  - docs/hardware_specification.md
+  verification_summary: 'pio test -e native --verbose: ================ 269 test cases:
+    269 succeeded in 00:00:00.563 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-09.5 — Standalone v1 Passive Tap Board Build Guide & Hardware Spec Errata

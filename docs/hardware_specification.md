@@ -28,7 +28,7 @@ programme phases (numbering as in the programme plan and SPEC §1.5):
 |---|---|---|---|---|
 | 1 | **Breadboard observer** | 0 Observe (PR-01), 1 Calibrate (PR-02) | ESP32 on a breadboard, powered from USB-C. Y / back-probe harness on the looms, series-resistor taps, ÷4 motor-sense dividers. | Read-only. The bike is unmodified. |
 | 2 | **HR-only (USB)** | 2 HR relay (PR-03) | Just the ESP32 on USB-C. BLE only. | None |
-| 3 | **Passive tap board** (**v1**) | 3 Passive tap + FTMS telemetry (PR-04a, PR-05), 4 Session / upload (PR-06), 7 v1 Integration (PR-09) | Permanent board in the console housing: J1–J4 pass-through, high-impedance taps, ESP32 on the bike's 9 V via VIN or on USB-C, never both (VIN/USB selector, no buck), all ten PR-01 taps, manual OTA, UART0 reserved. **Design frozen at DR-1** (§6.2). | Pass-through. No wires split. |
+| 3 | **Passive tap board** (**v1**) | 3 Passive tap + FTMS telemetry (PR-04a, PR-05), 4 Session / upload (PR-06), 7 v1 Integration (PR-09) | Permanent board in the console housing: J1–J4 pass-through, high-impedance taps, ESP32 on the bike's 9 V via VIN or on USB-C, never both (mechanical `SW0` `VIN`/`USB-C` interlock, no buck), all ten PR-01 taps, UART0 reserved (`WITH_OTA` deferred post-beta in `v0.3.0-beta.1` — USB-C updates only; see standalone builder guide [`beta-build-guide.md`](beta-build-guide.md)). **Design frozen at DR-1** (§6.2). | Pass-through. No wires split. |
 | 4 | **Active intercept board** (**v2**) | 5 (PR-07, PR-10), 6 (PR-08, PR-11, PR-12), 7 v2 Integration (PR-13) | Perfboard with ESP32, H-bridge, NC bypasses, encoder emulation, switchable standalone supplies with a pot-reference replica. Motor wires split. **PROVISIONAL — redesigned at DR-2** (§7–§8). | Motor split (MITM). |
 
 PR-05 (FTMS telemetry) needs no new hardware: the breadboard observer is
@@ -212,12 +212,11 @@ the L9110S on the SoC's 3.3V rail, plus bulk capacitance near the SoC
   Waveshare's own power path to the onboard regulator.
 
 > [!WARNING]
-> A VIN-powered board runs from **VIN or USB, never both** (DR-1 §4,
-> condition 2.3). **Set SW0 to the USB position (9 V disconnected) before
-> plugging in USB-C.** PR-04a WO1 confirms from the Waveshare schematic
+> A VIN-powered board runs from **+9 V VIN (`J1-8`) or USB-C, NEVER both simultaneously** (DR-1 §4,
+> condition 2.3). **Set the mechanical `SW0` interlock to the USB position (+9 V disconnected) before
+> plugging in USB-C, and unplug USB-C completely before switching `SW0` to VIN.** PR-04a WO1 confirms from the Waveshare schematic
 > whether VIN and VBUS are isolated and adds a diode on the VIN path if they
-> are not (§6.2.3). Routine updates on installed boards use **manual OTA**
-> (enabled and tested in PR-04a), so USB is a recovery path only.
+> are not (§6.2.3). Note that in **`v0.3.0-beta.1`**, `WITH_OTA` is deferred post-beta pending upstream framework hardening; all beta firmware flashes happen over **USB-C** with `SW0` isolating `VIN`.
 
 ---
 
@@ -634,8 +633,8 @@ the Phase 0/1 rig (§5.3; SPEC §4.4.1–§4.4.2).
 | 5 | D2 | Cadence (Orange, J1-6) | RS5, C1 | 4.7 kΩ series + 100 nF to GND (ESP32 side) |
 | 6 | D3 | Motor + (Red, J1-1) | R1a, R1b | 30 kΩ series / 10 kΩ to GND (÷4) |
 | 7 | D4 | Motor − (Black, J1-2) | R2a, R2b | 30 kΩ series / 10 kΩ to GND (÷4) |
-| 8 | D5 | Encoder Ch A (Black, J3-1) | RS6 | 4.7 kΩ series (PCNT) |
-| 9 | D6 | Encoder Ch B (Red, J3-3) | RS7 | 4.7 kΩ series (PCNT) |
+| 8 | D5 | Encoder Ch A (Black, J3-1) | RS6, C1 | 4.7 kΩ series + 100 nF to GND (ESP32 side, PCNT) |
+| 9 | D6 | Encoder Ch B (Red, J3-3) | RS7, C1 | 4.7 kΩ series + 100 nF to GND (ESP32 side, PCNT) |
 | 10 | D7 | Encoder VCC (Orange, J3-2), monitor | RS8, C1 | 4.7 kΩ series + 100 nF to GND (ESP32 side) |
 | — | GND | Brown (J1-9) | — | Common ground |
 | — | VIN | White (J1-8) | SW0 (+ D1 if needed) | 9 V via the VIN/USB selector |
@@ -645,14 +644,9 @@ the Phase 0/1 rig (§5.3; SPEC §4.4.1–§4.4.2).
   (C2): the board never sources current into a bike line (DR-1 §2.9).
 - **No outputs.** GPIO 17 and every other unlisted GPIO stay unconnected.
 - **UART0 reserved:** GPIO 43/44 unconnected, header pads accessible (§1).
-- **Power: 9 V (VIN) or USB-C, never both** (DR-1 §4, condition 2.3), through
-  the SW0 selector (§6.2.3). No external buck.
-- **OTA.** Manual OTA is enabled and tested before the board is sealed in the
-  housing. Framework #226 (OTA check-on-boot deferral) is closed upstream, so
-  PR-04a uses the framework's check-on-boot option instead of forcing
-  `autoCheck = false`, **after verifying the option** on the framework version
-  brought in by the PR-03 framework bump. Until verified, the `autoCheck =
-  false` enforcement (after config load and after factory reset) stays.
+- **Power: +9 V (`J1-8` VIN) or USB-C, NEVER both simultaneously** (DR-1 §4, condition 2.3), enforced via
+  the mechanical **SW0** `VIN`/`USB-C` interlock (§6.2.3). No external buck converter.
+- **OTA (`WITH_OTA` deferred in `v0.3.0-beta.1`).** In the `v0.3.0-beta.1` beta release, `WITH_OTA` is deferred post-beta pending upstream framework hardening; beta firmware flashes over **USB-C** with `SW0` in the USB (`VIN` disconnected) position. Once `WITH_OTA` is enabled post-beta, manual OTA (`autoCheck = false` enforced after config load and factory reset) provides updates without opening the console housing.
 - **No resistance control, no interception** (v1). The stock console runaway
   cannot be prevented by this board; the firmware detects and reports it
   (SPEC §5.2).
@@ -662,14 +656,14 @@ the Phase 0/1 rig (§5.3; SPEC §4.4.1–§4.4.2).
 | # | Decision | Outcome (DR-1, 2026-10-12) | Evidence |
 |---|---|---|---|
 | 1 | Which Phase 0 observation taps (Yellow, Green, Grey, encoder VCC) are kept | **All kept** as monitors (all ten PR-01 taps; owner condition 2.7) | Register #4, #6, #7, #8 |
-| 2 | Series-resistor value per tap, and whether C1/C2 filtering is fitted | **PR-01 values unchanged** (table above); C1 on GPIO 4, 5, 10; no C2 | B01, B03, A04-20261012 |
+| 2 | Series-resistor value per tap, and whether C1/C2 filtering is fitted | **PR-01 values unchanged** (table above); `C1 ×5` (`100 nF` to GND on `GPIO 4, 5, 8, 9, 10`); no C2 | B01, B03, A04-20261012 |
 | 3 | Motor-sense sampling scheme and rate | **ADC1 analog at ≥ 1 kHz**, monitoring only; direction = whichever wire is high; no clamp diodes | Register #1, A01-20261012 |
 | 4 | Encoder Ch B conditioning and PCNT decoding | **None needed**; `EncoderModule` (PCNT), `stepsPerDetent = 4`, 4 detents per level | B04, A08-20261012 |
-| 5 | SoC supply | **VIN or USB, never both**; SW0 selector; D1 if not isolated; buck removed; PR-04a WO1 checks the power path first | Register #11, audit H-03 |
+| 5 | SoC supply | **VIN or USB, never both**; mechanical `SW0` `VIN`/`USB-C` interlock; D1 if not isolated; buck removed; PR-04a WO1 checks the power path first | Register #11, audit H-03 |
 | 6 | Behaviour at power-on | The console powers on at level 1 with no sweep (register #13); the board only observes, and the series taps limit back-powering while the ESP32 is unpowered | Register #13, §5.5 |
 | 7 | Bulk capacitance and brown-out margin | The v1 board powers only the ESP32 (≤ 500 mA peak) from the Waveshare regulator; no motor load on its rail. Any extra bulk capacitance is a PR-04a build choice | Register #2, audit H-03 |
 | 8 | Board size, placement and cable routing | **A PR-04a check**: housing fit is verified before the board is sealed | Physical survey (PR-04a) |
-| 9 | Final BOM, schematic and build steps | §6.2.4–§6.2.6 | All of the above |
+| 9 | Final BOM, schematic and build steps | §6.2.4–§6.2.6 (see also standalone builder guide [`beta-build-guide.md`](beta-build-guide.md)) | All of the above |
 
 #### 6.2.3 Power Selection (PR-04a WO1, before soldering)
 
@@ -699,7 +693,7 @@ Brown GND (J1-9) ─────────────────────
 |---|---|
 | **Removed** | U3 MP1584EN buck (not used in v1); H1/H2 Y-harness (replaced by J1–J4 on the board); breadboard |
 | **Added** | SW0 VIN/USB selector (part from WO1); **D1** diode on the VIN path, only if WO1 finds no isolation; J1–J4 connectors; J5 header strips; perfboard; hookup wire |
-| **Unchanged** | U1; RS1–RS3 (22 kΩ); RS4–RS8 (4.7 kΩ); C1 ×3 (100 nF); R1a/R1b, R2a/R2b (30 kΩ / 10 kΩ) |
+| **Unchanged** | U1; RS1–RS3 (22 kΩ); RS4–RS8 (4.7 kΩ); C1 ×5 (100 nF on GPIO 4, 5, 8, 9, 10); R1a/R1b, R2a/R2b (30 kΩ / 10 kΩ) |
 | **Not fitted** | C2; R3, R4, R5; SW1–SW4; U2; R6, R7; J6 |
 
 #### 6.2.5 Housing Fit (PR-04a check)
@@ -718,7 +712,7 @@ by opening the housing) for recovery.
 - [ ] Fit J5 headers; seat U1 only after the power checks below
 - [ ] Wire J1 → J2 and J3 → J4 straight through; verify continuity on all 12
       conductors, and no shorts between adjacent pins
-- [ ] Fit RS1–RS3 (22 kΩ), RS4–RS8 (4.7 kΩ), C1 ×3 on GPIO 4/5/10, and the
+- [ ] Fit RS1–RS3 (22 kΩ), RS4–RS8 (4.7 kΩ), C1 ×5 on GPIO 4, 5, 8, 9, 10, and the
       ÷4 dividers R1a/R1b, R2a/R2b, exactly as in §6.2.1
 - [ ] Leave GPIO 17, 43 and 44 (and every unlisted pin) unconnected
 - [ ] Fit SW0 (and D1 if required); with U1 out, check: VIN position → 9 V at
@@ -727,7 +721,7 @@ by opening the housing) for recovery.
       pin is configured with no internal pulls
 - [ ] Switch to VIN (USB unplugged); confirm boot and all ten taps on the
       dashboard against §5.8
-- [ ] Manual OTA tested (and rollback) before sealing the housing
+- [ ] Note: in `v0.3.0-beta.1`, `WITH_OTA` is deferred post-beta (updates via USB-C with `SW0` in USB position); once enabled post-beta, test manual OTA (and rollback) before permanently sealing the housing
 - [ ] Ride test: stock behaviour unchanged (§6.2.7)
 
 #### 6.2.7 Verification (from PR-04a)
@@ -735,8 +729,8 @@ by opening the housing) for recovery.
 - A stock ride with the board fitted is indistinguishable from no board.
 - All ten taps read correctly against §5.8 and the PR-02 calibration.
 - The board fits in the console housing.
-- Manual OTA succeeds with the board installed.
-- Runs from VIN (SW0 in the VIN position) and from USB (SW0 in the USB
+- In `v0.3.0-beta.1`, USB-C updates with `SW0` isolating `VIN` succeed (`WITH_OTA` manual OTA deferred post-beta).
+- Runs from VIN (SW0 in the VIN position, USB-C unplugged) and from USB (SW0 in the USB
   position, 9 V disconnected); the WO1 power-path finding is documented.
 - GPIO 43/44 are unconnected and reserved.
 

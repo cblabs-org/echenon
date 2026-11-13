@@ -67,9 +67,9 @@ work_orders:
   slug: wo5-beta-hardware-guide
   title: Standalone v1 Passive Tap Board Build Guide & Hardware Spec Errata
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 07b89b5fb9aa30f4da3b8e8acfaa012d70545231
 - id: WO-09.6
   slug: wo6-public-repo-docs
   title: LICENSE, Beta Recruitment README, CHANGELOG, CONTRIBUTING & SPEC Sync
