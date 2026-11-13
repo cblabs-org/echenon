@@ -1,4 +1,12 @@
 #pragma once
+
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/HREvents.h
+ * Description: EventBus heart-rate topic, sample payload, and contact-state definitions (SPEC §8.2, §8.4).
+ */
+
 #include <cstdint>
 
 namespace echenon {
@@ -14,7 +22,7 @@ enum class HRContactState : uint8_t {
 /// EventBus payload for topic "echenon.hr"
 struct HrSample {
     uint8_t        bpm;            ///< 0 = no contact / stale
-    HRContactState contactState;
+    HRContactState contactState;   ///< Current strap contact/connection state
     uint32_t       receivedAtMs;   ///< millis() when received
 };
 

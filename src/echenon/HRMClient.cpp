@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/HRMClient.cpp
+ * Description: Implementation of BLE central-role Heart Rate Monitor client provider and EventBus publisher.
+ */
+
 #include "echenon/HRMClient.h"
 
 #ifdef WITH_BLE

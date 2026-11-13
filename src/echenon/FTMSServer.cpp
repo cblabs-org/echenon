@@ -1,3 +1,12 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/FTMSServer.cpp
+ * Description: Implementation of the FTMS v1.0 read-only BLE GATT service provider, 2 Hz packet notifier, and EMA power smoother.
+ * Reference: BLE FTMS GATT service structure references MIT-licensed prior art
+ *            (jamesjmtaylor/esp32-ftms-server, dbsqp/bluetooth-reebok-57e, lefty01/ESP32_TTGO_FTMS; see SPEC.md §2.3).
+ */
+
 #include "echenon/FTMSServer.h"
 
 // EventBus include: native builds resolve via -I framework (modules/ prefix required),
@@ -22,9 +31,11 @@
 
 #if defined(ESP_PLATFORM)
 #include <Arduino.h>     // millis()
-#elif defined(UNIT_TEST)
+#else
+#ifdef UNIT_TEST
 // Native test stub — millis() expected from test harness
 extern uint32_t millis();
+#endif
 #endif
 
 namespace {

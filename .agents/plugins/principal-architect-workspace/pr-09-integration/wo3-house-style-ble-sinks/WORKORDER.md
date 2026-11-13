@@ -4,7 +4,7 @@ wo_id: WO-09.3
 pr_id: PR-09
 title: File Headers, GRAVE-05 Justification Comments & FTMS Guard — BLE & Data Sinks
 complexity: mechanical
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/FTMSData.h
 - src/echenon/FTMSServer.h
@@ -47,7 +47,49 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 12cf92cf5fe88f92393a0abe49ccea7a2f4354c77ba378fb6039968760484ede
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_6d2094de781c
+  commit_sha: 6b63b9cca95d1abe078f69e8307ad1f8f3734b3a
+  files_modified:
+  - src/echenon/FTMSData.h
+  - src/echenon/FTMSServer.cpp
+  - src/echenon/FTMSServer.h
+  - src/echenon/HREncoding.h
+  - src/echenon/HREvents.h
+  - src/echenon/HRMClient.cpp
+  - src/echenon/HRMClient.h
+  - src/echenon/HRMRepeater.cpp
+  - src/echenon/HRMRepeater.h
+  - src/echenon/HRParsing.h
+  - src/echenon/HRSynthetic.cpp
+  - src/echenon/HRSynthetic.h
+  - src/echenon/IUploader.h
+  - src/echenon/IntervalsIcuUploader.cpp
+  - src/echenon/IntervalsIcuUploader.h
+  - src/echenon/RidePersistence.cpp
+  - src/echenon/RidePersistence.h
+  - src/echenon/RideStore.cpp
+  - src/echenon/RideStore.h
+  - src/echenon/SessionManager.cpp
+  - src/echenon/SessionManager.h
+  - src/echenon/SessionOverlay.cpp
+  - src/echenon/SessionOverlay.h
+  - src/echenon/StravaUploader.cpp
+  - src/echenon/StravaUploader.h
+  - src/echenon/TCXGenerator.cpp
+  - src/echenon/TCXGenerator.h
+  - src/echenon/UploadQueue.cpp
+  - src/echenon/UploadQueue.h
+  - src/echenon/WahooUploader.cpp
+  - src/echenon/WahooUploader.h
+  verification_summary: 'pio test -e native --verbose: ================ 269 test cases:
+    269 succeeded in 00:00:01.234 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-09.3 — File Headers, GRAVE-05 Justification Comments & FTMS Guard — BLE & Data Sinks

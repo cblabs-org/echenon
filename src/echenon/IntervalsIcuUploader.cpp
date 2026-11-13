@@ -1,6 +1,9 @@
-/// @file IntervalsIcuUploader.cpp
-/// @brief Intervals.icu API-key-authenticated uploader with HTTP Basic Auth and
-///        synchronous upload processing.
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/IntervalsIcuUploader.cpp
+ * Description: Implementation of the Intervals.icu API-key uploader with HTTP Basic Auth and synchronous uploads.
+ */
 
 #include "echenon/IntervalsIcuUploader.h"
 

@@ -1,6 +1,9 @@
-/// @file UploadQueue.cpp
-/// @brief Split-stage background upload state machine and LittleFS job persistence.
-///        Multi-sink architecture with sequential execution and shared .tcx.gz lifecycle.
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/UploadQueue.cpp
+ * Description: Implementation of the split-stage multi-sink upload state machine, BLE ScanInhibit guard, and LittleFS queue persistence.
+ */
 
 #include "echenon/UploadQueue.h"
 

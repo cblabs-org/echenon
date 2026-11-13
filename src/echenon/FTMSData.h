@@ -1,9 +1,13 @@
 #pragma once
 
-/// @file FTMSData.h
-/// @brief FTMS v1.0 binary packet encoder — pure C++ header, no BLE dependency.
-/// @details Encodes Fitness Machine Feature (0x2ACC) and Indoor Bike Data (0x2AD2)
-///          characteristic values per Bluetooth SIG FTMS v1.0 specification.
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/FTMSData.h
+ * Description: FTMS v1.0 binary packet encoder (0x2ACC Feature and 0x2AD2 Indoor Bike Data) — pure C++ header, no BLE dependency.
+ * Reference: BLE FTMS GATT service structure references MIT-licensed prior art
+ *            (jamesjmtaylor/esp32-ftms-server, dbsqp/bluetooth-reebok-57e, lefty01/ESP32_TTGO_FTMS; see SPEC.md §2.3).
+ */
 
 #include <cstdint>
 #include <cstddef>
@@ -36,9 +40,8 @@ constexpr uint32_t FTMS_TARGET_FEATURES_V1    = 0x00000000u;
 /// Bit 5 = 1 (Resistance Level), Bit 6 = 1 (Power), Bit 9 = 1 (Heart Rate)
 constexpr uint16_t FTMS_INDOOR_BIKE_FLAGS_V1  = 0x0264u;
 
-/// Fixed packet sizes
-constexpr size_t FTMS_FEATURE_PACKET_SIZE     = 8;
-constexpr size_t FTMS_INDOOR_BIKE_PACKET_SIZE = 11;
+constexpr size_t FTMS_FEATURE_PACKET_SIZE     = 8;  ///< Fixed byte length of 0x2ACC Fitness Machine Feature payload
+constexpr size_t FTMS_INDOOR_BIKE_PACKET_SIZE = 11; ///< Fixed byte length of 0x2AD2 Indoor Bike Data v1 payload
 
 // =========================================================================
 // Telemetry Data Structure

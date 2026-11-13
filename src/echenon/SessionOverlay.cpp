@@ -1,5 +1,9 @@
-/// @file SessionOverlay.cpp
-/// @brief Session and upload REST API endpoints, portal tab registration, and IWebContributor wiring.
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/SessionOverlay.cpp
+ * Description: Implementation of session and upload REST API endpoints, portal tab registration, and IWebContributor wiring.
+ */
 
 #include "echenon/SessionOverlay.h"
 #include "echenon/IntervalsIcuUploader.h"

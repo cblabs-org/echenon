@@ -53,9 +53,9 @@ work_orders:
   slug: wo3-house-style-ble-sinks
   title: File Headers, GRAVE-05 Justification Comments & FTMS Guard — BLE & Data Sinks
   complexity: mechanical
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 6b63b9cca95d1abe078f69e8307ad1f8f3734b3a
 - id: WO-09.4
   slug: wo4-portal-design-tokens
   title: Portal CSS Design Tokens, Reset Wiring, Contrast & Accessibility Polish

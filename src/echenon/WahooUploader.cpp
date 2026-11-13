@@ -1,5 +1,9 @@
-/// @file WahooUploader.cpp
-/// @brief Wahoo Cloud (api.wahooligan.com) OAuth 2.0 BYOA uploader with token rotation and CSRF protection.
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/WahooUploader.cpp
+ * Description: Implementation of the Wahoo Cloud OAuth 2.0 BYOA uploader with token rotation and CSRF protection.
+ */
 
 #include "echenon/WahooUploader.h"
 

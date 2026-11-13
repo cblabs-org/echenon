@@ -1,6 +1,9 @@
-/// @file RidePersistence.cpp
-/// @brief Persistent ride storage implementation with gzip compression (ESP32)
-///        and raw binary fallback (UNIT_TEST / native builds).
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/RidePersistence.cpp
+ * Description: Implementation of persistent LittleFS ride storage with gzip compression and oldest-first eviction.
+ */
 
 #include "echenon/RidePersistence.h"
 #include "echenon/TCXGenerator.h"
