@@ -2,27 +2,24 @@
 schema_version: 1
 wo_id: WO-20.5
 pr_id: PR-20
-programme_id: prog-default
-slug: wo5-cal-fix
-title: "Fix Calibration Status — Default/Custom from CalibrationWizard"
+title: Fix Calibration Status — Default/Custom from CalibrationWizard
 complexity: mechanical
-branch: pr-20-diagnostics-drawer/wo5-cal-fix
-base_branch: pr-20-diagnostics-drawer/wo3-hw-verification
+status: PENDING
 allowed_files:
-  - src/echenon/LiveFeed.h
-  - src/echenon/LiveFeed.cpp
-  - src/echenon/EchenonModule.cpp
-  - web/echenon-dashboard.js
+- src/echenon/LiveFeed.h
+- src/echenon/LiveFeed.cpp
+- src/echenon/EchenonModule.cpp
+- web/echenon-dashboard.js
 forbidden_files:
-  - src/echenon/CalibrationWizard.h
-  - src/echenon/CalibrationWizard.cpp
-  - src/echenon/SessionOverlay.cpp
-read_only_context:
-  - src/echenon/CalibrationWizard.h   # isPosDone() accessor
-  - src/echenon/EchenonModule.h        # _calibrationWizard member
+- src/echenon/CalibrationWizard.h
+- src/echenon/CalibrationWizard.cpp
+- src/echenon/SessionOverlay.cpp
 required_skills: []
-verification_command: "pio test -e native --verbose"
+verification_command: pio test -e native --verbose
 max_attempts: 3
+max_structural_failures: 2
+spec_hash: null
+completion: null
 ---
 
 # WO-20.5 — Fix Calibration Status Row (Default/Custom)
@@ -108,3 +105,6 @@ Add `_calibrationWizard.isPosDone()` as the final argument after
 
 Run `pio test -e native --verbose` — all 233+ tests must pass (no new tests
 required; this is a pass-through field change).
+## Completion Report
+
+_No completion report recorded._
