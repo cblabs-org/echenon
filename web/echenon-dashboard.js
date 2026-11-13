@@ -154,8 +154,8 @@
     if (levelEl && data.level_echelon !== undefined) {
       levelEl.textContent = data.level_echelon;
     }
-    if (hrEl && data.heart_rate !== undefined) {
-      hrEl.textContent = data.heart_rate;
+    if (hrEl && data.hr !== undefined) {
+      hrEl.textContent = data.hr || '--';
     }
 
     // (Lid dot and label updated at end of function via aggregate health)

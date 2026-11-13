@@ -15,6 +15,7 @@
 
     var TAB_ID = 'tab-stored-rides';
     var initialized = false;
+    var connectedSinks = null; // cached list of configured+authenticated service_ids
 
     // =========================================================================
     // Helpers
@@ -136,15 +137,23 @@
         card += statCell('Work', totalWork);
         card += '</div>';
 
-        // Per-sink sync status
+        // Per-sink sync status (only show configured+authenticated services)
         if (ride.sync && ride.sync.length > 0) {
-            card += '<div style="border-top:1px solid var(--border, #e0e0e0);padding-top:0.5rem;margin-top:0.25rem;">';
-            card += '<div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.35rem;">Sync Status</div>';
-            for (var s = 0; s < ride.sync.length; s++) {
-                var sink = ride.sync[s];
-                card += renderSyncRow(sid, sink);
+            var filteredSync = ride.sync;
+            if (connectedSinks !== null) {
+                filteredSync = ride.sync.filter(function (s) {
+                    return connectedSinks.indexOf((s.service_id || '').toLowerCase()) !== -1;
+                });
             }
-            card += '</div>';
+            if (filteredSync.length > 0) {
+                card += '<div style="border-top:1px solid var(--border, #e0e0e0);padding-top:0.5rem;margin-top:0.25rem;">';
+                card += '<div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.35rem;">Sync Status</div>';
+                for (var s = 0; s < filteredSync.length; s++) {
+                    var sink = filteredSync[s];
+                    card += renderSyncRow(sid, sink);
+                }
+                card += '</div>';
+            }
         }
 
         card += '</div>';
@@ -238,12 +247,36 @@
     function attachRideEvents(ride) {
         var sid = ride.session_id;
 
-        // Download buttons
+        // Download buttons (fetch + Blob to guarantee file download)
         var dlBtns = document.querySelectorAll('[data-action="download"][data-sid="' + sid + '"]');
         for (var d = 0; d < dlBtns.length; d++) {
             dlBtns[d].addEventListener('click', function () {
                 var id = this.getAttribute('data-sid');
-                window.location = '/api/session/download?id=' + id;
+                var btn = this;
+                btn.disabled = true;
+                btn.textContent = '...';
+                fetch('/api/session/download?id=' + id, { credentials: 'same-origin' })
+                    .then(function (r) {
+                        if (!r.ok) throw new Error('Download failed');
+                        return r.blob();
+                    })
+                    .then(function (blob) {
+                        var url = URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'echenon_' + id + '.tcx';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        btn.disabled = false;
+                        btn.textContent = 'Download TCX';
+                    })
+                    .catch(function (err) {
+                        btn.disabled = false;
+                        btn.textContent = 'Download TCX';
+                        alert('Download failed: ' + err);
+                    });
             });
         }
 
@@ -314,19 +347,39 @@
     // Data Fetching
     // =========================================================================
 
-    function fetchRides() {
-        fetch('/api/session/history', { credentials: 'same-origin' })
+    function fetchSinks() {
+        return fetch('/api/upload/sinks', { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) {
-                var rides = data.rides || data.sessions || [];
-                renderRides(rides);
-            })
-            .catch(function (err) {
-                var listEl = document.getElementById('sr-rides-list');
-                if (listEl) {
-                    listEl.innerHTML = '<p style="margin:0;text-align:center;padding:2rem 0;color:var(--error, #c62828);">Failed to load rides: ' + err + '</p>';
+                var sinks = data.sinks || [];
+                connectedSinks = [];
+                for (var i = 0; i < sinks.length; i++) {
+                    if (sinks[i].configured && sinks[i].authenticated) {
+                        connectedSinks.push((sinks[i].service_id || '').toLowerCase());
+                    }
                 }
+            })
+            .catch(function () {
+                // On error, show all sinks (don't filter)
+                connectedSinks = null;
             });
+    }
+
+    function fetchRides() {
+        fetchSinks().then(function () {
+            fetch('/api/session/history', { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    var rides = data.rides || data.sessions || [];
+                    renderRides(rides);
+                })
+                .catch(function (err) {
+                    var listEl = document.getElementById('sr-rides-list');
+                    if (listEl) {
+                        listEl.innerHTML = '<p style="margin:0;text-align:center;padding:2rem 0;color:var(--error, #c62828);">Failed to load rides: ' + err + '</p>';
+                    }
+                });
+        });
     }
 
     // =========================================================================
