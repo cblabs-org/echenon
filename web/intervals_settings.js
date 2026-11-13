@@ -36,7 +36,7 @@
             '      <input type="password" id="ech-intervals-api-key" placeholder="Enter new API key" autocomplete="new-password" style="width:100%;padding:8px 10px;border:1px solid var(--border, #e0e0e0);border-radius:10px;font-size:0.9rem;color:var(--text, #212121);background:var(--card-bg);">',
             '    </div>',
             '    <div>',
-            '      <button id="ech-btn-intervals-save" type="button" style="padding:8px 20px; font-size:0.85rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:#fff; cursor:pointer;">Save Credentials</button>',
+            '      <button id="ech-btn-intervals-save" type="button" style="padding:8px 20px; font-size:0.85rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:var(--text-inverse, #ffffff); cursor:pointer;">Save Credentials</button>',
             '    </div>',
             '  </div>',
             '  <div id="ech-intervals-msg" style="font-size:0.85rem;color:var(--text-muted);margin-top:0.75rem;min-height:1.2em;"></div>',
@@ -44,15 +44,15 @@
             '<div style="background:var(--card-bg); border:1px solid var(--border, #e0e0e0); border-radius:16px; padding:1.25rem;">',
             '  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">',
             '    <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:var(--text, #212121);">Intervals.icu Integration</h3>',
-            '    <span id="ech-intervals-badge" style="display:inline-block; padding:2px 10px; font-size:0.75rem; font-weight:700; border-radius:20px; background:var(--border, #e0e0e0); color:var(--text-muted);">Checking...</span>',
+            '    <span id="ech-intervals-badge" style="display:inline-block; padding:2px 10px; font-size:0.75rem; font-weight:700; border-radius:20px; background:var(--border, #e0e0e0); color:var(--text, #212121);">Checking...</span>',
             '  </div>',
             '  <p style="margin:0 0 0.75rem 0; font-size:0.85rem; color:var(--text-muted); line-height:1.5;">',
             '    Connect your Intervals.icu account to automatically upload completed rides.',
             '  </p>',
             '  <div id="ech-intervals-details" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;"></div>',
             '  <div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;margin-bottom:0.75rem;">',
-            '    <button id="ech-btn-intervals-test" type="button" style="padding:8px 16px; font-size:0.85rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:#fff; cursor:pointer;">Test Connection</button>',
-            '    <button id="ech-btn-intervals-disconnect" type="button" style="padding:8px 16px; font-size:0.85rem; font-weight:600; border:1px solid var(--danger, #c62828); border-radius:10px; background:transparent; color:var(--danger, #c62828); cursor:pointer;">Disconnect</button>',
+            '    <button id="ech-btn-intervals-test" type="button" style="padding:8px 16px; font-size:0.85rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:var(--text-inverse, #ffffff); cursor:pointer;">Test Connection</button>',
+            '    <button id="ech-btn-intervals-disconnect" type="button" style="padding:8px 16px; font-size:0.85rem; font-weight:600; border:1px solid var(--error, #c62828); border-radius:10px; background:transparent; color:var(--error, #c62828); cursor:pointer;">Disconnect</button>',
             '    <button id="ech-btn-intervals-refresh" type="button" style="padding:8px 16px; font-size:0.85rem; font-weight:600; border:1px solid var(--border, #e0e0e0); border-radius:10px; background:transparent; color:var(--text, #212121); cursor:pointer;">Refresh Status</button>',
             '  </div>',
             '  <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;font-size:0.85rem;color:var(--text, #212121);">',
@@ -83,16 +83,16 @@
         if (badge) {
             if (data.authenticated) {
                 badge.textContent = 'CONNECTED';
-                badge.style.background = 'rgba(46, 125, 50, 0.15)';
-                badge.style.color = 'var(--success, #2e7d32)';
+                badge.style.background = 'var(--success, #2e7d32)';
+                badge.style.color = 'var(--text-inverse, #ffffff)';
             } else if (data.configured) {
                 badge.textContent = 'CREDENTIALS SAVED';
-                badge.style.background = 'rgba(249, 168, 37, 0.15)';
-                badge.style.color = '#f9a825';
+                badge.style.background = 'var(--warning, #f9a825)';
+                badge.style.color = 'var(--text-on-warning, #111827)';
             } else {
                 badge.textContent = 'NOT CONFIGURED';
                 badge.style.background = 'var(--border, #e0e0e0)';
-                badge.style.color = 'var(--text-muted)';
+                badge.style.color = 'var(--text, #212121)';
             }
         }
 
@@ -113,9 +113,33 @@
         }
     }
 
+    function apiJson(url, options) {
+        var opts = Object.assign({ credentials: 'same-origin' }, options || {});
+        if (typeof window.apiFetch === 'function') {
+            return window.apiFetch(url, opts);
+        }
+        return fetch(url, opts).then(function (r) {
+            if (!r.ok) {
+                return r.text().then(function (txt) {
+                    var err = new Error('HTTP ' + r.status);
+                    err.status = r.status;
+                    try { err.body = JSON.parse(txt); } catch (e) { err.body = txt; }
+                    throw err;
+                });
+            }
+            return r.json();
+        });
+    }
+
+    function extractErr(err) {
+        if (err && err.body && (err.body.error || err.body.message)) {
+            return err.body.error || err.body.message;
+        }
+        return (err && err.message) ? err.message : String(err);
+    }
+
     function fetchIntervalsStatus() {
-        fetch('/api/intervals/status', { credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
+        apiJson('/api/intervals/status')
             .then(updateStatusUI)
             .catch(function () {});
     }
@@ -128,13 +152,11 @@
             setMsg('Both Athlete ID and API Key are required.');
             return;
         }
-        fetch('/api/intervals/credentials', {
+        apiJson('/api/intervals/credentials', {
             method: 'POST',
-            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ athlete_id: athleteId, api_key: apiKey })
         })
-            .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (data && data.ok) {
                     keyEl.value = '';
@@ -145,17 +167,15 @@
                 }
             })
             .catch(function (err) {
-                setMsg('Error saving credentials: ' + err);
+                setMsg('Error saving credentials: ' + extractErr(err));
             });
     }
 
     function testConnection() {
         setMsg('Testing connection...');
-        fetch('/api/intervals/test', {
-            method: 'POST',
-            credentials: 'same-origin'
+        apiJson('/api/intervals/test', {
+            method: 'POST'
         })
-            .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (data && data.ok) {
                     setMsg('Connection test passed.');
@@ -165,31 +185,28 @@
                 }
             })
             .catch(function (err) {
-                setMsg('Error testing connection: ' + err);
+                setMsg('Error testing connection: ' + extractErr(err));
             });
     }
 
     function disconnectIntervals() {
-        fetch('/api/intervals/disconnect', { method: 'POST', credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
+        apiJson('/api/intervals/disconnect', { method: 'POST' })
             .then(function () {
                 setMsg('Disconnected from Intervals.icu.');
                 fetchIntervalsStatus();
             })
             .catch(function (err) {
-                setMsg('Error disconnecting: ' + err);
+                setMsg('Error disconnecting: ' + extractErr(err));
             });
     }
 
     function saveAutoUpload() {
         var enabled = document.getElementById('ech-intervals-autoupload').checked;
-        fetch('/api/session/config', {
+        apiJson('/api/session/config', {
             method: 'POST',
-            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ auto_upload_enabled: enabled })
         })
-            .then(function (r) { return r.json(); })
             .then(function () {
                 setMsg('Auto-upload preference updated.');
             })

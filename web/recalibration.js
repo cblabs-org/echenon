@@ -21,16 +21,28 @@
 
   var tablePreviewData = null;
 
-  function getApiFetch() {
-    return window.apiFetch || window.fetch;
+  async function apiJson(url, options) {
+    var opts = Object.assign({ credentials: 'same-origin' }, options || {});
+    if (typeof window.apiFetch === 'function') {
+      return await window.apiFetch(url, opts);
+    }
+    var resp = await fetch(url, opts);
+    if (!resp.ok) {
+      var err = new Error('HTTP ' + resp.status);
+      err.status = resp.status;
+      try {
+        err.body = await resp.json();
+      } catch (e) {
+        err.body = null;
+      }
+      throw err;
+    }
+    return await resp.json();
   }
 
   async function fetchPoints() {
     try {
-      var fetchFn = getApiFetch();
-      var resp = await fetchFn('/api/echenon/recalibration/points');
-      if (!resp.ok) return;
-      pointsData = await resp.json();
+      pointsData = await apiJson('/api/echenon/recalibration/points');
       renderPointsList();
     } catch (err) {
       console.error('Failed to fetch recalibration points', err);
@@ -40,13 +52,7 @@
   async function fetchActiveTable() {
     var metaDiv = document.getElementById('recal-table-meta');
     try {
-      var fetchFn = (typeof getApiFetch === 'function' ? getApiFetch() : null) || window.apiFetch || window.fetch;
-      var resp = await fetchFn('/api/echenon/power-table/active');
-      if (!resp.ok) {
-        if (metaDiv) metaDiv.textContent = 'Could not load power table \u2014 check device connection.';
-        return;
-      }
-      tablePreviewData = await resp.json();
+      tablePreviewData = await apiJson('/api/echenon/power-table/active');
       renderTablePreview();
     } catch (err) {
       console.error('Failed to fetch active power table', err);
@@ -56,18 +62,14 @@
 
   async function addPoint(level, power) {
     try {
-      var fetchFn = getApiFetch();
-      var resp = await fetchFn('/api/echenon/recalibration/point', {
+      await apiJson('/api/echenon/recalibration/point', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ level: level, power: power })
       });
-      if (resp.ok) {
-        await fetchPoints();
-        await fetchActiveTable();
-        return true;
-      }
-      return false;
+      await fetchPoints();
+      await fetchActiveTable();
+      return true;
     } catch (err) {
       console.error('Failed to add recalibration point', err);
       return false;
@@ -76,13 +78,11 @@
 
   async function resetPoints() {
     try {
-      var fetchFn = getApiFetch();
-      var resp = await fetchFn('/api/echenon/recalibration/reset', {
+      await apiJson('/api/echenon/recalibration/reset', {
         method: 'POST'
       });
-      if (resp.ok) {
-        await fetchPoints();
-      }
+      await fetchPoints();
+      await fetchActiveTable();
     } catch (err) {
       console.error('Failed to reset recalibration points', err);
     }
@@ -90,22 +90,21 @@
 
   async function uploadPowerTableCsv(csvContent) {
     try {
-      var fetchFn = getApiFetch();
-      var resp = await fetchFn('/api/echenon/power-table/upload', {
+      var result = await apiJson('/api/echenon/power-table/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'text/csv' },
         body: csvContent
       });
-      var result = await resp.json();
-      if (resp.ok && result.success) {
+      if (result && result.success) {
         setMsg('Power table uploaded successfully.', false);
         await fetchActiveTable();
       } else {
-        setMsg('Upload failed: ' + (result.error || 'Unknown error'), true);
+        setMsg('Upload failed: ' + ((result && result.error) || 'Unknown error'), true);
       }
     } catch (err) {
       console.error('Failed to upload power table', err);
-      setMsg('Upload failed: network error', true);
+      var errMsg = (err && err.body && err.body.error) ? err.body.error : 'network error';
+      setMsg('Upload failed: ' + errMsg, true);
     }
   }
 
@@ -113,7 +112,7 @@
     var el = document.getElementById('recal-msg');
     if (!el) return;
     el.textContent = text || '';
-    el.style.color = isError ? 'var(--danger, #c62828)' : 'var(--success, #2e7d32)';
+    el.style.color = isError ? 'var(--error, #c62828)' : 'var(--success, #2e7d32)';
   }
 
   function disarmReset() {
@@ -126,8 +125,8 @@
     if (btn) {
       btn.textContent = 'Reset to Defaults';
       btn.style.background = '';
-      btn.style.color = 'var(--danger, #c62828)';
-      btn.style.borderColor = 'var(--danger, #c62828)';
+      btn.style.color = 'var(--error, #c62828)';
+      btn.style.borderColor = 'var(--error, #c62828)';
     }
   }
 
@@ -137,9 +136,9 @@
     if (!resetArmed) {
       resetArmed = true;
       btn.textContent = '\u26A0 Confirm Reset? (3s)';
-      btn.style.background = 'var(--danger, #c62828)';
-      btn.style.color = '#fff';
-      btn.style.borderColor = 'var(--danger, #c62828)';
+      btn.style.background = 'var(--error, #c62828)';
+      btn.style.color = 'var(--text-inverse, #ffffff)';
+      btn.style.borderColor = 'var(--error, #c62828)';
       resetTimer = setTimeout(disarmReset, 3000);
     } else {
       disarmReset();
@@ -153,7 +152,7 @@
       '<div style="background:var(--card-bg); border:1px solid var(--border, #e0e0e0); border-radius:16px; padding:1.25rem; margin-bottom:1rem;">' +
         '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">' +
           '<h3 style="margin:0; font-size:1.15rem; font-weight:700; color:var(--text, #212121);">Power Tuning</h3>' +
-          '<span id="recal-count-badge" style="display:inline-block; padding:2px 10px; font-size:0.75rem; font-weight:700; border-radius:20px; background:var(--border, #e0e0e0); color:var(--text-muted);">0 / 100 POINTS</span>' +
+          '<span id="recal-count-badge" style="display:inline-block; padding:2px 10px; font-size:0.75rem; font-weight:700; border-radius:20px; background:var(--border, #e0e0e0); color:var(--text, #212121);">0 / 100 POINTS</span>' +
         '</div>' +
         '<p style="margin:0 0 0.75rem 0; font-size:0.85rem; color:var(--text-muted); line-height:1.5;">' +
           'Fine-tune the power curve by recording known power readings at specific resistance levels. ' +
@@ -170,8 +169,8 @@
             '<input id="recal-power-input" type="number" min="0" max="2500" step="0.5" placeholder="e.g. 150" required style="width:100%; padding:8px 10px; border:1px solid var(--border, #e0e0e0); border-radius:10px; font-size:0.9rem; color:var(--text, #212121); background:var(--card-bg);" />' +
           '</div>' +
           '<div style="grid-column: span 2; display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.25rem;">' +
-            '<button type="button" id="recal-reset-btn" style="padding:6px 14px; font-size:0.85rem; font-weight:600; border:1px solid var(--danger, #c62828); border-radius:10px; background:transparent; color:var(--danger, #c62828); cursor:pointer;">Reset to Defaults</button>' +
-            '<button type="submit" id="recal-submit-btn" style="padding:6px 20px; font-size:0.85rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:#fff; cursor:pointer;">Record Point</button>' +
+            '<button type="button" id="recal-reset-btn" style="padding:6px 14px; font-size:0.85rem; font-weight:600; border:1px solid var(--error, #c62828); border-radius:10px; background:transparent; color:var(--error, #c62828); cursor:pointer;">Reset to Defaults</button>' +
+            '<button type="submit" id="recal-submit-btn" style="padding:6px 20px; font-size:0.85rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:var(--text-inverse, #ffffff); cursor:pointer;">Record Point</button>' +
           '</div>' +
         '</form>' +
         '<div id="recal-msg" style="font-size:0.85rem; color:var(--text-muted); min-height:1.2em;"></div>' +
@@ -214,7 +213,7 @@
         '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">' +
           '<h4 style="margin:0; font-size:1rem; font-weight:700; color:var(--text, #212121);">Active Power Table</h4>' +
           '<div style="display:flex; gap:0.5rem; align-items:center;">' +
-            '<span id="recal-table-tier-badge" style="display:inline-block; padding:2px 10px; font-size:0.75rem; font-weight:700; border-radius:20px; background:var(--border, #e0e0e0); color:var(--text-muted);">DEFAULT</span>' +
+            '<span id="recal-table-tier-badge" style="display:inline-block; padding:2px 10px; font-size:0.75rem; font-weight:700; border-radius:20px; background:var(--border, #e0e0e0); color:var(--text, #212121);">DEFAULT</span>' +
             '<button id="recal-refresh-table-btn" type="button" style="padding:2px 10px; font-size:0.75rem; font-weight:600; border:1px solid var(--border, #e0e0e0); border-radius:10px; background:transparent; color:var(--text-muted); cursor:pointer;">Refresh</button>' +
           '</div>' +
         '</div>' +
@@ -294,11 +293,11 @@
     if (countBadge) {
       countBadge.textContent = pointsData.count + ' / ' + (pointsData.max || 100) + ' POINTS';
       if (pointsData.count > 0) {
-        countBadge.style.background = 'rgba(46, 125, 50, 0.15)';
-        countBadge.style.color = 'var(--success, #2e7d32)';
+        countBadge.style.background = 'var(--success, #2e7d32)';
+        countBadge.style.color = 'var(--text-inverse, #ffffff)';
       } else {
         countBadge.style.background = 'var(--border, #e0e0e0)';
-        countBadge.style.color = 'var(--text-muted)';
+        countBadge.style.color = 'var(--text, #212121)';
       }
     }
     if (!tbody) return;
@@ -337,14 +336,14 @@
       var tierNames = { 1: 'TIER 1 (DEFAULT)', 2: 'TIER 2 (SELECTED/CUSTOM)', 3: 'TIER 3 (RECALIBRATED)' };
       tierBadge.textContent = tierNames[tablePreviewData.tier] || ('TIER ' + tablePreviewData.tier);
       if (tablePreviewData.tier === 3) {
-        tierBadge.style.background = 'rgba(46, 125, 50, 0.15)';
-        tierBadge.style.color = 'var(--success, #2e7d32)';
+        tierBadge.style.background = 'var(--success, #2e7d32)';
+        tierBadge.style.color = 'var(--text-inverse, #ffffff)';
       } else if (tablePreviewData.tier === 2) {
-        tierBadge.style.background = 'rgba(249, 168, 37, 0.15)';
-        tierBadge.style.color = '#f9a825';
+        tierBadge.style.background = 'var(--warning, #f9a825)';
+        tierBadge.style.color = 'var(--text-on-warning, #111827)';
       } else {
         tierBadge.style.background = 'var(--border, #e0e0e0)';
-        tierBadge.style.color = 'var(--text-muted)';
+        tierBadge.style.color = 'var(--text, #212121)';
       }
     }
 

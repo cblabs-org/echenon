@@ -40,31 +40,53 @@
         return Number(km).toFixed(1) + ' km';
     }
 
+    function apiJson(url, options) {
+        var opts = Object.assign({ credentials: 'same-origin' }, options || {});
+        if (typeof window.apiFetch === 'function') {
+            return window.apiFetch(url, opts);
+        }
+        return fetch(url, opts).then(function (r) {
+            if (!r.ok) {
+                return r.text().then(function (txt) {
+                    var err = new Error('HTTP ' + r.status);
+                    err.status = r.status;
+                    try { err.body = JSON.parse(txt); } catch (e) { err.body = txt; }
+                    throw err;
+                });
+            }
+            return r.json();
+        });
+    }
+
     function syncStatusBadge(status) {
-        var color, icon, text;
+        var bg, color, icon, text;
         switch ((status || '').toUpperCase()) {
             case 'COMPLETE':
-                color = 'var(--success, #2e7d32)';
-                icon = '✅';
+                bg = 'var(--success, #2e7d32)';
+                color = 'var(--text-inverse, #ffffff)';
+                icon = '\u2713';
                 text = 'Synced';
                 break;
             case 'PENDING':
-                color = 'var(--warning, #f9a825)';
-                icon = '⏳';
+                bg = 'var(--warning, #f9a825)';
+                color = 'var(--text-on-warning, #111827)';
+                icon = '\u23F3';
                 text = 'Pending';
                 break;
             case 'FAILED':
-                color = 'var(--error, #c62828)';
-                icon = '❌';
+                bg = 'var(--error, #c62828)';
+                color = 'var(--text-inverse, #ffffff)';
+                icon = '\u2717';
                 text = 'Failed';
                 break;
             default:
-                color = 'var(--text-muted)';
-                icon = '—';
+                bg = 'var(--border, #e0e0e0)';
+                color = 'var(--text, #212121)';
+                icon = '\u2014';
                 text = 'Not sent';
                 break;
         }
-        return '<span style="display:inline-flex;align-items:center;gap:0.25rem;font-size:0.8rem;color:' + color + ';">' +
+        return '<span style="display:inline-flex;align-items:center;gap:0.25rem;padding:1px 8px;border-radius:12px;font-size:0.75rem;font-weight:600;background:' + bg + ';color:' + color + ';">' +
                icon + ' ' + text + '</span>';
     }
 
@@ -203,7 +225,7 @@
 
         // Retry button for failed or none
         if (status === 'FAILED' || status === 'NONE') {
-            row += '<button data-action="retry" data-sid="' + sid + '" data-service="' + escapeHtml(serviceId) + '" style="padding:2px 8px;font-size:0.7rem;font-weight:600;border:1px solid var(--warning, #f9a825);border-radius:6px;background:transparent;color:var(--warning, #f9a825);cursor:pointer;">Retry</button>';
+            row += '<button data-action="retry" data-sid="' + sid + '" data-service="' + escapeHtml(serviceId) + '" style="padding:2px 8px;font-size:0.7rem;font-weight:600;border:1px solid var(--warning, #f9a825);border-radius:6px;background:var(--warning, #f9a825);color:var(--text-on-warning, #111827);cursor:pointer;">Retry</button>';
         }
 
         // Show error if failed
@@ -286,13 +308,11 @@
             delBtns[del].addEventListener('click', function () {
                 var id = this.getAttribute('data-sid');
                 if (!confirm('Delete this ride permanently?')) return;
-                fetch('/api/session/discard', {
+                apiJson('/api/session/discard', {
                     method: 'POST',
-                    credentials: 'same-origin',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ session_id: Number(id) })
                 })
-                    .then(function (r) { return r.json(); })
                     .then(function (data) {
                         if (data && data.ok) {
                             fetchRides();
@@ -301,7 +321,8 @@
                         }
                     })
                     .catch(function (err) {
-                        alert('Error deleting ride: ' + err);
+                        var msg = (err && err.body && err.body.error) ? err.body.error : err;
+                        alert('Error deleting ride: ' + msg);
                     });
             });
         }
@@ -315,18 +336,17 @@
                 var btn = this;
                 btn.disabled = true;
                 btn.textContent = '...';
-                fetch('/api/session/upload', {
+                apiJson('/api/session/upload', {
                     method: 'POST',
-                    credentials: 'same-origin',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ session_id: Number(id), service_id: service })
                 })
-                    .then(function (resp) { return resp.json(); })
                     .then(function (data) {
                         if (data && data.ok) {
                             btn.textContent = 'Queued';
+                            btn.style.background = 'var(--success, #2e7d32)';
                             btn.style.borderColor = 'var(--success, #2e7d32)';
-                            btn.style.color = 'var(--success, #2e7d32)';
+                            btn.style.color = 'var(--text-inverse, #ffffff)';
                             setTimeout(fetchRides, 2000);
                         } else {
                             btn.textContent = 'Retry';
@@ -337,7 +357,8 @@
                     .catch(function (err) {
                         btn.textContent = 'Retry';
                         btn.disabled = false;
-                        alert('Error retrying upload: ' + err);
+                        var msg = (err && err.body && err.body.error) ? err.body.error : err;
+                        alert('Error retrying upload: ' + msg);
                     });
             });
         }
@@ -348,8 +369,7 @@
     // =========================================================================
 
     function fetchSinks() {
-        return fetch('/api/upload/sinks', { credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
+        return apiJson('/api/upload/sinks')
             .then(function (data) {
                 var sinks = data.sinks || [];
                 connectedSinks = [];
@@ -367,8 +387,7 @@
 
     function fetchRides() {
         fetchSinks().then(function () {
-            fetch('/api/session/history', { credentials: 'same-origin' })
-                .then(function (r) { return r.json(); })
+            apiJson('/api/session/history')
                 .then(function (data) {
                     var rides = data.rides || data.sessions || [];
                     renderRides(rides);

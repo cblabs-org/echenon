@@ -4,7 +4,7 @@ wo_id: WO-09.4
 pr_id: PR-09
 title: Portal CSS Design Tokens, Reset Wiring, Contrast & Accessibility Polish
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - web/calibration-wizard.js
 - web/diagnostics-events.html
@@ -29,7 +29,29 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: ffeb21990a12c467255b20c6e142a456eca5863b6895d569ab98f04168b7d9a0
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_e0bca8f15496
+  commit_sha: dd51431ed0096b88b986fd62d0898c3a6f38d210
+  files_modified:
+  - web/calibration-wizard.js
+  - web/diagnostics.js
+  - web/echenon-dashboard.js
+  - web/intervals_settings.js
+  - web/recalibration.js
+  - web/ride.html
+  - web/ride.js
+  - web/session.js
+  - web/stored_rides.js
+  - web/upload_settings.js
+  - web/wahoo_settings.js
+  verification_summary: 'pio test -e native --verbose: ================ 269 test cases:
+    269 succeeded in 00:00:00.566 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-09.4 — Portal CSS Design Tokens, Reset Wiring, Contrast & Accessibility Polish

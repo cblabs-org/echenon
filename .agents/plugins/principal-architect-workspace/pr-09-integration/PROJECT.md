@@ -60,9 +60,9 @@ work_orders:
   slug: wo4-portal-design-tokens
   title: Portal CSS Design Tokens, Reset Wiring, Contrast & Accessibility Polish
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: dd51431ed0096b88b986fd62d0898c3a6f38d210
 - id: WO-09.5
   slug: wo5-beta-hardware-guide
   title: Standalone v1 Passive Tap Board Build Guide & Hardware Spec Errata
