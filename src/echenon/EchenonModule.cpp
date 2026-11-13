@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/EchenonModule.cpp
+ * Description: Echenon application module implementation (tick loop, NVS config, REST API routes, and MCP tools).
+ */
+
 #include "echenon/EchenonModule.h"
 #include "ConfigManager.hpp"
 #include <PsychicHttp.h>

@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/CalibrationWizard.cpp
+ * Description: Implementation of the 32-level passive resistance calibration wizard and OLS endpoint fit.
+ */
+
 #include "echenon/CalibrationWizard.h"
 #include "echenon/ResistanceSensor.h"
 #include <cstring>

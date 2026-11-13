@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/SignalLogger.cpp
+ * Description: Implementation of continuous DMA ADC signal capture, software edge detection, and CSV/burst routes.
+ */
+
 #ifdef WITH_SIGNAL_LOGGER
 
 #include "SignalLogger.h"

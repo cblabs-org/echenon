@@ -1,5 +1,14 @@
 #pragma once
 
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/PowerTable.h
+ * Description: 32x31 power lookup table data structure with CSV parsing and NVS binary serialisation.
+ * Reference: Lookup table concepts reference MIT-licensed prior art
+ *            (ptx2/gymnasticon, cagnulein/qdomyos-zwift, lefty01/ESP32_TTGO_FTMS; see SPEC.md §2.3).
+ */
+
 #include <cstdint>
 #include <cstddef>
 #include <cstring>
@@ -8,24 +17,25 @@
 namespace echenon {
 
 // Table dimensions (SPEC §6.2)
-constexpr int POWER_TABLE_LEVELS = 32;       // Echelon levels 1–32
-constexpr int POWER_TABLE_RPM_BINS = 31;     // 0, 5, 10, ..., 150 RPM (31 bins)
-constexpr float POWER_TABLE_RPM_STEP = 5.0f;
-constexpr float POWER_TABLE_RPM_MAX = 150.0f;
+constexpr int POWER_TABLE_LEVELS = 32;       ///< Number of Echelon resistance levels (1–32)
+constexpr int POWER_TABLE_RPM_BINS = 31;     ///< Number of cadence bins: 0, 5, 10, ..., 150 RPM
+constexpr float POWER_TABLE_RPM_STEP = 5.0f; ///< Cadence bin spacing in RPM
+constexpr float POWER_TABLE_RPM_MAX = 150.0f; ///< Maximum cadence bin value in RPM
 
 // Serialised binary format constants
-constexpr uint32_t POWER_TABLE_MAGIC = 0x504F5754; // "POWT" in little-endian
-constexpr uint8_t POWER_TABLE_VERSION = 1;
-constexpr size_t SERIALISED_TABLE_SIZE = 4 + 1 + 1 + 2 + 32 + (POWER_TABLE_LEVELS * POWER_TABLE_RPM_BINS * sizeof(int16_t)); // 2024 bytes
+constexpr uint32_t POWER_TABLE_MAGIC = 0x504F5754; ///< Binary header magic "POWT" (little-endian)
+constexpr uint8_t POWER_TABLE_VERSION = 1;         ///< Binary serialisation format version
+constexpr size_t SERIALISED_TABLE_SIZE = 4 + 1 + 1 + 2 + 32 + (POWER_TABLE_LEVELS * POWER_TABLE_RPM_BINS * sizeof(int16_t)); ///< Exact serialised blob size (2024 bytes)
 
 // Table tier IDs (SPEC §6.3)
 #ifdef DEFAULT
 #undef DEFAULT
 #endif
+/// Active power table provenance tier (SPEC §6.3).
 enum class PowerTableTier : uint8_t {
-    DEFAULT = 1,       // Compiled-in default
-    SELECTED = 2,      // Selected built-in or custom CSV upload
-    RECALIBRATED = 3   // Updated by recalibration UI
+    DEFAULT = 1,       ///< Compiled-in default
+    SELECTED = 2,      ///< Selected built-in or custom CSV upload
+    RECALIBRATED = 3   ///< Updated by recalibration UI
 };
 
 /**
@@ -36,11 +46,11 @@ enum class PowerTableTier : uint8_t {
  * and tier tracking.
  */
 struct PowerTable {
-    int16_t watts[POWER_TABLE_LEVELS][POWER_TABLE_RPM_BINS] = {};  // 32 × 31
-    PowerTableTier tier = PowerTableTier::DEFAULT;
-    char id[32] = "";   // Table ID string (e.g. "ex3-default")
+    int16_t watts[POWER_TABLE_LEVELS][POWER_TABLE_RPM_BINS] = {};  ///< Power grid in watts (32 levels × 31 RPM bins)
+    PowerTableTier tier = PowerTableTier::DEFAULT;                 ///< Provenance tier of this table
+    char id[32] = "";   ///< Null-terminated table identifier string (e.g. "ex3-default")
 
-    // Reset all watts to 0, tier to DEFAULT, and clear id
+    /// Reset all watts to 0, tier to DEFAULT, and clear id.
     void clear() {
         for (int l = 0; l < POWER_TABLE_LEVELS; ++l) {
             for (int r = 0; r < POWER_TABLE_RPM_BINS; ++r) {
@@ -51,8 +61,7 @@ struct PowerTable {
         id[0] = '\0';
     }
 
-    // Parse from CSV blob (level,rpm_0,rpm_5,...,rpm_150 format)
-    // Returns true on success
+    /// Parse from CSV blob (level,rpm_0,rpm_5,...,rpm_150 format); return true on success.
     bool parseCSV(const char* csvData, size_t length) {
         if (!csvData || length == 0) {
             return false;
@@ -153,7 +162,7 @@ struct PowerTable {
         return false;
     }
 
-    // Serialise to a flat byte buffer for NVS storage
+    /// Serialise table into a flat byte buffer for NVS storage; return bytes written or 0 on error.
     size_t serialise(uint8_t* buf, size_t bufLen) const {
         if (!buf || bufLen < SERIALISED_TABLE_SIZE) {
             return 0;
@@ -193,7 +202,7 @@ struct PowerTable {
         return offset;
     }
 
-    // Deserialise from a flat byte buffer
+    /// Deserialise table from a flat byte buffer; return true if magic, version, and size match.
     bool deserialise(const uint8_t* buf, size_t bufLen) {
         if (!buf || bufLen < SERIALISED_TABLE_SIZE) {
             return false;

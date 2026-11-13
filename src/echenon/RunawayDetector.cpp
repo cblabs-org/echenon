@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/RunawayDetector.cpp
+ * Description: Implementation of out-of-range potentiometer runaway timeout tracking and edge detection.
+ */
+
 #include "echenon/RunawayDetector.h"
 
 namespace echenon {

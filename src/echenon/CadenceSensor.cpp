@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/CadenceSensor.cpp
+ * Description: Implementation of the reed-switch cadence sensor ISR, glitch filtering, and RPM calculation.
+ */
+
 #include "echenon/CadenceSensor.h"
 
 #if !defined(UNIT_TEST) && defined(ARDUINO)

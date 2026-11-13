@@ -1,5 +1,12 @@
 #pragma once
 
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/RunawayDetector.h
+ * Description: Edge-triggered detector for out-of-range stock resistance potentiometer runaway conditions.
+ */
+
 #include <cstdint>
 
 namespace echenon {
@@ -18,17 +25,18 @@ namespace echenon {
  */
 class RunawayDetector {
 public:
-    /// Default timeout: 10 seconds (owner decision 2026-10-20)
-    static constexpr uint16_t DEFAULT_TIMEOUT_S = 10;
+    static constexpr uint16_t DEFAULT_TIMEOUT_S = 10; ///< Default out-of-range timeout in seconds (owner decision 2026-10-20)
 
-    /// Working range constants (from LevelMapping §5.2)
-    static constexpr uint16_t RANGE_MIN = 165;
-    static constexpr uint16_t RANGE_MAX = 1327;
+    // Working range constants (from LevelMapping §5.2)
+    static constexpr uint16_t RANGE_MIN = 165;  ///< Lower working-range ADC bound
+    static constexpr uint16_t RANGE_MAX = 1327; ///< Upper working-range ADC bound
 
     RunawayDetector() = default;
 
     // --- Configuration ---
+    /// Set the out-of-range duration threshold in seconds before flagging runaway.
     void setTimeoutSeconds(uint16_t seconds);
+    /// Return the configured out-of-range timeout in seconds.
     uint16_t getTimeoutSeconds() const;
 
     // --- Tick ---

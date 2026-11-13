@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/CalibrationRig.cpp
+ * Description: Calibration rig state machine, command parser, and potentiometer settle verification.
+ */
+
 #ifdef WITH_CALIBRATION_RIG
 
 #include "echenon/CalibrationRig.h"

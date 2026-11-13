@@ -1,5 +1,9 @@
-/// @file DiagnosticsModule.cpp
-/// @brief PSRAM-backed bounded event log implementation for production diagnostics.
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/DiagnosticsModule.cpp
+ * Description: PSRAM-backed bounded event log implementation for production diagnostics.
+ */
 
 #include "echenon/DiagnosticsModule.h"
 

@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/main.cpp
+ * Description: Application composition root, module registration, and Arduino setup/loop entry points.
+ */
+
 #include "AppFoundation.h"
 #include <Arduino.h>
 #include <ctime>
@@ -48,7 +55,7 @@ static echenon::RidePersistence ridePersistence(rideStore.fileSystem());
 static echenon::StravaUploader stravaUploader;
 #endif
 
-// Valid SNTP epoch threshold (2023-11-15 approx.)
+/// Valid SNTP epoch threshold (2023-11-15 approx.)
 static constexpr uint32_t VALID_EPOCH_THRESHOLD = 1700000000u;
 
 /// Return current wall-clock epoch if NTP-synced, else 0.
@@ -83,6 +90,7 @@ static void onSessionEndPersist(const char*, const void* data, void*) {
 }
 #endif
 
+/// Arduino firmware entry point: wires modules, initializes framework, and subscribes event handlers.
 void setup() {
     Serial.begin(115200);
     app.setAppName("Echenon");
@@ -237,6 +245,7 @@ void setup() {
 #endif
 }
 
+/// Arduino main loop: advances framework tick and propagates wall-clock epoch.
 void loop() {
     app.tick();
 

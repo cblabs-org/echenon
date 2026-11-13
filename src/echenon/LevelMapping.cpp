@@ -1,3 +1,12 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/LevelMapping.cpp
+ * Description: Implementation of resistance level, potentiometer wiper, and Peloton equivalence conversions.
+ * Reference: Resistance scale mapping concepts reference MIT-licensed prior art
+ *            (ptx2/gymnasticon, cagnulein/qdomyos-zwift, lefty01/ESP32_TTGO_FTMS; see SPEC.md §2.3).
+ */
+
 #include "echenon/LevelMapping.h"
 #include "echenon/PowerEngine.h"
 #include <cmath>

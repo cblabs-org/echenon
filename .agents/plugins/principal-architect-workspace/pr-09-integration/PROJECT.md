@@ -46,9 +46,9 @@ work_orders:
   slug: wo2-house-style-core
   title: File Headers & Doxygen House Style — Core, Sensors, Power & Rig
   complexity: mechanical
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 450fb751dd979bf0855d16ac1bffb692ca6c567f
 - id: WO-09.3
   slug: wo3-house-style-ble-sinks
   title: File Headers, GRAVE-05 Justification Comments & FTMS Guard — BLE & Data Sinks

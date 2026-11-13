@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/LiveFeed.cpp
+ * Description: Implementation of WebSocket telemetry JSON formatting and broadcast rate limiting.
+ */
+
 #ifndef UNIT_TEST
 
 #include "echenon/LiveFeed.h"

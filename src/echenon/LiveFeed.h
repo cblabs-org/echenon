@@ -1,5 +1,12 @@
 #pragma once
 
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/LiveFeed.h
+ * Description: Rate-limited WebSocket telemetry broadcaster pushing live ride and diagnostic JSON frames.
+ */
+
 #if defined(ESP_PLATFORM) && !defined(UNIT_TEST)
 #include <Print.h>
 #ifdef HEX
@@ -16,16 +23,19 @@ class PsychicWebSocketHandler;
 
 namespace echenon {
 
+/**
+ * @brief Rate-limited WebSocket broadcaster pushing live bike telemetry
+ *        and optional diagnostic sensor fields to connected portal clients.
+ */
 class LiveFeed {
 public:
     LiveFeed() = default;
     ~LiveFeed() = default;
 
-    // Set the WS handler (called during registerRoutes)
+    /// Set the PsychicWebSocketHandler (called during route registration).
     void setHandler(PsychicWebSocketHandler* handler);
 
-    // Called every tick from EchenonModule
-    // Broadcasts JSON to all connected WS clients at the configured rate
+    /// Broadcast core telemetry JSON to connected WS clients at the configured interval.
     void tick(uint32_t currentMillis,
               float cadenceRPM,
               uint8_t echelonLevel,
@@ -39,7 +49,7 @@ public:
               float speedKph = 0.0f           // virtual flat-road speed (km/h)
               );
 
-    // Extended overloads including session_state, session_elapsed_s, and heart rate
+    /// Broadcast extended telemetry including session state, elapsed seconds, and heart rate.
     void tick(uint32_t currentMillis,
               float cadenceRPM,
               uint8_t echelonLevel,
@@ -55,6 +65,7 @@ public:
               uint32_t sessionElapsedS,
               uint8_t hrBpm = 0);
 
+    /// Broadcast extended telemetry using cadence-first argument ordering.
     void tick(float cadenceRpm,
               uint8_t levelEchelon,
               uint8_t levelInternal,
@@ -70,7 +81,7 @@ public:
               uint32_t currentMillis,
               uint8_t hrBpm = 0);
 
-    // Extended overload including diagnostic sensor fields
+    /// Broadcast full telemetry including raw/filtered ADC, cadence timing, and BLE status.
     void tick(uint32_t currentMillis,
               float cadenceRPM,
               uint8_t echelonLevel,
@@ -96,11 +107,12 @@ public:
               bool bleConnected,
                bool calibrated);
 
-    // Configuration
-    void setIntervalMs(uint32_t ms);  // default 500 ms (~2 Hz)
+    /// Set the minimum broadcast interval in milliseconds (default 500 ms, ~2 Hz).
+    void setIntervalMs(uint32_t ms);
+    /// Return the configured broadcast interval in milliseconds.
     uint32_t getIntervalMs() const;
 
-    // Seed the last-broadcast timestamp for phase-offset interleaving
+    /// Seed the last-broadcast timestamp for phase-offset interleaving.
     void seedBroadcastTime(uint32_t ms) { _lastBroadcast = ms; }
 
 private:
