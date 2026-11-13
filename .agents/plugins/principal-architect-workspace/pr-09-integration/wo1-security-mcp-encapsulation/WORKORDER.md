@@ -4,7 +4,7 @@ wo_id: WO-09.1
 pr_id: PR-09
 title: MCP Contributor Tools, Portal Auth Guards, Persistence Fixes & Encapsulation
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/main.cpp
 - src/echenon/EchenonModule.h
@@ -24,7 +24,25 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: aaa5d04ba5411af94cadbb58de2041a6ddb030d3d0a9b9afbcf89f84737eb91d
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_c82896c33fdc
+  commit_sha: 854b1dcaf3e3618b3b7d19f87863d9b917ffa821
+  files_modified:
+  - hardware/ex3-waveshare-nano/board.h
+  - src/echenon/EchenonModule.cpp
+  - src/echenon/EchenonModule.h
+  - src/echenon/SignalLogger.cpp
+  - src/echenon/SignalLogger.h
+  - src/main.cpp
+  - tools/calibration-rig/calibration_sweep.py
+  verification_summary: 'pio test -e native --verbose: ================ 269 test cases:
+    269 succeeded in 00:00:03.337 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-09.1 — MCP Contributor Tools, Portal Auth Guards, Persistence Fixes & Encapsulation

@@ -14,6 +14,7 @@
 #include "include/portal_assets/recalibration_js.hpp"
 #include "include/portal_assets/diagnostics_js.hpp"
 #include "AuthManager.hpp"
+#include "MCPServer/MCPToolRegistry.hpp"
 
 static const char* TAG = "EchenonModule";
 
@@ -231,8 +232,9 @@ void EchenonModule::tick(uint32_t currentMillis) {
 #ifdef WITH_SIGNAL_LOGGER
     static bool s_eventBusWired = false;
     if (!s_eventBusWired) {
-        extern Application app;
-        _signalLogger.setEventBus(&app.getEventBus());
+        if (_eventBus) {
+            _signalLogger.setEventBus(_eventBus);
+        }
         s_eventBusWired = true;
     }
     _signalLogger.begin();
@@ -403,71 +405,7 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
 #endif
 
 #ifdef WITH_SIGNAL_LOGGER
-    _signalLogger.registerRoutes(server);
-#endif
-
-#ifdef WITH_CALIBRATION_RIG
-    server.on("/api/echenon/rig/status", HTTP_GET, [this](PsychicRequest* request, PsychicResponse* response) {
-        (void)request;
-        // JSON diagnostic status with GPIO readback
-        JsonDocument doc;
-
-        // State machine
-        const char* stateStr = "IDLE";
-        switch (_calibrationRig.getState()) {
-            case echenon::CalibrationRig::State::IDLE:    stateStr = "IDLE"; break;
-            case echenon::CalibrationRig::State::SEEKING: stateStr = "SEEKING"; break;
-            case echenon::CalibrationRig::State::SETTLED: stateStr = "SETTLED"; break;
-            case echenon::CalibrationRig::State::ERROR:   stateStr = "ERROR"; break;
-        }
-        doc["state"] = stateStr;
-        doc["level"] = _calibrationRig.getCurrentLevel();
-        doc["target"] = _calibrationRig.getTargetLevel();
-        doc["cadence"] = _calibrationRig.getCadenceRPM();
-        doc["steps_remaining"] = _calibrationRig.getStepsRemaining();
-        doc["settle_timeout"] = _calibrationRig.didSettleTimeout();
-
-        // Pot ADC (filtered via ResistanceSensor)
-        uint16_t potFilt = _resistanceSensor.getFilteredWiper();
-        doc["pot"] = potFilt;
-        doc["derived_level"] = LevelMapping::wiperToEchelon(potFilt);
-
-        // GPIO readback of OUTPUT pins
-        JsonObject gpio = doc["gpio"].to<JsonObject>();
-#ifdef WITH_CALIBRATION_RIG
-        gpio["enc_a_pin"] = PIN_RIG_ENC_A;
-        gpio["enc_a_val"] = digitalRead(PIN_RIG_ENC_A);
-        gpio["enc_b_pin"] = PIN_RIG_ENC_B;
-        gpio["enc_b_val"] = digitalRead(PIN_RIG_ENC_B);
-        gpio["cad_pin"] = PIN_RIG_CADENCE;
-        gpio["cad_val"] = digitalRead(PIN_RIG_CADENCE);
-#endif
-
-        // Passive ADC sensors
-        JsonObject adc = doc["adc"].to<JsonObject>();
-        adc["pot_raw"] = analogRead(PIN_POT_WIPER);
-        adc["cad_sense"] = analogRead(PIN_CADENCE);
-        adc["enc_vcc"] = analogRead(PIN_KNOB_ENC_VCC);
-        adc["enc_a_sense"] = analogRead(PIN_KNOB_ENC_A);
-        adc["enc_b_sense"] = analogRead(PIN_KNOB_ENC_B);
-
-        String res;
-        serializeJson(doc, res);
-        return response->send(200, "application/json", res.c_str());
-    });
-
-    // HTTP command endpoint — allows sending rig commands over WiFi when serial is dead
-    server.on("/api/echenon/rig/command", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) {
-        String body = request->body();
-        body.trim();
-        if (body.isEmpty()) {
-            return response->send(400, "text/plain", "ERROR empty command");
-        }
-        _calibrationRig.handleCommand(body);
-        // Return current status as JSON response
-        String status = _calibrationRig.handleStatus();
-        return response->send(200, "text/plain", status.c_str());
-    });
+    _signalLogger.registerRoutes(server, _authManager);
 #endif
 
     // Serve dashboard JavaScript
@@ -507,16 +445,17 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
     });
 
     // Register diagnostics API routes (events + stored rides)
-    if (_ridePersistence) {
-        extern Application app;
+    if (_ridePersistence && _authManager) {
         static echenon::DiagnosticsRoutes diagRoutes(_diagnostics, *_ridePersistence);
         _diagRoutes = &diagRoutes;
-        diagRoutes.registerRoutes(server, app.getAuthManager());
+        diagRoutes.registerRoutes(server, *_authManager);
     }
 
     // --- Calibration Wizard Endpoints ---
-    server.on("/api/echenon/calibration/start", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) {
-        (void)request;
+    server.on("/api/echenon/calibration/start", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) -> esp_err_t {
+        if (_authManager && !_authManager->checkPortalAuth(request, response)) {
+            return ESP_OK;
+        }
         _calibrationWizard.start();
         JsonDocument doc;
         doc["success"] = true;
@@ -527,8 +466,10 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
         return response->send(200, "application/json", out.c_str());
     });
 
-    server.on("/api/echenon/calibration/stop", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) {
-        (void)request;
+    server.on("/api/echenon/calibration/stop", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) -> esp_err_t {
+        if (_authManager && !_authManager->checkPortalAuth(request, response)) {
+            return ESP_OK;
+        }
         _calibrationWizard.stop();
         JsonDocument doc;
         doc["success"] = true;
@@ -538,7 +479,10 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
         return response->send(200, "application/json", out.c_str());
     });
 
-    server.on("/api/echenon/calibration/record-level", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) {
+    server.on("/api/echenon/calibration/record-level", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) -> esp_err_t {
+        if (_authManager && !_authManager->checkPortalAuth(request, response)) {
+            return ESP_OK;
+        }
         const char* body = request->bodyCStr();
         JsonDocument inDoc;
         DeserializationError err = deserializeJson(inDoc, body ? body : "");
@@ -549,6 +493,9 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
         bool ok = _calibrationWizard.recordLevel(level);
         if (ok) {
             syncPhysicsCalibration();
+            if (_configManager) {
+                _configManager->saveModuleConfig(this);
+            }
         }
         JsonDocument outDoc;
         outDoc["success"] = ok;
@@ -562,8 +509,22 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
         return response->send(ok ? 200 : 400, "application/json", out.c_str());
     });
 
-    server.on("/api/echenon/calibration/status", HTTP_GET, [this](PsychicRequest* request, PsychicResponse* response) {
-        (void)request;
+    server.on("/api/echenon/calibration/reset", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) -> esp_err_t {
+        if (_authManager && !_authManager->checkPortalAuth(request, response)) {
+            return ESP_OK;
+        }
+        _calibrationWizard.reset();
+        syncPhysicsCalibration();
+        if (_configManager) {
+            _configManager->saveModuleConfig(this);
+        }
+        return response->send(200, "application/json", "{\"success\":true,\"active\":false,\"pos_done\":false}");
+    });
+
+    server.on("/api/echenon/calibration/status", HTTP_GET, [this](PsychicRequest* request, PsychicResponse* response) -> esp_err_t {
+        if (_authManager && !_authManager->checkPortalAuth(request, response)) {
+            return ESP_OK;
+        }
         JsonDocument doc;
         doc["active"] = _calibrationWizard.isActive();
         doc["step"] = _calibrationWizard.getCurrentStep();
@@ -580,7 +541,10 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
     });
 
     // --- Recalibration UI Endpoints ---
-    server.on("/api/echenon/recalibration/point", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) {
+    server.on("/api/echenon/recalibration/point", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) -> esp_err_t {
+        if (_authManager && !_authManager->checkPortalAuth(request, response)) {
+            return ESP_OK;
+        }
         const char* body = request->bodyCStr();
         JsonDocument inDoc;
         DeserializationError err = deserializeJson(inDoc, body ? body : "");
@@ -592,6 +556,9 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
         bool ok = _recalibrationUI.addPoint(level, power);
         if (ok) {
             syncPhysicsCalibration();
+            if (_configManager) {
+                _configManager->saveModuleConfig(this);
+            }
         }
         JsonDocument outDoc;
         outDoc["success"] = ok;
@@ -604,8 +571,10 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
         return response->send(ok ? 200 : 400, "application/json", out.c_str());
     });
 
-    server.on("/api/echenon/recalibration/points", HTTP_GET, [this](PsychicRequest* request, PsychicResponse* response) {
-        (void)request;
+    server.on("/api/echenon/recalibration/points", HTTP_GET, [this](PsychicRequest* request, PsychicResponse* response) -> esp_err_t {
+        if (_authManager && !_authManager->checkPortalAuth(request, response)) {
+            return ESP_OK;
+        }
         JsonDocument doc;
         doc["count"] = _recalibrationUI.getPointCount();
         doc["max"] = _recalibrationUI.getMaxPoints();
@@ -624,15 +593,23 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
         return response->send(200, "application/json", out.c_str());
     });
 
-    server.on("/api/echenon/recalibration/reset", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) {
-        (void)request;
+    server.on("/api/echenon/recalibration/reset", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) -> esp_err_t {
+        if (_authManager && !_authManager->checkPortalAuth(request, response)) {
+            return ESP_OK;
+        }
         _recalibrationUI.reset();
         syncPhysicsCalibration();
+        if (_configManager) {
+            _configManager->saveModuleConfig(this);
+        }
         return response->send(200, "application/json", "{\"success\":true,\"count\":0}");
     });
 
     // --- Power Table Upload & Active Preview ---
-    server.on("/api/echenon/power-table/upload", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) {
+    server.on("/api/echenon/power-table/upload", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) -> esp_err_t {
+        if (_authManager && !_authManager->checkPortalAuth(request, response)) {
+            return ESP_OK;
+        }
         const char* body = request->bodyCStr();
         size_t len = request->contentLength();
         if (!body || len == 0) {
@@ -647,8 +624,10 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
         return response->send(200, "application/json", "{\"success\":true,\"message\":\"Power table loaded\"}");
     });
 
-    server.on("/api/echenon/power-table/active", HTTP_GET, [this](PsychicRequest* request, PsychicResponse* response) {
-        (void)request;
+    server.on("/api/echenon/power-table/active", HTTP_GET, [this](PsychicRequest* request, PsychicResponse* response) -> esp_err_t {
+        if (_authManager && !_authManager->checkPortalAuth(request, response)) {
+            return ESP_OK;
+        }
         const PowerTable& tbl = _powerEngine.getTable();
         JsonDocument doc;
         doc["tier"] = static_cast<uint8_t>(tbl.tier);
@@ -671,6 +650,9 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
 
     // Live ride telemetry + optional signal logger stats
     server.on("/api/echenon/live", HTTP_GET, [this](PsychicRequest* request, PsychicResponse* response) -> esp_err_t {
+        if (_authManager && !_authManager->checkPortalAuth(request, response)) {
+            return ESP_OK;
+        }
         JsonDocument doc;
         doc["timestamp_ms"] = millis();
 
@@ -743,8 +725,10 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
 
 #ifdef WITH_FTMS
     // --- GET /api/echenon/ftms-smoothing — current smoothing window ---
-    server.on("/api/echenon/ftms-smoothing", HTTP_GET, [this](PsychicRequest* request, PsychicResponse* response) {
-        (void)request;
+    server.on("/api/echenon/ftms-smoothing", HTTP_GET, [this](PsychicRequest* request, PsychicResponse* response) -> esp_err_t {
+        if (_authManager && !_authManager->checkPortalAuth(request, response)) {
+            return ESP_OK;
+        }
         JsonDocument doc;
         doc["ftms_power_smooth_s"] = _ftmsPowerSmoothS;
         String out;
@@ -753,7 +737,10 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
     });
 
     // --- POST /api/echenon/ftms-smoothing — set smoothing window ---
-    server.on("/api/echenon/ftms-smoothing", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) {
+    server.on("/api/echenon/ftms-smoothing", HTTP_POST, [this](PsychicRequest* request, PsychicResponse* response) -> esp_err_t {
+        if (_authManager && !_authManager->checkPortalAuth(request, response)) {
+            return ESP_OK;
+        }
         JsonDocument doc;
         DeserializationError err = deserializeJson(doc, request->body());
         if (err || !doc["ftms_power_smooth_s"].is<float>()) {
@@ -778,6 +765,327 @@ void EchenonModule::registerRoutes(PsychicHttpServer& server) {
         serializeJson(resp, out);
         return response->send(200, "application/json", out.c_str());
     });
+#endif
+}
+
+// =============================================================================
+// IMCPContributor
+// =============================================================================
+
+void EchenonModule::registerMCPTools(MCPToolRegistry& registry) {
+    // 1. echenon_get_telemetry (read-only)
+    registry.addTool(
+        "echenon_get_telemetry",
+        "Get current Echenon bike telemetry, resistance levels, calibration state, and session status",
+        [](void* ctx, JsonObject& /*params*/, JsonObject& result) {
+            auto* self = static_cast<EchenonModule*>(ctx);
+            float cadence = self->getCadenceRPM();
+            float power = self->getPowerWatts();
+            float speedKph = (cadence > 0.0f && power > 0.0f)
+                ? PowerEngine::computeVirtualSpeedKph(power)
+                : 0.0f;
+
+            uint8_t liveHr = 0;
+#ifdef WITH_BLE
+            liveHr = self->_hrmClient.getHeartRateBpm();
+#endif
+#ifdef WITH_SESSION
+            if (liveHr == 0 && self->_sessionManager != nullptr) {
+                liveHr = self->_sessionManager->getHeartRateBpm();
+            }
+            const char* sessionState = (self->_sessionManager != nullptr)
+                ? sessionStateToString(self->_sessionManager->getState())
+                : "IDLE";
+#else
+            const char* sessionState = "IDLE";
+#endif
+            result["cadence_rpm"] = cadence;
+            result["power_watts"] = power;
+            result["speed_kph"] = speedKph;
+            result["hr"] = liveHr;
+            result["level_echelon"] = self->getEchelonLevel();
+            result["level_internal"] = self->getInternalLevel();
+            result["continuous_level"] = self->getContinuousLevel();
+            result["p_tilde"] = self->getNormalizedPosition();
+            result["pot_filtered"] = self->getFilteredWiper();
+            result["pos_done"] = self->_calibrationWizard.isPosDone();
+            result["session_state"] = sessionState;
+            result["runaway"] = self->_runawayDetector.isRunaway();
+        },
+        this,
+        /*mutatesState=*/false
+    );
+
+    // 2. echenon_calibration (mutatesState = true)
+    JsonDocument calSchema;
+    calSchema["type"] = "object";
+    JsonObject calProps = calSchema["properties"].to<JsonObject>();
+    calProps["action"]["type"] = "string";
+    JsonArray calEnum = calProps["action"]["enum"].to<JsonArray>();
+    calEnum.add("start");
+    calEnum.add("stop");
+    calEnum.add("record");
+    calEnum.add("reset");
+    calProps["level"]["type"] = "integer";
+    calProps["level"]["minimum"] = 1;
+    calProps["level"]["maximum"] = 32;
+    JsonArray calReq = calSchema["required"].to<JsonArray>();
+    calReq.add("action");
+
+    registry.addTool(
+        "echenon_calibration",
+        "Control Echenon resistance level calibration wizard (start, stop, record, reset)",
+        calSchema,
+        [](void* ctx, JsonObject& params, JsonObject& result) {
+            auto* self = static_cast<EchenonModule*>(ctx);
+            const char* action = params["action"] | "";
+            if (strcmp(action, "start") == 0) {
+                self->_calibrationWizard.start();
+            } else if (strcmp(action, "stop") == 0) {
+                self->_calibrationWizard.stop();
+            } else if (strcmp(action, "record") == 0) {
+                if (!params["level"].is<int>()) {
+                    result["isError"] = true;
+                    result["error"] = "Missing or invalid level (1-32)";
+                } else {
+                    int lvl = params["level"].as<int>();
+                    if (lvl < 1 || lvl > 32 || !self->_calibrationWizard.recordLevel(static_cast<uint8_t>(lvl))) {
+                        result["isError"] = true;
+                        result["error"] = "Invalid level or calibration not active";
+                    } else {
+                        self->syncPhysicsCalibration();
+                        if (self->_configManager) {
+                            self->_configManager->saveModuleConfig(self);
+                        }
+                    }
+                }
+            } else if (strcmp(action, "reset") == 0) {
+                self->_calibrationWizard.reset();
+                self->syncPhysicsCalibration();
+                if (self->_configManager) {
+                    self->_configManager->saveModuleConfig(self);
+                }
+            } else {
+                result["isError"] = true;
+                result["error"] = "Unknown action (expected start, stop, record, or reset)";
+            }
+            result["active"] = self->_calibrationWizard.isActive();
+            result["step"] = self->_calibrationWizard.getCurrentStep();
+            result["complete"] = self->_calibrationWizard.isComplete();
+            result["pos_done"] = self->_calibrationWizard.isPosDone();
+        },
+        this,
+        /*mutatesState=*/true
+    );
+
+    // 3. echenon_recalibration (mutatesState = true)
+    JsonDocument recalSchema;
+    recalSchema["type"] = "object";
+    JsonObject recalProps = recalSchema["properties"].to<JsonObject>();
+    recalProps["action"]["type"] = "string";
+    JsonArray recalEnum = recalProps["action"]["enum"].to<JsonArray>();
+    recalEnum.add("add_point");
+    recalEnum.add("reset");
+    recalProps["level"]["type"] = "integer";
+    recalProps["level"]["minimum"] = 1;
+    recalProps["level"]["maximum"] = 32;
+    recalProps["power"]["type"] = "number";
+    recalProps["power"]["minimum"] = 0;
+    JsonArray recalReq = recalSchema["required"].to<JsonArray>();
+    recalReq.add("action");
+
+    registry.addTool(
+        "echenon_recalibration",
+        "Manage Echenon power recalibration reference points (add_point, reset)",
+        recalSchema,
+        [](void* ctx, JsonObject& params, JsonObject& result) {
+            auto* self = static_cast<EchenonModule*>(ctx);
+            const char* action = params["action"] | "";
+            if (strcmp(action, "add_point") == 0) {
+                if (!params["level"].is<int>() || (!params["power"].is<float>() && !params["power"].is<int>())) {
+                    result["isError"] = true;
+                    result["error"] = "Missing level or power";
+                } else {
+                    uint8_t lvl = params["level"].as<uint8_t>();
+                    float pwr = params["power"].as<float>();
+                    if (!self->_recalibrationUI.addPoint(lvl, pwr)) {
+                        result["isError"] = true;
+                        result["error"] = "Failed to add point (invalid level or capacity reached)";
+                    } else {
+                        self->syncPhysicsCalibration();
+                        if (self->_configManager) {
+                            self->_configManager->saveModuleConfig(self);
+                        }
+                    }
+                }
+            } else if (strcmp(action, "reset") == 0) {
+                self->_recalibrationUI.reset();
+                self->syncPhysicsCalibration();
+                if (self->_configManager) {
+                    self->_configManager->saveModuleConfig(self);
+                }
+            } else {
+                result["isError"] = true;
+                result["error"] = "Unknown action (expected add_point or reset)";
+            }
+            result["count"] = self->_recalibrationUI.getPointCount();
+            result["max"] = self->_recalibrationUI.getMaxPoints();
+        },
+        this,
+        /*mutatesState=*/true
+    );
+
+    // 4. echenon_upload_power_table (mutatesState = true)
+    JsonDocument ptSchema;
+    ptSchema["type"] = "object";
+    JsonObject ptProps = ptSchema["properties"].to<JsonObject>();
+    ptProps["csv"]["type"] = "string";
+    JsonArray ptReq = ptSchema["required"].to<JsonArray>();
+    ptReq.add("csv");
+
+    registry.addTool(
+        "echenon_upload_power_table",
+        "Upload a custom CSV power table into the active PowerEngine",
+        ptSchema,
+        [](void* ctx, JsonObject& params, JsonObject& result) {
+            auto* self = static_cast<EchenonModule*>(ctx);
+            const char* csv = params["csv"] | "";
+            size_t len = csv ? strlen(csv) : 0;
+            if (len == 0) {
+                result["isError"] = true;
+                result["error"] = "Empty CSV string";
+                return;
+            }
+            PowerTable newTable;
+            if (!newTable.parseCSV(csv, len)) {
+                result["isError"] = true;
+                result["error"] = "Failed to parse CSV power table";
+                return;
+            }
+            self->_powerEngine.setTable(newTable);
+            result["success"] = true;
+        },
+        this,
+        /*mutatesState=*/true
+    );
+
+#ifdef WITH_FTMS
+    // 5. echenon_set_ftms_smoothing (mutatesState = true)
+    JsonDocument ftmsSchema;
+    ftmsSchema["type"] = "object";
+    JsonObject ftmsProps = ftmsSchema["properties"].to<JsonObject>();
+    ftmsProps["seconds"]["type"] = "number";
+    ftmsProps["seconds"]["minimum"] = 0;
+    ftmsProps["seconds"]["maximum"] = 10;
+    JsonArray ftmsReq = ftmsSchema["required"].to<JsonArray>();
+    ftmsReq.add("seconds");
+
+    registry.addTool(
+        "echenon_set_ftms_smoothing",
+        "Set FTMS BLE power smoothing window in seconds (0-10)",
+        ftmsSchema,
+        [](void* ctx, JsonObject& params, JsonObject& result) {
+            auto* self = static_cast<EchenonModule*>(ctx);
+            if (!params["seconds"].is<float>() && !params["seconds"].is<int>()) {
+                result["isError"] = true;
+                result["error"] = "Missing or non-numeric seconds parameter";
+                return;
+            }
+            float val = params["seconds"].as<float>();
+            if (val < 0.0f) val = 0.0f;
+            if (val > 10.0f) val = 10.0f;
+            self->_ftmsPowerSmoothS = val;
+            if (self->_ftmsServer) {
+                self->_ftmsServer->setPowerSmoothingWindow(val);
+            }
+            if (self->_configManager) {
+                self->_configManager->saveModuleConfig(self);
+            }
+            result["ftms_power_smooth_s"] = self->_ftmsPowerSmoothS;
+        },
+        this,
+        /*mutatesState=*/true
+    );
+#endif
+
+#ifdef WITH_CALIBRATION_RIG
+    // 6. echenon_rig_status (read-only)
+    registry.addTool(
+        "echenon_rig_status",
+        "Get CalibrationRig state machine, potentiometer, GPIO, and ADC diagnostic status",
+        [](void* ctx, JsonObject& /*params*/, JsonObject& result) {
+            auto* self = static_cast<EchenonModule*>(ctx);
+            const char* stateStr = "IDLE";
+            switch (self->_calibrationRig.getState()) {
+                case echenon::CalibrationRig::State::IDLE:    stateStr = "IDLE"; break;
+                case echenon::CalibrationRig::State::SEEKING: stateStr = "SEEKING"; break;
+                case echenon::CalibrationRig::State::SETTLED: stateStr = "SETTLED"; break;
+                case echenon::CalibrationRig::State::ERROR:   stateStr = "ERROR"; break;
+            }
+            result["state"] = stateStr;
+            result["level"] = self->_calibrationRig.getCurrentLevel();
+            result["target"] = self->_calibrationRig.getTargetLevel();
+            result["cadence"] = self->_calibrationRig.getCadenceRPM();
+            result["steps_remaining"] = self->_calibrationRig.getStepsRemaining();
+            result["settle_timeout"] = self->_calibrationRig.didSettleTimeout();
+
+            uint16_t potFilt = self->_resistanceSensor.getFilteredWiper();
+            result["pot"] = potFilt;
+            result["derived_level"] = LevelMapping::wiperToEchelon(potFilt);
+
+            JsonObject gpio = result["gpio"].to<JsonObject>();
+            gpio["enc_a_pin"] = PIN_RIG_ENC_A;
+            gpio["enc_a_val"] = digitalRead(PIN_RIG_ENC_A);
+            gpio["enc_b_pin"] = PIN_RIG_ENC_B;
+            gpio["enc_b_val"] = digitalRead(PIN_RIG_ENC_B);
+            gpio["cad_pin"] = PIN_RIG_CADENCE;
+            gpio["cad_val"] = digitalRead(PIN_RIG_CADENCE);
+
+            JsonObject adc = result["adc"].to<JsonObject>();
+            adc["pot_raw"] = analogRead(PIN_POT_WIPER);
+            adc["cad_sense"] = analogRead(PIN_CADENCE);
+            adc["enc_vcc"] = analogRead(PIN_KNOB_ENC_VCC);
+            adc["enc_a_sense"] = analogRead(PIN_KNOB_ENC_A);
+            adc["enc_b_sense"] = analogRead(PIN_KNOB_ENC_B);
+
+            String statusLine = self->_calibrationRig.handleStatus();
+            statusLine.trim();
+            result["status_line"] = statusLine.c_str();
+        },
+        this,
+        /*mutatesState=*/false
+    );
+
+    // 7. echenon_rig_command (mutatesState = true)
+    JsonDocument rigCmdSchema;
+    rigCmdSchema["type"] = "object";
+    JsonObject rigCmdProps = rigCmdSchema["properties"].to<JsonObject>();
+    rigCmdProps["command"]["type"] = "string";
+    JsonArray rigCmdReq = rigCmdSchema["required"].to<JsonArray>();
+    rigCmdReq.add("command");
+
+    registry.addTool(
+        "echenon_rig_command",
+        "Send a control command (SET, HOME, STOP, STATUS) to the CalibrationRig",
+        rigCmdSchema,
+        [](void* ctx, JsonObject& params, JsonObject& result) {
+            auto* self = static_cast<EchenonModule*>(ctx);
+            String cmd = String(params["command"] | "");
+            cmd.trim();
+            if (cmd.isEmpty()) {
+                result["isError"] = true;
+                result["error"] = "ERROR empty command";
+                return;
+            }
+            self->_calibrationRig.handleCommand(cmd);
+            result["command"] = cmd.c_str();
+            String statusLine = self->_calibrationRig.handleStatus();
+            statusLine.trim();
+            result["status_line"] = statusLine.c_str();
+        },
+        this,
+        /*mutatesState=*/true
+    );
 #endif
 }
 

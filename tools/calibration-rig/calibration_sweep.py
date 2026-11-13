@@ -19,11 +19,13 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import logging
 import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -79,50 +81,81 @@ def _setup_logging() -> None:
 # ---------------------------------------------------------------------------
 
 class RigHTTP:
-    """HTTP client for the CalibrationRig firmware endpoints."""
+    """MCP JSON-RPC 2.0 client for the CalibrationRig firmware tools."""
 
-    def __init__(self, host: str, timeout: float = 10.0):
+    def __init__(self, host: str, timeout: float = 10.0, mcp_token: str | None = None):
         self._base = f"http://{host}"
-        self._cmd_url = f"{self._base}/api/echenon/rig/command"
-        self._status_url = f"{self._base}/api/echenon/rig/status"
+        self._mcp_url = f"{self._base}/api/mcp"
         self._timeout = timeout
-        log.info("Rig HTTP: %s", self._base)
+        self._mcp_token = mcp_token or os.environ.get("ECHENON_MCP_TOKEN")
+        self._seq = 0
+        log.info("Rig MCP endpoint: %s", self._mcp_url)
 
-    def send_command(self, command: str) -> str:
-        """Send a command to the rig and return the response text."""
-        log.info("TX → %s", command.strip())
+    def _call_tool(self, name: str, arguments: dict) -> dict:
+        """Invoke an MCP tool via JSON-RPC 2.0 POST /api/mcp and return parsed content dict."""
+        self._seq += 1
+        payload = {
+            "jsonrpc": "2.0",
+            "id": self._seq,
+            "method": "tools/call",
+            "params": {
+                "name": name,
+                "arguments": arguments,
+            },
+        }
+        headers = {"Content-Type": "application/json"}
+        if self._mcp_token:
+            headers["Authorization"] = f"Bearer {self._mcp_token}"
+
+        body_bytes = json.dumps(payload).encode("utf-8")
         if requests:
             resp = requests.post(
-                self._cmd_url,
-                data=command.strip(),
+                self._mcp_url,
+                data=body_bytes,
+                headers=headers,
                 timeout=self._timeout,
             )
             resp.raise_for_status()
-            return resp.text.strip()
+            rpc_resp = resp.json()
         else:
             req = urllib.request.Request(
-                self._cmd_url,
-                data=command.strip().encode("ascii"),
+                self._mcp_url,
+                data=body_bytes,
+                headers=headers,
                 method="POST",
             )
             with urllib.request.urlopen(req, timeout=self._timeout) as resp:
-                return resp.read().decode("ascii").strip()
+                rpc_resp = json.loads(resp.read().decode("utf-8"))
+
+        if "error" in rpc_resp and rpc_resp["error"]:
+            raise RuntimeError(f"MCP JSON-RPC error calling {name}: {rpc_resp['error']}")
+
+        result = rpc_resp.get("result") or {}
+        content = result.get("content") or []
+        text = content[0].get("text", "{}") if content else "{}"
+        parsed = json.loads(text) if text else {}
+
+        if result.get("isError"):
+            err_msg = parsed.get("error", text) if isinstance(parsed, dict) else text
+            raise RuntimeError(f"MCP tool {name} returned error: {err_msg}")
+
+        return parsed
+
+    def send_command(self, command: str) -> str:
+        """Send a command to the rig via echenon_rig_command and return the status line."""
+        cmd = command.strip()
+        log.info("TX → %s", cmd)
+        res = self._call_tool("echenon_rig_command", {"command": cmd})
+        return str(res.get("status_line", "")).strip()
 
     def get_status_json(self) -> dict:
-        """GET the full JSON status from the rig."""
-        if requests:
-            resp = requests.get(self._status_url, timeout=self._timeout)
-            resp.raise_for_status()
-            return resp.json()
-        else:
-            req = urllib.request.Request(self._status_url)
-            with urllib.request.urlopen(req, timeout=self._timeout) as resp:
-                import json
-                return json.loads(resp.read().decode("ascii"))
+        """Read full diagnostic status from the rig via echenon_rig_status."""
+        return self._call_tool("echenon_rig_status", {})
 
     def get_status_line(self) -> str:
-        """Send STATUS command and return the text status line."""
-        return self.send_command("STATUS")
+        """Read the text status line via read-only echenon_rig_status."""
+        res = self._call_tool("echenon_rig_status", {})
+        return str(res.get("status_line", "")).strip()
 
 
 def _wait_for_settled(
@@ -221,13 +254,14 @@ def _adb_read_power_uiautomator() -> str:
     Returns the power string (e.g. ``"145"``) or a sentinel on failure.
     """
     adb = _adb_cmd()
+    host_dump = os.path.join(tempfile.gettempdir(), "window_dump.xml")
     try:
         subprocess.run(
             [adb, "shell", "uiautomator", "dump", "/sdcard/window_dump.xml"],
             capture_output=True, text=True, timeout=15, check=True,
         )
         subprocess.run(
-            [adb, "pull", "/sdcard/window_dump.xml", "/tmp/window_dump.xml"],
+            [adb, "pull", "/sdcard/window_dump.xml", host_dump],
             capture_output=True, text=True, timeout=15, check=True,
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
@@ -235,7 +269,7 @@ def _adb_read_power_uiautomator() -> str:
         raise
 
     try:
-        tree = ElementTree.parse("/tmp/window_dump.xml")
+        tree = ElementTree.parse(host_dump)
     except ElementTree.ParseError as exc:
         log.warning("XML parse error: %s", exc)
         raise
@@ -301,20 +335,21 @@ def _adb_read_power_screencap() -> str:
         ) from exc
 
     adb = _adb_cmd()
+    host_screencap = os.path.join(tempfile.gettempdir(), "screenshot.png")
     try:
         subprocess.run(
             [adb, "shell", "screencap", "-p", "/sdcard/screenshot.png"],
             capture_output=True, text=True, timeout=15, check=True,
         )
         subprocess.run(
-            [adb, "pull", "/sdcard/screenshot.png", "/tmp/screenshot.png"],
+            [adb, "pull", "/sdcard/screenshot.png", host_screencap],
             capture_output=True, text=True, timeout=15, check=True,
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
         log.warning("ADB screencap command failed: %s", exc)
         raise
 
-    img = Image.open("/tmp/screenshot.png")
+    img = Image.open(host_screencap)
     ocr_text: str = pytesseract.image_to_string(img)
 
     # Look for a number near "watts" or "output"
@@ -386,13 +421,14 @@ def read_power(adb_method: str, read_delay: float, dry_run: bool) -> str:
 def _adb_read_resistance() -> str:
     """Read the resistance value from the Echelon Fit app via uiautomator."""
     adb = _adb_cmd()
+    host_dump = os.path.join(tempfile.gettempdir(), "window_dump.xml")
     try:
         subprocess.run(
             [adb, "shell", "uiautomator", "dump", "/sdcard/window_dump.xml"],
             capture_output=True, text=True, timeout=15, check=True,
         )
         subprocess.run(
-            [adb, "pull", "/sdcard/window_dump.xml", "/tmp/window_dump.xml"],
+            [adb, "pull", "/sdcard/window_dump.xml", host_dump],
             capture_output=True, text=True, timeout=15, check=True,
         )
     except Exception as exc:
@@ -400,7 +436,7 @@ def _adb_read_resistance() -> str:
         return "ADB_ERROR"
 
     try:
-        tree = ElementTree.parse("/tmp/window_dump.xml")
+        tree = ElementTree.parse(host_dump)
     except ElementTree.ParseError:
         return "PARSE_ERROR"
 
@@ -623,6 +659,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         metavar="SECONDS",
         help="HTTP request timeout (default: 10.0)",
     )
+    parser.add_argument(
+        "--mcp-token", default=os.environ.get("ECHENON_MCP_TOKEN"),
+        metavar="TOKEN",
+        help="Optional Bearer token for /api/mcp (default: $ECHENON_MCP_TOKEN)",
+    )
     return parser.parse_args(argv)
 
 
@@ -644,7 +685,7 @@ def main(argv: list[str] | None = None) -> int:
     log.info("  Matrix:       %d levels × %d cadences = %d points",
              len(LEVELS), len(CADENCE_STEPS), len(LEVELS) * len(CADENCE_STEPS))
 
-    rig = RigHTTP(args.host, timeout=args.http_timeout)
+    rig = RigHTTP(args.host, timeout=args.http_timeout, mcp_token=args.mcp_token)
 
     # Pre-flight: verify connectivity
     try:

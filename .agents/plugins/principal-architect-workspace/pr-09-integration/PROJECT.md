@@ -39,9 +39,9 @@ work_orders:
   slug: wo1-security-mcp-encapsulation
   title: MCP Contributor Tools, Portal Auth Guards, Persistence Fixes & Encapsulation
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 854b1dcaf3e3618b3b7d19f87863d9b917ffa821
 - id: WO-09.2
   slug: wo2-house-style-core
   title: File Headers & Doxygen House Style — Core, Sensors, Power & Rig

@@ -45,15 +45,18 @@
 class PsychicHttpServer;
 class ConfigManager;
 class EventBus;
+class AuthManager;
+class MCPToolRegistry;
 
 /**
  * @brief Echenon primary application module following the Service Module Pattern.
  *
- * Implements ITickable, IConfigurable, and IWebContributor.
+ * Implements ITickable, IConfigurable, IWebContributor, and IMCPContributor.
  */
 class EchenonModule : public ITickable,
                       public IConfigurable,
-                      public IWebContributor {
+                      public IWebContributor,
+                      public IMCPContributor {
 public:
     EchenonModule() = default;
     ~EchenonModule() override = default;
@@ -74,8 +77,12 @@ public:
     const char* getApiPrefix() const override { return "/api/echenon"; }
     size_t getMaxPostBody() const override { return 8192; }
 
+    // --- IMCPContributor ---
+    void registerMCPTools(MCPToolRegistry& registry) override;
+
     // --- Dependency Injection ---
     void setConfigManager(ConfigManager* cm) { _configManager = cm; }
+    void setAuthManager(AuthManager* am) { _authManager = am; }
     void setEventBus(EventBus* eb) {
         _eventBus = eb;
 #ifdef WITH_SIGNAL_LOGGER
@@ -168,6 +175,7 @@ private:
     void syncPhysicsCalibration();
 
     ConfigManager* _configManager = nullptr;
+    AuthManager*   _authManager   = nullptr;
     EventBus*      _eventBus      = nullptr;
 
     echenon::CadenceSensor _cadenceSensor;

@@ -17,13 +17,14 @@ typedef void* adc_cali_handle_t;
 
 class PsychicHttpServer;
 class EventBus;
+class AuthManager;
 
 class SignalLogger {
 public:
     void begin();
     void stop();
     void tick(uint32_t now);
-    void registerRoutes(PsychicHttpServer& server);
+    void registerRoutes(PsychicHttpServer& server, AuthManager* authManager = nullptr);
     bool startBurst(const char* trigger, uint32_t durationMs);
     bool isCapturing() const;
     bool isBurstActive() const;

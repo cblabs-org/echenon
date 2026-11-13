@@ -11,7 +11,7 @@ static BLEManager bleManager;
 #ifdef WITH_ENCODER
 #include "EncoderModule.hpp"
 #include "board.h"
-EncoderModule encoderModule;
+static EncoderModule encoderModule;
 #endif
 
 #ifdef WITH_SESSION
@@ -33,8 +33,8 @@ static TimeManager timeManager;
 static TimePreconditionContributor timePrecondition{timeManager};
 #endif
 
-Application app;
-EchenonModule echenonModule;
+static Application app;
+static EchenonModule echenonModule;
 
 #ifdef WITH_SESSION
 static echenon::RideStore rideStore;
@@ -90,6 +90,7 @@ void setup() {
 
     // Wire dependencies
     echenonModule.setConfigManager(&app.getConfigManager());
+    echenonModule.setAuthManager(&app.getAuthManager());
     echenonModule.setEventBus(&app.getEventBus());
 
     // Register — compile-time introspection detects implemented interfaces
