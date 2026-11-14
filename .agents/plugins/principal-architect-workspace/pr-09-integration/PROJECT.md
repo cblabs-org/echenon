@@ -31,7 +31,7 @@ charter:
   - pio test -e native --verbose
   charter_locked: true
   charter_hash: dbd0b6df909a1b036049151bc82207ee68bc6aef5bc11aa8cf1f44942073eb25
-status: AUDIT_APPROVED
+status: APPROVED
 approved_at: '2026-11-13T23:13:38.026649Z'
 github_pr: 20
 work_orders:
@@ -98,6 +98,13 @@ work_orders:
   status: COMPLETED
   attempts: 1
   commit_sha: 6d785f89008abbecb0f07d5d27167b49594e9d4b
+- id: WO-09.10
+  slug: wo10-mcp-server-wiring
+  title: Wire Ring-2 MCPServer in Composition Root & Rig Read-Only Hint
+  complexity: standard
+  status: PENDING
+  attempts: 0
+  commit_sha: null
 ---
 
 ## 2. Scope
@@ -160,6 +167,7 @@ passes; full coexistence stress test passes.
 | `WO-09.7` | `wo7-public-repo-hygiene` | Redact home WiFi SSID (`<REDACTED_SSID>`), BSSIDs (`XX:XX:XX:*`), & personal Gemini URL across 10 tracked doc/log files + `.gitignore` hardening | `mechanical` | `gemini-4-hydrogen-medium` | `COMPLETED` | `b2cf0f08b872` + `4ba5c82eb287` (`rcpt_86b7b3d4dbba`) |
 | `WO-09.8` | `wo8-release-audit-verify` | 10-Dimension Release Audit (`Beta` channel `v0.3.0-beta.1`), `native` test suite, 3-env firmware build matrix, ELF DRAM inspection & audit report | `interactive` | `gemini-4-argon-medium` | `COMPLETED` | `5cc4819fc2f5` (`rcpt_30f66aaa6250`) |
 | `WO-09.9` | `wo9-audit-doc-cleanup` | Mask privacy grep literals & align `SignalLogger` routes in `docs/release-audit-v0.3.0-beta.1.md` | `mechanical` | `gemini-4-hydrogen-medium` | `COMPLETED` | `98bbf715ef21` (`rcpt_70001776b36b`) |
+| `WO-09.10` | `wo10-mcp-server-wiring` | Wire Ring-2 `MCPServer` in `src/main.cpp`, `ESP_LOGI` in `EchenonModule::registerMCPTools()`, & read-only `-32000` actionable hint in `calibration_sweep.py` | `standard` | `gemini-4-argon-medium` | `PENDING` | — |
 
 ## 4. Session Log
 
@@ -170,8 +178,9 @@ passes; full coexistence stress test passes.
   - Submodule visibility (`matthewmcneill/esp32-app-foundation`) handled via parallel process and tracked as final owner launch gate before flipping repos public.
   - Per Rule 03 & programme governance, PR merge to `main`, `v0.3.0-beta.1` tagging, and `deploy_release.py` remain strictly owner-gated after Step 6A Cold-Firewall Audit.
 - **2026-11-14 — All 8 Work Orders Stamped & Integrated:** `WO-09.1` through `WO-09.8` completed sequentially on stacked branches (`450fb751dd97` → `5cc4819fc2f5`) with `269/269` `native` tests passing (`0.54 s`), all 3 firmware targets building green (`ex3-waveshare-nano`, `-diag`, `-rig`), privacy scrub verified (`0` matches outside `.agents/`), and formal 10-Dimension Beta Release Audit written to `docs/release-audit-v0.3.0-beta.1.md`. Fast-forwarded `feat/pr-09-integration` for Step 6A Cold-Firewall Audit.
-- **2026-11-14 — Step 6A Audit Round 1 & Bounded `WO-09.9` Remediation:** Cold-Firewall Audit Round 1 (`93dba6d6`) returned `APPROVED` with 2 non-blocking documentation observations in `docs/release-audit-v0.3.0-beta.1.md` (`NON-BLOCKING-1` privacy grep literal masking and `NON-BLOCKING-2` `SignalLogger` route list alignment). Owner authorized Step 1 cleanup via `WO-09.9` (`98bbf715ef21`, `rcpt_70001776b36b`), staged for Audit Round 2.
+- **2026-11-14 — Step 6A Audit Round 1 & Bounded `WO-09.9` Remediation:** Cold-Firewall Audit Round 1 (`93dba6d6`) returned `APPROVED` with 2 non-blocking documentation observations in `docs/release-audit-v0.3.0-beta.1.md` (`NON-BLOCKING-1` privacy grep literal masking and `NON-BLOCKING-2` `SignalLogger` route list alignment). Owner authorized Step 1 cleanup via `WO-09.9` (`98bbf715ef21`, `rcpt_70001776b36b`), followed by `APPROVED` Cold-Firewall Audit Round 2 (`87a410af0ef5`).
+- **2026-11-14 — Live `v0.3.0-dev.48` Bench Test & Owner-Approved `WO-09.10`:** Live hardware verification on `/dev/cu.usbmodem101` (`v0.3.0-dev.48`) confirmed 2h 17m uptime (`8,235 s`, zero resets), 13/13 portal routes, BLE HRS/FTMS streaming, and `/api/echenon/rig/* -> 404`, while exposing `POST /api/mcp -> 404` because Ring-2 `MCPServer` was not wired in `src/main.cpp`. Owner explicitly approved `WO-09.10` remediation, live `v0.3.0-dev.49` `/api/mcp` + soak verification, `WO-09.11` measured audit sync, and Audit Round 3.
 
 ## Status
 **Plan Status:** APPROVED
-**Execution Status:** STAGED_FOR_AUDIT (WO-09.1..WO-09.9 verified; awaiting Step 6A Audit Round 2)
+**Execution Status:** IN_PROGRESS (WO-09.10 authored; dispatching worker)
