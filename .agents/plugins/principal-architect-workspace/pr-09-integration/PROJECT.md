@@ -81,9 +81,9 @@ work_orders:
   slug: wo7-public-repo-hygiene
   title: Evidence Redaction (SSID/BSSID/URL) & .gitignore Hardening
   complexity: mechanical
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: b2cf0f08b87224eefe6ca4b7433f7ee85ead6255
 - id: WO-09.8
   slug: wo8-release-audit-verify
   title: Multi-Env Firmware Builds, Native Tests & Beta Release Audit Report

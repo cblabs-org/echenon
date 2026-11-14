@@ -4,7 +4,7 @@ wo_id: WO-09.7
 pr_id: PR-09
 title: Evidence Redaction (SSID/BSSID/URL) & .gitignore Hardening
 complexity: mechanical
-status: PENDING
+status: COMPLETED
 allowed_files:
 - .gitignore
 - docs/echelon-teardown/conversation.md
@@ -27,7 +27,28 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: c3c4686f8b68e5290d11ca19ae969a4d31dc3a573fab951f8846723589648109
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_86b7b3d4dbba
+  commit_sha: b2cf0f08b87224eefe6ca4b7433f7ee85ead6255
+  files_modified:
+  - docs/echelon-teardown/conversation.md
+  - docs/measurements/phase0/B01-20261003-sensor-bringup-report.md
+  - docs/measurements/phase2/BLE-0x3e-debug-2026-10-13.md
+  - docs/measurements/phase2/wo5-rerun-2.5-2.6-evidence.md
+  - docs/measurements/phase2/wo5-strap-acceptance/evidence.md
+  - docs/measurements/phase2/wo6-coexistence/evidence.md
+  - docs/measurements/phase3/evidence/pr19-dual-sink-serial.log
+  - docs/measurements/phase3/evidence/pr19-hardware-verification.md
+  - docs/measurements/phase3/evidence/pr21-wahoo-serial.log
+  - docs/measurements/phase3/evidence/pr21-wahoo-verification.md
+  verification_summary: 'pio test -e native --verbose: ================ 269 test cases:
+    269 succeeded in 00:00:00.506 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-09.7 — Evidence Redaction (SSID/BSSID/URL) & .gitignore Hardening
