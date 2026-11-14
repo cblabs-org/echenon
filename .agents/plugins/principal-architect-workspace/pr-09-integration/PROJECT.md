@@ -33,7 +33,7 @@ charter:
   charter_hash: dbd0b6df909a1b036049151bc82207ee68bc6aef5bc11aa8cf1f44942073eb25
 status: STAGED_FOR_AUDIT
 approved_at: '2026-11-13T23:13:38.026649Z'
-github_pr: null
+github_pr: 20
 work_orders:
 - id: WO-09.1
   slug: wo1-security-mcp-encapsulation
