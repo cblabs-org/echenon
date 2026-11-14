@@ -105,6 +105,14 @@ work_orders:
   status: COMPLETED
   attempts: 1
   commit_sha: cff35a568ed9e72f7517f67109a3562c98c90f07
+- id: WO-09.11
+  slug: wo11-release-audit-measured-sync
+  title: Sync Release Audit Report with MCPServer Metrics & Live v0.3.0-dev.49 Bench
+    Soak
+  complexity: mechanical
+  status: PENDING
+  attempts: 0
+  commit_sha: null
 ---
 
 ## 2. Scope
@@ -167,7 +175,8 @@ passes; full coexistence stress test passes.
 | `WO-09.7` | `wo7-public-repo-hygiene` | Redact home WiFi SSID (`<REDACTED_SSID>`), BSSIDs (`XX:XX:XX:*`), & personal Gemini URL across 10 tracked doc/log files + `.gitignore` hardening | `mechanical` | `gemini-4-hydrogen-medium` | `COMPLETED` | `b2cf0f08b872` + `4ba5c82eb287` (`rcpt_86b7b3d4dbba`) |
 | `WO-09.8` | `wo8-release-audit-verify` | 10-Dimension Release Audit (`Beta` channel `v0.3.0-beta.1`), `native` test suite, 3-env firmware build matrix, ELF DRAM inspection & audit report | `interactive` | `gemini-4-argon-medium` | `COMPLETED` | `5cc4819fc2f5` (`rcpt_30f66aaa6250`) |
 | `WO-09.9` | `wo9-audit-doc-cleanup` | Mask privacy grep literals & align `SignalLogger` routes in `docs/release-audit-v0.3.0-beta.1.md` | `mechanical` | `gemini-4-hydrogen-medium` | `COMPLETED` | `98bbf715ef21` (`rcpt_70001776b36b`) |
-| `WO-09.10` | `wo10-mcp-server-wiring` | Wire Ring-2 `MCPServer` in `src/main.cpp`, `ESP_LOGI` in `EchenonModule::registerMCPTools()`, & read-only `-32000` actionable hint in `calibration_sweep.py` | `standard` | `gemini-4-argon-medium` | `PENDING` | — |
+| `WO-09.10` | `wo10-mcp-server-wiring` | Wire Ring-2 `MCPServer` in `src/main.cpp`, `ESP_LOGI` in `EchenonModule::registerMCPTools()`, & read-only `-32000` actionable hint in `calibration_sweep.py` | `standard` | `gemini-4-argon-medium` | `COMPLETED` | `3173600c84ab` (`rcpt_ccd8e2eafb52`) |
+| `WO-09.11` | `wo11-release-audit-measured-sync` | Sync `docs/release-audit-v0.3.0-beta.1.md` with post-`MCPServer` build/ELF footprint & live `v0.3.0-dev.49` `/api/mcp` + bench soak telemetry | `mechanical` | `gemini-4-hydrogen-medium` | `PENDING` | — |
 
 ## 4. Session Log
 
@@ -180,7 +189,8 @@ passes; full coexistence stress test passes.
 - **2026-11-14 — All 8 Work Orders Stamped & Integrated:** `WO-09.1` through `WO-09.8` completed sequentially on stacked branches (`450fb751dd97` → `5cc4819fc2f5`) with `269/269` `native` tests passing (`0.54 s`), all 3 firmware targets building green (`ex3-waveshare-nano`, `-diag`, `-rig`), privacy scrub verified (`0` matches outside `.agents/`), and formal 10-Dimension Beta Release Audit written to `docs/release-audit-v0.3.0-beta.1.md`. Fast-forwarded `feat/pr-09-integration` for Step 6A Cold-Firewall Audit.
 - **2026-11-14 — Step 6A Audit Round 1 & Bounded `WO-09.9` Remediation:** Cold-Firewall Audit Round 1 (`93dba6d6`) returned `APPROVED` with 2 non-blocking documentation observations in `docs/release-audit-v0.3.0-beta.1.md` (`NON-BLOCKING-1` privacy grep literal masking and `NON-BLOCKING-2` `SignalLogger` route list alignment). Owner authorized Step 1 cleanup via `WO-09.9` (`98bbf715ef21`, `rcpt_70001776b36b`), followed by `APPROVED` Cold-Firewall Audit Round 2 (`87a410af0ef5`).
 - **2026-11-14 — Live `v0.3.0-dev.48` Bench Test & Owner-Approved `WO-09.10`:** Live hardware verification on `/dev/cu.usbmodem101` (`v0.3.0-dev.48`) confirmed 2h 17m uptime (`8,235 s`, zero resets), 13/13 portal routes, BLE HRS/FTMS streaming, and `/api/echenon/rig/* -> 404`, while exposing `POST /api/mcp -> 404` because Ring-2 `MCPServer` was not wired in `src/main.cpp`. Owner explicitly approved `WO-09.10` remediation, live `v0.3.0-dev.49` `/api/mcp` + soak verification, `WO-09.11` measured audit sync, and Audit Round 3.
+- **2026-11-14 — `WO-09.10` & Live `v0.3.0-dev.49` Hardware/MCP Gate Verified:** Ring-2 `MCPServer` wired and verified (`3173600c84ab`, `rcpt_ccd8e2eafb52`); `269/269` native tests (`0.551 s`), all 3 ESP32-S3 envs green (`ex3-waveshare-nano`: `58,996 B` RAM / `1,787,295 B` Flash; `mcpServer`: `104 B`), and `82.4 min` (`4,944 s`) live soak on `/dev/cu.usbmodem101` (`v0.3.0-dev.49`) verified zero faults, `14/14` gzipped portal routes (`/mcp.js` `200`), `GET /api/mcp/status` (`27` tools, `readOnly: true`), `POST /api/mcp` `initialize` + `tools/list` + `echenon_get_telemetry` + `-32000` `readOnly` guard, `/api/echenon/rig/* -> 404`, and BLE `Echenon` advertising (`0x180D`, `0x1826`). Syncing `docs/release-audit-v0.3.0-beta.1.md` via `WO-09.11`.
 
 ## Status
 **Plan Status:** APPROVED
-**Execution Status:** IN_PROGRESS (WO-09.10 authored; dispatching worker)
+**Execution Status:** IN_PROGRESS (WO-09.11 authored; dispatching worker)
