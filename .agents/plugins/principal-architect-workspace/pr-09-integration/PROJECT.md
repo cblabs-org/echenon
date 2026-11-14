@@ -74,9 +74,9 @@ work_orders:
   slug: wo6-public-repo-docs
   title: LICENSE, Beta Recruitment README, CHANGELOG, CONTRIBUTING & SPEC Sync
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: da55c9c4f6cf987cce17253d9eaab70cb56d099a
 - id: WO-09.7
   slug: wo7-public-repo-hygiene
   title: Evidence Redaction (SSID/BSSID/URL) & .gitignore Hardening
