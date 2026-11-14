@@ -144,14 +144,14 @@ passes; full coexistence stress test passes.
 
 | WO | Slug | Scope | Complexity | Model | Status | Commit |
 |---|---|---|---|---|---|---|
-| `WO-09.1` | `wo1-security-mcp-encapsulation` | `IMCPContributor` tools, CalibrationRig HTTP→MCP migration, `AuthManager` guards, calibration persistence fixes, zero `extern Application app;`, `board.h` v1 finalisation | `standard` | `gemini-4-argon-medium` | `PENDING` | — |
-| `WO-09.2` | `wo2-house-style-core` | Apache-2.0 headers & Doxygen house style across 32 core/sensor/power/rig files | `mechanical` | `gemini-4-hydrogen-high` | `PENDING` | — |
-| `WO-09.3` | `wo3-house-style-ble-sinks` | Apache-2.0 headers, `FTMSServer` `millis()` `#ifdef UNIT_TEST` guard, & `GRAVE-05` comments across 31 BLE/session/sink files | `mechanical` | `gemini-4-hydrogen-high` | `PENDING` | — |
-| `WO-09.4` | `wo4-portal-design-tokens` | CSS `var(--token, #fallback)` compliance, `/api/echenon/calibration/reset` wiring, `window.apiFetch` consistency, WCAG AA contrast & SVG stroke polish across 12 `web/` files | `standard` | `gemini-4-hydrogen-high` | `PENDING` | — |
-| `WO-09.5` | `wo5-beta-hardware-guide` | Standalone v1 Passive Tap Board builder guide (`docs/beta-build-guide.md`) with mechanical `VIN`/`USB-C` interlock warning & `hardware_specification.md` `C1 ×5` errata fix | `standard` | `gemini-4-argon-medium` | `PENDING` | — |
-| `WO-09.6` | `wo6-public-repo-docs` | `LICENSE`, beta-recruitment `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, & `SPEC.md` beta OTA deferral note | `standard` | `gemini-4-argon-medium` | `PENDING` | — |
-| `WO-09.7` | `wo7-public-repo-hygiene` | Redact home WiFi SSID (`<REDACTED_SSID>`), BSSIDs (`XX:XX:XX:*`), & personal Gemini URL across 10 tracked doc/log files + `.gitignore` hardening | `mechanical` | `gemini-4-hydrogen-medium` | `PENDING` | — |
-| `WO-09.8` | `wo8-release-audit-verify` | 10-Dimension Release Audit (`Beta` channel `v0.3.0-beta.1`), `native` test suite, 3-env firmware build matrix, ELF DRAM inspection & audit report | `interactive` | `gemini-4-argon-medium` | `PENDING` | — |
+| `WO-09.1` | `wo1-security-mcp-encapsulation` | `IMCPContributor` tools, CalibrationRig HTTP→MCP migration, `AuthManager` guards, calibration persistence fixes, zero `extern Application app;`, `board.h` v1 finalisation | `standard` | `gemini-4-argon-medium` | `COMPLETED` | `450fb751dd97` (`rcpt_c82896c33fdc`) |
+| `WO-09.2` | `wo2-house-style-core` | Apache-2.0 headers & Doxygen house style across 32 core/sensor/power/rig files | `mechanical` | `gemini-4-hydrogen-high` | `COMPLETED` | `6b63b9cca95d` (`rcpt_6184086abe12`) |
+| `WO-09.3` | `wo3-house-style-ble-sinks` | Apache-2.0 headers, `FTMSServer` `millis()` `#ifdef UNIT_TEST` guard, & `GRAVE-05` comments across 31 BLE/session/sink files | `mechanical` | `gemini-4-hydrogen-high` | `COMPLETED` | `dd51431ed009` (`rcpt_6d2094de781c`) |
+| `WO-09.4` | `wo4-portal-design-tokens` | CSS `var(--token, #fallback)` compliance, `/api/echenon/calibration/reset` wiring, `window.apiFetch` consistency, WCAG AA contrast & SVG stroke polish across 12 `web/` files | `standard` | `gemini-4-hydrogen-high` | `COMPLETED` | `07b89b5fb9aa` (`rcpt_e0bca8f15496`) |
+| `WO-09.5` | `wo5-beta-hardware-guide` | Standalone v1 Passive Tap Board builder guide (`docs/beta-build-guide.md`) with mechanical `VIN`/`USB-C` interlock warning & `hardware_specification.md` `C1 ×5` errata fix | `standard` | `gemini-4-argon-medium` | `COMPLETED` | `da55c9c4f6cf` (`rcpt_011b654df3ad`) |
+| `WO-09.6` | `wo6-public-repo-docs` | `LICENSE`, beta-recruitment `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, & `SPEC.md` beta OTA deferral note | `standard` | `gemini-4-argon-medium` | `COMPLETED` | `f9b2b917e34d` (`rcpt_9d3d085f7d94`) |
+| `WO-09.7` | `wo7-public-repo-hygiene` | Redact home WiFi SSID (`<REDACTED_SSID>`), BSSIDs (`XX:XX:XX:*`), & personal Gemini URL across 10 tracked doc/log files + `.gitignore` hardening | `mechanical` | `gemini-4-hydrogen-medium` | `COMPLETED` | `b2cf0f08b872` + `4ba5c82eb287` (`rcpt_86b7b3d4dbba`) |
+| `WO-09.8` | `wo8-release-audit-verify` | 10-Dimension Release Audit (`Beta` channel `v0.3.0-beta.1`), `native` test suite, 3-env firmware build matrix, ELF DRAM inspection & audit report | `interactive` | `gemini-4-argon-medium` | `COMPLETED` | `5cc4819fc2f5` (`rcpt_30f66aaa6250`) |
 
 ## 4. Session Log
 
@@ -161,6 +161,8 @@ passes; full coexistence stress test passes.
   - Hardware power safety uses a mechanical `VIN` / `USB-C` interlock (**one or the other, NEVER both**); OTA (`WITH_OTA`) remains deferred post-beta (USB-C updates in beta).
   - Submodule visibility (`matthewmcneill/esp32-app-foundation`) handled via parallel process and tracked as final owner launch gate before flipping repos public.
   - Per Rule 03 & programme governance, PR merge to `main`, `v0.3.0-beta.1` tagging, and `deploy_release.py` remain strictly owner-gated after Step 6A Cold-Firewall Audit.
+- **2026-11-14 — All 8 Work Orders Stamped & Integrated:** `WO-09.1` through `WO-09.8` completed sequentially on stacked branches (`450fb751dd97` → `5cc4819fc2f5`) with `269/269` `native` tests passing (`0.54 s`), all 3 firmware targets building green (`ex3-waveshare-nano`, `-diag`, `-rig`), privacy scrub verified (`0` matches outside `.agents/`), and formal 10-Dimension Beta Release Audit written to `docs/release-audit-v0.3.0-beta.1.md`. Fast-forwarded `feat/pr-09-integration` for Step 6A Cold-Firewall Audit.
 
 ## Status
 **Plan Status:** APPROVED
+**Execution Status:** STAGED_FOR_AUDIT (WO-09.1..WO-09.8 verified; awaiting Step 6A Cold-Firewall Audit)
