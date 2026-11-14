@@ -31,7 +31,7 @@ charter:
   - pio test -e native --verbose
   charter_locked: true
   charter_hash: dbd0b6df909a1b036049151bc82207ee68bc6aef5bc11aa8cf1f44942073eb25
-status: AUDIT_APPROVED
+status: APPROVED
 approved_at: '2026-11-13T23:13:38.026649Z'
 github_pr: 20
 work_orders:
@@ -91,6 +91,13 @@ work_orders:
   status: COMPLETED
   attempts: 1
   commit_sha: 4ba5c82eb287daff0f9ae6507f2a2a6b7bf54d5e
+- id: WO-09.9
+  slug: wo9-audit-doc-cleanup
+  title: Mask Privacy Grep Literals & Align SignalLogger Routes in Release Audit Doc
+  complexity: mechanical
+  status: PENDING
+  attempts: 0
+  commit_sha: null
 ---
 
 ## 2. Scope
@@ -152,6 +159,7 @@ passes; full coexistence stress test passes.
 | `WO-09.6` | `wo6-public-repo-docs` | `LICENSE`, beta-recruitment `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, & `SPEC.md` beta OTA deferral note | `standard` | `gemini-4-argon-medium` | `COMPLETED` | `f9b2b917e34d` (`rcpt_9d3d085f7d94`) |
 | `WO-09.7` | `wo7-public-repo-hygiene` | Redact home WiFi SSID (`<REDACTED_SSID>`), BSSIDs (`XX:XX:XX:*`), & personal Gemini URL across 10 tracked doc/log files + `.gitignore` hardening | `mechanical` | `gemini-4-hydrogen-medium` | `COMPLETED` | `b2cf0f08b872` + `4ba5c82eb287` (`rcpt_86b7b3d4dbba`) |
 | `WO-09.8` | `wo8-release-audit-verify` | 10-Dimension Release Audit (`Beta` channel `v0.3.0-beta.1`), `native` test suite, 3-env firmware build matrix, ELF DRAM inspection & audit report | `interactive` | `gemini-4-argon-medium` | `COMPLETED` | `5cc4819fc2f5` (`rcpt_30f66aaa6250`) |
+| `WO-09.9` | `wo9-audit-doc-cleanup` | Mask privacy grep literals & align `SignalLogger` routes in `docs/release-audit-v0.3.0-beta.1.md` | `mechanical` | `gemini-4-hydrogen-medium` | `PENDING` | — |
 
 ## 4. Session Log
 
