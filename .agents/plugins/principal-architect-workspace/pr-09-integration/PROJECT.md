@@ -88,9 +88,9 @@ work_orders:
   slug: wo8-release-audit-verify
   title: Multi-Env Firmware Builds, Native Tests & Beta Release Audit Report
   complexity: interactive
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 4ba5c82eb287daff0f9ae6507f2a2a6b7bf54d5e
 ---
 
 ## 2. Scope

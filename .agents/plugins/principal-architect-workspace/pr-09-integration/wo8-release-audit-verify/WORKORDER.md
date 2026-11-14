@@ -4,7 +4,7 @@ wo_id: WO-09.8
 pr_id: PR-09
 title: Multi-Env Firmware Builds, Native Tests & Beta Release Audit Report
 complexity: interactive
-status: PENDING
+status: COMPLETED
 allowed_files:
 - docs/release-audit-v0.3.0-beta.1.md
 - test/**
@@ -20,7 +20,19 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 5543541990d44ddec1e3eab3687db0eb2b87011d915fa08f4d44ce28594f22c4
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_30f66aaa6250
+  commit_sha: 4ba5c82eb287daff0f9ae6507f2a2a6b7bf54d5e
+  files_modified:
+  - docs/release-audit-v0.3.0-beta.1.md
+  verification_summary: 'pio test -e native --verbose: ================ 269 test cases:
+    269 succeeded in 00:00:00.585 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-09.8 — Multi-Env Firmware Builds, Native Tests & Beta Release Audit Report
