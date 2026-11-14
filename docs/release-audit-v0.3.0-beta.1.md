@@ -103,7 +103,7 @@ Every dimension from the [ESP32 App Foundation Release Audit Protocol](../.agent
 - **Portal Authentication Coverage (`🟡 MECHANICAL` + `🟠 TRACED`):**
   - Every sensitive application HTTP endpoint enforces `AuthManager::checkPortalAuth(request, response)` (`23` call sites verified across `src/echenon/`):
     - [`src/echenon/EchenonModule.cpp`](../src/echenon/EchenonModule.cpp#L463-L748) — 13 routes: `/api/echenon/calibration/{start,stop,record-level,reset,status}`, `/api/echenon/recalibration/{point,points,reset}`, `/api/echenon/power-table/{upload,active}`, `/api/echenon/live`, `/api/echenon/ftms-smoothing` (`GET` & `POST`).
-    - [`src/echenon/SignalLogger.cpp`](../src/echenon/SignalLogger.cpp#L364-L503) — 5 routes (`WITH_SIGNAL_LOGGER` diagnostic builds): `/api/echenon/CaptureConfig` (`GET` & `POST`), `/api/echenon/SignalLog/ride.bin`, `/api/echenon/SignalLog/events.bin`, `/api/echenon/SignalLog/reset`.
+    - [`src/echenon/SignalLogger.cpp`](../src/echenon/SignalLogger.cpp#L363-L505) — 5 routes (`WITH_SIGNAL_LOGGER` diagnostic builds): `/api/echenon/status` (`GET`), `/api/echenon/burst/start` (`POST`), `/api/echenon/ride-log.csv` (`GET`), `/api/echenon/events.csv` (`GET`), and `/api/echenon/burst.csv` (`GET`).
     - [`src/echenon/DiagnosticsRoutes.cpp`](../src/echenon/DiagnosticsRoutes.cpp#L132-L373) — 4 routes: `/api/echenon/diagnostics/events` (`GET` & `DELETE`), `/api/echenon/diagnostics/rides` (`GET`), `/api/echenon/diagnostics/rides/*` (`GET` & `DELETE`).
     - [`src/echenon/SessionOverlay.cpp`](../src/echenon/SessionOverlay.cpp#L1271) — `checkAuth_()` helper guarding all `/api/session/*`, `/api/strava/*`, `/api/intervals/*`, `/api/wahoo/*`, and `/api/upload/*` endpoints (with OAuth redirect callbacks `/api/strava/callback` and `/api/wahoo/callback` additionally protected by single-use 128-bit cryptographic state nonces and 600 s TTLs).
 - **CalibrationRig HTTP Surface Elimination (`🟡 MECHANICAL`):**
@@ -111,7 +111,7 @@ Every dimension from the [ESP32 App Foundation Release Audit Protocol](../.agent
 - **Credential Storage & Redaction (`🟡 MECHANICAL` + `🟠 TRACED`):**
   - `committed_secrets: PASS (0 hits)`, `key_manager_bypass: PASS (0 hits)`.
   - Third-party cloud tokens/keys (Strava, Intervals.icu, Wahoo Cloud) are stored in `KeyManager` (`DeviceCrypto` AES-GCM NVS keystore) and registered with `Redactor::registerSecret()` upon load and refresh.
-  - Repository-wide privacy check (`git grep -n -E "<REDACTED_SSID>|XX:XX:XX|<redacted-session-link>" -- ":!.agents"`) returns **0 matches**.
+  - Repository-wide privacy check (`git grep -n -E "<REDACTED_SSID>|<REDACTED_OUI>|<REDACTED_SESSION_URL>" -- ":!.agents"`) returns **0 matches**.
 
 ### Dimension 6 — Web Portal & Design System (`PASS`)
 
@@ -211,7 +211,7 @@ Every dimension from the [ESP32 App Foundation Release Audit Protocol](../.agent
 | Legacy `/api/echenon/rig/` HTTP endpoint removal | `grep -rn "/api/echenon/rig/" src/ web/ tools/` | `0` matches | ✅ PASS |
 | `AuthManager::checkPortalAuth()` route coverage | `grep -rn "checkPortalAuth" src/` | `23` guarded endpoints/helpers (`EchenonModule`: 13, `SignalLogger`: 5, `DiagnosticsRoutes`: 4, `SessionOverlay`: 1) | ✅ PASS |
 | Bare `#hex` color check in `web/` | `grep -rn -E "#[0-9a-fA-F]{3,8}" web/ \| grep -v "var(--"` | `0` matches in `web/*.js` (only `web/ride.html` `:root` / `<meta>` and `web/manifest.json`) | ✅ PASS |
-| Personal SSID / BSSID / URL redaction | `git grep -n -E "<REDACTED_SSID>\|XX:XX:XX\|<redacted-session-link>" -- ":!.agents"` | `0` matches | ✅ PASS |
+| Personal SSID / BSSID / URL redaction | `git grep -n -E "<REDACTED_SSID>\|<REDACTED_OUI>\|<REDACTED_SESSION_URL>" -- ":!.agents"` | `0` matches | ✅ PASS |
 | `WITH_OTA` disabled for Beta | `grep -rn "WITH_OTA" platformio.ini` | `; -D WITH_OTA` commented out at `platformio.ini:67` | ✅ PASS |
 
 ### 4.5 Hardware-in-the-Loop (HIL) Evidence & Current Bench Status

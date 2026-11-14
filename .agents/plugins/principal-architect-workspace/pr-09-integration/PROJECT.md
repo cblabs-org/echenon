@@ -95,9 +95,9 @@ work_orders:
   slug: wo9-audit-doc-cleanup
   title: Mask Privacy Grep Literals & Align SignalLogger Routes in Release Audit Doc
   complexity: mechanical
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 6d785f89008abbecb0f07d5d27167b49594e9d4b
 ---
 
 ## 2. Scope
