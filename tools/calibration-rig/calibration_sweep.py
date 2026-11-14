@@ -128,7 +128,19 @@ class RigHTTP:
                 rpc_resp = json.loads(resp.read().decode("utf-8"))
 
         if "error" in rpc_resp and rpc_resp["error"]:
-            raise RuntimeError(f"MCP JSON-RPC error calling {name}: {rpc_resp['error']}")
+            err = rpc_resp["error"]
+            if (
+                (isinstance(err, dict) and (err.get("code") == -32000 or "read-only" in str(err.get("message", "")).lower()))
+                or "read-only" in str(err).lower()
+            ):
+                raise RuntimeError(
+                    f"MCP tool '{name}' rejected because MCPServer defaults to readOnly: true ({err}). "
+                    f"To enable mutating tools: "
+                    f"(1) run: curl -X POST {self._base}/api/mcp/config -H \"Content-Type: application/json\" -d '{{\"readOnly\":false}}' "
+                    f"(add -H \"Authorization: Bearer <token>\" if Portal Auth is enabled), or "
+                    f"(2) disable Read-Only mode in the Web Portal under System -> MCP."
+                )
+            raise RuntimeError(f"MCP JSON-RPC error calling {name}: {err}")
 
         result = rpc_resp.get("result") or {}
         content = result.get("content") or []

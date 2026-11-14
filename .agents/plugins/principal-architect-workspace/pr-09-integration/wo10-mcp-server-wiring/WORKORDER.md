@@ -4,7 +4,7 @@ wo_id: WO-09.10
 pr_id: PR-09
 title: Wire Ring-2 MCPServer in Composition Root & Rig Read-Only Hint
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/main.cpp
 - src/echenon/EchenonModule.cpp
@@ -19,7 +19,21 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 833aa94e44b45633741d491138a864517ccb027236eb7bf9592d26f2872214ad
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_ccd8e2eafb52
+  commit_sha: cff35a568ed9e72f7517f67109a3562c98c90f07
+  files_modified:
+  - src/echenon/EchenonModule.cpp
+  - src/main.cpp
+  - tools/calibration-rig/calibration_sweep.py
+  verification_summary: 'pio test -e native --verbose: ================ 269 test cases:
+    269 succeeded in 00:00:00.668 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-09.10 — Wire Ring-2 MCPServer in Composition Root & Rig Read-Only Hint

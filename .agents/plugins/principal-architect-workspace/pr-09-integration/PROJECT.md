@@ -102,9 +102,9 @@ work_orders:
   slug: wo10-mcp-server-wiring
   title: Wire Ring-2 MCPServer in Composition Root & Rig Read-Only Hint
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: cff35a568ed9e72f7517f67109a3562c98c90f07
 ---
 
 ## 2. Scope

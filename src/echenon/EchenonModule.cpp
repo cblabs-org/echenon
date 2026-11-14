@@ -1093,6 +1093,9 @@ void EchenonModule::registerMCPTools(MCPToolRegistry& registry) {
         this,
         /*mutatesState=*/true
     );
+    ESP_LOGI(TAG, "Registered MCP tools: echenon_get_telemetry, echenon_calibration, echenon_recalibration, echenon_upload_power_table, echenon_set_ftms_smoothing, echenon_rig_status, echenon_rig_command");
+#else
+    ESP_LOGI(TAG, "Registered MCP tools: echenon_get_telemetry, echenon_calibration, echenon_recalibration, echenon_upload_power_table, echenon_set_ftms_smoothing");
 #endif
 }
 

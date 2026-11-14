@@ -9,6 +9,7 @@
 #include <Arduino.h>
 #include <ctime>
 #include "echenon/EchenonModule.h"
+#include "MCPServer.hpp"
 
 #ifdef WITH_BLE
 #include "BLEManager/BLEManager.hpp"
@@ -42,6 +43,7 @@ static TimePreconditionContributor timePrecondition{timeManager};
 
 static Application app;
 static EchenonModule echenonModule;
+static MCPServer mcpServer;
 
 #ifdef WITH_SESSION
 static echenon::RideStore rideStore;
@@ -103,6 +105,8 @@ void setup() {
 
     // Register — compile-time introspection detects implemented interfaces
     app.registerModule(&echenonModule);
+    mcpServer.setAppName("Echenon");
+    app.registerModule(&mcpServer);
 
 #ifdef WITH_ENCODER
     for (size_t i = 0; i < BOARD_ENCODER_COUNT; i++) {
@@ -198,6 +202,19 @@ void setup() {
 #ifdef WITH_TIME
     timeManager.begin();
 #endif
+
+    mcpServer.begin(
+        app.getMcpContributors(),
+        &app.getConfigManager(),
+#ifdef WITH_TIME
+        &timeManager,
+#else
+        nullptr,
+#endif
+        &app.getWifiManager(),
+        &app.getAuthManager(),
+        &app.getDataManager()
+    );
 
 #ifdef WITH_BLE
     bleManager.begin(app);
