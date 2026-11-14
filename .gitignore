@@ -44,3 +44,14 @@ Thumbs.db
 *.tmp
 *.bak
 tmp/
+
+# ── Secrets & local environment files ────────────
+.env
+.env.*
+*.pem
+*.key
+*credentials*.json
+*secrets*.h
+bugreport-*.zip
+*.btsnoop
+*.cfa
