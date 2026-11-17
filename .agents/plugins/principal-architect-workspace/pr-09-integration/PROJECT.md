@@ -143,6 +143,13 @@ work_orders:
   status: COMPLETED
   attempts: 1
   commit_sha: 0ba1bc508abf7131029f25f40e7ec2f70d4603a2
+- id: WO-09.15
+  slug: wo15-release-audit-v030-dev51-sync
+  title: Sync Release Audit Report with WO-09.14 Fixes & Live v0.3.0-dev.51 Verification
+  complexity: mechanical
+  status: PENDING
+  attempts: 0
+  commit_sha: null
 ---
 
 ## 2. Scope
@@ -209,7 +216,8 @@ passes; full coexistence stress test passes.
 | `WO-09.11` | `wo11-release-audit-measured-sync` | Sync `docs/release-audit-v0.3.0-beta.1.md` with post-`MCPServer` build/ELF footprint & live `v0.3.0-dev.49` `/api/mcp` + bench soak telemetry | `mechanical` | `gemini-4-hydrogen-medium` | `COMPLETED` | `1ab081beb1fb` (`rcpt_e2ef41142a80`) |
 | `WO-09.12` | `wo12-foundation-v1-beta2` | Switch `framework` submodule to public `cblabs-org/esp32-app-foundation` `@ v1.0.0-beta.2`, pin `pioarduino 55.03.311`, wire `TimeManager` DHCP NTP/TZ & skill/doc pointers | `standard` | `gemini-4-argon-high` | `COMPLETED` | `5383b781087e` + `178027cc8a7d` (`rcpt_d73d60391631`) |
 | `WO-09.13` | `wo13-release-audit-v1-beta2-sync` | Sync `docs/release-audit-v0.3.0-beta.1.md` with `cblabs-org/esp32-app-foundation` `v1.0.0-beta.2` builds, `v0.3.0-dev.50` live bench soak, & Launch Gate Step 2.1 completion | `mechanical` | `pro` | `COMPLETED` | `bf4c11d47ec4` (`rcpt_c0f379002612`) |
-| `WO-09.14` | `wo14-newlib-nano-and-boot-keystore-cleanup` | Fix newlib-nano `%zu`/`%llu` (`RidePersistence`, `SignalLogic::formatBurstCsvHeader`) and defer `IntervalsIcuUploader`/`WahooUploader` `begin()` until after `app.begin(config)` | `standard` | `pro` | `PENDING` | — |
+| `WO-09.14` | `wo14-newlib-nano-and-boot-keystore-cleanup` | Fix newlib-nano `%zu`/`%llu` (`RidePersistence`, `SignalLogic::formatBurstCsvHeader`) and defer `IntervalsIcuUploader`/`WahooUploader` `begin()` until after `app.begin(config)` | `standard` | `pro` | `COMPLETED` | `802768575082` (`rcpt_1ea7627b8a9e`) |
+| `WO-09.15` | `wo15-release-audit-v030-dev51-sync` | Sync `docs/release-audit-v0.3.0-beta.1.md` with `WO-09.14` fixes, `271/271` native tests, `v0.3.0-dev.51` 3-env builds & live `0` `DeviceCrypto` error UART verification | `mechanical` | `pro` | `PENDING` | — |
 
 ## 4. Session Log
 
