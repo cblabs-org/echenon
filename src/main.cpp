@@ -160,7 +160,6 @@ void setup() {
 #endif
     echenonModule.intervalsUploader().setKeyManager(&app.getKeyManager());
     echenonModule.intervalsUploader().setSecretRegistrar(echenon::IntervalsIcuUploader::defaultRegisterSecret);
-    echenonModule.intervalsUploader().begin();
     uploadQueue.registerSink(&echenonModule.intervalsUploader());
     app.registerModule(&echenonModule.intervalsUploader());
     sessionOverlay.setIntervalsUploader(&echenonModule.intervalsUploader());
@@ -169,7 +168,6 @@ void setup() {
     echenonModule.wahooUploader().setMetadataSaveCallback([](uint32_t, const std::string&) {
         return app.getConfigManager().saveModuleConfig(&echenonModule.wahooUploader());
     });
-    echenonModule.wahooUploader().begin();
     uploadQueue.registerSink(&echenonModule.wahooUploader());
     app.registerModule(&echenonModule.wahooUploader());
     sessionOverlay.setWahooUploader(&echenonModule.wahooUploader());
@@ -240,6 +238,8 @@ void setup() {
 #ifdef WITH_STRAVA
     stravaUploader.begin();
 #endif
+    echenonModule.intervalsUploader().begin();
+    echenonModule.wahooUploader().begin();
     uploadQueue.begin();
     app.getEventBus().subscribe(
         echenon::EVENT_SESSION_TOPIC,

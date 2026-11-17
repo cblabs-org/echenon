@@ -304,6 +304,21 @@ TEST(SignalLoggerCsvFormatTest, BurstCsvFormat) {
     EXPECT_EQ(rowCsv, expectedRow);
 }
 
+TEST(SignalLoggerCsvFormatTest, BurstCsvFormatHeaderAbove32BitTimestamp) {
+    // Regression guard: burstStartUs > 2^32 (71.5 min uptime) must format cleanly
+    // without %llu (which corrupts va_list under 32-bit newlib-nano).
+    const uint32_t perChanRate = 10416;
+    const uint64_t burstStartUs = 5000000000ULL;
+    const uint32_t overflowCount = 7;
+
+    const std::string header = formatBurstCsvHeader(perChanRate, burstStartUs, overflowCount);
+    const std::string expectedHeader =
+        std::string("# sample_rate_per_channel_hz=10416,start_time_us=5000000000,overflow_count=7\n") +
+        kBurstCsvColumns;
+
+    EXPECT_EQ(header, expectedHeader);
+}
+
 TEST(SignalLoggerCsvFormatTest, EventsCsvFormat) {
     EXPECT_STREQ(kEventsCsvHeader, "timestamp_us,type,channel,value\n");
 

@@ -140,9 +140,9 @@ work_orders:
   title: Fix Newlib-Nano %zu/%llu Format Bugs and Post-DeviceCrypto Uploader Boot
     Ordering
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 0ba1bc508abf7131029f25f40e7ec2f70d4603a2
 ---
 
 ## 2. Scope

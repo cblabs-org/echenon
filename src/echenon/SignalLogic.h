@@ -491,10 +491,20 @@ inline std::string formatEventRow(const EdgeEvent& ev) {
 /// Format the metadata comment and column header for a burst CSV export into buf.
 inline int formatBurstCsvHeader(uint32_t perChanRate, uint64_t burstStartUs, uint32_t overflowCount, char* buf, size_t bufSize) {
     if (!buf || bufSize == 0) return 0;
+    // Format uint64_t via stack base-10 conversion: 32-bit newlib-nano lacks %llu
+    // and risks va_list corruption / LoadProhibited on %s when burstStartUs >= 2^32.
+    char startUsBuf[21];
+    char* p = startUsBuf + sizeof(startUsBuf) - 1;
+    *p = '\0';
+    uint64_t tmp = burstStartUs;
+    do {
+        *--p = static_cast<char>('0' + (tmp % 10u));
+        tmp /= 10u;
+    } while (tmp != 0u);
     return snprintf(buf, bufSize,
-                    "# sample_rate_per_channel_hz=%u,start_time_us=%llu,overflow_count=%u\n%s",
+                    "# sample_rate_per_channel_hz=%u,start_time_us=%s,overflow_count=%u\n%s",
                     static_cast<unsigned int>(perChanRate),
-                    static_cast<unsigned long long>(burstStartUs),
+                    p,
                     static_cast<unsigned int>(overflowCount),
                     kBurstCsvColumns);
 }

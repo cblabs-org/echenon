@@ -192,7 +192,8 @@ bool RidePersistence::loadRide(uint32_t session_id,
     }
 
     if (decompressed.size() < sizeof(RideFileHeader)) {
-        ESP_LOGE(TAG, "Ride file %s too small (%zu bytes)", path.c_str(), decompressed.size());
+        ESP_LOGE(TAG, "Ride file %s too small (%u bytes)",
+                 path.c_str(), static_cast<unsigned>(decompressed.size()));
         return false;
     }
 
@@ -322,8 +323,8 @@ void RidePersistence::scanStoredRides() {
         }
 
         if (decompressed.size() < sizeof(RideFileHeader)) {
-            ESP_LOGW(TAG, "Ride file %s too small (%zu bytes), skipping",
-                     fullPath.c_str(), decompressed.size());
+            ESP_LOGW(TAG, "Ride file %s too small (%u bytes), skipping",
+                     fullPath.c_str(), static_cast<unsigned>(decompressed.size()));
             continue;
         }
 
@@ -352,8 +353,8 @@ void RidePersistence::scanStoredRides() {
             return a.start_epoch_s < b.start_epoch_s;
         });
 
-    ESP_LOGI(TAG, "Scanned %zu persisted rides (%u bytes total)",
-             _storedRides.size(), getTotalSizeBytes());
+    ESP_LOGI(TAG, "Scanned %u persisted rides (%u bytes total)",
+             static_cast<unsigned>(_storedRides.size()), getTotalSizeBytes());
 }
 
 // =============================================================================

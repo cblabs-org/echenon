@@ -252,8 +252,12 @@ bool IntervalsIcuUploader::loadCredentials() {
         return false;
     }
 
-    _apiKey    = _secretStore->getSecret(KEY_API_KEY);
-    _athleteId = _secretStore->getSecret(KEY_ATHLETE_ID);
+    _apiKey = _secretStore->getSecret(KEY_API_KEY);
+    // Preserve _athleteId populated earlier by applyConfig() if KeyManager lacks KEY_ATHLETE_ID.
+    const std::string storedAthleteId = _secretStore->getSecret(KEY_ATHLETE_ID);
+    if (!storedAthleteId.empty()) {
+        _athleteId = storedAthleteId;
+    }
 
     if (!_apiKey.empty()) {
         registerSecretWithRedactor(_apiKey, KEY_API_KEY);

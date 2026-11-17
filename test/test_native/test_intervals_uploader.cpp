@@ -422,3 +422,31 @@ TEST(IntervalsIcuUploaderTest, RedactorSaturationWarning) {
     // Warning must not leak the actual secret value
     EXPECT_EQ(uploader.getLastRedactorWarning().find("rejected_key"), std::string::npos);
 }
+
+// =============================================================================
+// 17. applyConfig() athlete_id preserved when keystore lacks KEY_ATHLETE_ID
+// =============================================================================
+
+TEST(IntervalsIcuUploaderTest, ApplyConfigPreservesAthleteIdWhenKeystoreLacksAthleteId) {
+    InMemorySecretStore secretStore;
+    ASSERT_TRUE(secretStore.putSecret(IntervalsIcuUploader::KEY_API_KEY, "api_key_only"));
+
+    IntervalsIcuUploader uploader(&secretStore);
+
+    JsonDocument doc;
+    JsonObject section = doc.to<JsonObject>();
+    section["enabled"]    = true;
+    section["athlete_id"] = "i99999";
+    uploader.applyConfig(section);
+
+    ASSERT_TRUE(uploader.begin());
+    EXPECT_TRUE(uploader.isConfigured());
+    EXPECT_TRUE(uploader.isAuthenticated());
+    EXPECT_EQ(uploader.getAthleteId(), "i99999");
+    EXPECT_EQ(uploader.getApiKey(), "api_key_only");
+
+    // Re-invoking loadCredentials() also preserves _athleteId when KEY_ATHLETE_ID is absent
+    ASSERT_TRUE(uploader.loadCredentials());
+    EXPECT_TRUE(uploader.isConfigured());
+    EXPECT_EQ(uploader.getAthleteId(), "i99999");
+}

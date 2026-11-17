@@ -4,7 +4,7 @@ wo_id: WO-09.14
 pr_id: PR-09
 title: Fix Newlib-Nano %zu/%llu Format Bugs and Post-DeviceCrypto Uploader Boot Ordering
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/RidePersistence.cpp
 - src/echenon/SignalLogic.h
@@ -21,7 +21,24 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 971e609d0a46b80d17174491d46699c379f300d9bc83fe07728dcf935360f117
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_1ea7627b8a9e
+  commit_sha: 0ba1bc508abf7131029f25f40e7ec2f70d4603a2
+  files_modified:
+  - src/echenon/IntervalsIcuUploader.cpp
+  - src/echenon/RidePersistence.cpp
+  - src/echenon/SignalLogic.h
+  - src/main.cpp
+  - test/test_native/test_intervals_uploader.cpp
+  - test/test_native/test_signal_logger.cpp
+  verification_summary: 'pio test -e native --verbose: ================ 271 test cases:
+    271 succeeded in 00:00:02.224 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-09.14: Fix Newlib-Nano `%zu`/`%llu` Format Bugs and Post-DeviceCrypto Uploader Boot Ordering
