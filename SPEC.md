@@ -119,7 +119,7 @@ Related documents:
 ### 1.3 Built On
 
 Echenon is an application module on the
-[ESP32 App Foundation](https://github.com/matthewmcneill/esp32-app-foundation),
+[ESP32 App Foundation](https://github.com/cblabs-org/esp32-app-foundation),
 vendored as the git submodule `framework/`. It inherits WiFi management, the web
 portal, encrypted credential storage, OTA updates, the DataManager background
 fetch pipeline, the module composition architecture and the optional
@@ -209,7 +209,7 @@ Apache License 2.0, compatible with all dependencies.
 
 | Library | License | Usage |
 |---|---|---|
-| [ESP32 App Foundation](https://github.com/matthewmcneill/esp32-app-foundation) | Apache-2.0 | Framework (WiFi, web, config, OTA, auth, BLE) |
+| [ESP32 App Foundation](https://github.com/cblabs-org/esp32-app-foundation) | Apache-2.0 | Framework (WiFi, web, config, OTA, auth, BLE) |
 | [h2zero/esp-nimble-cpp](https://github.com/h2zero/esp-nimble-cpp) | Apache-2.0 | BLE stack (via Foundation BLEManager) |
 | Espressif Arduino Core and ESP-IDF for ESP32 | Apache-2.0 | Hardware abstraction |
 
@@ -2044,7 +2044,7 @@ measures Echenon's figure with the 4-connection override.
 - **OTA is manual-only.** The framework's `OTAUpdateManager` with
   `autoCheck = true` runs a full update, including a reboot, as soon as WiFi
   connects after boot, which is exactly when a rider powers on the bike.
-  Until framework [issue #226](https://github.com/matthewmcneill/esp32-app-foundation/issues/226)
+  Until framework [issue #226](https://github.com/cblabs-org/esp32-app-foundation/issues/226)
   adds `checkOnBoot` and a runtime "busy" guard, Echenon forces
   **`autoCheck = false`** after config load and again after every factory
   reset (the framework's OTA `resetConfig()` restores `true`). The framework
@@ -3871,7 +3871,7 @@ on its own.
 > [!NOTE]
 > Automatic OTA is **disabled** (`autoCheck = false`, forced after config load
 > and after factory reset) until framework
-> [issue #226](https://github.com/matthewmcneill/esp32-app-foundation/issues/226)
+> [issue #226](https://github.com/cblabs-org/esp32-app-foundation/issues/226)
 > adds a boot-time guard. Without it, an update could start mid-warm-up.
 
 1. Open `http://echenon.local` → **System** tab (logged in).

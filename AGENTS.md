@@ -9,7 +9,7 @@ filename order. These are unconditional operational constraints.
 
 The following skills are installed at `.agents/skills/`:
 - `framework-expert` — ESP32 App Foundation development guidance
-- `framework-design-system` — portal UI and branding
+- `framework-portal-design` — portal UI and branding
 - `framework-setup` — project bootstrapper (already run)
 
 Read a skill's `SKILL.md` when it triggers.

@@ -84,7 +84,7 @@ Full circuit schematics, pin-by-pin wire colour tables, and multimeter checklist
    git clone --recurse-submodules https://github.com/cblabs-org/echenon.git
    cd echenon
    ```
-   *(Note: Echenon builds on the `framework/` submodule (`esp32-app-foundation`), whose public repository access accompanies the `v0.3.0-beta.1` beta launch.)*
+   *(Note: Echenon builds on the public [`cblabs-org/esp32-app-foundation`](https://github.com/cblabs-org/esp32-app-foundation) submodule (`v1.0.0-beta.2`) under `framework/`.)*
 3. **Isolate `VIN` (`SW0` → USB) & Flash Over USB-C:**
    Verify `SW0` is in the **USB / VIN-OFF** position (or the board is unplugged from the bike), seat `U1` into `J5`, connect a USB-C data cable, and flash both the firmware and LittleFS portal image:
    ```bash

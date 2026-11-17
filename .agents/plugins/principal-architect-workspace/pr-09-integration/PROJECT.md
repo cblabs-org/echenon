@@ -124,9 +124,9 @@ work_orders:
   title: Align Submodule, Config, Docs & Skills to cblabs-org/esp32-app-foundation
     v1.0.0-beta.2
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 5383b781087e7bb58116ba1d03c12cbb13386bda
 ---
 
 ## 2. Scope

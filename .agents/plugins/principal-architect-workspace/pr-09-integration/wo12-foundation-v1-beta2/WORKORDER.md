@@ -4,7 +4,7 @@ wo_id: WO-09.12
 pr_id: PR-09
 title: Align Submodule, Config, Docs & Skills to cblabs-org/esp32-app-foundation v1.0.0-beta.2
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - .gitmodules
 - framework
@@ -29,7 +29,28 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: d924cdf4e8cdb7fe458121797c89f28b423d8e6b69113c8352519cd1e00f7866
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_d73d60391631
+  commit_sha: 5383b781087e7bb58116ba1d03c12cbb13386bda
+  files_modified:
+  - AGENTS.md
+  - CMakeLists.txt
+  - CONTRIBUTING.md
+  - README.md
+  - SPEC.md
+  - framework
+  - platformio.ini
+  - sdkconfig.defaults
+  - src/main.cpp
+  - web/intervals_settings.js
+  verification_summary: 'pio test -e native --verbose: ================ 269 test cases:
+    269 succeeded in 00:00:00.570 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-09.12 — Align Submodule, Config, Docs & Skills to `cblabs-org/esp32-app-foundation` `v1.0.0-beta.2`

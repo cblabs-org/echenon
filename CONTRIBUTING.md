@@ -39,7 +39,7 @@ When opening a GitHub Issue for a **`v0.3.0-beta.1`** build or ride test, please
 
 ### Cloning the Repository
 
-Echenon depends on the [ESP32 App Foundation](https://github.com/matthewmcneill/esp32-app-foundation) submodule under `framework/`. Clone with submodules enabled:
+Echenon depends on the [ESP32 App Foundation](https://github.com/cblabs-org/esp32-app-foundation) submodule under `framework/`. Clone with submodules enabled:
 
 ```bash
 git clone --recurse-submodules https://github.com/cblabs-org/echenon.git

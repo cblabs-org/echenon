@@ -15,6 +15,7 @@
     'use strict';
 
     var TAB_ID = 'tab-intervals-icu';
+    var ALT_TAB_ID = 'tab-intervals.icu';
     var initialized = false;
 
     function buildUI(container) {
@@ -216,8 +217,8 @@
     function onTabChanged(e) {
         var detail = e.detail;
         var targetTab = (detail && detail.tab) ? detail.tab : detail;
-        if (targetTab === TAB_ID) {
-            var container = document.getElementById(TAB_ID);
+        if (targetTab === TAB_ID || targetTab === ALT_TAB_ID) {
+            var container = document.getElementById(targetTab) || document.getElementById(TAB_ID) || document.getElementById(ALT_TAB_ID);
             if (!container) return;
             if (!initialized) {
                 buildUI(container);
@@ -230,7 +231,7 @@
     document.addEventListener('tab-changed', onTabChanged);
     window.addEventListener('tab-changed', onTabChanged);
 
-    var el = document.getElementById(TAB_ID);
+    var el = document.getElementById(TAB_ID) || document.getElementById(ALT_TAB_ID);
     if (el && el.classList.contains('active')) {
         buildUI(el);
         initialized = true;
