@@ -1,5 +1,9 @@
-/// @file StravaUploader.cpp
-/// @brief Strava v3 API OAuth 2.0 BYOA uploader with token rotation and CSRF protection.
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/StravaUploader.cpp
+ * Description: Implementation of the Strava v3 API OAuth 2.0 BYOA uploader with token rotation and CSRF protection.
+ */
 
 #include "echenon/StravaUploader.h"
 

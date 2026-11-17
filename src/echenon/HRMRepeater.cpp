@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/HRMRepeater.cpp
+ * Description: Implementation of the BLE peripheral-role Heart Rate Service (0x180D) repeater.
+ */
+
 #include "echenon/HRMRepeater.h"
 
 #ifdef WITH_BLE

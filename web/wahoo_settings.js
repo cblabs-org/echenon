@@ -54,7 +54,7 @@
             '      <input type="password" id="ech-wahoo-client-secret" placeholder="Enter new client secret" autocomplete="new-password" style="width:100%;padding:8px 10px;border:1px solid var(--border, #e0e0e0);border-radius:10px;font-size:0.9rem;color:var(--text, #212121);background:var(--card-bg); font-family:inherit;">',
             '    </div>',
             '    <div>',
-            '      <button id="ech-btn-wahoo-save" type="button" style="padding:8px 20px; font-size:0.85rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:#fff; cursor:pointer;">Save Credentials</button>',
+            '      <button id="ech-btn-wahoo-save" type="button" style="padding:8px 20px; font-size:0.85rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:var(--text-inverse, #ffffff); cursor:pointer;">Save Credentials</button>',
             '    </div>',
             '  </div>',
             '  <div id="ech-wahoo-msg" style="font-size:0.85rem;color:var(--text-muted);margin-top:0.75rem;min-height:1.2em;"></div>',
@@ -62,15 +62,15 @@
             '<div style="background:var(--card-bg); border:1px solid var(--border, #e0e0e0); border-radius:16px; padding:1.25rem;">',
             '  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">',
             '    <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:var(--text, #212121);">Wahoo Cloud</h3>',
-            '    <span id="ech-wahoo-badge" style="display:inline-block; padding:2px 10px; font-size:0.75rem; font-weight:700; border-radius:20px; background:var(--border, #e0e0e0); color:var(--text-muted);">Checking...</span>',
+            '    <span id="ech-wahoo-badge" style="display:inline-block; padding:2px 10px; font-size:0.75rem; font-weight:700; border-radius:20px; background:var(--border, #e0e0e0); color:var(--text, #212121);">Checking...</span>',
             '  </div>',
             '  <p style="margin:0 0 0.75rem 0; font-size:0.85rem; color:var(--text-muted); line-height:1.5;">',
             '    Sync completed workouts directly to Wahoo Cloud (SYSTM / ELEMNT).',
             '  </p>',
             '  <div id="ech-wahoo-details" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;"></div>',
             '  <div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;margin-bottom:0.5rem;">',
-            '    <button id="ech-btn-wahoo-auth" type="button" disabled style="padding:8px 16px; font-size:0.85rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:#fff; cursor:not-allowed; opacity:0.5;">Connect with Wahoo</button>',
-            '    <button id="ech-btn-wahoo-disconnect" type="button" style="display:none; padding:8px 16px; font-size:0.85rem; font-weight:600; border:1px solid var(--danger, #c62828); border-radius:10px; background:transparent; color:var(--danger, #c62828); cursor:pointer;">Disconnect</button>',
+            '    <button id="ech-btn-wahoo-auth" type="button" disabled style="padding:8px 16px; font-size:0.85rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:var(--text-inverse, #ffffff); cursor:not-allowed; opacity:0.5;">Connect with Wahoo</button>',
+            '    <button id="ech-btn-wahoo-disconnect" type="button" style="display:none; padding:8px 16px; font-size:0.85rem; font-weight:600; border:1px solid var(--error, #c62828); border-radius:10px; background:transparent; color:var(--error, #c62828); cursor:pointer;">Disconnect</button>',
             '    <button id="ech-btn-wahoo-refresh" type="button" style="padding:8px 16px; font-size:0.85rem; font-weight:600; border:1px solid var(--border, #e0e0e0); border-radius:10px; background:transparent; color:var(--text, #212121); cursor:pointer;">Refresh Status</button>',
             '  </div>',
             '  <div id="ech-wahoo-auth-note" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">Save your API credentials first</div>',
@@ -117,25 +117,25 @@
             if (isAuth) {
                 if (!isTokenValid) {
                     badge.textContent = 'Token Expired';
-                    badge.style.background = 'rgba(198, 40, 40, 0.15)';
-                    badge.style.color = 'var(--danger, #c62828)';
+                    badge.style.background = 'var(--error, #c62828)';
+                    badge.style.color = 'var(--text-inverse, #ffffff)';
                 } else if (data.athlete_name) {
                     badge.textContent = 'Connected as ' + data.athlete_name;
-                    badge.style.background = 'rgba(46, 125, 50, 0.15)';
-                    badge.style.color = 'var(--success, #2e7d32)';
+                    badge.style.background = 'var(--success, #2e7d32)';
+                    badge.style.color = 'var(--text-inverse, #ffffff)';
                 } else {
                     badge.textContent = 'Connected';
-                    badge.style.background = 'rgba(46, 125, 50, 0.15)';
-                    badge.style.color = 'var(--success, #2e7d32)';
+                    badge.style.background = 'var(--success, #2e7d32)';
+                    badge.style.color = 'var(--text-inverse, #ffffff)';
                 }
             } else if (isConfig) {
                 badge.textContent = 'Not Connected';
-                badge.style.background = 'rgba(249, 168, 37, 0.15)';
-                badge.style.color = '#f9a825';
+                badge.style.background = 'var(--warning, #f9a825)';
+                badge.style.color = 'var(--text-on-warning, #111827)';
             } else {
                 badge.textContent = 'Not Connected';
                 badge.style.background = 'var(--border, #e0e0e0)';
-                badge.style.color = 'var(--text-muted)';
+                badge.style.color = 'var(--text, #212121)';
             }
         }
 
@@ -206,9 +206,33 @@
         }
     }
 
+    function apiJson(url, options) {
+        var opts = Object.assign({ credentials: 'same-origin' }, options || {});
+        if (typeof window.apiFetch === 'function') {
+            return window.apiFetch(url, opts);
+        }
+        return fetch(url, opts).then(function (r) {
+            if (!r.ok) {
+                return r.text().then(function (txt) {
+                    var err = new Error('HTTP ' + r.status);
+                    err.status = r.status;
+                    try { err.body = JSON.parse(txt); } catch (e) { err.body = txt; }
+                    throw err;
+                });
+            }
+            return r.json();
+        });
+    }
+
+    function extractErr(err) {
+        if (err && err.body && (err.body.error || err.body.message)) {
+            return err.body.error || err.body.message;
+        }
+        return (err && err.message) ? err.message : String(err);
+    }
+
     function fetchWahooStatus() {
-        fetch('/api/wahoo/status', { credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
+        apiJson('/api/wahoo/status')
             .then(updateStatusUI)
             .catch(function () {});
     }
@@ -221,13 +245,11 @@
             setMsg('Both Client ID and Client Secret are required.');
             return;
         }
-        fetch('/api/wahoo/credentials', {
+        apiJson('/api/wahoo/credentials', {
             method: 'POST',
-            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ client_id: cid, client_secret: sec })
         })
-            .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (data && data.ok) {
                     secEl.value = '';
@@ -238,7 +260,7 @@
                 }
             })
             .catch(function (err) {
-                setMsg('Error saving credentials: ' + err);
+                setMsg('Error saving credentials: ' + extractErr(err));
             });
     }
 
@@ -247,10 +269,7 @@
         var port = window.location.port ? (':' + window.location.port) : '';
         var proto = window.location.protocol || 'http:';
         var redirectUri = proto + '//' + host + port + '/api/wahoo/callback';
-        fetch('/api/wahoo/auth-url?redirect_uri=' + encodeURIComponent(redirectUri), {
-            credentials: 'same-origin'
-        })
-            .then(function (r) { return r.json(); })
+        apiJson('/api/wahoo/auth-url?redirect_uri=' + encodeURIComponent(redirectUri))
             .then(function (data) {
                 var target = data && (data.url || data.authorize_url);
                 if (target) {
@@ -260,39 +279,35 @@
                 }
             })
             .catch(function (err) {
-                setMsg('Failed to request auth URL: ' + err);
+                setMsg('Failed to request auth URL: ' + extractErr(err));
             });
     }
 
     function disconnectWahoo() {
-        fetch('/api/wahoo/disconnect', { method: 'POST', credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
+        apiJson('/api/wahoo/disconnect', { method: 'POST' })
             .then(function () {
                 setMsg('Disconnected from Wahoo Cloud.');
                 fetchWahooStatus();
             })
             .catch(function (err) {
-                setMsg('Error disconnecting: ' + err);
+                setMsg('Error disconnecting: ' + extractErr(err));
             });
     }
 
     function saveAutoUpload() {
         var enabled = document.getElementById('ech-wahoo-autoupload').checked;
-        fetch('/api/session/config', {
+        apiJson('/api/session/config', {
             method: 'POST',
-            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ auto_upload_enabled: enabled, auto_sync_wahoo: enabled })
         })
-            .then(function (r) { return r.json(); })
             .then(function () {
                 setMsg('Auto-sync preference updated.');
             })
             .catch(function () {});
 
-        fetch('/api/upload/settings', {
+        apiJson('/api/upload/settings', {
             method: 'POST',
-            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ auto_sync_wahoo: enabled, auto_upload_enabled: enabled })
         }).catch(function () {});

@@ -1,17 +1,21 @@
 #pragma once
 
-/// @file DiagnosticsRoutes.h
-/// @brief Diagnostics and run-data query REST API route-registration helper.
-///
-/// Standalone class that registers `/api/echenon/events`, `/api/echenon/runs`,
-/// `/api/echenon/runs/<id>.csv.gz`, and `DELETE /api/echenon/runs/<id>` on a
-/// PsychicHttpServer. Dependencies are injected by reference; this class does
-/// not own DiagnosticsModule or RidePersistence.
-///
-/// Route registration methods are guarded with `#ifndef UNIT_TEST` since they
-/// depend on PsychicHttpServer (ESP32 only). Helper functions like
-/// `diagEventTypeToString()` and payload decoding are unconditionally compiled
-/// for native testing.
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/DiagnosticsRoutes.h
+ * Description: Diagnostics and run-data query REST API route registration plus native-testable event payload decoders.
+ *
+ * Standalone class that registers `/api/echenon/events`, `/api/echenon/runs`,
+ * `/api/echenon/runs/<id>.csv.gz`, and `DELETE /api/echenon/runs/<id>` on a
+ * PsychicHttpServer. Dependencies are injected by reference; this class does
+ * not own DiagnosticsModule or RidePersistence.
+ *
+ * Route registration methods are guarded with `#ifndef UNIT_TEST` since they
+ * depend on PsychicHttpServer (ESP32 only). Helper functions like
+ * `diagEventTypeToString()` and payload decoding are unconditionally compiled
+ * for native testing.
+ */
 
 #include <cstdint>
 #include <cstdio>
@@ -105,8 +109,12 @@ class AuthManager;
 
 namespace echenon {
 
+/**
+ * @brief Registers HTTP routes for diagnostic event queries and persisted ride CSV downloads.
+ */
 class DiagnosticsRoutes {
 public:
+    /// Construct DiagnosticsRoutes with non-owning references to diagnostics and persistence modules.
     DiagnosticsRoutes(DiagnosticsModule& diag, RidePersistence& persistence);
 
     /// Register all diagnostic routes on the given server.

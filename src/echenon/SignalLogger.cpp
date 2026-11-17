@@ -1,9 +1,19 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/SignalLogger.cpp
+ * Description: Implementation of continuous DMA ADC signal capture, software edge detection, and CSV/burst routes.
+ */
+
 #ifdef WITH_SIGNAL_LOGGER
 
 #include "SignalLogger.h"
 #include "EventBus.hpp"
 #include "EncoderModule/EncoderConfig.h"
 #include <PsychicHttp.h>
+#if !defined(UNIT_TEST)
+#include "AuthManager.hpp"
+#endif
 #include <esp_log.h>
 #include <esp_heap_caps.h>
 #include <esp_timer.h>
@@ -349,8 +359,11 @@ bool SignalLogger::startBurst(const char* trigger, uint32_t durationMs) {
 bool SignalLogger::isCapturing() const { return _capturing; }
 bool SignalLogger::isBurstActive() const { return _burstActive; }
 
-void SignalLogger::registerRoutes(PsychicHttpServer& server) {
-    server.on("/api/echenon/status", HTTP_GET, [this](PsychicRequest *request, PsychicResponse *response) -> esp_err_t {
+void SignalLogger::registerRoutes(PsychicHttpServer& server, AuthManager* authManager) {
+    server.on("/api/echenon/status", HTTP_GET, [this, authManager](PsychicRequest *request, PsychicResponse *response) -> esp_err_t {
+        if (authManager && !authManager->checkPortalAuth(request, response)) {
+            return ESP_OK;
+        }
         JsonDocument doc;
         doc["ride_log_rows"] = _rideLogCount;
         doc["ride_log_wrapped"] = _rideLogWrapped;
@@ -365,7 +378,10 @@ void SignalLogger::registerRoutes(PsychicHttpServer& server) {
         return response->send(200, "application/json", res.c_str());
     });
 
-    server.on("/api/echenon/burst/start", HTTP_POST, [this](PsychicRequest *request, PsychicResponse *response) -> esp_err_t {
+    server.on("/api/echenon/burst/start", HTTP_POST, [this, authManager](PsychicRequest *request, PsychicResponse *response) -> esp_err_t {
+        if (authManager && !authManager->checkPortalAuth(request, response)) {
+            return ESP_OK;
+        }
         if (_burstActive) {
             return response->send(409, "application/json", "{\"error\": \"Burst already active\"}");
         }
@@ -385,7 +401,10 @@ void SignalLogger::registerRoutes(PsychicHttpServer& server) {
         return response->send(500, "application/json", "{\"error\": \"Failed to start\"}");
     });
 
-    server.on("/api/echenon/ride-log.csv", HTTP_GET, [this](PsychicRequest *request, PsychicResponse *response) -> esp_err_t {
+    server.on("/api/echenon/ride-log.csv", HTTP_GET, [this, authManager](PsychicRequest *request, PsychicResponse *response) -> esp_err_t {
+        if (authManager && !authManager->checkPortalAuth(request, response)) {
+            return ESP_OK;
+        }
         ExportActiveGuard guard(_exportActive);
         response->setContentType("text/csv");
         
@@ -431,7 +450,10 @@ void SignalLogger::registerRoutes(PsychicHttpServer& server) {
         return err;
     });
 
-    server.on("/api/echenon/events.csv", HTTP_GET, [this](PsychicRequest *request, PsychicResponse *response) -> esp_err_t {
+    server.on("/api/echenon/events.csv", HTTP_GET, [this, authManager](PsychicRequest *request, PsychicResponse *response) -> esp_err_t {
+        if (authManager && !authManager->checkPortalAuth(request, response)) {
+            return ESP_OK;
+        }
         ExportActiveGuard guard(_exportActive);
         response->setContentType("text/csv");
         
@@ -477,7 +499,10 @@ void SignalLogger::registerRoutes(PsychicHttpServer& server) {
         return err;
     });
 
-    server.on("/api/echenon/burst.csv", HTTP_GET, [this](PsychicRequest *request, PsychicResponse *response) -> esp_err_t {
+    server.on("/api/echenon/burst.csv", HTTP_GET, [this, authManager](PsychicRequest *request, PsychicResponse *response) -> esp_err_t {
+        if (authManager && !authManager->checkPortalAuth(request, response)) {
+            return ESP_OK;
+        }
         ExportActiveGuard guard(_exportActive);
         response->setContentType("text/csv");
         

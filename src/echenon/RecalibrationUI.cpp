@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/RecalibrationUI.cpp
+ * Description: Implementation of rider power-point storage, least-squares Physics P3r scale fitting, and table updates.
+ */
+
 #include "echenon/RecalibrationUI.h"
 #include "echenon/ResistanceSensor.h"
 #include "echenon/CadenceSensor.h"

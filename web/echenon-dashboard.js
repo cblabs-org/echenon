@@ -154,8 +154,8 @@
     if (levelEl && data.level_echelon !== undefined) {
       levelEl.textContent = data.level_echelon;
     }
-    if (hrEl && data.heart_rate !== undefined) {
-      hrEl.textContent = data.heart_rate;
+    if (hrEl && data.hr !== undefined) {
+      hrEl.textContent = data.hr || '--';
     }
 
     // (Lid dot and label updated at end of function via aggregate health)
@@ -291,8 +291,8 @@
   // --- Scaffold Render ---
   function renderScaffold(container) {
     // Feather icon paths (24×24 viewBox, stroke-only, 2px)
-    var iconActivity = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>';
-    var iconArrowRight = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>';
+    var iconActivity = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>';
+    var iconArrowRight = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>';
 
     var html =
       // --- Live Metrics Card ---
@@ -442,7 +442,7 @@
           'Does not affect ride recording.' +
         '</p>' +
         '<div style="display:flex; align-items:center; gap:1rem;">' +
-          '<select id="echenon-ftms-smooth" style="' +
+          '<select id="echenon-ftms-smooth" aria-label="BLE Power Smoothing window" style="' +
             'flex:1; padding:0.6rem 0.75rem; font-size:1rem; font-weight:600; ' +
             'background:var(--bg); color:var(--text); border:1px solid var(--border); ' +
             'border-radius:0.5rem; appearance:auto; cursor:pointer;' +
@@ -471,11 +471,22 @@
     }
   }
 
+  async function apiJson(url, options) {
+    var opts = Object.assign({ credentials: 'same-origin' }, options || {});
+    if (typeof window.apiFetch === 'function') {
+      return await window.apiFetch(url, opts);
+    }
+    var resp = await fetch(url, opts);
+    if (!resp.ok) {
+      throw new Error('HTTP ' + resp.status);
+    }
+    return await resp.json();
+  }
+
   async function fetchFtmsSmoothing() {
-    var fetchFn = window.apiFetch || window.fetch;
     var statusEl = document.getElementById('echenon-ftms-smooth-status');
     try {
-      var data = await fetchFn('/api/echenon/ftms-smoothing');
+      var data = await apiJson('/api/echenon/ftms-smoothing');
       var sel = document.getElementById('echenon-ftms-smooth');
       if (sel && data.ftms_power_smooth_s !== undefined) {
         // Find closest option
@@ -499,20 +510,19 @@
   }
 
   async function setFtmsSmoothing(windowS) {
-    var fetchFn = window.apiFetch || window.fetch;
     var statusEl = document.getElementById('echenon-ftms-smooth-status');
     if (statusEl) {
       statusEl.textContent = 'Saving...';
-      statusEl.style.color = 'var(--warning)';
+      statusEl.style.color = 'var(--text-muted)';
     }
     try {
-      var data = await fetchFn('/api/echenon/ftms-smoothing', {
+      var data = await apiJson('/api/echenon/ftms-smoothing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ftms_power_smooth_s: windowS })
       });
       if (statusEl) {
-        statusEl.textContent = windowS > 0 ? 'Saved ✓' : 'Off';
+        statusEl.textContent = windowS > 0 ? 'Saved \u2713' : 'Off';
         statusEl.style.color = 'var(--success)';
       }
     } catch (err) {
@@ -529,9 +539,8 @@
 
   // --- Data Fetching ---
   async function fetchSessionStatus() {
-    var fetchFn = window.apiFetch || window.fetch;
     try {
-      var data = await fetchFn('/api/session/status');
+      var data = await apiJson('/api/session/status');
       updateSessionUI(data.state);
     } catch (err) {
       // non-fatal
@@ -558,9 +567,8 @@
   }
 
   async function fetchLastRide() {
-    var fetchFn = window.apiFetch || window.fetch;
     try {
-      var data = await fetchFn('/api/session/history');
+      var data = await apiJson('/api/session/history');
 
       var contentEl = document.getElementById('echenon-last-ride-content');
       if (!contentEl) return;
@@ -600,7 +608,9 @@
 
   // --- Tab Lifecycle ---
   window.addEventListener('tab-changed', function(e) {
-    if (e.detail === 'tab-dashboard') {
+    var detail = e.detail;
+    var tabId = (detail && detail.tab) ? detail.tab : detail;
+    if (tabId === 'tab-dashboard') {
       isTabActive = true;
       var container = document.getElementById('tab-dashboard');
       if (container && !isInitialized) {

@@ -1,11 +1,13 @@
 #pragma once
 
-/// @file FTMSServer.h
-/// @brief FTMS v1.0 read-only BLE service provider (0x1826, 0x2ACC, 0x2AD2).
-/// @details Implements IBLEServiceProvider (under WITH_BLE) and ITickable for
-///          the read-only Indoor Bike FTMS GATT profile. Subscribes to
-///          EventBus HR events and notifies 11-byte Indoor Bike Data packets
-///          at 2 Hz.
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/FTMSServer.h
+ * Description: FTMS v1.0 read-only BLE GATT service provider (0x1826, 0x2ACC, 0x2AD2) with 2 Hz notifications and EMA power smoothing.
+ * Reference: BLE FTMS GATT service structure references MIT-licensed prior art
+ *            (jamesjmtaylor/esp32-ftms-server, dbsqp/bluetooth-reebok-57e, lefty01/ESP32_TTGO_FTMS; see SPEC.md §2.3).
+ */
 
 #include "echenon/FTMSData.h"
 #include <cstdint>
@@ -28,6 +30,13 @@ class NimBLECharacteristic;
 
 namespace echenon {
 
+/**
+ * @brief Read-only BLE Fitness Machine Service (FTMS 0x1826) GATT provider.
+ *
+ * Implements IBLEServiceProvider (under WITH_BLE) and ITickable to broadcast
+ * 11-byte Indoor Bike Data (0x2AD2) packets at 2 Hz with optional EMA power
+ * smoothing and EventBus HR subscription.
+ */
 class FTMSServer :
 #ifdef WITH_BLE
     public IBLEServiceProvider,
@@ -35,46 +44,66 @@ class FTMSServer :
     public ITickable
 {
 public:
-    static constexpr uint32_t NOTIFY_INTERVAL_MS     = 500;     // 2 Hz notification cadence
-    static constexpr uint32_t HR_STALE_TIMEOUT_MS    = 5000;    // 5 s HR staleness threshold
-    static constexpr uint16_t kIndoorBikeAppearance  = 0x0485;  // Bluetooth SIG Indoor Bike appearance
+    static constexpr uint32_t NOTIFY_INTERVAL_MS     = 500;     ///< 2 Hz notification cadence (ms)
+    static constexpr uint32_t HR_STALE_TIMEOUT_MS    = 5000;    ///< 5 s HR staleness threshold (ms)
+    static constexpr uint16_t kIndoorBikeAppearance  = 0x0485;  ///< Bluetooth SIG Indoor Bike GAP appearance
 
+    /// Construct FTMSServer bound to the framework EventBus.
     explicit FTMSServer(EventBus& eventBus);
+    /// Unsubscribe from EventBus HR updates on destruction.
     ~FTMSServer() override;
 
     // --- ITickable ---
+    /// Notify connected BLE centrals with latest Indoor Bike Data at 2 Hz.
     void tick(uint32_t currentMillis) override;
+    /// Return module name identifier.
     const char* getName() const { return "FTMSServer"; }
 
     // --- Telemetry update (must be called from main loop) ---
+    /// Update instantaneous speed, cadence, canonical resistance, and power (applies EMA if enabled).
     void updateTelemetry(float speed_kph, float cadence_rpm,
                          uint8_t internal_resistance, int16_t power_watts);
 
     // --- FTMS Power Smoothing (EMA) ---
     /// Set the smoothing time constant in seconds.  0 = disabled (raw passthrough).
     void setPowerSmoothingWindow(float windowSeconds);
+    /// Return the configured EMA power smoothing time constant in seconds.
     float getPowerSmoothingWindow() const { return _smoothWindowS; }
 
     // --- EventBus lifecycle ---
+    /// Subscribe to EventBus HR_TOPIC notifications.
     void begin();
+    /// Unsubscribe from EventBus HR_TOPIC notifications.
     void end();
 
     // --- Test/diagnostic accessors ---
+    /// Copy the most recently encoded 11-byte Indoor Bike Data packet into out.
     void getLastPacket(uint8_t out[11]) const;
+    /// Return total number of 2 Hz Indoor Bike Data ticks encoded.
     uint32_t getNotifyCount() const { return _notifyCount; }
+    /// Return current heart rate in BPM, or 0 if stale beyond HR_STALE_TIMEOUT_MS.
     uint8_t getEffectiveHrBpm(uint32_t now_ms) const;
+    /// Return true while BLE stack advertising/notifications are paused.
     bool isPaused() const { return _paused; }
 
 #ifdef WITH_BLE
     // --- IBLEServiceProvider ---
+    /// Return unique BLE service provider identifier ("ftms").
     const char* getProviderId() const override { return "ftms"; }
+    /// Register FTMS (0x1826) service and characteristics on NimBLEServer.
     bool registerServices(NimBLEServer& server) override;
+    /// Contribute FTMS UUID, service data, and Indoor Bike appearance to advertising.
     void contributeAdvertising(BLEAdvertisingBuilder& adv) override;
+    /// Pause Indoor Bike Data notifications while BLE stack is paused.
     void onStackPaused() override { _paused = true; }
+    /// Resume Indoor Bike Data notifications when BLE stack resumes.
     void onStackResumed() override { _paused = false; }
 #else
+    /// Return unique BLE service provider identifier ("ftms").
     const char* getProviderId() const { return "ftms"; }
+    /// Pause Indoor Bike Data notifications while BLE stack is paused.
     void onStackPaused() { _paused = true; }
+    /// Resume Indoor Bike Data notifications when BLE stack resumes.
     void onStackResumed() { _paused = false; }
 #endif
 

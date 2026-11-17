@@ -1,9 +1,11 @@
 #pragma once
 
-/// @file IUploader.h
-/// @brief Pure capability interface for cloud activity upload services (SPEC.md §10.2).
-///        Implementations describe service identity, authentication/token state,
-///        and bounded stage operations without owning scheduling or BLE coexistence.
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/IUploader.h
+ * Description: Pure capability interface for cloud activity uploaders (SPEC.md §10.2).
+ */
 
 #include <cstdint>
 #include <string>

@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/HRSynthetic.cpp
+ * Description: Implementation of the diagnostic synthetic 1 Hz heart rate generator.
+ */
+
 #include "echenon/HRSynthetic.h"
 
 #ifdef WITH_HR_SYNTHETIC

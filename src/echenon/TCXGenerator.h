@@ -1,10 +1,11 @@
 #pragma once
 
-/// @file TCXGenerator.h
-/// @brief Streaming 1 Hz Training Center Database v2 (.tcx and .tcx.gz) generator
-///        with bounded 4 KB scratch buffer, first-principles virtual speed/distance
-///        integration, Xert MPA coasting continuity, and deadline checking
-///        (SPEC.md §7.5, §9.4–§9.5).
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/TCXGenerator.h
+ * Description: Streaming 1 Hz Training Center Database v2 (.tcx and .tcx.gz) generator with 4 KB scratch buffer and RFC 1952 gzip encoder (SPEC.md §7.5, §9.4–§9.5).
+ */
 
 #include "echenon/PowerEngine.h"
 #include "echenon/RideStore.h"
@@ -19,14 +20,20 @@ namespace echenon {
 
 /// Callback invoked to emit a chunk of output bytes (uncompressed XML or .tcx.gz).
 /// Return true to continue streaming, or false to abort generation immediately.
+// GRAVE-05: Transient stack-scoped parameter only (never stored on heap/member, zero tick-path allocation); supports native test spies.
 using WriteChunkFn = std::function<bool(const uint8_t* data, size_t len)>;
 
 /// Callback invoked periodically to check whether the caller's execution budget
 /// (e.g. DataManager 15 s DeadlineToken) still has time remaining.
 /// Return true while time remains, or false when the deadline has expired.
 /// An empty/null DeadlineCheckFn is treated as never expired.
+// GRAVE-05: Transient stack-scoped parameter only (never stored on heap/member, zero tick-path allocation); wraps DeadlineToken or native test spies.
 using DeadlineCheckFn = std::function<bool()>;
 
+/**
+ * @brief Streaming Training Center Database v2 (.tcx / .tcx.gz) generator
+ *        using bounded 4 KB PSRAM/stack buffers and RFC 1952 gzip compression.
+ */
 class TCXGenerator {
 public:
     /// Maximum size of the formatting and compression scratch buffer (4 KB).
@@ -38,6 +45,7 @@ public:
     /// Format a Unix epoch timestamp (seconds since 1970-01-01T00:00:00Z) as
     /// ISO-8601 UTC ("YYYY-MM-DDTHH:MM:SSZ").
     static void formatIso8601Utc(uint32_t epoch_s, char* out_buf, size_t out_len);
+    /// Return a Unix epoch timestamp formatted as an ISO-8601 UTC std::string.
     static std::string formatIso8601Utc(uint32_t epoch_s);
 
     /// Compute virtual flat-road speed (m/s) for a 1 Hz RideRecord using
@@ -57,6 +65,7 @@ public:
         const WriteChunkFn& write_chunk,
         const DeadlineCheckFn& check_deadline = nullptr);
 
+    /// Convenience std::vector overload for generateTcx().
     static bool generateTcx(
         const RideSummary& summary,
         const std::vector<RideRecord>& records,
@@ -87,6 +96,7 @@ public:
         const WriteChunkFn& write_chunk,
         const DeadlineCheckFn& check_deadline = nullptr);
 
+    /// Convenience std::vector overload for generateTcxGz().
     static bool generateTcxGz(
         const RideSummary& summary,
         const std::vector<RideRecord>& records,

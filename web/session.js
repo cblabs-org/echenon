@@ -38,7 +38,7 @@
             '  margin-bottom: 1rem;',
             '}',
             '.ech-sess-stat {',
-            '  background: var(--bg-input);',
+            '  background: var(--bg-input, var(--bg, #ffffff));',
             '  border: 1px solid var(--border);',
             '  border-radius: 0.5rem;',
             '  padding: 0.75rem;',
@@ -69,11 +69,10 @@
             '  font-size: 0.75rem;',
             '  font-weight: 700;',
             '}',
-            /* TODO: badge alpha needs color-mix() */
-            '.ech-sess-badge-idle { background: rgba(148,163,184,0.15); color: var(--text-muted); }',
-            '.ech-sess-badge-active { background: rgba(34,197,94,0.15); color: var(--success); }',
-            '.ech-sess-badge-paused { background: rgba(245,158,11,0.15); color: var(--warning); }',
-            '.ech-sess-badge-ended { background: rgba(59,130,246,0.15); color: var(--primary); }',
+            '.ech-sess-badge-idle { background: var(--border, #dee2e6); color: var(--text, #212529); }',
+            '.ech-sess-badge-active { background: var(--success, #2e7d32); color: var(--text-inverse, #ffffff); }',
+            '.ech-sess-badge-paused { background: var(--warning, #f9a825); color: var(--text-on-warning, #111827); }',
+            '.ech-sess-badge-ended { background: var(--primary-hover, #1976D2); color: var(--text-inverse, #ffffff); }',
             '.ech-sess-table {',
             '  width: 100%;',
             '  border-collapse: collapse;',
@@ -219,9 +218,26 @@
         if (el) el.textContent = msg || '';
     }
 
+    function apiJson(url, options) {
+        var opts = Object.assign({ credentials: 'same-origin' }, options || {});
+        if (typeof window.apiFetch === 'function') {
+            return window.apiFetch(url, opts);
+        }
+        return fetch(url, opts).then(function (r) {
+            if (!r.ok) {
+                return r.text().then(function (txt) {
+                    var err = new Error('HTTP ' + r.status);
+                    err.status = r.status;
+                    try { err.body = JSON.parse(txt); } catch (e) { err.body = txt; }
+                    throw err;
+                });
+            }
+            return r.json();
+        });
+    }
+
     function postAction(url, refreshHistoryAfter) {
-        fetch(url, { method: 'POST', credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
+        apiJson(url, { method: 'POST' })
             .then(function (data) {
                 if (data && data.error) {
                     setMessage('Error: ' + data.error);
@@ -232,7 +248,10 @@
                 if (refreshHistoryAfter) fetchHistory();
             })
             .catch(function (err) {
-                setMessage('Request failed: ' + err);
+                var msg = (err && err.body && err.body.error) ? err.body.error : err;
+                setMessage('Request failed: ' + msg);
+                fetchStatus();
+                if (refreshHistoryAfter) fetchHistory();
             });
     }
 
@@ -240,9 +259,8 @@
         var autoStart = document.getElementById('ech-cfg-autostart').checked;
         var delay = parseInt(document.getElementById('ech-cfg-delay').value, 10) || 3;
         var timeout = parseInt(document.getElementById('ech-cfg-timeout').value, 10) || 300;
-        fetch('/api/session/config', {
+        apiJson('/api/session/config', {
             method: 'POST',
-            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 auto_start_enabled: autoStart,
@@ -250,7 +268,6 @@
                 inactivity_timeout_sec: timeout
             })
         })
-            .then(function (r) { return r.json(); })
             .then(function () {
                 setMessage('Session settings saved.');
                 fetchStatus();
@@ -295,8 +312,7 @@
     }
 
     function fetchStatus() {
-        fetch('/api/session/status', { credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
+        apiJson('/api/session/status')
             .then(updateStatusUI)
             .catch(function () {});
     }
@@ -351,8 +367,7 @@
     }
 
     function fetchHistory() {
-        fetch('/api/session/history', { credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
+        apiJson('/api/session/history')
             .then(renderHistory)
             .catch(function () {});
     }
@@ -372,7 +387,8 @@
     }
 
     function onTabChanged(e) {
-        var targetTab = e.detail && e.detail.tab;
+        var detail = e.detail;
+        var targetTab = (detail && detail.tab) ? detail.tab : detail;
         if (targetTab === TAB_ID) {
             var container = document.getElementById(TAB_ID);
             if (!container) return;

@@ -1,20 +1,155 @@
 ---
 schema_version: 1
 charter:
-  pr_id: "PR-09"
-  slug: "pr-09-integration"
-  title: "v1 Integration and Release (UC1–UC3)"
-  branch: "feat/pr-09-integration"
-  base_branch: "main"
+  pr_id: PR-09
+  programme_id: prog-default
+  slug: pr-09-integration
+  title: v1 Beta Release Readiness, Audit Remediation & Builder Onboarding
+  branch: feat/pr-09-integration
+  base_branch: main
+  depends_on: []
   allowed_modules:
-    - "src/echenon/"
-    - "docs/"
-    - "hardware/"
-    - "framework/"
-    - "platformio.ini"
-    - "web/"
-  charter_locked: false
-status: PLANNED
+  - src/main.cpp
+  - src/echenon/
+  - hardware/ex3-waveshare-nano/
+  - tools/calibration-rig/
+  - web/
+  - test/
+  - docs/
+  - SPEC.md
+  - README.md
+  - LICENSE
+  - CHANGELOG.md
+  - CONTRIBUTING.md
+  - .gitignore
+  - .gitmodules
+  - framework
+  - platformio.ini
+  - CMakeLists.txt
+  - sdkconfig.defaults
+  - AGENTS.md
+  - .agents/skills/
+  required_skills:
+  - framework-expert
+  - pio-manager
+  - hardware-in-the-loop-test
+  verification_floor:
+  - pio test -e native --verbose
+  charter_locked: true
+  charter_hash: 4fda7d82fb0728bdadd3b7726305a5c4622528d07a2381907eb3f14c027ead9c
+status: AUDIT_APPROVED
+approved_at: '2026-11-13T23:13:38.026649Z'
+github_pr: 20
+work_orders:
+- id: WO-09.1
+  slug: wo1-security-mcp-encapsulation
+  title: MCP Contributor Tools, Portal Auth Guards, Persistence Fixes & Encapsulation
+  complexity: standard
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 854b1dcaf3e3618b3b7d19f87863d9b917ffa821
+- id: WO-09.2
+  slug: wo2-house-style-core
+  title: File Headers & Doxygen House Style — Core, Sensors, Power & Rig
+  complexity: mechanical
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 450fb751dd979bf0855d16ac1bffb692ca6c567f
+- id: WO-09.3
+  slug: wo3-house-style-ble-sinks
+  title: File Headers, GRAVE-05 Justification Comments & FTMS Guard — BLE & Data Sinks
+  complexity: mechanical
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 6b63b9cca95d1abe078f69e8307ad1f8f3734b3a
+- id: WO-09.4
+  slug: wo4-portal-design-tokens
+  title: Portal CSS Design Tokens, Reset Wiring, Contrast & Accessibility Polish
+  complexity: standard
+  status: COMPLETED
+  attempts: 1
+  commit_sha: dd51431ed0096b88b986fd62d0898c3a6f38d210
+- id: WO-09.5
+  slug: wo5-beta-hardware-guide
+  title: Standalone v1 Passive Tap Board Build Guide & Hardware Spec Errata
+  complexity: standard
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 07b89b5fb9aa30f4da3b8e8acfaa012d70545231
+- id: WO-09.6
+  slug: wo6-public-repo-docs
+  title: LICENSE, Beta Recruitment README, CHANGELOG, CONTRIBUTING & SPEC Sync
+  complexity: standard
+  status: COMPLETED
+  attempts: 1
+  commit_sha: da55c9c4f6cf987cce17253d9eaab70cb56d099a
+- id: WO-09.7
+  slug: wo7-public-repo-hygiene
+  title: Evidence Redaction (SSID/BSSID/URL) & .gitignore Hardening
+  complexity: mechanical
+  status: COMPLETED
+  attempts: 1
+  commit_sha: b2cf0f08b87224eefe6ca4b7433f7ee85ead6255
+- id: WO-09.8
+  slug: wo8-release-audit-verify
+  title: Multi-Env Firmware Builds, Native Tests & Beta Release Audit Report
+  complexity: interactive
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 4ba5c82eb287daff0f9ae6507f2a2a6b7bf54d5e
+- id: WO-09.9
+  slug: wo9-audit-doc-cleanup
+  title: Mask Privacy Grep Literals & Align SignalLogger Routes in Release Audit Doc
+  complexity: mechanical
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 6d785f89008abbecb0f07d5d27167b49594e9d4b
+- id: WO-09.10
+  slug: wo10-mcp-server-wiring
+  title: Wire Ring-2 MCPServer in Composition Root & Rig Read-Only Hint
+  complexity: standard
+  status: COMPLETED
+  attempts: 1
+  commit_sha: cff35a568ed9e72f7517f67109a3562c98c90f07
+- id: WO-09.11
+  slug: wo11-release-audit-measured-sync
+  title: Sync Release Audit Report with MCPServer Metrics & Live v0.3.0-dev.49 Bench
+    Soak
+  complexity: mechanical
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 5449b68131bb1bf70ceda578a13bb6ff926dbc60
+- id: WO-09.12
+  slug: wo12-foundation-v1-beta2
+  title: Align Submodule, Config, Docs & Skills to cblabs-org/esp32-app-foundation
+    v1.0.0-beta.2
+  complexity: standard
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 5383b781087e7bb58116ba1d03c12cbb13386bda
+- id: WO-09.13
+  slug: wo13-release-audit-v1-beta2-sync
+  title: Sync Release Audit Report with Foundation v1.0.0-beta.2 Metrics & v0.3.0-dev.50
+    Verification
+  complexity: mechanical
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 0ce5e79437c181e9393acb30ea51c9234af3a645
+- id: WO-09.14
+  slug: wo14-newlib-nano-and-boot-keystore-cleanup
+  title: Fix Newlib-Nano %zu/%llu Format Bugs and Post-DeviceCrypto Uploader Boot
+    Ordering
+  complexity: standard
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 0ba1bc508abf7131029f25f40e7ec2f70d4603a2
+- id: WO-09.15
+  slug: wo15-release-audit-v030-dev51-sync
+  title: Sync Release Audit Report with WO-09.14 Fixes & Live v0.3.0-dev.51 Verification
+  complexity: mechanical
+  status: COMPLETED
+  attempts: 1
+  commit_sha: c5000a4a3fcf1623a39b64f088e83ea95e497eb9
 ---
 
 ## 2. Scope
@@ -65,10 +200,40 @@ passes; full coexistence stress test passes.
 - [Archived PR-07 (v2)](../archive-pr-v2/pr-07-integration-polish/PROJECT.md)
 
 ## 3. Work Order Ledger
-<!-- PA fills this in during planning -->
+
+| WO | Slug | Scope | Complexity | Model | Status | Commit |
+|---|---|---|---|---|---|---|
+| `WO-09.1` | `wo1-security-mcp-encapsulation` | `IMCPContributor` tools, CalibrationRig HTTP→MCP migration, `AuthManager` guards, calibration persistence fixes, zero `extern Application app;`, `board.h` v1 finalisation | `standard` | `gemini-4-argon-medium` | `COMPLETED` | `450fb751dd97` (`rcpt_c82896c33fdc`) |
+| `WO-09.2` | `wo2-house-style-core` | Apache-2.0 headers & Doxygen house style across 32 core/sensor/power/rig files | `mechanical` | `gemini-4-hydrogen-high` | `COMPLETED` | `6b63b9cca95d` (`rcpt_6184086abe12`) |
+| `WO-09.3` | `wo3-house-style-ble-sinks` | Apache-2.0 headers, `FTMSServer` `millis()` `#ifdef UNIT_TEST` guard, & `GRAVE-05` comments across 31 BLE/session/sink files | `mechanical` | `gemini-4-hydrogen-high` | `COMPLETED` | `dd51431ed009` (`rcpt_6d2094de781c`) |
+| `WO-09.4` | `wo4-portal-design-tokens` | CSS `var(--token, #fallback)` compliance, `/api/echenon/calibration/reset` wiring, `window.apiFetch` consistency, WCAG AA contrast & SVG stroke polish across 12 `web/` files | `standard` | `gemini-4-hydrogen-high` | `COMPLETED` | `07b89b5fb9aa` (`rcpt_e0bca8f15496`) |
+| `WO-09.5` | `wo5-beta-hardware-guide` | Standalone v1 Passive Tap Board builder guide (`docs/beta-build-guide.md`) with mechanical `VIN`/`USB-C` interlock warning & `hardware_specification.md` `C1 ×5` errata fix | `standard` | `gemini-4-argon-medium` | `COMPLETED` | `da55c9c4f6cf` (`rcpt_011b654df3ad`) |
+| `WO-09.6` | `wo6-public-repo-docs` | `LICENSE`, beta-recruitment `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, & `SPEC.md` beta OTA deferral note | `standard` | `gemini-4-argon-medium` | `COMPLETED` | `f9b2b917e34d` (`rcpt_9d3d085f7d94`) |
+| `WO-09.7` | `wo7-public-repo-hygiene` | Redact home WiFi SSID (`<REDACTED_SSID>`), BSSIDs (`XX:XX:XX:*`), & personal Gemini URL across 10 tracked doc/log files + `.gitignore` hardening | `mechanical` | `gemini-4-hydrogen-medium` | `COMPLETED` | `b2cf0f08b872` + `4ba5c82eb287` (`rcpt_86b7b3d4dbba`) |
+| `WO-09.8` | `wo8-release-audit-verify` | 10-Dimension Release Audit (`Beta` channel `v0.3.0-beta.1`), `native` test suite, 3-env firmware build matrix, ELF DRAM inspection & audit report | `interactive` | `gemini-4-argon-medium` | `COMPLETED` | `5cc4819fc2f5` (`rcpt_30f66aaa6250`) |
+| `WO-09.9` | `wo9-audit-doc-cleanup` | Mask privacy grep literals & align `SignalLogger` routes in `docs/release-audit-v0.3.0-beta.1.md` | `mechanical` | `gemini-4-hydrogen-medium` | `COMPLETED` | `98bbf715ef21` (`rcpt_70001776b36b`) |
+| `WO-09.10` | `wo10-mcp-server-wiring` | Wire Ring-2 `MCPServer` in `src/main.cpp`, `ESP_LOGI` in `EchenonModule::registerMCPTools()`, & read-only `-32000` actionable hint in `calibration_sweep.py` | `standard` | `gemini-4-argon-medium` | `COMPLETED` | `3173600c84ab` (`rcpt_ccd8e2eafb52`) |
+| `WO-09.11` | `wo11-release-audit-measured-sync` | Sync `docs/release-audit-v0.3.0-beta.1.md` with post-`MCPServer` build/ELF footprint & live `v0.3.0-dev.49` `/api/mcp` + bench soak telemetry | `mechanical` | `gemini-4-hydrogen-medium` | `COMPLETED` | `1ab081beb1fb` (`rcpt_e2ef41142a80`) |
+| `WO-09.12` | `wo12-foundation-v1-beta2` | Switch `framework` submodule to public `cblabs-org/esp32-app-foundation` `@ v1.0.0-beta.2`, pin `pioarduino 55.03.311`, wire `TimeManager` DHCP NTP/TZ & skill/doc pointers | `standard` | `gemini-4-argon-high` | `COMPLETED` | `5383b781087e` + `178027cc8a7d` (`rcpt_d73d60391631`) |
+| `WO-09.13` | `wo13-release-audit-v1-beta2-sync` | Sync `docs/release-audit-v0.3.0-beta.1.md` with `cblabs-org/esp32-app-foundation` `v1.0.0-beta.2` builds, `v0.3.0-dev.50` live bench soak, & Launch Gate Step 2.1 completion | `mechanical` | `pro` | `COMPLETED` | `bf4c11d47ec4` (`rcpt_c0f379002612`) |
+| `WO-09.14` | `wo14-newlib-nano-and-boot-keystore-cleanup` | Fix newlib-nano `%zu`/`%llu` (`RidePersistence`, `SignalLogic::formatBurstCsvHeader`) and defer `IntervalsIcuUploader`/`WahooUploader` `begin()` until after `app.begin(config)` | `standard` | `pro` | `COMPLETED` | `802768575082` (`rcpt_1ea7627b8a9e`) |
+| `WO-09.15` | `wo15-release-audit-v030-dev51-sync` | Sync `docs/release-audit-v0.3.0-beta.1.md` with `WO-09.14` fixes, `271/271` native tests, `v0.3.0-dev.51` 3-env builds & live `0` `DeviceCrypto` error UART verification | `mechanical` | `pro` | `COMPLETED` | `86ab97cbd3d6` (`rcpt_662b7ae30cbf`) |
 
 ## 4. Session Log
-<!-- PA enriches this progressively -->
+
+- **2026-11-13 — Owner Plan & Design Approval:** Human explicitly approved autonomous execution of `PR-09` (`pr-09-integration`) to prepare **Echenon `v0.3.0-beta.1`** (v1 Passive Tap Board):
+  - CalibrationRig endpoints moved 100% from HTTP to `IMCPContributor` (`/api/mcp`), and full `EchenonModule` `IMCPContributor` + `AuthManager::checkPortalAuth()` guards enforced on all active `/api/echenon/*` portal endpoints (`WO-09.1`).
+  - Dimension 2 encapsulation fixes (`extern Application app;` removal, `FTMSServer` `#ifdef UNIT_TEST`, `static` composition root objects) approved.
+  - Hardware power safety uses a mechanical `VIN` / `USB-C` interlock (**one or the other, NEVER both**); OTA (`WITH_OTA`) remains deferred post-beta (USB-C updates in beta).
+  - Submodule visibility (`matthewmcneill/esp32-app-foundation`) handled via parallel process and tracked as final owner launch gate before flipping repos public.
+  - Per Rule 03 & programme governance, PR merge to `main`, `v0.3.0-beta.1` tagging, and `deploy_release.py` remain strictly owner-gated after Step 6A Cold-Firewall Audit.
+- **2026-11-14 — All 8 Work Orders Stamped & Integrated:** `WO-09.1` through `WO-09.8` completed sequentially on stacked branches (`450fb751dd97` → `5cc4819fc2f5`) with `269/269` `native` tests passing (`0.54 s`), all 3 firmware targets building green (`ex3-waveshare-nano`, `-diag`, `-rig`), privacy scrub verified (`0` matches outside `.agents/`), and formal 10-Dimension Beta Release Audit written to `docs/release-audit-v0.3.0-beta.1.md`. Fast-forwarded `feat/pr-09-integration` for Step 6A Cold-Firewall Audit.
+- **2026-11-14 — Step 6A Audit Round 1 & Bounded `WO-09.9` Remediation:** Cold-Firewall Audit Round 1 (`93dba6d6`) returned `APPROVED` with 2 non-blocking documentation observations in `docs/release-audit-v0.3.0-beta.1.md` (`NON-BLOCKING-1` privacy grep literal masking and `NON-BLOCKING-2` `SignalLogger` route list alignment). Owner authorized Step 1 cleanup via `WO-09.9` (`98bbf715ef21`, `rcpt_70001776b36b`), followed by `APPROVED` Cold-Firewall Audit Round 2 (`87a410af0ef5`).
+- **2026-11-14 — Live `v0.3.0-dev.48` Bench Test & Owner-Approved `WO-09.10`:** Live hardware verification on `/dev/cu.usbmodem101` (`v0.3.0-dev.48`) confirmed 2h 17m uptime (`8,235 s`, zero resets), 13/13 portal routes, BLE HRS/FTMS streaming, and `/api/echenon/rig/* -> 404`, while exposing `POST /api/mcp -> 404` because Ring-2 `MCPServer` was not wired in `src/main.cpp`. Owner explicitly approved `WO-09.10` remediation, live `v0.3.0-dev.49` `/api/mcp` + soak verification, `WO-09.11` measured audit sync, and Audit Round 3.
+- **2026-11-14 — `WO-09.10`, Live `v0.3.0-dev.49` Soak/MCP Gate, & `WO-09.11` Integrated:** Ring-2 `MCPServer` wired and verified (`3173600c84ab`, `rcpt_ccd8e2eafb52`); `269/269` native tests (`0.551 s`), all 3 ESP32-S3 envs green (`ex3-waveshare-nano`: `58,996 B` RAM / `1,787,295 B` Flash; `mcpServer`: `104 B`), and `82.4 min` (`4,944 s`) live soak on `/dev/cu.usbmodem101` (`v0.3.0-dev.49`) verified zero faults, `14/14` gzipped portal routes (`/mcp.js` `200`), `GET /api/mcp/status` (`27` tools, `readOnly: true`), `POST /api/mcp` `initialize` + `tools/list` + `echenon_get_telemetry` + `-32000` `readOnly` guard, `/api/echenon/rig/* -> 404`, and BLE `Echenon` advertising (`0x180D`, `0x1826`). Synced `docs/release-audit-v0.3.0-beta.1.md` via `WO-09.11` (`1ab081beb1fb`, `rcpt_e2ef41142a80`) and staged for Step 6A Cold-Firewall Audit Round 3.
+- **2026-11-17 — Foundation `v1.0.0-beta.2` Alignment (`WO-09.12`), `v0.3.0-dev.50` Verification, & Audit Sync (`WO-09.13`):** Updated `framework` submodule to public `cblabs-org/esp32-app-foundation` `@ v1.0.0-beta.2` (`02d0b2de`, `isPrivate: false`, upstream PR `#329`), pinned `pioarduino 55.03.311` (`um_nanos3`), wired `TimeManager::setEventBus`, and synced skills/docs (`WO-09.12`: `5383b781087e` + `178027cc8a7d`, `rcpt_d73d60391631`). Verified `269/269` native tests (`0.611 s`), all 3 ESP32-S3 targets on `v0.3.0-dev.50` (`ex3-waveshare-nano`: `59,516 B` RAM / `1,798,083 B` Flash; `-diag`: `59,836 B` / `1,815,123 B`; `-rig`: `59,604 B` / `1,804,275 B`), and `70 s` `/dev/cu.usbmodem101` hardware boot soak confirming `#329` `%u` UART fixes, SoftAP fallback (`192.168.4.1`), and heap/stack health. Synced `docs/release-audit-v0.3.0-beta.1.md` and checked Launch Gate Step `2.1` via `WO-09.13` (`bf4c11d47ec4`, `rcpt_c0f379002612`); staged for Step 6A Cold-Firewall Audit Round 4.
+- **2026-11-17 — Step 6A Audit Round 4 `APPROVED`, Tech-Debt Cleanup (`WO-09.14`), `v0.3.0-dev.51` Soak, & Audit Sync (`WO-09.15`):** Cold-Firewall Audit Round 4 (`7e10fc059b94`) returned `APPROVED` (`0` findings). Following owner request to fix remaining technical debt, `WO-09.14` (`802768575082`, `rcpt_1ea7627b8a9e`) replaced `%zu` in `RidePersistence.cpp`, replaced `%llu` in `SignalLogic.h::formatBurstCsvHeader()` with stack base-10 `%s` + `> 32-bit` unit test, and deferred `IntervalsIcuUploader`/`WahooUploader` `begin()` until after `app.begin(config)` with an `_athleteId` guard + unit test. Tagged `v0.3.0-dev.51`, verified `271/271` native tests (`0.677 s`), all 3 ESP32-S3 targets (`ex3-waveshare-nano`: `59,516 B` RAM / `1,798,083 B` Flash; `-diag`: `59,836 B` / `1,815,191 B`; `-rig`: `59,604 B` / `1,804,279 B`), and `81 s` `/dev/cu.usbmodem101` soak (`0` `DeviceCrypto not initialized` errors, `Scanned 0 persisted rides`, `0` faults). Synced `docs/release-audit-v0.3.0-beta.1.md` via `WO-09.15` (`86ab97cbd3d6`, `rcpt_662b7ae30cbf`) and staged for Step 6A Audit Round 5.
 
 ## Status
-**Plan Status:** NOT STARTED
+**Plan Status:** APPROVED
+**Execution Status:** STAGED_FOR_AUDIT (WO-09.1..WO-09.15 verified; awaiting Step 6A Audit Round 5)

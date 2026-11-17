@@ -21,16 +21,21 @@
     table: []
   };
 
-  function getApiFetch() {
-    return window.apiFetch || window.fetch;
+  async function apiJson(url, options) {
+    var opts = Object.assign({ credentials: 'same-origin' }, options || {});
+    if (typeof window.apiFetch === 'function') {
+      return await window.apiFetch(url, opts);
+    }
+    var resp = await fetch(url, opts);
+    if (!resp.ok) {
+      throw new Error('HTTP ' + resp.status);
+    }
+    return await resp.json();
   }
 
   async function fetchStatus() {
     try {
-      var fetchFn = getApiFetch();
-      var resp = await fetchFn('/api/echenon/calibration/status');
-      if (!resp.ok) return;
-      var data = await resp.json();
+      var data = await apiJson('/api/echenon/calibration/status');
       wizardState = data;
       renderState();
     } catch (err) {
@@ -40,13 +45,10 @@
 
   async function startCalibration() {
     try {
-      var fetchFn = getApiFetch();
-      var resp = await fetchFn('/api/echenon/calibration/start', {
+      await apiJson('/api/echenon/calibration/start', {
         method: 'POST'
       });
-      if (resp.ok) {
-        await fetchStatus();
-      }
+      await fetchStatus();
     } catch (err) {
       console.error('Failed to start calibration', err);
     }
@@ -54,13 +56,10 @@
 
   async function stopCalibration() {
     try {
-      var fetchFn = getApiFetch();
-      var resp = await fetchFn('/api/echenon/calibration/stop', {
+      await apiJson('/api/echenon/calibration/stop', {
         method: 'POST'
       });
-      if (resp.ok) {
-        await fetchStatus();
-      }
+      await fetchStatus();
     } catch (err) {
       console.error('Failed to stop calibration', err);
     }
@@ -69,15 +68,12 @@
   async function recordCurrentLevel() {
     if (!wizardState.active || wizardState.step < 1 || wizardState.step > 32) return;
     try {
-      var fetchFn = getApiFetch();
-      var resp = await fetchFn('/api/echenon/calibration/record-level', {
+      await apiJson('/api/echenon/calibration/record-level', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ level: wizardState.step })
       });
-      if (resp.ok) {
-        await fetchStatus();
-      }
+      await fetchStatus();
     } catch (err) {
       console.error('Failed to record level', err);
     }
@@ -85,13 +81,10 @@
 
   async function resetCalibration() {
     try {
-      var fetchFn = getApiFetch();
-      var resp = await fetchFn('/api/echenon/calibration/stop', {
+      await apiJson('/api/echenon/calibration/reset', {
         method: 'POST'
       });
-      if (resp.ok) {
-        await fetchStatus();
-      }
+      await fetchStatus();
     } catch (err) {
       console.error('Failed to reset calibration', err);
     }
@@ -107,8 +100,8 @@
     if (btn) {
       btn.textContent = 'Reset to Defaults';
       btn.style.background = '';
-      btn.style.color = 'var(--danger, #c62828)';
-      btn.style.borderColor = 'var(--danger, #c62828)';
+      btn.style.color = 'var(--error, #c62828)';
+      btn.style.borderColor = 'var(--error, #c62828)';
     }
   }
 
@@ -118,9 +111,9 @@
     if (!resetArmed) {
       resetArmed = true;
       btn.textContent = '\u26A0 Confirm Reset? (3s)';
-      btn.style.background = 'var(--danger, #c62828)';
-      btn.style.color = '#fff';
-      btn.style.borderColor = 'var(--danger, #c62828)';
+      btn.style.background = 'var(--error, #c62828)';
+      btn.style.color = 'var(--text-inverse, #ffffff)';
+      btn.style.borderColor = 'var(--error, #c62828)';
       resetTimer = setTimeout(disarmReset, 3000);
     } else {
       disarmReset();
@@ -134,7 +127,7 @@
       '<div style="background:var(--card-bg); border:1px solid var(--border, #e0e0e0); border-radius:16px; padding:1.25rem; margin-bottom:1rem;">' +
         '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">' +
           '<h3 style="margin:0; font-size:1.15rem; font-weight:700; color:var(--text, #212121);">Level Mapping</h3>' +
-          '<span id="cal-wiz-status-badge" style="display:inline-block; padding:2px 10px; font-size:0.75rem; font-weight:700; border-radius:20px; background:var(--border, #e0e0e0); color:var(--text-muted);">IDLE</span>' +
+          '<span id="cal-wiz-status-badge" style="display:inline-block; padding:2px 10px; font-size:0.75rem; font-weight:700; border-radius:20px; background:var(--border, #e0e0e0); color:var(--text, #212121);">IDLE</span>' +
         '</div>' +
         '<p style="margin:0 0 0.75rem 0; font-size:0.85rem; color:var(--text-muted); line-height:1.5;">' +
           'Level mapping calibrates the potentiometer to each of the 32 console resistance levels. ' +
@@ -156,7 +149,7 @@
       '<div style="background:var(--card-bg); border:1px solid var(--border, #e0e0e0); border-radius:16px; padding:1.25rem;">' +
         '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">' +
           '<h4 style="margin:0; font-size:1rem; font-weight:700; color:var(--text, #212121);">Recorded Wiper Table</h4>' +
-          '<button id="cal-wiz-reset-btn" type="button" style="padding:4px 12px; font-size:0.8rem; font-weight:600; border:1px solid var(--danger, #c62828); border-radius:10px; background:transparent; color:var(--danger, #c62828); cursor:pointer;">Reset to Defaults</button>' +
+          '<button id="cal-wiz-reset-btn" type="button" style="padding:4px 12px; font-size:0.8rem; font-weight:600; border:1px solid var(--error, #c62828); border-radius:10px; background:transparent; color:var(--error, #c62828); cursor:pointer;">Reset to Defaults</button>' +
         '</div>' +
         '<div id="cal-wiz-table-wrapper" style="max-height:360px; overflow-y:auto; border:1px solid var(--border, #e0e0e0); border-radius:10px;">' +
           '<table style="width:100%; border-collapse:collapse; font-size:0.85rem;">' +
@@ -184,7 +177,7 @@
     actionArea.innerHTML =
       '<div style="text-align:center; padding:1.5rem 1rem; color:var(--text-muted);">' +
         '<p style="margin:0 0 0.75rem 0; font-size:0.9rem;">No calibration data yet. Run the calibration wizard to map all 32 resistance levels.</p>' +
-        '<button id="cal-wiz-start-btn" type="button" style="padding:8px 20px; font-size:0.9rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:#fff; cursor:pointer;">Start Level Mapping</button>' +
+        '<button id="cal-wiz-start-btn" type="button" style="padding:8px 20px; font-size:0.9rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:var(--text-inverse, #ffffff); cursor:pointer;">Start Level Mapping</button>' +
       '</div>';
 
     var startBtn = document.getElementById('cal-wiz-start-btn');
@@ -209,22 +202,22 @@
     // Update Status Badge & Progress
     if (wizardState.active) {
       badge.textContent = 'RECORDING (STEP ' + wizardState.step + '/32)';
-      badge.style.background = 'rgba(249, 168, 37, 0.15)';
-      badge.style.color = '#f9a825';
+      badge.style.background = 'var(--warning, #f9a825)';
+      badge.style.color = 'var(--text-on-warning, #111827)';
       if (progressContainer) progressContainer.style.display = 'block';
       if (progressText) progressText.textContent = 'Step ' + (wizardState.step - 1) + ' / 32';
       if (progressBar) progressBar.style.width = Math.round(((wizardState.step - 1) / 32) * 100) + '%';
     } else if (wizardState.complete || wizardState.pos_done) {
       badge.textContent = 'COMPLETED';
-      badge.style.background = 'rgba(46, 125, 50, 0.15)';
-      badge.style.color = 'var(--success, #2e7d32)';
+      badge.style.background = 'var(--success, #2e7d32)';
+      badge.style.color = 'var(--text-inverse, #ffffff)';
       if (progressContainer) progressContainer.style.display = 'block';
       if (progressText) progressText.textContent = '32 / 32 Complete';
       if (progressBar) progressBar.style.width = '100%';
     } else {
       badge.textContent = 'IDLE';
       badge.style.background = 'var(--border, #e0e0e0)';
-      badge.style.color = 'var(--text-muted)';
+      badge.style.color = 'var(--text, #212121)';
       if (progressContainer) progressContainer.style.display = 'none';
     }
 
@@ -240,13 +233,13 @@
     } else if (wizardState.active) {
       // Active calibration UI
       actionArea.innerHTML =
-        '<div style="background:rgba(33, 150, 243, 0.06); border-left:4px solid var(--primary, #2196F3); padding:0.75rem 1rem; margin-bottom:1rem; border-radius:2px;">' +
+        '<div style="background:var(--primary-alpha, rgba(33, 150, 243, 0.08)); border-left:4px solid var(--primary, #2196F3); padding:0.75rem 1rem; margin-bottom:1rem; border-radius:2px;">' +
           '<div style="font-size:0.95rem; font-weight:700; margin-bottom:0.25rem; color:var(--text, #212121);">Step ' + wizardState.step + ': Set Console to Level ' + wizardState.step + '</div>' +
           '<div style="font-size:0.85rem; color:var(--text-muted);">Turn the bike\u2019s resistance knob until the console or app shows Level ' + wizardState.step + '. Allow the motor to settle, then click Record.</div>' +
         '</div>' +
         '<div style="display:flex; gap:0.5rem; align-items:center;">' +
-          '<button id="cal-wiz-record-btn" type="button" style="padding:8px 20px; font-size:0.9rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:#fff; cursor:pointer;">Record Level ' + wizardState.step + '</button>' +
-          '<button id="cal-wiz-stop-btn" type="button" style="padding:8px 16px; font-size:0.9rem; font-weight:600; border:1px solid var(--danger, #c62828); border-radius:10px; background:transparent; color:var(--danger, #c62828); cursor:pointer;">Cancel</button>' +
+          '<button id="cal-wiz-record-btn" type="button" style="padding:8px 20px; font-size:0.9rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:var(--text-inverse, #ffffff); cursor:pointer;">Record Level ' + wizardState.step + '</button>' +
+          '<button id="cal-wiz-stop-btn" type="button" style="padding:8px 16px; font-size:0.9rem; font-weight:600; border:1px solid var(--error, #c62828); border-radius:10px; background:transparent; color:var(--error, #c62828); cursor:pointer;">Cancel</button>' +
         '</div>';
 
       var recordBtn = document.getElementById('cal-wiz-record-btn');
@@ -265,7 +258,7 @@
       }
     } else if (wizardState.complete || wizardState.pos_done) {
       actionArea.innerHTML =
-        '<div style="background:rgba(46, 125, 50, 0.06); border-left:4px solid var(--success, #2e7d32); padding:0.75rem 1rem; margin-bottom:1rem; border-radius:2px;">' +
+        '<div style="background:var(--success-bg, rgba(46, 125, 50, 0.06)); border-left:4px solid var(--success, #2e7d32); padding:0.75rem 1rem; margin-bottom:1rem; border-radius:2px;">' +
           '<div style="font-size:0.95rem; font-weight:700; color:var(--success, #2e7d32); margin-bottom:0.25rem;">Calibration Complete</div>' +
           '<div style="font-size:0.85rem; color:var(--text-muted);">All 32 levels have been recorded and saved. The unit is now calibrated for accurate resistance tracking.</div>' +
         '</div>' +
@@ -281,7 +274,7 @@
     } else {
       // Has some data but not complete
       actionArea.innerHTML =
-        '<button id="cal-wiz-start-btn" type="button" style="padding:8px 20px; font-size:0.9rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:#fff; cursor:pointer;">Start Level Mapping</button>';
+        '<button id="cal-wiz-start-btn" type="button" style="padding:8px 20px; font-size:0.9rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:var(--text-inverse, #ffffff); cursor:pointer;">Start Level Mapping</button>';
 
       var startBtn = document.getElementById('cal-wiz-start-btn');
       if (startBtn) {
@@ -301,13 +294,13 @@
 
       var rowStyle = 'border-bottom:1px solid var(--border, #e0e0e0);';
       if (isCurrent) {
-        rowStyle += ' background:rgba(33, 150, 243, 0.06); font-weight:700;';
+        rowStyle += ' background:var(--primary-alpha, rgba(33, 150, 243, 0.08)); font-weight:700;';
       }
 
       rowsHtml +=
         '<tr style="' + rowStyle + '">' +
           '<td style="padding:0.4rem 0.75rem; color:var(--text, #212121);">Level ' + l +
-            (isCurrent ? ' <span style="display:inline-block; padding:1px 6px; font-size:0.65rem; font-weight:700; border-radius:20px; background:rgba(249, 168, 37, 0.15); color:#f9a825;">CURRENT</span>' : '') +
+            (isCurrent ? ' <span style="display:inline-block; padding:1px 6px; font-size:0.65rem; font-weight:700; border-radius:20px; background:var(--warning, #f9a825); color:var(--text-on-warning, #111827);">CURRENT</span>' : '') +
           '</td>' +
           '<td style="padding:0.4rem 0.75rem; text-align:right; font-family:\'Courier New\', monospace; color:var(--text, #212121);">' + (isRecorded ? wiperVal : '-') + '</td>' +
           '<td style="padding:0.4rem 0.75rem; text-align:center;">' +

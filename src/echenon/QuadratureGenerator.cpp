@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/QuadratureGenerator.cpp
+ * Description: Implementation of the Gray-code quadrature waveform generator and GPIO output driver.
+ */
+
 #if defined(WITH_CALIBRATION_RIG) || defined(UNIT_TEST)
 
 #include "echenon/QuadratureGenerator.h"

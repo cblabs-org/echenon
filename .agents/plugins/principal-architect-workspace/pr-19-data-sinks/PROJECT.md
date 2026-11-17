@@ -68,35 +68,35 @@ work_orders:
   complexity: mechanical
   status: COMPLETED
   attempts: 1
-  commit_sha: 6ccc63811fcb08a762b4b34c62794301f3209a87
+  commit_sha: ff8982ec0eb68444ec70158b0ac428720e0104a1
 - id: WO-19.6
   slug: wo6-native-tests
   title: Native Unit Tests
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: ff8982ec0eb68444ec70158b0ac428720e0104a1
+  commit_sha: d869a2b2d6d06b7b25b7fc701d942a49c4d87319
 - id: WO-19.7
   slug: wo7-spec-doc-sync
   title: SPEC & Doc Sync
   complexity: mechanical
   status: COMPLETED
   attempts: 1
-  commit_sha: d869a2b2d6d06b7b25b7fc701d942a49c4d87319
+  commit_sha: 31efa065c677e9c1fa1cf99aa22bab7480e9369c
 - id: WO-19.8
   slug: wo8-hardware-verification
   title: Hardware Verification & Soak
   complexity: interactive
   status: COMPLETED
   attempts: 1
-  commit_sha: 6525cc62bf10bcbe9326fa56c01c8093dbeae5ac
+  commit_sha: 857f948b2fd93d5fe060b8e8909dd1f59ab54bc6
 - id: WO-19.10
   slug: wo10-build-fixes
   title: Firmware Build Fixes
   complexity: mechanical
   status: COMPLETED
   attempts: 1
-  commit_sha: 41978fba3551cb8b4ae697c76857a5202c5c9252
+  commit_sha: 6525cc62bf10bcbe9326fa56c01c8093dbeae5ac
 ---
 
 # PR-19 — Pluggable Data Sinks & Ride History Management

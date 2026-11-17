@@ -1,5 +1,9 @@
-/// @file RideStore.cpp
-/// @brief PSRAM-backed ride sample storage and LittleFS crash recovery implementation.
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/RideStore.cpp
+ * Description: Implementation of PSRAM-backed 1 Hz ride sample storage and LittleFS crash recovery.
+ */
 
 #include "echenon/RideStore.h"
 

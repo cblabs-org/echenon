@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/ResistanceSensor.cpp
+ * Description: Implementation of the potentiometer ADC resistance sensor and EMA filter.
+ */
+
 #include "echenon/ResistanceSensor.h"
 #include "echenon/LevelMapping.h"
 #include <cmath>

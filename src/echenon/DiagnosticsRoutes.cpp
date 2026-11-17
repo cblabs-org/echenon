@@ -1,9 +1,13 @@
-/// @file DiagnosticsRoutes.cpp
-/// @brief Diagnostics and run-data query REST API implementation.
-///
-/// Route registration is guarded with `#ifndef UNIT_TEST`. Helper functions
-/// (diagEventTypeToString, formatPayloadJson) are unconditionally compiled
-/// for native testing.
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/DiagnosticsRoutes.cpp
+ * Description: Diagnostics and run-data query REST API route handlers and JSON payload formatters.
+ *
+ * Route registration is guarded with `#ifndef UNIT_TEST`. Helper functions
+ * (diagEventTypeToString, formatPayloadJson) are unconditionally compiled
+ * for native testing.
+ */
 
 #include "echenon/DiagnosticsRoutes.h"
 #include "echenon/RidePersistence.h"

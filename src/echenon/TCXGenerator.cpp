@@ -1,5 +1,9 @@
-/// @file TCXGenerator.cpp
-/// @brief Streaming TCX/TCX.gz generation with gzip compression, CRC32, and virtual speed integration.
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/TCXGenerator.cpp
+ * Description: Implementation of streaming TCX/TCX.gz generation with RFC 1952 gzip compression, CRC32, and virtual speed integration.
+ */
 
 #include "echenon/TCXGenerator.h"
 

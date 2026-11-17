@@ -1,7 +1,15 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/main.cpp
+ * Description: Application composition root, module registration, and Arduino setup/loop entry points.
+ */
+
 #include "AppFoundation.h"
 #include <Arduino.h>
 #include <ctime>
 #include "echenon/EchenonModule.h"
+#include "MCPServer.hpp"
 
 #ifdef WITH_BLE
 #include "BLEManager/BLEManager.hpp"
@@ -11,7 +19,7 @@ static BLEManager bleManager;
 #ifdef WITH_ENCODER
 #include "EncoderModule.hpp"
 #include "board.h"
-EncoderModule encoderModule;
+static EncoderModule encoderModule;
 #endif
 
 #ifdef WITH_SESSION
@@ -33,8 +41,9 @@ static TimeManager timeManager;
 static TimePreconditionContributor timePrecondition{timeManager};
 #endif
 
-Application app;
-EchenonModule echenonModule;
+static Application app;
+static EchenonModule echenonModule;
+static MCPServer mcpServer;
 
 #ifdef WITH_SESSION
 static echenon::RideStore rideStore;
@@ -48,7 +57,7 @@ static echenon::RidePersistence ridePersistence(rideStore.fileSystem());
 static echenon::StravaUploader stravaUploader;
 #endif
 
-// Valid SNTP epoch threshold (2023-11-15 approx.)
+/// Valid SNTP epoch threshold (2023-11-15 approx.)
 static constexpr uint32_t VALID_EPOCH_THRESHOLD = 1700000000u;
 
 /// Return current wall-clock epoch if NTP-synced, else 0.
@@ -83,6 +92,7 @@ static void onSessionEndPersist(const char*, const void* data, void*) {
 }
 #endif
 
+/// Arduino firmware entry point: wires modules, initializes framework, and subscribes event handlers.
 void setup() {
     Serial.begin(115200);
     app.setAppName("Echenon");
@@ -90,10 +100,13 @@ void setup() {
 
     // Wire dependencies
     echenonModule.setConfigManager(&app.getConfigManager());
+    echenonModule.setAuthManager(&app.getAuthManager());
     echenonModule.setEventBus(&app.getEventBus());
 
     // Register — compile-time introspection detects implemented interfaces
     app.registerModule(&echenonModule);
+    mcpServer.setAppName("Echenon");
+    app.registerModule(&mcpServer);
 
 #ifdef WITH_ENCODER
     for (size_t i = 0; i < BOARD_ENCODER_COUNT; i++) {
@@ -147,7 +160,6 @@ void setup() {
 #endif
     echenonModule.intervalsUploader().setKeyManager(&app.getKeyManager());
     echenonModule.intervalsUploader().setSecretRegistrar(echenon::IntervalsIcuUploader::defaultRegisterSecret);
-    echenonModule.intervalsUploader().begin();
     uploadQueue.registerSink(&echenonModule.intervalsUploader());
     app.registerModule(&echenonModule.intervalsUploader());
     sessionOverlay.setIntervalsUploader(&echenonModule.intervalsUploader());
@@ -156,7 +168,6 @@ void setup() {
     echenonModule.wahooUploader().setMetadataSaveCallback([](uint32_t, const std::string&) {
         return app.getConfigManager().saveModuleConfig(&echenonModule.wahooUploader());
     });
-    echenonModule.wahooUploader().begin();
     uploadQueue.registerSink(&echenonModule.wahooUploader());
     app.registerModule(&echenonModule.wahooUploader());
     sessionOverlay.setWahooUploader(&echenonModule.wahooUploader());
@@ -173,6 +184,7 @@ void setup() {
 
 #ifdef WITH_TIME
     timeManager.setConfigManager(&app.getConfigManager());
+    timeManager.setEventBus(&app.getEventBus());
     app.registerModule(&timeManager);
     app.registerModule(&timePrecondition);
 #endif
@@ -189,6 +201,19 @@ void setup() {
 #ifdef WITH_TIME
     timeManager.begin();
 #endif
+
+    mcpServer.begin(
+        app.getMcpContributors(),
+        &app.getConfigManager(),
+#ifdef WITH_TIME
+        &timeManager,
+#else
+        nullptr,
+#endif
+        &app.getWifiManager(),
+        &app.getAuthManager(),
+        &app.getDataManager()
+    );
 
 #ifdef WITH_BLE
     bleManager.begin(app);
@@ -213,6 +238,8 @@ void setup() {
 #ifdef WITH_STRAVA
     stravaUploader.begin();
 #endif
+    echenonModule.intervalsUploader().begin();
+    echenonModule.wahooUploader().begin();
     uploadQueue.begin();
     app.getEventBus().subscribe(
         echenon::EVENT_SESSION_TOPIC,
@@ -236,6 +263,7 @@ void setup() {
 #endif
 }
 
+/// Arduino main loop: advances framework tick and propagates wall-clock epoch.
 void loop() {
     app.tick();
 

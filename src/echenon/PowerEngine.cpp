@@ -1,3 +1,12 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/PowerEngine.cpp
+ * Description: Implementation of Physics P3r forward/inverse power evaluation, virtual speed, and table interpolation.
+ * Reference: Power curve and Echelon/Peloton mapping concepts reference MIT-licensed prior art
+ *            (ptx2/gymnasticon, cagnulein/qdomyos-zwift, lefty01/ESP32_TTGO_FTMS; see SPEC.md §2.3).
+ */
+
 #include "echenon/PowerEngine.h"
 #include "echenon/PowerTableDefault.h"
 #include <cmath>

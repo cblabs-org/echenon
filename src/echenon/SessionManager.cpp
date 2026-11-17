@@ -1,5 +1,9 @@
-/// @file SessionManager.cpp
-/// @brief Session lifecycle state machine, 2 Hz telemetry sampling, and auto-start/pause logic.
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/SessionManager.cpp
+ * Description: Implementation of the ride session lifecycle state machine, 2 Hz sampling, and auto-start/pause logic.
+ */
 
 #include "echenon/SessionManager.h"
 

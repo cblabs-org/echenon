@@ -1,22 +1,23 @@
 ---
+schema_version: 1
 wo_id: WO-20.4
 pr_id: PR-20
-programme_id: prog-default
-slug: wo4-linker-fix
 title: Remove duplicate LiveFeed tick() overloads (linker fix)
 complexity: mechanical
-required_skills: []
+status: COMPLETED
 allowed_files:
-  - src/echenon/LiveFeed.cpp
+- src/echenon/LiveFeed.cpp
 forbidden_files:
-  - src/echenon/LiveFeed.h
-  - src/echenon/SessionOverlay.cpp
-  - src/echenon/EchenonModule.cpp
-  - web/**
+- src/echenon/LiveFeed.h
+- src/echenon/SessionOverlay.cpp
+- src/echenon/EchenonModule.cpp
+- web/**
+required_skills: []
 verification_command: pio test -e native --verbose
 max_attempts: 3
-status: COMPLETED
+max_structural_failures: 2
 spec_hash: null
+completion: null
 ---
 
 # WO-20.4 — Remove Duplicate LiveFeed tick() Overloads (Linker Fix)

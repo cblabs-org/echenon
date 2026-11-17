@@ -21,14 +21,14 @@
   var runawayTimer = null;
   var stylesInjected = false;
 
-  // --- Event Type Badge Colours ---
-  var TYPE_COLOURS = {
-    'BOOT':             { bg: '#2563eb22', fg: '#3b82f6', label: 'Boot' },
-    'SESSION_START':    { bg: '#10b98122', fg: '#10b981', label: 'Session Start' },
-    'SESSION_END':      { bg: '#6366f122', fg: '#818cf8', label: 'Session End' },
-    'RUNAWAY_ALERT':    { bg: '#ef444422', fg: '#ef4444', label: 'Runaway' },
-    'CALIBRATION_DONE': { bg: '#f59e0b22', fg: '#f59e0b', label: 'Calibration' },
-    'FIRMWARE_CHANGE':  { bg: '#8b5cf622', fg: '#a78bfa', label: 'Firmware' }
+  // --- Event Type Badge Classes ---
+  var TYPE_BADGES = {
+    'BOOT':             { cls: 'diag-badge--boot',        label: 'Boot' },
+    'SESSION_START':    { cls: 'diag-badge--start',       label: 'Session Start' },
+    'SESSION_END':      { cls: 'diag-badge--end',         label: 'Session End' },
+    'RUNAWAY_ALERT':    { cls: 'diag-badge--runaway',     label: 'Runaway' },
+    'CALIBRATION_DONE': { cls: 'diag-badge--calibration', label: 'Calibration' },
+    'FIRMWARE_CHANGE':  { cls: 'diag-badge--firmware',    label: 'Firmware' }
   };
 
   function injectStyles() {
@@ -43,8 +43,8 @@
       '  margin-bottom: 1rem;',
       '}',
       '.diag-runaway-banner {',
-      '  background: #dc262622;',
-      '  border: 1px solid #ef4444;',
+      '  background: var(--danger-bg, rgba(198, 40, 40, 0.08));',
+      '  border: 1px solid var(--error, #c62828);',
       '  border-radius: 0.75rem;',
       '  padding: 1rem;',
       '  margin-bottom: 1rem;',
@@ -54,13 +54,16 @@
       '  display: block;',
       '}',
       '.diag-runaway-title {',
-      '  color: #ef4444;',
+      '  color: var(--error, #c62828);',
       '  font-weight: 700;',
       '  font-size: 0.95rem;',
       '  margin-bottom: 0.25rem;',
       '}',
+      '[data-theme="dark"] .diag-runaway-title {',
+      '  color: var(--danger-light, #f87171);',
+      '}',
       '.diag-runaway-text {',
-      '  color: var(--text-muted);',
+      '  color: var(--text);',
       '  font-size: 0.82rem;',
       '}',
       '.diag-table-wrap {',
@@ -97,7 +100,15 @@
       '  font-size: 0.7rem;',
       '  font-weight: 600;',
       '  letter-spacing: 0.03em;',
+      '  background: var(--border, #e0e0e0);',
+      '  color: var(--text, #212529);',
       '}',
+      '.diag-badge--boot { background: var(--primary-hover, #1976D2); color: var(--text-inverse, #ffffff); }',
+      '.diag-badge--start { background: var(--success, #2e7d32); color: var(--text-inverse, #ffffff); }',
+      '.diag-badge--end { background: var(--indigo, #4338ca); color: var(--text-inverse, #ffffff); }',
+      '.diag-badge--runaway { background: var(--error, #c62828); color: var(--text-inverse, #ffffff); }',
+      '.diag-badge--calibration { background: var(--warning, #f9a825); color: var(--text-on-warning, #111827); }',
+      '.diag-badge--firmware { background: var(--purple, #6d28d9); color: var(--text-inverse, #ffffff); }',
       '.diag-empty {',
       '  text-align: center;',
       '  color: var(--text-muted);',
@@ -145,9 +156,9 @@
   }
 
   function makeBadge(type) {
-    var info = TYPE_COLOURS[type] || { bg: '#88888822', fg: '#888888', label: type };
-    return '<span class="diag-badge" style="background:' + info.bg +
-           ';color:' + info.fg + '">' + info.label + '</span>';
+    var info = TYPE_BADGES[type] || { cls: '', label: type };
+    var cls = info.cls ? ('diag-badge ' + info.cls) : 'diag-badge';
+    return '<span class="' + cls + '">' + info.label + '</span>';
   }
 
   function formatDetails(ev) {
@@ -195,31 +206,30 @@
     tbody.innerHTML = html;
   }
 
-  function fetchEvents() {
+  function apiJson(url, options) {
+    var opts = Object.assign({ credentials: 'same-origin' }, options || {});
     if (typeof window.apiFetch === 'function') {
-      window.apiFetch('/api/echenon/events?limit=50')
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          renderEvents(data.events || data);
-        })
-        .catch(function() {});
-    } else {
-      fetch('/api/echenon/events?limit=50')
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          renderEvents(data.events || data);
-        })
-        .catch(function() {});
+      return window.apiFetch(url, opts);
     }
+    return fetch(url, opts).then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    });
+  }
+
+  function fetchEvents() {
+    apiJson('/api/echenon/events?limit=50')
+      .then(function(data) {
+        renderEvents(data.events || data);
+      })
+      .catch(function() {});
   }
 
   function checkRunaway() {
     var banner = document.getElementById('diag-runaway-banner');
     if (!banner) return;
 
-    var fetchFn = (typeof window.apiFetch === 'function') ? window.apiFetch : fetch;
-    fetchFn('/api/echenon/live')
-      .then(function(r) { return r.json(); })
+    apiJson('/api/echenon/live')
       .then(function(data) {
         if (data && data.runaway) {
           banner.classList.add('active');
@@ -250,7 +260,7 @@
     injectStyles();
 
     container.innerHTML = [
-      '<div id="diag-runaway-banner" class="diag-runaway-banner">',
+      '<div id="diag-runaway-banner" class="diag-runaway-banner" role="alert">',
       '  <div class="diag-runaway-title">\u26A0\uFE0F Resistance Runaway Detected</div>',
       '  <div class="diag-runaway-text">The resistance sensor is reading outside the calibrated range for an extended period.</div>',
       '</div>',

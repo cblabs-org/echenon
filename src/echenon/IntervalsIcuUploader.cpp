@@ -1,6 +1,9 @@
-/// @file IntervalsIcuUploader.cpp
-/// @brief Intervals.icu API-key-authenticated uploader with HTTP Basic Auth and
-///        synchronous upload processing.
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/IntervalsIcuUploader.cpp
+ * Description: Implementation of the Intervals.icu API-key uploader with HTTP Basic Auth and synchronous uploads.
+ */
 
 #include "echenon/IntervalsIcuUploader.h"
 
@@ -249,8 +252,12 @@ bool IntervalsIcuUploader::loadCredentials() {
         return false;
     }
 
-    _apiKey    = _secretStore->getSecret(KEY_API_KEY);
-    _athleteId = _secretStore->getSecret(KEY_ATHLETE_ID);
+    _apiKey = _secretStore->getSecret(KEY_API_KEY);
+    // Preserve _athleteId populated earlier by applyConfig() if KeyManager lacks KEY_ATHLETE_ID.
+    const std::string storedAthleteId = _secretStore->getSecret(KEY_ATHLETE_ID);
+    if (!storedAthleteId.empty()) {
+        _athleteId = storedAthleteId;
+    }
 
     if (!_apiKey.empty()) {
         registerSecretWithRedactor(_apiKey, KEY_API_KEY);

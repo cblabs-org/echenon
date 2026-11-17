@@ -47,7 +47,7 @@
             '      <input type="password" id="ech-strava-client-secret" placeholder="Enter new client secret" autocomplete="new-password" style="width:100%;padding:8px 10px;border:1px solid var(--border, #e0e0e0);border-radius:10px;font-size:0.9rem;color:var(--text, #212121);background:var(--card-bg);">',
             '    </div>',
             '    <div>',
-            '      <button id="ech-btn-strava-save" type="button" style="padding:8px 20px; font-size:0.85rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:#fff; cursor:pointer;">Save Credentials</button>',
+            '      <button id="ech-btn-strava-save" type="button" style="padding:8px 20px; font-size:0.85rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:var(--text-inverse, #ffffff); cursor:pointer;">Save Credentials</button>',
             '    </div>',
             '  </div>',
             '  <div id="ech-strava-msg" style="font-size:0.85rem;color:var(--text-muted);margin-top:0.75rem;min-height:1.2em;"></div>',
@@ -55,7 +55,7 @@
             '<div style="background:var(--card-bg); border:1px solid var(--border, #e0e0e0); border-radius:16px; padding:1.25rem;">',
             '  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">',
             '    <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:var(--text, #212121);">Strava Integration</h3>',
-            '    <span id="ech-strava-badge" style="display:inline-block; padding:2px 10px; font-size:0.75rem; font-weight:700; border-radius:20px; background:var(--border, #e0e0e0); color:var(--text-muted);">Checking...</span>',
+            '    <span id="ech-strava-badge" style="display:inline-block; padding:2px 10px; font-size:0.75rem; font-weight:700; border-radius:20px; background:var(--border, #e0e0e0); color:var(--text, #212121);">Checking...</span>',
             '  </div>',
             '  <p style="margin:0 0 0.75rem 0; font-size:0.85rem; color:var(--text-muted); line-height:1.5;">',
             '    Connect your Strava account to automatically upload completed rides. Create a Strava API application at ',
@@ -64,8 +64,8 @@
             '  </p>',
             '  <div id="ech-strava-details" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;"></div>',
             '  <div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;margin-bottom:0.5rem;">',
-            '    <button id="ech-btn-strava-auth" type="button" disabled style="padding:8px 16px; font-size:0.85rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:#fff; cursor:not-allowed; opacity:0.5;">Authorize with Strava</button>',
-            '    <button id="ech-btn-strava-disconnect" type="button" style="padding:8px 16px; font-size:0.85rem; font-weight:600; border:1px solid var(--danger, #c62828); border-radius:10px; background:transparent; color:var(--danger, #c62828); cursor:pointer;">Disconnect Strava</button>',
+            '    <button id="ech-btn-strava-auth" type="button" disabled style="padding:8px 16px; font-size:0.85rem; font-weight:700; border:none; border-radius:10px; background:var(--primary, #2196F3); color:var(--text-inverse, #ffffff); cursor:not-allowed; opacity:0.5;">Authorize with Strava</button>',
+            '    <button id="ech-btn-strava-disconnect" type="button" style="padding:8px 16px; font-size:0.85rem; font-weight:600; border:1px solid var(--error, #c62828); border-radius:10px; background:transparent; color:var(--error, #c62828); cursor:pointer;">Disconnect Strava</button>',
             '    <button id="ech-btn-strava-refresh" type="button" style="padding:8px 16px; font-size:0.85rem; font-weight:600; border:1px solid var(--border, #e0e0e0); border-radius:10px; background:transparent; color:var(--text, #212121); cursor:pointer;">Refresh Status</button>',
             '  </div>',
             '  <div id="ech-strava-auth-note" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">Save your API credentials first</div>',
@@ -105,16 +105,16 @@
         if (badge) {
             if (data.authenticated) {
                 badge.textContent = 'CONNECTED';
-                badge.style.background = 'rgba(46, 125, 50, 0.15)';
-                badge.style.color = 'var(--success, #2e7d32)';
+                badge.style.background = 'var(--success, #2e7d32)';
+                badge.style.color = 'var(--text-inverse, #ffffff)';
             } else if (data.configured) {
                 badge.textContent = 'CREDENTIALS SAVED (NOT AUTHORIZED)';
-                badge.style.background = 'rgba(249, 168, 37, 0.15)';
-                badge.style.color = '#f9a825';
+                badge.style.background = 'var(--warning, #f9a825)';
+                badge.style.color = 'var(--text-on-warning, #111827)';
             } else {
                 badge.textContent = 'NOT CONFIGURED';
                 badge.style.background = 'var(--border, #e0e0e0)';
-                badge.style.color = 'var(--text-muted)';
+                badge.style.color = 'var(--text, #212121)';
             }
         }
 
@@ -151,9 +151,33 @@
         }
     }
 
+    function apiJson(url, options) {
+        var opts = Object.assign({ credentials: 'same-origin' }, options || {});
+        if (typeof window.apiFetch === 'function') {
+            return window.apiFetch(url, opts);
+        }
+        return fetch(url, opts).then(function (r) {
+            if (!r.ok) {
+                return r.text().then(function (txt) {
+                    var err = new Error('HTTP ' + r.status);
+                    err.status = r.status;
+                    try { err.body = JSON.parse(txt); } catch (e) { err.body = txt; }
+                    throw err;
+                });
+            }
+            return r.json();
+        });
+    }
+
+    function extractErr(err) {
+        if (err && err.body && (err.body.error || err.body.message)) {
+            return err.body.error || err.body.message;
+        }
+        return (err && err.message) ? err.message : String(err);
+    }
+
     function fetchStravaStatus() {
-        fetch('/api/strava/status', { credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
+        apiJson('/api/strava/status')
             .then(updateStatusUI)
             .catch(function () {});
     }
@@ -166,13 +190,11 @@
             setMsg('Both Client ID and Client Secret are required.');
             return;
         }
-        fetch('/api/strava/credentials', {
+        apiJson('/api/strava/credentials', {
             method: 'POST',
-            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ client_id: cid, client_secret: sec })
         })
-            .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (data && data.ok) {
                     secEl.value = '';
@@ -183,16 +205,13 @@
                 }
             })
             .catch(function (err) {
-                setMsg('Error saving credentials: ' + err);
+                setMsg('Error saving credentials: ' + extractErr(err));
             });
     }
 
     function startOAuth() {
         var redirectUri = window.location.origin + '/api/strava/callback';
-        fetch('/api/strava/auth-url?redirect_uri=' + encodeURIComponent(redirectUri), {
-            credentials: 'same-origin'
-        })
-            .then(function (r) { return r.json(); })
+        apiJson('/api/strava/auth-url?redirect_uri=' + encodeURIComponent(redirectUri))
             .then(function (data) {
                 var target = data && (data.url || data.authorize_url);
                 if (target) {
@@ -202,31 +221,28 @@
                 }
             })
             .catch(function (err) {
-                setMsg('Failed to request auth URL: ' + err);
+                setMsg('Failed to request auth URL: ' + extractErr(err));
             });
     }
 
     function disconnectStrava() {
-        fetch('/api/strava/disconnect', { method: 'POST', credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
+        apiJson('/api/strava/disconnect', { method: 'POST' })
             .then(function () {
                 setMsg('Disconnected from Strava.');
                 fetchStravaStatus();
             })
             .catch(function (err) {
-                setMsg('Error disconnecting: ' + err);
+                setMsg('Error disconnecting: ' + extractErr(err));
             });
     }
 
     function saveAutoUpload() {
         var enabled = document.getElementById('ech-strava-autoupload').checked;
-        fetch('/api/session/config', {
+        apiJson('/api/session/config', {
             method: 'POST',
-            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ auto_upload_enabled: enabled })
         })
-            .then(function (r) { return r.json(); })
             .then(function () {
                 setMsg('Auto-upload preference updated.');
             })

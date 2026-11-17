@@ -1,5 +1,12 @@
 #pragma once
 
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/HREncoding.h
+ * Description: Bluetooth SIG Heart Rate Measurement (0x2A37) payload encoder for BLE relay notifications.
+ */
+
 #include <cstddef>
 #include <cstdint>
 

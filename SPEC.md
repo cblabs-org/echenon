@@ -76,6 +76,8 @@ Related documents:
   [`docs/ex3_specification.md`](docs/ex3_specification.md)
 - Circuit build guide per phase:
   [`docs/hardware_specification.md`](docs/hardware_specification.md)
+- Standalone v1 Passive Tap Board beta builder guide (`v0.3.0-beta.1`):
+  [`docs/beta-build-guide.md`](docs/beta-build-guide.md)
 - Development rationale:
   [`docs/implementation-strategy.md`](docs/implementation-strategy.md)
 - Operating scenarios UC1–UC6:
@@ -117,7 +119,7 @@ Related documents:
 ### 1.3 Built On
 
 Echenon is an application module on the
-[ESP32 App Foundation](https://github.com/matthewmcneill/esp32-app-foundation),
+[ESP32 App Foundation](https://github.com/cblabs-org/esp32-app-foundation),
 vendored as the git submodule `framework/`. It inherits WiFi management, the web
 portal, encrypted credential storage, OTA updates, the DataManager background
 fetch pipeline, the module composition architecture and the optional
@@ -128,7 +130,11 @@ fetch pipeline, the module composition architecture and the optional
   fix for framework issue #236 (WiFi fallback to an open AP).
 - PR-03 turns BLE on (`WITH_BLE`, `h2zero/esp-nimble-cpp@^2.1.0`) once its
   entry gates close (§8.3).
-- OTA is manual-only until framework issue #226 lands (§8.5).
+- OTA is manual-only until framework issue #226 lands (§8.5). For **`v0.3.0-beta.1`**,
+  `WITH_OTA` is intentionally omitted/disabled in `platformio.ini` while
+  framework OTA undergoes stabilisation; beta firmware updates are performed
+  over **USB-C** with the mechanical `SW0` `VIN`/`USB-C` interlock set to USB
+  ([`docs/beta-build-guide.md`](docs/beta-build-guide.md)).
 
 ### 1.4 Out of Scope (v1)
 
@@ -203,7 +209,7 @@ Apache License 2.0, compatible with all dependencies.
 
 | Library | License | Usage |
 |---|---|---|
-| [ESP32 App Foundation](https://github.com/matthewmcneill/esp32-app-foundation) | Apache-2.0 | Framework (WiFi, web, config, OTA, auth, BLE) |
+| [ESP32 App Foundation](https://github.com/cblabs-org/esp32-app-foundation) | Apache-2.0 | Framework (WiFi, web, config, OTA, auth, BLE) |
 | [h2zero/esp-nimble-cpp](https://github.com/h2zero/esp-nimble-cpp) | Apache-2.0 | BLE stack (via Foundation BLEManager) |
 | Espressif Arduino Core and ESP-IDF for ESP32 | Apache-2.0 | Hardware abstraction |
 
@@ -386,7 +392,8 @@ phase and are never driver outputs; the driver uses GPIO 10 and 17.
 
 | Module | Responsibility | Foundation interface | First PR |
 |---|---|---|---|
-| `EchenonModule` | Composition root; owns all sub-components and exposes providers through accessors | `ITickable`, `IConfigurable`, `IWebContributor` | PR-01 |
+| `EchenonModule` | Composition root; owns all sub-components, exposes providers through accessors, and registers JSON-RPC MCP tools (`POST /api/mcp`: telemetry, calibration, recalibration, power table, FTMS smoothing, and `CalibrationRig` control) | `ITickable`, `IConfigurable`, `IWebContributor`, `IMCPContributor` | PR-01 / PR-09 |
+| `CalibrationRig` (`WITH_CALIBRATION_RIG`) | Synthesizes quadrature encoder and cadence pulses for automated bench sweeps; controlled via `IMCPContributor` (`POST /api/mcp`: `echenon_rig_status`, `echenon_rig_command`) rather than raw HTTP endpoints | — (via `EchenonModule` `IMCPContributor`) | PR-02 / PR-09 |
 | `SignalLogger` | Phase 0 capture: ride log and burst capture on all ten ADC1 channels, CSV export | — | PR-01 |
 | `CadenceSensor` | Interrupt-driven reed switch, RPM calculation | — | PR-02 |
 | `ResistanceSensor` | Wiper ADC fast and display paths, cam-angle and half-revolution tracking, display-level mapping | — | PR-02 |
@@ -428,7 +435,7 @@ the EventBus (§8.2).
 | `AuthManager` | Portal login; protects mutations, downloads and motor commands |
 | `DataManager` | Background fetch task with deadlines and health state for `UploadQueue` |
 | `EventBus` | HR samples, session events, encoder events |
-| `OTAUpdateManager` (`WITH_OTA`) | Manual firmware updates without opening the console (from PR-04a) |
+| `OTAUpdateManager` (`WITH_OTA`) | Manual firmware updates without opening the console (from PR-04a; intentionally disabled in `v0.3.0-beta.1` while framework OTA undergoes stabilisation — beta updates use USB-C with the `SW0` `VIN`/`USB-C` interlock set to USB) |
 
 **Coupling rules (Service Module Pattern):**
 
@@ -760,7 +767,10 @@ stock. Pin numbers are from §4.4.2 (v1 rows frozen at DR-1; v2 rows
 provisional `[DR-2]`).
 
 **v1 passive tap board (DR-1 §2.8, frozen).** The board is the PR-01
-detection circuit made permanent (DR-1 §4, condition 2.8):
+detection circuit made permanent (DR-1 §4, condition 2.8; see
+[`docs/beta-build-guide.md`](docs/beta-build-guide.md) alongside
+[`docs/hardware_specification.md`](docs/hardware_specification.md) for
+standalone DIY beta board construction):
 
 - **Y-harness pass-through:** J1 → J2 (9-pin) and J3 → J4 (3-pin), every
   conductor straight through. No motor split, no J6, no encoder interception.
@@ -771,7 +781,9 @@ detection circuit made permanent (DR-1 §4, condition 2.8):
 - **No R3, R4, R5 and no Green–GND link** (DR-1 §2.9): the board never sources
   current into a bike line.
 - **Power:** VIN **or** USB, never both (below). **Manual OTA** for routine
-  updates (§8.5, PR-04a). UART0 pads left free.
+  updates (§8.5, PR-04a; for **`v0.3.0-beta.1`**, `WITH_OTA` is intentionally
+  disabled in `platformio.ini` and beta updates are performed over **USB-C**
+  with the mechanical `SW0` `VIN`/`USB-C` interlock set to USB). UART0 pads left free.
 
 **Connectors:**
 
@@ -2032,7 +2044,7 @@ measures Echenon's figure with the 4-connection override.
 - **OTA is manual-only.** The framework's `OTAUpdateManager` with
   `autoCheck = true` runs a full update, including a reboot, as soon as WiFi
   connects after boot, which is exactly when a rider powers on the bike.
-  Until framework [issue #226](https://github.com/matthewmcneill/esp32-app-foundation/issues/226)
+  Until framework [issue #226](https://github.com/cblabs-org/esp32-app-foundation/issues/226)
   adds `checkOnBoot` and a runtime "busy" guard, Echenon forces
   **`autoCheck = false`** after config load and again after every factory
   reset (the framework's OTA `resetConfig()` restores `true`). The framework
@@ -3500,7 +3512,7 @@ fitted.
 | D.4 | Power model. | Model form decided from data. | **Updated 2026-10-24 (superseding DR-1).** 4-parameter first-principles electromechanical formula (`Physics P3r`: $R^2 = 0.999522$, $\text{RMSE} = 3.77\text{ W}$, [`docs/power-physics-model.md`](docs/power-physics-model.md)) as Tier 1 default in `PowerEngine`, with Tier 2 custom matrix and Tier 3 recalibration table overrides (§6) |
 | D.5 | v1 power path. | VIN supply, VIN/USB selection and the power-path check decided (MITM safety moved to DR-2). | **Approved with condition.** VIN or USB, never both; PR-04a WO1 checks the Waveshare power path from the schematic before soldering and designs the selector (§4.6) |
 | D.6 | Standalone supports. | None on the v1 board (R3/R4/R5 and the Green–GND link are DR-2 items). | **Done.** None in v1 |
-| D.7 | Decision record. | [`DR-1-design-freeze.md`](.agents/skills/principal-architect-workspace/reviews/DR-1-design-freeze.md) approved by the owner. | **Approved with conditions**, 2026-10-12 |
+| D.7 | Decision record. | [`DR-1-design-freeze.md`](.agents/plugins/principal-architect-workspace/reviews/DR-1-design-freeze.md) approved by the owner. | **Approved with conditions**, 2026-10-12 |
 
 ### 15.4 PR-02 — Phase 1: Calibrate
 
@@ -3859,7 +3871,7 @@ on its own.
 > [!NOTE]
 > Automatic OTA is **disabled** (`autoCheck = false`, forced after config load
 > and after factory reset) until framework
-> [issue #226](https://github.com/matthewmcneill/esp32-app-foundation/issues/226)
+> [issue #226](https://github.com/cblabs-org/esp32-app-foundation/issues/226)
 > adds a boot-time guard. Without it, an update could start mid-warm-up.
 
 1. Open `http://echenon.local` → **System** tab (logged in).

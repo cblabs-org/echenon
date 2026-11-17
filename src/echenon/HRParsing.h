@@ -1,19 +1,29 @@
 #pragma once
 
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: src/echenon/HRParsing.h
+ * Description: Bluetooth SIG Heart Rate Measurement (0x2A37) notification payload parser.
+ */
+
 #include <cstdint>
 #include <cstddef>
 #include "echenon/HREvents.h"
 
 namespace echenon {
 
+/**
+ * @brief Decoded fields from a Bluetooth SIG 0x2A37 Heart Rate Measurement payload.
+ */
 struct ParsedHrMeasurement {
-    uint16_t       bpm = 0;
-    HRContactState contactState = HRContactState::UNKNOWN;
-    bool           hasEnergy = false;
-    uint16_t       energyExpended = 0;
-    bool           hasRr = false;
-    float          lastRrMs = 0.0f;
-    uint8_t        fieldsConsumed = 0;  // bytes parsed
+    uint16_t       bpm = 0;                               ///< Decoded heart rate (BPM)
+    HRContactState contactState = HRContactState::UNKNOWN; ///< Derived contact state
+    bool           hasEnergy = false;                     ///< True if energy expended field was present
+    uint16_t       energyExpended = 0;                    ///< Energy expended (kJ)
+    bool           hasRr = false;                         ///< True if RR-interval field(s) were present
+    float          lastRrMs = 0.0f;                       ///< Most recent RR-interval (ms)
+    uint8_t        fieldsConsumed = 0;                    ///< Total payload bytes parsed
 };
 
 /**

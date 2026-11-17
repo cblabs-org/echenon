@@ -7,7 +7,7 @@
 #define BOARD_ID_STRING   "ex3-waveshare-nano"
 constexpr bool HAS_PSRAM = true;
 
-// ── Bike signals (HAS_*) and pins: Phase 0/1 map, SPEC §4.4.1 ──
+// ── Bike signals (HAS_*) and pins: Phase 0/1 & DR-1 Frozen v1 Passive Tap Board, SPEC §4.4.1–§4.4.2 ──
 // Every tap: series resistor, INPUT with no internal pull-up or pull-down.
 #define HAS_RESISTANCE_POT   1
 constexpr int8_t PIN_POT_WIPER        = 1;   // A0  Blue,   ADC1
@@ -25,7 +25,11 @@ constexpr int8_t PIN_MOTOR_SENSE_N    = 7;   // D4  Black, ADC1 via ÷4 divider
 #define HAS_KNOB_ENCODER     1
 constexpr int8_t PIN_KNOB_ENC_A       = 8;   // D5  Black,  ADC1 (J3 left pin)
 constexpr int8_t PIN_KNOB_ENC_B       = 9;   // D6  Red,    ADC1 (J3 right pin)
-constexpr int8_t PIN_KNOB_ENC_VCC     = 10;  // D7  Orange, ADC1 (J3 centre pin, Phase 0/1 only)
+constexpr int8_t PIN_KNOB_ENC_VCC     = 10;  // D7  Orange, ADC1 (J3 centre pin, Phase 0/1 & DR-1 Frozen v1 Passive Tap Board, SPEC §4.4.1–§4.4.2)
+
+// Reserved UART0 pins for future ANT+ module (SPEC §4.4.1–§4.4.2) — leave unconnected in v1
+constexpr int8_t PIN_UART0_TX_RESERVED = 43;
+constexpr int8_t PIN_UART0_RX_RESERVED = 44;
 
 #ifdef WITH_ENCODER
 #include "EncoderModule/EncoderConfig.h"
