@@ -37,7 +37,7 @@ charter:
   - pio test -e native --verbose
   charter_locked: true
   charter_hash: 4fda7d82fb0728bdadd3b7726305a5c4622528d07a2381907eb3f14c027ead9c
-status: AUDIT_APPROVED
+status: APPROVED
 approved_at: '2026-11-13T23:13:38.026649Z'
 github_pr: 20
 work_orders:
@@ -119,6 +119,14 @@ work_orders:
   status: COMPLETED
   attempts: 1
   commit_sha: 5449b68131bb1bf70ceda578a13bb6ff926dbc60
+- id: WO-09.12
+  slug: wo12-foundation-v1-beta2
+  title: Align Submodule, Config, Docs & Skills to cblabs-org/esp32-app-foundation
+    v1.0.0-beta.2
+  complexity: standard
+  status: PENDING
+  attempts: 0
+  commit_sha: null
 ---
 
 ## 2. Scope
@@ -183,6 +191,7 @@ passes; full coexistence stress test passes.
 | `WO-09.9` | `wo9-audit-doc-cleanup` | Mask privacy grep literals & align `SignalLogger` routes in `docs/release-audit-v0.3.0-beta.1.md` | `mechanical` | `gemini-4-hydrogen-medium` | `COMPLETED` | `98bbf715ef21` (`rcpt_70001776b36b`) |
 | `WO-09.10` | `wo10-mcp-server-wiring` | Wire Ring-2 `MCPServer` in `src/main.cpp`, `ESP_LOGI` in `EchenonModule::registerMCPTools()`, & read-only `-32000` actionable hint in `calibration_sweep.py` | `standard` | `gemini-4-argon-medium` | `COMPLETED` | `3173600c84ab` (`rcpt_ccd8e2eafb52`) |
 | `WO-09.11` | `wo11-release-audit-measured-sync` | Sync `docs/release-audit-v0.3.0-beta.1.md` with post-`MCPServer` build/ELF footprint & live `v0.3.0-dev.49` `/api/mcp` + bench soak telemetry | `mechanical` | `gemini-4-hydrogen-medium` | `COMPLETED` | `1ab081beb1fb` (`rcpt_e2ef41142a80`) |
+| `WO-09.12` | `wo12-foundation-v1-beta2` | Switch `framework` submodule to public `cblabs-org/esp32-app-foundation` `@ v1.0.0-beta.2`, pin `pioarduino 55.03.311`, wire `TimeManager` DHCP NTP/TZ & skill/doc pointers | `standard` | `gemini-4-argon-high` | `PENDING` | — |
 
 ## 4. Session Log
 
