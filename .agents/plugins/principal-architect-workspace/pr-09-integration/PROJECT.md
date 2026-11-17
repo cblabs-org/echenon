@@ -37,7 +37,7 @@ charter:
   - pio test -e native --verbose
   charter_locked: true
   charter_hash: 4fda7d82fb0728bdadd3b7726305a5c4622528d07a2381907eb3f14c027ead9c
-status: AUDIT_APPROVED
+status: GRADUATED
 approved_at: '2026-11-13T23:13:38.026649Z'
 github_pr: 20
 work_orders:
@@ -234,6 +234,31 @@ passes; full coexistence stress test passes.
 - **2026-11-17 — Foundation `v1.0.0-beta.2` Alignment (`WO-09.12`), `v0.3.0-dev.50` Verification, & Audit Sync (`WO-09.13`):** Updated `framework` submodule to public `cblabs-org/esp32-app-foundation` `@ v1.0.0-beta.2` (`02d0b2de`, `isPrivate: false`, upstream PR `#329`), pinned `pioarduino 55.03.311` (`um_nanos3`), wired `TimeManager::setEventBus`, and synced skills/docs (`WO-09.12`: `5383b781087e` + `178027cc8a7d`, `rcpt_d73d60391631`). Verified `269/269` native tests (`0.611 s`), all 3 ESP32-S3 targets on `v0.3.0-dev.50` (`ex3-waveshare-nano`: `59,516 B` RAM / `1,798,083 B` Flash; `-diag`: `59,836 B` / `1,815,123 B`; `-rig`: `59,604 B` / `1,804,275 B`), and `70 s` `/dev/cu.usbmodem101` hardware boot soak confirming `#329` `%u` UART fixes, SoftAP fallback (`192.168.4.1`), and heap/stack health. Synced `docs/release-audit-v0.3.0-beta.1.md` and checked Launch Gate Step `2.1` via `WO-09.13` (`bf4c11d47ec4`, `rcpt_c0f379002612`); staged for Step 6A Cold-Firewall Audit Round 4.
 - **2026-11-17 — Step 6A Audit Round 4 `APPROVED`, Tech-Debt Cleanup (`WO-09.14`), `v0.3.0-dev.51` Soak, & Audit Sync (`WO-09.15`):** Cold-Firewall Audit Round 4 (`7e10fc059b94`) returned `APPROVED` (`0` findings). Following owner request to fix remaining technical debt, `WO-09.14` (`802768575082`, `rcpt_1ea7627b8a9e`) replaced `%zu` in `RidePersistence.cpp`, replaced `%llu` in `SignalLogic.h::formatBurstCsvHeader()` with stack base-10 `%s` + `> 32-bit` unit test, and deferred `IntervalsIcuUploader`/`WahooUploader` `begin()` until after `app.begin(config)` with an `_athleteId` guard + unit test. Tagged `v0.3.0-dev.51`, verified `271/271` native tests (`0.677 s`), all 3 ESP32-S3 targets (`ex3-waveshare-nano`: `59,516 B` RAM / `1,798,083 B` Flash; `-diag`: `59,836 B` / `1,815,191 B`; `-rig`: `59,604 B` / `1,804,279 B`), and `81 s` `/dev/cu.usbmodem101` soak (`0` `DeviceCrypto not initialized` errors, `Scanned 0 persisted rides`, `0` faults). Synced `docs/release-audit-v0.3.0-beta.1.md` via `WO-09.15` (`86ab97cbd3d6`, `rcpt_662b7ae30cbf`) and staged for Step 6A Audit Round 5.
 
+<!-- pa:graduation-summary start -->
+### Graduation Summary (`PR-09` / `pr-09-integration` — `GRADUATED`)
+
+- **Completed Date:** 2026-11-13
+- **Graduation Mode:** `external`
+- **Latest Audit:** Round 5 — `APPROVED` (`9b861b6ef8a0`)
+
+| WO-ID | Status | Attempts | Commit SHA |
+|---|---|---|---|
+| WO-09.1 | COMPLETED | 1 | `854b1dcaf3e3` |
+| WO-09.2 | COMPLETED | 1 | `450fb751dd97` |
+| WO-09.3 | COMPLETED | 1 | `6b63b9cca95d` |
+| WO-09.4 | COMPLETED | 1 | `dd51431ed009` |
+| WO-09.5 | COMPLETED | 1 | `07b89b5fb9aa` |
+| WO-09.6 | COMPLETED | 1 | `da55c9c4f6cf` |
+| WO-09.7 | COMPLETED | 1 | `b2cf0f08b872` |
+| WO-09.8 | COMPLETED | 1 | `4ba5c82eb287` |
+| WO-09.9 | COMPLETED | 1 | `6d785f89008a` |
+| WO-09.10 | COMPLETED | 1 | `cff35a568ed9` |
+| WO-09.11 | COMPLETED | 1 | `5449b68131bb` |
+| WO-09.12 | COMPLETED | 1 | `5383b781087e` |
+| WO-09.13 | COMPLETED | 1 | `0ce5e79437c1` |
+| WO-09.14 | COMPLETED | 1 | `0ba1bc508abf` |
+| WO-09.15 | COMPLETED | 1 | `c5000a4a3fcf` |
+<!-- pa:graduation-summary end -->
 ## Status
 **Plan Status:** APPROVED
 **Execution Status:** STAGED_FOR_AUDIT (WO-09.1..WO-09.15 verified; awaiting Step 6A Audit Round 5)
