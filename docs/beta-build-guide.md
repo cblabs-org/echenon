@@ -11,7 +11,7 @@
 >
 > The Echenon v1 Passive Tap Board powers the **Waveshare ESP32-S3-Nano** (`U1`) directly from the bike's `+9 V DC` supply line (`J1` Pin 8, White) via the board's onboard **MP2322 `VIN` (6–21 V)** switching regulator. **No external buck converter is used in v1.**
 >
-> You **MUST** install a mechanical power interlock switch (`SW0`) in series with the `+9 V` `VIN` feed and strictly follow this checklist so that **bike `+9 V VIN` and computer `USB-C` are NEVER connected at the same time**:
+> We recommend you install a mechanical power interlock switch (`SW0`) in series with the `+9 V` `VIN` feed and follow this checklist so that **bike `+9 V VIN` and computer `USB-C` are NEVER connected at the same time**:
 >
 > #### Bench / USB-C Flashing Checklist (`VIN` OFF → `USB-C` ON)
 > 1. **STOP** and verify the bike's 9 V wall adapter is unplugged **or** flip `SW0` firmly to the **USB / VIN-OFF** position (disconnecting `J1-8` `+9 V` from `U1 VIN`).
