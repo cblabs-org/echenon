@@ -45,6 +45,12 @@ Thumbs.db
 *.bak
 tmp/
 
+# ── KiCad ────────────────────────────────────────
+*.lck
+*.kicad_prl
+.history/
+*-backups/
+
 # ── Secrets & local environment files ────────────
 .env
 .env.*
