@@ -123,6 +123,11 @@ All 12 harness conductors (`9` on `J1 ↔ J2`, `3` on `J3 ↔ J4`) pass straight
 
 ## 4. Circuit Schematic
 
+> [!TIP]
+> **Printable Bench Reference & PCB Fabrication Files (KiCad 10, ERC=0 / DRC=0):**
+> - **Printable Schematic (A3/A4 vector PDF):** [`echenon_v1_passive_tap.pdf`](../hardware/ex3-waveshare-nano/pcb/v1-passive-tap/echenon_v1_passive_tap.pdf) — full end-to-end EX-3 bike → tap board → console circuit diagram ready to print at the soldering bench.
+> - **PCB Layout PDF & Ready-to-Mill Gerbers:** [`echenon_v1_passive_tap_pcb.pdf`](../hardware/ex3-waveshare-nano/pcb/v1-passive-tap/echenon_v1_passive_tap_pcb.pdf) | [`echenon_v1_passive_tap_gerbers.zip`](../hardware/ex3-waveshare-nano/pcb/gerbers/v1-passive-tap/echenon_v1_passive_tap_gerbers.zip) — see [`hardware/ex3-waveshare-nano/pcb/README.md`](../hardware/ex3-waveshare-nano/pcb/README.md) if you want to mill or order a single-sided `70 × 50 mm` PCB instead of soldering perfboard.
+
 ### 4.1 Block & Signal Flow Diagram
 
 ```mermaid

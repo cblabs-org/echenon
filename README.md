@@ -116,6 +116,7 @@ Full circuit schematics, pin-by-pin wire colour tables, and multimeter checklist
 | Document | Description |
 |---|---|
 | [**`docs/beta-build-guide.md`**](docs/beta-build-guide.md) | **Start Here:** Standalone v1 Passive Tap Board BOM, wiring tables, schematics, multimeter checks, USB-C flashing & calibration guide |
+| [**`hardware/ex3-waveshare-nano/pcb/`**](hardware/ex3-waveshare-nano/pcb/README.md) | **KiCad 10 PCB Package & Printable Schematics:** [Printable v1 Schematic PDF](hardware/ex3-waveshare-nano/pcb/v1-passive-tap/echenon_v1_passive_tap.pdf), [v1 PCB Layout PDF](hardware/ex3-waveshare-nano/pcb/v1-passive-tap/echenon_v1_passive_tap_pcb.pdf), [v1 Gerbers ZIP](hardware/ex3-waveshare-nano/pcb/gerbers/v1-passive-tap/echenon_v1_passive_tap_gerbers.zip) & Carvera Air CAM runbook |
 | [**`SPEC.md`**](SPEC.md) | Canonical Echenon system & firmware specification (v1 Passive & provisional v2 Active architecture) |
 | [**`docs/hardware_specification.md`**](docs/hardware_specification.md) | Detailed circuit engineering reference, oscilloscope evidence, impedance analysis & v2 MITM draft notes |
 | [**`docs/ex3_specification.md`**](docs/ex3_specification.md) | Echelon EX-3 stock hardware teardown, connector pinouts, actuator cam & sensor electrical profiles |

@@ -7,7 +7,7 @@ Deterministic KiCad 10 generator and verification script for:
 Generates .kicad_pro, real IEC wired .kicad_sch (including off-board EX-3 reference
 circuitry excluded from PCB/BOM), and .kicad_pcb, runs kicad-cli sch erc and
 kicad-cli pcb drc --schematic-parity --severity-all, and exports Gerbers,
-Excellon drill files, Makera CAM .zip archives, and SVG previews.
+Excellon drill files, Makera CAM .zip archives, SVG previews, and printable PDFs.
 """
 
 from __future__ import annotations
@@ -2006,10 +2006,14 @@ def build_and_verify_board(sub_dir: str, builder_fn) -> Dict[str, str]:
     bot_svg = gerber_dir / f"{proj_name}_bottom_copper.svg"
     sch_svg_dir = gerber_dir / "schematic_svg"
     sch_svg_dir.mkdir(exist_ok=True)
+    sch_pdf = proj_dir / f"{proj_name}.pdf"
+    pcb_pdf = proj_dir / f"{proj_name}_pcb.pdf"
 
     run_cmd([KICAD_CLI, "pcb", "export", "svg", "--layers", "F.SilkS,F.Fab,B.Cu,Edge.Cuts", "--exclude-drawing-sheet", "--fit-page-to-board", "--page-size-mode", "2", "--mode-single", "-o", str(top_svg), str(pcb_path)])
     run_cmd([KICAD_CLI, "pcb", "export", "svg", "--layers", "B.Cu,B.Mask,B.SilkS,Edge.Cuts", "--mirror", "--exclude-drawing-sheet", "--fit-page-to-board", "--page-size-mode", "2", "--mode-single", "-o", str(bot_svg), str(pcb_path)])
     run_cmd([KICAD_CLI, "sch", "export", "svg", "-o", str(sch_svg_dir), str(sch_path)])
+    run_cmd([KICAD_CLI, "sch", "export", "pdf", "--exclude-pdf-metadata", "-o", str(sch_pdf), str(sch_path)])
+    run_cmd([KICAD_CLI, "pcb", "export", "pdf", "--layers", "F.SilkS,F.Fab,B.Cu,Edge.Cuts", "--drill-shape-opt", "2", "--scale", "0", "--no-property-popups", "--mode-single", "-o", str(pcb_pdf), str(pcb_path)])
 
     zip_path = gerber_dir / f"{proj_name}_gerbers.zip"
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -2022,6 +2026,8 @@ def build_and_verify_board(sub_dir: str, builder_fn) -> Dict[str, str]:
         "proj_name": proj_name,
         "pcb_path": str(pcb_path),
         "sch_path": str(sch_path),
+        "sch_pdf": str(sch_pdf),
+        "pcb_pdf": str(pcb_pdf),
         "zip_path": str(zip_path),
         "top_svg": str(top_svg),
         "bot_svg": str(bot_svg),

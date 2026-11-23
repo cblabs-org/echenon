@@ -10,11 +10,11 @@ Both designs are **100% single-sided bottom-copper (`B.Cu`)** layouts: all throu
 
 | Path | Purpose | Dimensions | Status |
 |---|---|---|---|
-| [generate_pcbs.py](generate_pcbs.py) | Deterministic KiCad 10 S-expression generator + `kicad-cli` ERC/DRC & Gerber runner | — | Verified |
-| [coupon/](coupon/) | **Deliverable A:** Carvera Air calibration test coupon (`carvera_calibration_coupon.kicad_*`) | `25 × 20 mm` | ERC=0, DRC=0 |
-| [v1-passive-tap/](v1-passive-tap/) | **Deliverable B:** Full Echenon v1 Passive Tap Board (`echenon_v1_passive_tap.kicad_*`) | `70 × 50 mm` | ERC=0, DRC=0 |
-| [gerbers/coupon/](gerbers/coupon/) | Ready-to-mill Gerbers, Excellon drills, `carvera_calibration_coupon_gerbers.zip`, SVGs | `25 × 20 mm` | 2 drills (`0.9`, `1.0 mm`) |
-| [gerbers/v1-passive-tap/](gerbers/v1-passive-tap/) | Ready-to-mill Gerbers, Excellon drills, `echenon_v1_passive_tap_gerbers.zip`, SVGs | `70 × 50 mm` | 2 drills (`0.9`, `1.0 mm`) |
+| [generate_pcbs.py](generate_pcbs.py) | Deterministic KiCad 10 S-expression generator + `kicad-cli` ERC/DRC, Gerber, SVG & PDF runner | — | Verified |
+| [coupon/](coupon/) | **Deliverable A:** Carvera Air calibration test coupon (`carvera_calibration_coupon.kicad_*`, [schematic PDF](coupon/carvera_calibration_coupon.pdf), [PCB PDF](coupon/carvera_calibration_coupon_pcb.pdf)) | `25 × 20 mm` | ERC=0, DRC=0 |
+| [v1-passive-tap/](v1-passive-tap/) | **Deliverable B:** Full Echenon v1 Passive Tap Board (`echenon_v1_passive_tap.kicad_*`, [printable schematic PDF](v1-passive-tap/echenon_v1_passive_tap.pdf), [PCB layout PDF](v1-passive-tap/echenon_v1_passive_tap_pcb.pdf)) | `70 × 50 mm` | ERC=0, DRC=0 |
+| [gerbers/coupon/](gerbers/coupon/) | Ready-to-mill Gerbers, Excellon drills, [`carvera_calibration_coupon_gerbers.zip`](gerbers/coupon/carvera_calibration_coupon_gerbers.zip), SVGs | `25 × 20 mm` | 2 drills (`0.9`, `1.0 mm`) |
+| [gerbers/v1-passive-tap/](gerbers/v1-passive-tap/) | Ready-to-mill Gerbers, Excellon drills, [`echenon_v1_passive_tap_gerbers.zip`](gerbers/v1-passive-tap/echenon_v1_passive_tap_gerbers.zip), SVGs | `70 × 50 mm` | 2 drills (`0.9`, `1.0 mm`) |
 
 ---
 
@@ -119,4 +119,4 @@ Before inserting the **Waveshare ESP32-S3-Nano** (`U1`) into `J5`:
 python3 hardware/ex3-waveshare-nano/pcb/generate_pcbs.py
 ```
 
-The script regenerates both KiCad 10 projects, runs headless `kicad-cli sch erc` and `kicad-cli pcb drc --schematic-parity --severity-all`, and rebuilds all Gerbers, drill files, SVGs, and `.zip` archives.
+The script regenerates both KiCad 10 projects, runs headless `kicad-cli sch erc` and `kicad-cli pcb drc --schematic-parity --severity-all`, and rebuilds all Gerbers, drill files, SVGs, printable schematic/PCB PDFs, and `.zip` archives.
