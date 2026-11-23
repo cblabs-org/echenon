@@ -76,6 +76,16 @@ Cross-checked against [`hardware_specification.md`](hardware_specification.md) (
 
 All 12 harness conductors (`9` on `J1 ↔ J2`, `3` on `J3 ↔ J4`) pass straight through without cutting or splitting any wire.
 
+![Echenon v1 Passive Tap Board Layout](assets/v1-passive-tap-layout.png)
+
+*Left-to-right layout on the perfboard:*
+1. **Waveshare ESP32-S3-Nano (`U1`)** socketed in `J5`, with `VIN` fed via the mechanical `+9 V` interlock jumper (`SW0`, blocking the USB-C port when `+9 V` is bridged) and `GND` tied to the common ground rail.
+2. **Main 9-Pin Harness Tap Bank (`J1 ↔ J2`, 7 signal columns left-to-right):**
+   - **Cadence (`Grey` → `A3`, `Orange` → `D2`):** 2× `4.7 kΩ` series resistors (`RS4`, `RS5`) with 2× `100 nF` capacitors (`C1`) from the ESP32 GPIO side to the bottom `GND` rail.
+   - **Potentiometer (`Green` → `A2`, `Yellow` → `A1`, `Blue` → `A0`):** 3× `22 kΩ` series resistors (`RS3`, `RS2`, `RS1`).
+   - **Motor Sense (`Black` → `D4`, `Red` → `D3`):** 2× `30 kΩ` series resistors (`R2a`, `R1a`) to the GPIO tap row, with 2× `10 kΩ` resistors (`R2b`, `R1b`) from the GPIO tap row to the bottom `GND` rail (`÷4` divider).
+3. **Encoder 3-Pin Harness Tap Bank (`J3 ↔ J4`, 3 columns on the right — `Black` → `D5`, `Yellow/Orange` → `D7`, `Red` → `D6`):** 3× `4.7 kΩ` series resistors (`RS6`, `RS8`, `RS7`) with 3× `100 nF` capacitors (`C1`) from the ESP32 GPIO side to the bottom `GND` rail.
+
 ### 3.1 Main 9-Pin Loom (`J1` Bike Frame ↔ `J2` Console PCB)
 
 | `J1`/`J2` Pin | Factory Wire Colour | Signal Name | Pass-Through (`J1` → `J2`) | Tap Component(s) | `U1` Waveshare Silkscreen | `U1` ESP32-S3 GPIO | Firmware Role (`board.h`) |
@@ -93,12 +103,12 @@ All 12 harness conductors (`9` on `J1 ↔ J2`, `3` on `J3 ↔ J4`) pass straight
 ### 3.2 Handlebar Encoder 3-Pin Loom (`J3` Resistance Knob ↔ `J4` Console PCB)
 
 > [!NOTE]
-> **Verified EX-3 Encoder Wire Colours:** On the 3-pin JST connector (`J3`/`J4`), **Orange is the centre pin (`3.3 V` common reference)**, **Black is Left (`Ch A`)**, and **Red is Right (`Ch B`)**. Always verify pin position against the connector latch orientation before crimping.
+> **Verified EX-3 Encoder Wire Colours:** On the 3-pin JST connector (`J3`/`J4`), **Orange *(or Yellow)* is the centre pin (`3.3 V` common reference)**, **Black is Left (`Ch A`)**, and **Red is Right (`Ch B`)**. Always verify pin position against the connector latch orientation before crimping.
 
 | `J3`/`J4` Pin | Position | Factory Wire Colour | Signal Name | Pass-Through (`J3` → `J4`) | Tap Component(s) | `U1` Waveshare Silkscreen | `U1` ESP32-S3 GPIO | Firmware Role (`board.h`) |
 |---|---|---|---|---|---|---|---|---|
 | **1** | Left | **Black** | `ENC_CHA` | Direct (`J3-1` → `J4-1`) | `RS6` (`4.7 kΩ` series) + `C1` (`100 nF` to `GND` on GPIO side) | `D5` | **`GPIO 8`** | `PIN_KNOB_ENC_A` (Hardware `PCNT` quadrature input) |
-| **2** | Centre | **Orange** | `ENC_VCC` (`3.3 V`) | Direct (`J3-2` → `J4-2`) | `RS8` (`4.7 kΩ` series) + `C1` (`100 nF` to `GND` on GPIO side) | `D7` | **`GPIO 10`** | `PIN_KNOB_ENC_VCC` (ADC1 CH9 supply monitor, steady `3.3 V`) |
+| **2** | Centre | **Orange** *(or **Yellow**)* | `ENC_VCC` (`3.3 V`) | Direct (`J3-2` → `J4-2`) | `RS8` (`4.7 kΩ` series) + `C1` (`100 nF` to `GND` on GPIO side) | `D7` | **`GPIO 10`** | `PIN_KNOB_ENC_VCC` (ADC1 CH9 supply monitor, steady `3.3 V`) |
 | **3** | Right | **Red** | `ENC_CHB` | Direct (`J3-3` → `J4-3`) | `RS7` (`4.7 kΩ` series) + `C1` (`100 nF` to `GND` on GPIO side) | `D6` | **`GPIO 9`** | `PIN_KNOB_ENC_B` (Hardware `PCNT` quadrature input) |
 
 ### 3.3 Reserved / Unconnected Pins on `U1`
