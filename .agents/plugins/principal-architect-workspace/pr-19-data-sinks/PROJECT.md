@@ -33,70 +33,70 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 488469a61d17d4ed709d59fbe2ecc1287d10a6a5
+  commit_sha: 7368ef1b66904c4a9568360c9b92357a2d0a4e0a
 - id: WO-19.2
   slug: wo2-intervals-icu-sink
   title: Intervals.icu API-Key Sink
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: c28c5f9f0301337cb43a490e945ebc168a99eb77
+  commit_sha: 7e0f54f48fa0512e6c5d13ceb6ebd72a1f560394
 - id: WO-19.3
   slug: wo3-rest-api-extensions
   title: REST API Extensions
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: fcd437d373fb11a503afa64530ff5f359241e06f
+  commit_sha: 8649ec33d4021f674d278d8136d2421e39cbdfe3
 - id: WO-19.4
   slug: wo4-stored-rides-pill
   title: Stored Rides Portal Pill
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: a4a065913f8667de01d264546e7193bb954b8c5e
+  commit_sha: abfe08f03a7e46b374b7f072db96b342ce29483c
 - id: WO-19.5
   slug: wo5-strava-pill-refactor
   title: Strava Pill Refactor & Connected Apps Polish
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 2f64605a748818444d8fa521ea0bbe014d8192e5
+  commit_sha: 268658dfe4b84405fdc283d57ce0442dbba8feb1
 - id: WO-19.9
   slug: wo9-main-cpp-wiring
   title: IntervalsIcuUploader main.cpp Wiring
   complexity: mechanical
   status: COMPLETED
   attempts: 1
-  commit_sha: ff8982ec0eb68444ec70158b0ac428720e0104a1
+  commit_sha: 7bb7571b24648e01f95f8d7dfcb7e048b4f6043c
 - id: WO-19.6
   slug: wo6-native-tests
   title: Native Unit Tests
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: d869a2b2d6d06b7b25b7fc701d942a49c4d87319
+  commit_sha: 3072a1bcf880f58d594cba991a642f67e6a07d68
 - id: WO-19.7
   slug: wo7-spec-doc-sync
   title: SPEC & Doc Sync
   complexity: mechanical
   status: COMPLETED
   attempts: 1
-  commit_sha: 31efa065c677e9c1fa1cf99aa22bab7480e9369c
+  commit_sha: 9f84202a1ecbe259033d271413b0713eab86e476
 - id: WO-19.8
   slug: wo8-hardware-verification
   title: Hardware Verification & Soak
   complexity: interactive
   status: COMPLETED
   attempts: 1
-  commit_sha: 857f948b2fd93d5fe060b8e8909dd1f59ab54bc6
+  commit_sha: 1e8be6655724367c055408d4996312f840feb798
 - id: WO-19.10
   slug: wo10-build-fixes
   title: Firmware Build Fixes
   complexity: mechanical
   status: COMPLETED
   attempts: 1
-  commit_sha: 6525cc62bf10bcbe9326fa56c01c8093dbeae5ac
+  commit_sha: 9c967f4379815d360b080bd6ad006ddbfa3e8b34
 ---
 
 # PR-19 — Pluggable Data Sinks & Ride History Management

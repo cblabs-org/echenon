@@ -32,42 +32,42 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: b738ed5890d3ae574cc9a9b1ebf3be0e9a497e5c
+  commit_sha: 9d666e0bc258c779a955ab50fa7cad6b54876f51
 - id: WO-21.2
   slug: wo2-system-wiring
   title: System Wiring & REST Endpoints
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 3e9b495da64eeea315f389aa0fc289e092f66a58
+  commit_sha: 1428b8d89f761a96285ee5294d3ac75de3b7f362
 - id: WO-21.3
   slug: wo3-portal-ui
   title: Portal UI — Wahoo Pill & Stored Rides Badges
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 2c059c3a37b8185490986182e57a43007be32676
+  commit_sha: 60c101194780fa485c9a342ad53e7d0a55a00fd8
 - id: WO-21.4
   slug: wo4-native-tests
   title: Native Unit Tests
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: d079e3309a4d09c0bc12c5e477c28c936df54b28
+  commit_sha: 51a5ff6d7fb71d48b9c1e079da668a0d9e9cad93
 - id: WO-21.5
   slug: wo5-spec-doc-sync
   title: SPEC & Documentation Sync
   complexity: mechanical
   status: COMPLETED
   attempts: 1
-  commit_sha: be5e696c35ce6e51da67d7785bf5d75c257ab49b
+  commit_sha: 23c5f17b7d24b86e04acb84c8c1d96aeaa6e098e
 - id: WO-21.6
   slug: wo6-hardware-verification
   title: Hardware Verification & Soak
   complexity: interactive
   status: COMPLETED
   attempts: 1
-  commit_sha: cd4c6deaa4ec38aceea264ed89982bfae7efbd2d
+  commit_sha: a36bc4450e081c58fdeb7d405d1d38f281119bf1
 ---
 
 # PR-21 — Wahoo Cloud Data Sink

@@ -47,70 +47,70 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 854b1dcaf3e3618b3b7d19f87863d9b917ffa821
+  commit_sha: eae259e61f0da8e5346cd02c219dfd6a276f3f44
 - id: WO-09.2
   slug: wo2-house-style-core
   title: File Headers & Doxygen House Style — Core, Sensors, Power & Rig
   complexity: mechanical
   status: COMPLETED
   attempts: 1
-  commit_sha: 450fb751dd979bf0855d16ac1bffb692ca6c567f
+  commit_sha: 35f09811ae3532a31f2b41aeadfe6c4abaecf5db
 - id: WO-09.3
   slug: wo3-house-style-ble-sinks
   title: File Headers, GRAVE-05 Justification Comments & FTMS Guard — BLE & Data Sinks
   complexity: mechanical
   status: COMPLETED
   attempts: 1
-  commit_sha: 6b63b9cca95d1abe078f69e8307ad1f8f3734b3a
+  commit_sha: d22cc26f46866d28b46364fdd1b3c127c5879e27
 - id: WO-09.4
   slug: wo4-portal-design-tokens
   title: Portal CSS Design Tokens, Reset Wiring, Contrast & Accessibility Polish
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: dd51431ed0096b88b986fd62d0898c3a6f38d210
+  commit_sha: 96ea0fad6c3286ed37583f78b3e57e8ea7345a25
 - id: WO-09.5
   slug: wo5-beta-hardware-guide
   title: Standalone v1 Passive Tap Board Build Guide & Hardware Spec Errata
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 07b89b5fb9aa30f4da3b8e8acfaa012d70545231
+  commit_sha: 57e78128c6dd99e962078b06fa3b8e52ba3ee5c1
 - id: WO-09.6
   slug: wo6-public-repo-docs
   title: LICENSE, Beta Recruitment README, CHANGELOG, CONTRIBUTING & SPEC Sync
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: da55c9c4f6cf987cce17253d9eaab70cb56d099a
+  commit_sha: 6a51ac62294eb1a9d6bb0f49b2e43402785e4526
 - id: WO-09.7
   slug: wo7-public-repo-hygiene
   title: Evidence Redaction (SSID/BSSID/URL) & .gitignore Hardening
   complexity: mechanical
   status: COMPLETED
   attempts: 1
-  commit_sha: b2cf0f08b87224eefe6ca4b7433f7ee85ead6255
+  commit_sha: f318619c309761a6e6f3cb73674b5959f3789d57
 - id: WO-09.8
   slug: wo8-release-audit-verify
   title: Multi-Env Firmware Builds, Native Tests & Beta Release Audit Report
   complexity: interactive
   status: COMPLETED
   attempts: 1
-  commit_sha: 4ba5c82eb287daff0f9ae6507f2a2a6b7bf54d5e
+  commit_sha: 40ba37e63a0b3b782a95e019255fc4d87ee09aa6
 - id: WO-09.9
   slug: wo9-audit-doc-cleanup
   title: Mask Privacy Grep Literals & Align SignalLogger Routes in Release Audit Doc
   complexity: mechanical
   status: COMPLETED
   attempts: 1
-  commit_sha: 6d785f89008abbecb0f07d5d27167b49594e9d4b
+  commit_sha: 8c2e04044292acc55b369ee2ac5451e92b14bcc6
 - id: WO-09.10
   slug: wo10-mcp-server-wiring
   title: Wire Ring-2 MCPServer in Composition Root & Rig Read-Only Hint
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: cff35a568ed9e72f7517f67109a3562c98c90f07
+  commit_sha: 0de3c28cdfde1c215c7c71683949e933d92bda9d
 - id: WO-09.11
   slug: wo11-release-audit-measured-sync
   title: Sync Release Audit Report with MCPServer Metrics & Live v0.3.0-dev.49 Bench
@@ -118,7 +118,7 @@ work_orders:
   complexity: mechanical
   status: COMPLETED
   attempts: 1
-  commit_sha: 5449b68131bb1bf70ceda578a13bb6ff926dbc60
+  commit_sha: a3d0acb8366bdf8d72757703f657c401f9536c14
 - id: WO-09.12
   slug: wo12-foundation-v1-beta2
   title: Align Submodule, Config, Docs & Skills to cblabs-org/esp32-app-foundation
@@ -126,7 +126,7 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 5383b781087e7bb58116ba1d03c12cbb13386bda
+  commit_sha: 5a44160edda30804b1d1616767ad88513f79db0f
 - id: WO-09.13
   slug: wo13-release-audit-v1-beta2-sync
   title: Sync Release Audit Report with Foundation v1.0.0-beta.2 Metrics & v0.3.0-dev.50
@@ -134,7 +134,7 @@ work_orders:
   complexity: mechanical
   status: COMPLETED
   attempts: 1
-  commit_sha: 0ce5e79437c181e9393acb30ea51c9234af3a645
+  commit_sha: dada6e3bd23c25d87ee200c28cd2dc887d73f817
 - id: WO-09.14
   slug: wo14-newlib-nano-and-boot-keystore-cleanup
   title: Fix Newlib-Nano %zu/%llu Format Bugs and Post-DeviceCrypto Uploader Boot
@@ -142,14 +142,14 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 0ba1bc508abf7131029f25f40e7ec2f70d4603a2
+  commit_sha: 4e39f83d7b648587f4916e35d7892fe2ad326d6d
 - id: WO-09.15
   slug: wo15-release-audit-v030-dev51-sync
   title: Sync Release Audit Report with WO-09.14 Fixes & Live v0.3.0-dev.51 Verification
   complexity: mechanical
   status: COMPLETED
   attempts: 1
-  commit_sha: c5000a4a3fcf1623a39b64f088e83ea95e497eb9
+  commit_sha: 30d75815a445633d1e7fe89ac42c682bb77a5a00
 ---
 
 ## 2. Scope

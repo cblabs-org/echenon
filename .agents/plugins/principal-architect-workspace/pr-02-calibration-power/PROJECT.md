@@ -86,7 +86,7 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: ec4328a9f9f3b9643730f56d554f6c1c6b5b8312
+  commit_sha: 64b70d73e0daf5080936f4f0022fb7692067eaa4
 ---
 
 ## 2. Scope

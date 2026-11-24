@@ -20,7 +20,7 @@ charter:
   verification_floor:
   - pio test -e native --verbose
   charter_locked: true
-  charter_hash: f842c883e009be8951be5a0c6e2e7b55e65312654f0cc85260770e468bbb79b2
+  charter_hash: 0fc762a3d80300754a182433effcf9e2d763e5d07c72bba8e727d297caad612a
 status: GRADUATED
 approved_at: '2026-10-27T22:39:52Z'
 github_pr: null
@@ -31,7 +31,7 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 50357110bf530c0866c20aacfd42e1bb55ad1019
+  commit_sha: b2216537be2799616e21d9c31813ae4485b371ae
 - id: WO-16.2
   slug: wo2-hw-verification
   title: Hardware Verification — Tag, Build, Flash & Live Test

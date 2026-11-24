@@ -31,14 +31,14 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: fc2fd861c2c5fd18aa52f4e32c3952cf2500a9b8
+  commit_sha: 475145d5362b4c18048efae4039c4e4e34fc74a8
 - id: WO-20.2
   slug: wo2-dashboard-drawer
   title: Dashboard Diagnostics Drawer
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 38d7a227628d0ac5e58aee16ceb3f0f5c857b561
+  commit_sha: d2dfee989ebd310dac082478aa8b24f60542dd15
 - id: WO-20.3
   slug: wo3-hw-verification
   title: Hardware Verification
