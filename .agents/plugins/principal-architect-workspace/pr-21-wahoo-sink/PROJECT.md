@@ -22,7 +22,7 @@ charter:
   - pio test -e native --verbose
   charter_locked: true
   charter_hash: 9ec62b7477a848e655aa2335bc510eaa87914b68f5f1a8009216327f1e8a2ce0
-status: STAGED_FOR_AUDIT
+status: GRADUATED
 approved_at: '2026-10-28T22:58:39.349600Z'
 github_pr: 18
 work_orders:
@@ -258,3 +258,4 @@ without requiring intermediary third-party relay tools.
 ## 4. Outcome & Session Log
 - **2026-10-28:** PR-21 chartered and locked by Chief Architect following PR-19 graduation.
 - **2026-10-28:** Tier 2 Principal Architect authored Part II Work Order decomposition (WO-21.1 to WO-21.6) and initialized all specification work orders.
+- **2026-10-29:** Merged to `main` via PR #18 (`8d29e57`). Subsequently verified on hardware and audited as part of PR-09 (`v0.3.0-beta.1`, WO-09.14/WO-09.15, Cold-Firewall Audit Round 5 APPROVED). Reconciled as `GRADUATED` on 2026-11-24.

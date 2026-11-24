@@ -31,14 +31,19 @@ provisional, decomposed after DR-2).
 | v1 | DR-1 | — | v1 Passive Design Freeze ([record](reviews/DR-1-design-freeze.md)) | PR-01 evidence + [DR-1 prep bench](pr-dr1-prep/PROJECT.md) | ✅ Approved with conditions 2026-10-12 |
 | v1 | PR-02 | 1 | Calibration + Power (+ live WS feed) | PR-01, **DR-1** | ✅ Merged 2026-10-24 (`8ccccb6`) |
 | v1 | PR-03 | 2 | BLE Foundation + HR Relay | PR-01 ✅ | ✅ Merged 2026-10-20 (PR #3, `e930314`) |
-| v1 | PR-04a | 3 | Passive Tap Board (VIN + VIN/USB switch, manual OTA, UART0 reserved) | PR-02, DR-1 | ⬜ Deferred to pre-PR-09 (bench stays on USB-C during PR-05/06) |
+| v1 | PR-04a | 3 | Passive Tap Board (VIN + VIN/USB switch, manual OTA, UART0 reserved) | PR-02, DR-1 | 🟡 Hardware built & operational on bike (`PR-09` + PCB packages); `WITH_OTA` & installed soak deferred to `v1.0.0` |
 | v1 | PR-05 | 3 | FTMS Telemetry, **read-only** (Target Setting Features = 0) | PR-02, PR-03 | ✅ Merged 2026-10-26 (PR #6, `a6c7a88`) |
 | v1 | PR-06 | 4 | Session + TCX + Strava | PR-02 | ✅ Merged 2026-10-27 (`46837d2`, PR #7) |
 | v1 | PR-15 | 4 | Portal Rework & Ride Page ([charter](pr-15-portal-ride/PROJECT.md)) | PR-06 | ✅ Merged 2026-10-27 (`57b352d`, PR #8) |
 | v1 | — | — | fix(strava): OAuth callback redirect | — | ✅ Merged 2026-10-27 (`03be4c1`, PR #9) |
-| v1 | PR-14 | 4 | Diagnostics & Run-Data Persistence ([stub](pr-14-diagnostics/PROJECT.md)) | PR-06 | ⬜ Not started |
-| v1 | PR-09 | 7 | v1 Integration & Release (UC1–UC3) | PR-04a, PR-05, PR-14, PR-15 | ⬜ Not started |
-| v2 | DR-2 prep | — | Active-design bench evidence ([project](pr-dr2-prep/PROJECT.md)) | DR-1 (timing: owner) | ⬜ Provisional |
+| v1 | PR-14 | 4 | Diagnostics & Run-Data Persistence ([stub](pr-14-diagnostics/PROJECT.md)) | PR-06 | ✅ Merged 2026-10-27 (PR #11, `5874e33`) — GRADUATED |
+| v1 | PR-16 | 4 | WebSocket Client Registration Fix ([charter](pr-16-ws-registration/PROJECT.md)) | PR-15 | ✅ Merged 2026-10-27 (PR #13, `b221653`) — GRADUATED |
+| v1 | PR-19 | 4 | Pluggable Data Sinks & Ride History Management ([charter](pr-19-data-sinks/PROJECT.md)) | PR-06, PR-14 | ✅ Merged 2026-10-28 (PR #17, `6492dd6`) — GRADUATED |
+| v1 | PR-20 | 4 | Echelon Tab Live Diagnostics Drawer ([charter](pr-20-diagnostics-drawer/PROJECT.md)) | PR-16 | ✅ Merged 2026-10-28 (PR #14/#15/#16, `109cf4a`/`cb643c5`/`16ab9eb`) — GRADUATED |
+| v1 | PR-21 | 4 | Wahoo Cloud Data Sink ([charter](pr-21-wahoo-sink/PROJECT.md)) | PR-19 | ✅ Merged 2026-10-29 (PR #18, `8d29e57`) — GRADUATED |
+| v1 | — | — | Portal fix & FTMS power smoothing | — | ✅ Merged 2026-11-01 (PR #19, `117acce`) |
+| v1 | PR-09 | 7 | v1 Integration & Release (UC1–UC3) | PR-04a, PR-05, PR-14, PR-15 | ✅ Merged 2026-11-17 (PR #20, `74bef7d`) & GRADUATED (`3a39aa2`, tag `v0.3.0-beta.1`) |
+| v2 | DR-2 prep | — | Active-design bench evidence ([project](pr-dr2-prep/PROJECT.md)) | DR-1 (timing: owner) | 🟡 Partial — P1/P2 done in Phase 3 (`C01`–`C07`); P3–P5 open |
 | v2 | DR-2 | — | v2 Active Design Freeze ([record](reviews/DR-2-design-freeze.md)) | DR-2 prep | ⬜ Not started |
 | v2 | PR-07 | 5 | Active Intercept Board + Motor Control + Safety | **DR-2**, v1 release (PR-09) | ⬜ Provisional |
 | v2 | PR-10 | 5 | Encoder Emulation + Relay Mode (mode 1) | PR-07 | ⬜ Provisional |
@@ -55,8 +60,8 @@ provisional, decomposed after DR-2).
 | **Scope characterisation** of both motor wires (both directions, at rest; 10 ms/div and µs/div) | Connecting PR-01 motor-sense taps (GPIO 6/7) | Captures committed as Phase 0 register row #1 evidence. Either result lets logging proceed (÷4 divider safe to ~13 V); result feeds DR-1 | ✅ MET: PR-01 WO4b delivered the A01 scope captures (A01-20261011, ±3.25 V flat DC, no PWM) and A01-20261012 the single-ended check (worst −0.14 V; no clamp diodes). Taps had been connected earlier, safely, through the divider |
 | **Phase 0 register complete** ([`docs/measurements/phase0/README.md`](../../../docs/measurements/phase0/README.md)) | PR-01 exit / DR-1 start | Every row has an Evidence file and a Result | ✅ MET: rows closed; #10 waived for v1 (DR-1 §2A), #12 moved to PR-03 WO3 |
 | **DR-1: v1 Passive Design Freeze** | **PR-02, PR-04a** (no soldering or permanent install before approval) | Chief Architect approves the [DR-1 record](reviews/DR-1-design-freeze.md) | ✅ APPROVED WITH CONDITIONS 2026-10-12 (§4) |
-| **VIN / USB power-path check** | **Soldering** the PR-04a board | DR-1 condition 2.3: VIN or USB, never both. PR-04a WO1 reads the Waveshare VBUS/VIN path from the schematic and designs the selector (diode on VIN if not isolated); evidence committed | OPEN (PR-04a WO1) |
-| **v1 release** (beta / stable tag, owner only, rule 03) | PR-07 | PR-09 exit criteria met; owner tags | OPEN |
+| **VIN / USB power-path check** | **Soldering** the PR-04a board | DR-1 condition 2.3: VIN or USB, never both. PR-04a WO1 reads the Waveshare VBUS/VIN path from the schematic and designs the selector (diode on VIN if not isolated); evidence committed | ✅ MET for v1 Beta (`SW0` mechanical `VIN`/`USB-C` interlock + `D1` Schottky documented in `docs/beta-build-guide.md` & `hardware/ex3-waveshare-nano/pcb/`; soldered board operational on bike) |
+| **v1 release** (beta / stable tag, owner only, rule 03) | PR-07 | PR-09 exit criteria met; owner tags | 🟡 BETA SHIPPED (`v0.3.0-beta.1` published 2026-11-17 on public `cblabs-org/echenon`; `v1.0.0` stable open pending installed-board soak, BLE-without-WiFi check, and `WITH_OTA` / framework #230) |
 | **DR-2: v2 Active Design Freeze** | **PR-07** (and all v2 PRs; no active-board soldering or interception before approval) | Chief Architect approves the [DR-2 record](reviews/DR-2-design-freeze.md) | NOT STARTED |
 | R3/R4/R5 standalone supplies | DR-2 (none in v1, DR-1 §2.9) | Pot-reference replica and switched supplies decided at DR-2 §2.2 / §2.9 | ✅ DECIDED for v1: none (DR-1 §2.9). OPEN for v2 (DR-2) |
 | Echelon-app HR spike | PR-03 WO3 go/no-go | Echelon app on the P12 pairs `Echenon-XXXX` and shows HR (register row #12) | ✅ PASSED (PR-03 WO3) |
@@ -64,7 +69,7 @@ provisional, decomposed after DR-2).
 | **v1 BLE topology on the P12** | PR-03 merge (WO6) | HR strap (central) + P12 (HR peripheral) + portal WebSocket + HTTPS POST, sustained; no HR gaps > 2.5 s, no link drops | ✅ MET (PR-03 WO6, evidence in `docs/measurements/phase2/wo6-coexistence/evidence.md`) |
 | **BLE works without WiFi** (v1 requirement) | v1 release (PR-09); fix lands upstream in the framework | BLE advertising, strap reconnect and discovery continue at boot without STA and through a sustained STA outage | OPEN (framework issue draft (iii)) |
 | **FTMS client connection reliability (Lenovo Tab P12 + macOS/iOS)** | **PR-05 WO-05.4** | Clean FTMS + HR coexistence and app acceptance on Lenovo Tab P12 (primary target) and macOS/iOS; Pixel 10 Pro Fold excluded per owner decision 2026-10-24 | ✅ SCOPED TO P12 (2026-10-24 owner decision) |
-| Framework #226 (OTA check-on-boot deferral) | Removing Echenon's `autoCheck=false` enforcement | Upstream issue **closed**. PR-04a uses the framework option after the PR-03 WO1 bump (verify) | CLOSED upstream |
+| Framework #226 (OTA check-on-boot deferral) | Removing Echenon's `autoCheck=false` enforcement | Upstream issue **closed**. `WITH_OTA` is intentionally disabled in `v0.3.0-beta.1` tracking upstream `cblabs-org/esp32-app-foundation#230` (OTA memory headroom); PR-04a enables/verifies manual OTA for `v1.0.0` | CLOSED upstream (`WITH_OTA` deferred to `v1.0.0` / #230) |
 
 ### Parallelism
 
@@ -517,4 +522,10 @@ Decisions on the v1 Passive / v2 Active restructure:
   - D4: Event log scope: runaway alerts, calibration, boot, session start/end,
     firmware version changes — approved.
 - **Next:** Tier 2 PA to decompose WOs into detailed specs, then execution.
+
+### 2026-10-27 → 2026-11-24: v1 Beta Shipped (v0.3.0-beta.1), Hardware Installed on Bike, & Ledger Reconciled
+- **v1 Feature PRs Merged:** Completed and merged `PR-14` (PR #11, `5874e33`, Diagnostics & Run-Data Persistence), `PR-16` (PR #13, `b221653`, WebSocket Client Registration Fix), `PR-19` (PR #17, `6492dd6`, Pluggable Data Sinks — Strava + Intervals.icu), `PR-20` (PR #14/#15/#16, `109cf4a`/`cb643c5`/`16ab9eb`, Echelon Tab Live Diagnostics Drawer), `PR-21` (PR #18, `8d29e57`, Wahoo Cloud Data Sink), and PR #19 (`117acce`, Portal fix & FTMS power smoothing).
+- **v1 Beta Integration (`PR-09`) & Release (`v0.3.0-beta.1`):** Merged `PR-09` (PR #20, `74bef7d`) and graduated (`3a39aa2`) after Cold-Firewall Audit Round 5 (`APPROVED`) with `271/271` native unit tests passing, `cblabs-org/esp32-app-foundation` pinned to public `v1.0.0-beta.2`, `cblabs-org/echenon` flipped public, and GitHub Pre-Release `v0.3.0-beta.1` published (2026-11-17) with pre-built `ex3-waveshare-nano` binaries. `WITH_OTA` remains intentionally disabled for beta (USB-C updates via `SW0` interlock) pending upstream `cblabs-org/esp32-app-foundation#230`.
+- **v1 Hardware Installed & PCB Packages Committed:** Physical v1 Passive Tap Board soldered and operational on the EX-3 bike; KiCad 10 Carvera Air CNC and JLCPCB 2-layer SMD PCBA manufacturing bundles (`hardware/ex3-waveshare-nano/pcb/`) committed on `main` (`4ec651b`).
+- **PA Ledger Reconciliation (2026-11-24):** Reconciled `PR-20` (`WO-20.1`–`WO-20.5`) and `PR-21` (`WO-21.1`–`WO-21.6`) to `GRADUATED`, updated `PR-04a` status to reflect soldered hardware built and operational on bike (with `WITH_OTA` and installed-board soak deferred to `v1.0.0`), and synchronized this `PROGRAM.md` status table.
 

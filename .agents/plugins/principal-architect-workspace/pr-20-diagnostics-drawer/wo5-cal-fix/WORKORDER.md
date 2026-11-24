@@ -4,7 +4,7 @@ wo_id: WO-20.5
 pr_id: PR-20
 title: Fix Calibration Status — Default/Custom from CalibrationWizard
 complexity: mechanical
-status: PENDING
+status: COMPLETED
 allowed_files:
 - src/echenon/LiveFeed.h
 - src/echenon/LiveFeed.cpp

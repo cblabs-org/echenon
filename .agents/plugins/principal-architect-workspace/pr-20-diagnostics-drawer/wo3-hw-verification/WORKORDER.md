@@ -18,7 +18,7 @@ forbidden_files:
 verification_command: "manual"
 max_attempts: 5
 max_structural_failures: 2
-status: PENDING
+status: COMPLETED
 spec_hash: null
 completion: null
 ---

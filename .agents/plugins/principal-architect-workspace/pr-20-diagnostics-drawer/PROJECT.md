@@ -21,9 +21,9 @@ charter:
   - pio test -e native --verbose
   charter_locked: true
   charter_hash: 2cfe9f44515bf9eb1e2b67fd876235190df70286542d4480b13371ae102c8892
-status: IN_PROGRESS
+status: GRADUATED
 approved_at: '2026-10-27T23:07:00Z'
-github_pr: null
+github_pr: 15
 work_orders:
 - id: WO-20.1
   slug: wo1-livefeed-payload
@@ -43,9 +43,23 @@ work_orders:
   slug: wo3-hw-verification
   title: Hardware Verification
   complexity: interactive
-  status: IN_PROGRESS
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 61e95efbbaf500d11ba02e13310699a08984a4a6
+- id: WO-20.4
+  slug: wo4-linker-fix
+  title: Remove duplicate LiveFeed tick() overloads (linker fix)
+  complexity: mechanical
+  status: COMPLETED
+  attempts: 1
+  commit_sha: cf8a0cdc85375ab13436268a8a16d0aacd595dac
+- id: WO-20.5
+  slug: wo5-cal-fix
+  title: Fix Calibration Status — Default/Custom from CalibrationWizard
+  complexity: mechanical
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 138156c0096fd141f717da762903c0a009b58150
 ---
 
 # PR-20 — Echelon Tab Live Diagnostics Drawer
@@ -221,3 +235,4 @@ WO-20.1 (firmware) → WO-20.2 (frontend) → WO-20.3 (HW verify)
 | 2026-10-27T23:13Z | Dispatching WO-20.2 (Dashboard Diagnostics Drawer) |
 | 2026-10-27T23:16Z | WO-20.2 COMPLETED — 38d7a22 — 233/233 tests passed |
 | 2026-10-27T23:16Z | WO-20.3 (interactive HW verification) — escalated to user |
+| 2026-10-28 | Merged to `main` via PR #14 (`109cf4a`), PR #15 (`cb643c5`), and PR #16 (`16ab9eb`), including WO-20.4 linker fix (`cf8a0cd`) and WO-20.5 calibration status & drawer rework (`5d4176e`, `138156c`, `61e95ef`). Reconciled as `GRADUATED` on 2026-11-24. |

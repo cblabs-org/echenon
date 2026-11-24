@@ -111,6 +111,7 @@ merge (its base).
 
 ## 4. Session Log
 <!-- PA enriches this progressively -->
+- **2026-11-24:** Physical v1 Passive Tap Board soldered and operational on the EX-3 bike. The v1 pin map (`hardware/ex3-waveshare-nano/board.h`), `docs/beta-build-guide.md` (`SW0` mechanical `VIN`/`USB-C` interlock, `C1 ×5` decoupling errata), and KiCad 10 Carvera + JLCPCB PCB packages (`hardware/ex3-waveshare-nano/pcb/`) landed on `main` (via `PR-09` / `v0.3.0-beta.1` and PCB commits). Remaining open items before closing `PR-04a` for `v1.0.0`: (1) installed-board ride soak & console housing fit sign-off, and (2) manual wireless OTA (`WITH_OTA`, deferred pending upstream `cblabs-org/esp32-app-foundation#230`).
 
 ## Status
-**Plan Status:** NOT STARTED
+**Plan Status:** PARTIAL — hardware built, documented, and operational on bike; WITH_OTA and installed-board soak deferred to v1.0.0
