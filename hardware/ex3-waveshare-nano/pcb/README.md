@@ -1,8 +1,9 @@
 # Echenon PCB Fabrication Package (`ex3-waveshare-nano`)
 
-Home-shop **KiCad 10** PCB projects and **Makera Carvera Air** CAM fabrication bundles for the Echenon hardware ([beta-build-guide.md](../../../docs/beta-build-guide.md), [hardware_specification.md](../../../docs/hardware_specification.md), [board.h](../board.h)).
+**KiCad 10** PCB projects, **Makera Carvera Air** home-CNC bundles, and **JLCPCB 2-Layer SMD PCBA** turnkey assembly bundles for the Echenon hardware ([beta-build-guide.md](../../../docs/beta-build-guide.md), [hardware_specification.md](../../../docs/hardware_specification.md), [board.h](../board.h)).
 
-Both designs are **100% single-sided bottom-copper (`B.Cu`)** layouts: all through-hole components insert from the **Top (bare substrate)** side and solder on the **Bottom (`B.Cu`)** side — **zero copper via rivets, zero double-sided board flips, and zero inaccessible solder joints beneath `J5` headers**.
+- **Deliverables A & B (Carvera Air Home CNC):** **100% single-sided bottom-copper (`B.Cu`)** through-hole layouts — zero copper via rivets, zero double-sided board flips, and zero inaccessible solder joints beneath `J5` headers.
+- **Deliverable C (JLCPCB 2-Layer SMD PCBA — Hybrid Carrier):** **2-layer FR-4 (`F.Cu` + solid `B.Cu` ground plane)** layout where JLCPCB factory-populates all **18 surface-mount passives + Schottky diode** using **100% \$0-setup JLCPCB Basic Parts**, leaving only the `2.54 mm` headers/pigtails (`J1–J4`, `SW0`, `U1` socket) for quick bench soldering.
 
 ---
 
@@ -10,11 +11,13 @@ Both designs are **100% single-sided bottom-copper (`B.Cu`)** layouts: all throu
 
 | Path | Purpose | Dimensions | Status |
 |---|---|---|---|
-| [generate_pcbs.py](generate_pcbs.py) | Deterministic KiCad 10 S-expression generator + `kicad-cli` ERC/DRC, Gerber, SVG & PDF runner | — | Verified |
+| [generate_pcbs.py](generate_pcbs.py) | Deterministic KiCad 10 S-expression generator + `kicad-cli` ERC/DRC, Gerber, BOM/CPL, 3D PNG, SVG & PDF runner | — | Verified |
 | [coupon/](coupon/) | **Deliverable A:** Carvera Air calibration test coupon (`carvera_calibration_coupon.kicad_*`, [schematic PDF](coupon/carvera_calibration_coupon.pdf), [PCB PDF](coupon/carvera_calibration_coupon_pcb.pdf)) | `25 × 20 mm` | ERC=0, DRC=0 |
-| [v1-passive-tap/](v1-passive-tap/) | **Deliverable B:** Full Echenon v1 Passive Tap Board (`echenon_v1_passive_tap.kicad_*`, [printable schematic PDF](v1-passive-tap/echenon_v1_passive_tap.pdf), [PCB layout PDF](v1-passive-tap/echenon_v1_passive_tap_pcb.pdf)) | `70 × 50 mm` | ERC=0, DRC=0 |
+| [v1-passive-tap/](v1-passive-tap/) | **Deliverable B:** Carvera Air v1 Passive Tap Board (`echenon_v1_passive_tap.kicad_*`, [schematic PDF](v1-passive-tap/echenon_v1_passive_tap.pdf), [PCB PDF](v1-passive-tap/echenon_v1_passive_tap_pcb.pdf)) | `70 × 50 mm` | ERC=0, DRC=0 |
+| [v1-passive-tap-jlcpcb/](v1-passive-tap-jlcpcb/) | **Deliverable C:** JLCPCB 2-Layer SMD PCBA v1 Passive Tap Board (`echenon_v1_passive_tap_jlcpcb.kicad_*`, [schematic PDF](v1-passive-tap-jlcpcb/echenon_v1_passive_tap_jlcpcb.pdf), [PCB PDF](v1-passive-tap-jlcpcb/echenon_v1_passive_tap_jlcpcb_pcb.pdf)) | `70 × 50 mm` | ERC=0, DRC=0, SMD=18 |
 | [gerbers/coupon/](gerbers/coupon/) | Ready-to-mill Gerbers, Excellon drills, [`carvera_calibration_coupon_gerbers.zip`](gerbers/coupon/carvera_calibration_coupon_gerbers.zip), SVGs | `25 × 20 mm` | 2 drills (`0.9`, `1.0 mm`) |
 | [gerbers/v1-passive-tap/](gerbers/v1-passive-tap/) | Ready-to-mill Gerbers, Excellon drills, [`echenon_v1_passive_tap_gerbers.zip`](gerbers/v1-passive-tap/echenon_v1_passive_tap_gerbers.zip), SVGs | `70 × 50 mm` | 2 drills (`0.9`, `1.0 mm`) |
+| [gerbers/v1-passive-tap-jlcpcb/](gerbers/v1-passive-tap-jlcpcb/) | Turnkey JLCPCB bundle: [`echenon_v1_passive_tap_jlcpcb_gerbers.zip`](gerbers/v1-passive-tap-jlcpcb/echenon_v1_passive_tap_jlcpcb_gerbers.zip), [`_bom.csv`](gerbers/v1-passive-tap-jlcpcb/echenon_v1_passive_tap_jlcpcb_bom.csv), [`_cpl.csv`](gerbers/v1-passive-tap-jlcpcb/echenon_v1_passive_tap_jlcpcb_cpl.csv), [3D Top PNG](gerbers/v1-passive-tap-jlcpcb/echenon_v1_passive_tap_jlcpcb_3d_top.png), [3D Bottom PNG](gerbers/v1-passive-tap-jlcpcb/echenon_v1_passive_tap_jlcpcb_3d_bottom.png) | `70 × 50 mm` | 2-Layer + Economic PCBA |
 
 ---
 
@@ -113,10 +116,42 @@ Before inserting the **Waveshare ESP32-S3-Nano** (`U1`) into `J5`:
 
 ---
 
-## 7. Regenerating After Changes
+## 7. Deliverable C: JLCPCB 2-Layer SMD PCBA Edition (`70 × 50 mm`)
+
+[v1-passive-tap-jlcpcb/](v1-passive-tap-jlcpcb/) implements the identical DR-1 frozen circuit as a **2-layer FR-4 (`1.6 mm`) Hybrid SMD Carrier**:
+
+- **2-Layer Signal Integrity:** Top-side (`F.Cu`) `0805`/`SMA` SMD placement over an unbroken thermal-relieved **`B.Cu` `GND` ground plane** with dedicated ground vias right beside every `100 nF` RC filter capacitor (`C1_1–C1_5`) and `÷4` divider leg (`R1b`, `R2b`).
+- **Optical & Mechanical Features:** 3 asymmetric `1.0 mm` optical fiducials (`FID1–FID3`, `>= 5 mm` from edges), 4 corner `M2.5` (`2.70 mm` NPTH) mounting holes (`MH1–MH4`), and 3 `2.20 mm` NPTH zip-tie strain-relief holes (`SR1–SR3`). All 18 SMD components sit well inside JLCPCB's `5 mm` conveyor rail margin.
+- **100% JLCPCB Basic Parts (\$0 Feeder Setup Fee on Economic PCBA):**
+
+| Designators | Value / Spec | Package | MPN | JLCPCB Part # | Tier | Qty |
+|---|---|---|---|---|---|---|
+| `RS4–RS8` | `4.7 kΩ` ±1% 1/8W | `0805` | `0805W8F4701T5E` | **`C17673`** | Basic | 5 |
+| `R1b, R2b` | `10 kΩ` ±1% 1/8W | `0805` | `0805W8F1002T5E` | **`C17414`** | Basic | 2 |
+| `RS1–RS3` | `22 kΩ` ±1% 1/8W | `0805` | `0805W8F2202T5E` | **`C17560`** | Basic | 3 |
+| `R1a, R2a` | `30 kΩ` ±1% 1/8W | `0805` | `0805W8F3002T5E` | **`C17621`** | Basic | 2 |
+| `C1_1–C1_5` | `100 nF` 50V X7R | `0805` | `CL21B104KBCNNNC` | **`C49678`** | Basic | 5 |
+| `D1` | `SS14` 40V 1A Schottky | `SMA (DO-214AC)` | `SS14` | **`C2480`** | Basic | 1 |
+
+### JLCPCB Ordering Steps
+1. Go to [jlcpcb.com](https://jlcpcb.com) → **Order Now** → upload [`echenon_v1_passive_tap_jlcpcb_gerbers.zip`](gerbers/v1-passive-tap-jlcpcb/echenon_v1_passive_tap_jlcpcb_gerbers.zip).
+2. Keep standard 2-layer defaults (`FR-4`, `2 Layers`, `1.6 mm` thickness, `1 oz` copper, `HASL (with lead)` or `LeadFree HASL` / `ENIG`, `5 pcs`).
+3. Scroll down and toggle **PCB Assembly** → **ON**:
+   - **PCBA Type:** `Economic`
+   - **Assembly Side:** `Top Side`
+   - **PCBA Qty:** `2` (or `5` to populate the entire batch)
+4. Click **Next**, then upload:
+   - **BOM File:** [`echenon_v1_passive_tap_jlcpcb_bom.csv`](gerbers/v1-passive-tap-jlcpcb/echenon_v1_passive_tap_jlcpcb_bom.csv)
+   - **CPL File:** [`echenon_v1_passive_tap_jlcpcb_cpl.csv`](gerbers/v1-passive-tap-jlcpcb/echenon_v1_passive_tap_jlcpcb_cpl.csv)
+5. **DFM / Polarity Sanity Check (10 seconds):** On JLCPCB's 2D/3D component placement preview, confirm that **`D1` (`SS14`)** has its cathode band facing **LEFT** over the **`K`** silkscreen bar (matching [echenon_v1_passive_tap_jlcpcb_3d_top.png](gerbers/v1-passive-tap-jlcpcb/echenon_v1_passive_tap_jlcpcb_3d_top.png)). If a reel change ever flips `D1`, click `D1` in the preview and rotate `180°`.
+6. **Bench Finish Upon Arrival (~5 minutes):** Solder the `2×15` `2.54 mm` female socket strips (`U1`), the `2-pin` USB-C blocker header/jumper (`SW0`), and either `2.54 mm` headers or pre-wired JST pigtails (`J1–J4`). Run the `SW0` interlock check in §6 Step 5 before seating your Waveshare ESP32-S3-Nano!
+
+---
+
+## 8. Regenerating After Changes
 
 ```bash
 python3 hardware/ex3-waveshare-nano/pcb/generate_pcbs.py
 ```
 
-The script regenerates both KiCad 10 projects, runs headless `kicad-cli sch erc` and `kicad-cli pcb drc --schematic-parity --severity-all`, and rebuilds all Gerbers, drill files, SVGs, printable schematic/PCB PDFs, and `.zip` archives.
+The script regenerates all three KiCad 10 projects (`coupon`, `v1-passive-tap`, `v1-passive-tap-jlcpcb`), runs headless `kicad-cli sch erc` and `kicad-cli pcb drc --schematic-parity --severity-all` (with automatic `B.Cu` zone filling), verifies 1-to-1 BOM/CPL designator parity, and rebuilds all Gerbers, drill files, CSVs, 3D PNG renders, SVGs, printable PDFs, and `.zip` archives.
