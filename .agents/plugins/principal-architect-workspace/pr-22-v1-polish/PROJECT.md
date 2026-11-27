@@ -35,21 +35,21 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: eeda2577afb682bb0356302f553ba2faa30fb9c3
+  commit_sha: 1fa754c06e5b6b6698ae2e9d1b3deb23c1b1c3a6
 - id: WO-22.2
   slug: wo2-d1-spdx-headers
   title: D1 Apache-2.0 SPDX License Headers
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 1fa754c06e5b6b6698ae2e9d1b3deb23c1b1c3a6
+  commit_sha: 3096c78313eaec1b4f5976d25714e320b00bc74b
 - id: WO-22.3
   slug: wo3-upstream-ble-assessment-docs
   title: BLE-Without-WiFi Upstream Assessment & Core Doc Sync
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 3096c78313eaec1b4f5976d25714e320b00bc74b
+  commit_sha: 2cdceb946e0b23c0ab6fb9bcef2483f53f1b3f0b
 - id: WO-22.4
   slug: wo4-hw-verification-and-ride-evidence
   title: Hardware Verification, Live Asset Check & Installed-Board Ride Evidence
@@ -157,3 +157,6 @@ Execute **Track A, Thread 1** on the path from `v0.3.0-beta.1` to **`v1.0.0` sta
 
 ## 4. Outcome & Session Log
 - **2026-11-27:** User approved 4-Work-Order decomposition (`WO-22.1`–`WO-22.4`); Tier 2 PA authored Part II and `wo1`–`wo4` specs (`WO-22.4` paused for user hardware touch-in).
+- **2026-11-27 (`WO-22.1`):** Completed (`1fa754c0`, `rcpt_4be3a976d187`, `271/271` native tests). Added Concept A branding/PWA assets (`17,979 B` / `17.56 KB` gzipped `< 25 KB`), `SessionOverlay.cpp` PROGMEM routes, and multi-sink `/ride` copy; deferred ESP32 `pio_build` to `WO-22.4` due to host `tool-scons` (`4.40801.0` vs `4.41101.0`) conflict.
+- **2026-11-27 (`WO-22.2`):** Completed (`3096c783`, `rcpt_8b5e000fb145`, `271/271` native tests). Prepended Apache-2.0 SPDX headers (`Module:`/`Description:`) to all 20 `test/test_native/*.cpp` files and `tools/ble-test/control-peripheral/src/main.cpp` (`0` missing).
+- **2026-11-27 (`WO-22.3`):** Completed (`2cdceb94`, `rcpt_fed6041ead78`, `271/271` native tests). Authored `docs/upstream-ble-without-wifi-assessment.md` and synced `SPEC.md`, `README.md`, and `CHANGELOG.md`. Pausing before `WO-22.4` (`interactive`) for user hardware touch-in.
