@@ -25,10 +25,38 @@ charter:
   - pio test -e native --verbose
   charter_locked: true
   charter_hash: 2924dced36c91884d9d923d01cd07058536f7d1f73fac8f0306d7b6afe117f27
-status: PLANNED
-approved_at: null
+status: APPROVED
+approved_at: '2026-11-27T15:46:51.218462Z'
 github_pr: null
-work_orders: []
+work_orders:
+- id: WO-22.1
+  slug: wo1-branding-portal-polish
+  title: Branding Assets, PWA Icons, Portal Routes & Multi-Sink Copy Polish
+  complexity: standard
+  status: PENDING
+  attempts: 0
+  commit_sha: null
+- id: WO-22.2
+  slug: wo2-d1-spdx-headers
+  title: D1 Apache-2.0 SPDX License Headers
+  complexity: standard
+  status: PENDING
+  attempts: 0
+  commit_sha: null
+- id: WO-22.3
+  slug: wo3-upstream-ble-assessment-docs
+  title: BLE-Without-WiFi Upstream Assessment & Core Doc Sync
+  complexity: standard
+  status: PENDING
+  attempts: 0
+  commit_sha: null
+- id: WO-22.4
+  slug: wo4-hw-verification-and-ride-evidence
+  title: Hardware Verification, Live Asset Check & Installed-Board Ride Evidence
+  complexity: interactive
+  status: PENDING
+  attempts: 0
+  commit_sha: null
 ---
 
 # PR-22 — v1 Polish, Branding & Stable-Release Fixes
@@ -95,4 +123,37 @@ Execute **Track A, Thread 1** on the path from `v0.3.0-beta.1` to **`v1.0.0` sta
 
 ## 3. Implementation Plan & Work Order Breakdown
 
+### WO-22.1 — Branding Assets, PWA Icons, Portal Routes & Multi-Sink Copy Polish
+- **Slug:** `wo1-branding-portal-polish`
+- **Complexity:** `standard` (`Model: "flash"`)
+- **Allowed Files:** `web/favicon.svg`, `web/favicon.ico`, `web/icon-192.png`, `web/icon-512.png`, `web/manifest.json`, `web/ride.html`, `web/ride.js`, `web/upload_settings.js`, `src/echenon/SessionOverlay.cpp`, `docs/assets/echenon-icon-512.png`
+- **Required Skills:** `framework-expert`, `framework-portal-design`, `pio-antigravity`
+- **Verification Command:** `pio test -e native --verbose`
+- **Scope:** Author Concept A ("Telemetry Dial") favicon/PWA PNG/ICO assets, update `web/manifest.json`, `web/ride.html`, `web/ride.js`, and `web/upload_settings.js` (multi-sink copy + Strava BYOA `/icon-512.png` download), wire 4 `#if __has_include(...)` stateless `serveGzipAsset(...)` routes in `src/echenon/SessionOverlay.cpp`, and verify `ex3-waveshare-nano` compilation via `pio_build`.
+
+### WO-22.2 — D1 Apache-2.0 SPDX License Headers
+- **Slug:** `wo2-d1-spdx-headers`
+- **Complexity:** `standard` (`Model: "flash"`)
+- **Allowed Files:** `test/test_native/`, `tools/ble-test/control-peripheral/src/main.cpp`
+- **Required Skills:** `framework-expert`
+- **Verification Command:** `pio test -e native --verbose`
+- **Scope:** Prepend canonical `Echenon (c) 2026 CB Labs` / `SPDX-License-Identifier: Apache-2.0` / `Module:` / `Description:` headers to all 20 `test/test_native/*.cpp` files and `tools/ble-test/control-peripheral/src/main.cpp` to close the D1 audit advisory.
+
+### WO-22.3 — BLE-Without-WiFi Upstream Assessment & Core Doc Sync
+- **Slug:** `wo3-upstream-ble-assessment-docs`
+- **Complexity:** `standard` (`Model: "flash"`)
+- **Allowed Files:** `docs/`, `SPEC.md`, `README.md`, `CHANGELOG.md`
+- **Required Skills:** `framework-expert`
+- **Verification Command:** `pio test -e native --verbose`
+- **Scope:** Author `docs/upstream-ble-without-wifi-assessment.md` documenting the `BLEManager.cpp:759-762,854-892` `AppState::Running` gate and ready-to-file upstream issue draft for `cblabs-org/esp32-app-foundation`, and sync `SPEC.md`, `README.md`, and `CHANGELOG.md`.
+
+### WO-22.4 — Hardware Verification, Live Asset Check & Installed-Board Ride Evidence
+- **Slug:** `wo4-hw-verification-and-ride-evidence`
+- **Complexity:** `interactive` (`Model: "inherit"`)
+- **Allowed Files:** `docs/measurements/phase3/evidence/`, `CHANGELOG.md`
+- **Required Skills:** `framework-expert`, `pio-antigravity`
+- **Verification Command:** `pio test -e native --verbose`
+- **Scope:** Build all 3 ESP32-S3 environments (`pio_build` / `pio_size_report`), coordinate user-gated `v0.3.1-dev.1` dev tag + USB-C flash (`SW0` OFF) + live HTTP asset checks, and author `docs/measurements/phase3/evidence/pr04a-installed-ride-validation.md`.
+
 ## 4. Outcome & Session Log
+- **2026-11-27:** User approved 4-Work-Order decomposition (`WO-22.1`–`WO-22.4`); Tier 2 PA authored Part II and `wo1`–`wo4` specs (`WO-22.4` paused for user hardware touch-in).
