@@ -4,7 +4,7 @@ wo_id: WO-22.2
 pr_id: PR-22
 title: D1 Apache-2.0 SPDX License Headers
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - test/test_native/
 - tools/ble-test/control-peripheral/src/main.cpp
@@ -24,7 +24,39 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 04dd711ea1b82ada51cee1cde2e3f0a1c8fa2b1bd990dbc4d84b329a14993cd8
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_8b5e000fb145
+  commit_sha: 1fa754c06e5b6b6698ae2e9d1b3deb23c1b1c3a6
+  files_modified:
+  - test/test_native/test_cadence_sensor.cpp
+  - test/test_native/test_diagnostics_module.cpp
+  - test/test_native/test_diagnostics_routes.cpp
+  - test/test_native/test_ftms_server.cpp
+  - test/test_native/test_hr_encoding.cpp
+  - test/test_native/test_hr_parsing.cpp
+  - test/test_native/test_intervals_uploader.cpp
+  - test/test_native/test_level_mapping.cpp
+  - test/test_native/test_power_engine.cpp
+  - test/test_native/test_quadrature_generator.cpp
+  - test/test_native/test_recalibration.cpp
+  - test/test_native/test_ride_persistence.cpp
+  - test/test_native/test_runaway_detector.cpp
+  - test/test_native/test_session_manager.cpp
+  - test/test_native/test_signal_logger.cpp
+  - test/test_native/test_signal_logic.cpp
+  - test/test_native/test_strava_uploader.cpp
+  - test/test_native/test_tcx_generator.cpp
+  - test/test_native/test_upload_queue.cpp
+  - test/test_native/test_wahoo_uploader.cpp
+  - tools/ble-test/control-peripheral/src/main.cpp
+  verification_summary: 'pio test -e native --verbose: ================ 271 test cases:
+    271 succeeded in 00:00:00.478 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-22.2 — D1 Apache-2.0 SPDX License Headers

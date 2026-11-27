@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: test/test_native/test_upload_queue.cpp
+ * Description: Native unit tests for UploadQueue state machine, job persistence, and backoff logic.
+ */
+
 /// @file test_upload_queue.cpp
 /// @brief Native unit tests for UploadQueue state machine, job persistence, and backoff logic.
 

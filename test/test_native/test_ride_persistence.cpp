@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: test/test_native/test_ride_persistence.cpp
+ * Description: Native unit tests for RidePersistence save/load/delete, cap enforcement, and eviction.
+ */
+
 /// @file test_ride_persistence.cpp
 /// @brief Native unit tests for RidePersistence save/load/delete, cap enforcement,
 ///        eviction, and begin() scan functionality.

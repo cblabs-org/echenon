@@ -40,9 +40,9 @@ work_orders:
   slug: wo2-d1-spdx-headers
   title: D1 Apache-2.0 SPDX License Headers
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 1fa754c06e5b6b6698ae2e9d1b3deb23c1b1c3a6
 - id: WO-22.3
   slug: wo3-upstream-ble-assessment-docs
   title: BLE-Without-WiFi Upstream Assessment & Core Doc Sync

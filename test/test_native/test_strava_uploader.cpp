@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: test/test_native/test_strava_uploader.cpp
+ * Description: Native unit tests for StravaUploader OAuth flows, token refresh, and upload handling.
+ */
+
 /// @file test_strava_uploader.cpp
 /// @brief Native unit tests for StravaUploader OAuth flows, token refresh, and upload handling.
 

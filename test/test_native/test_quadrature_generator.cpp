@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: test/test_native/test_quadrature_generator.cpp
+ * Description: Native unit tests for QuadratureGenerator state transitions and step sequencing.
+ */
+
 #include <gtest/gtest.h>
 #include "echenon/QuadratureGenerator.h"
 #include "echenon/QuadratureGenerator.cpp"

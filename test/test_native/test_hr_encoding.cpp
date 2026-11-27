@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: test/test_native/test_hr_encoding.cpp
+ * Description: Native unit tests for GATT 0x2A37 heart rate measurement packet encoding.
+ */
+
 #include <gtest/gtest.h>
 #include "echenon/HREncoding.h"
 #include "echenon/HREvents.h"

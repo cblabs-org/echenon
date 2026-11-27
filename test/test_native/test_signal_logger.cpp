@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: test/test_native/test_signal_logger.cpp
+ * Description: Native unit tests for SignalLogger decimation, ring buffer ordering, and burst CSV formatting.
+ */
+
 #include <gtest/gtest.h>
 #include <vector>
 #include <string>

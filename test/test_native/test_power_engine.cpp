@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: test/test_native/test_power_engine.cpp
+ * Description: Native unit tests for PowerEngine and PowerTable power lookup and interpolation.
+ */
+
 #include <gtest/gtest.h>
 #include "echenon/PowerTable.h"
 #include "echenon/PowerEngine.h"

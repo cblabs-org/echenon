@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: test/test_native/test_signal_logic.cpp
+ * Description: Native unit tests for SignalLogic sample packing/unpacking and threshold detection.
+ */
+
 #include <gtest/gtest.h>
 #include <vector>
 #include <cstdint>

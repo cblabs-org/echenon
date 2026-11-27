@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: tools/ble-test/control-peripheral/src/main.cpp
+ * Description: Standalone BLE control peripheral test firmware (HR service 0x180D, no WiFi).
+ */
+
 /**
  * control-peripheral/src/main.cpp
  *

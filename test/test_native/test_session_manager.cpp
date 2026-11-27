@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: test/test_native/test_session_manager.cpp
+ * Description: Native unit and integration tests for SessionManager lifecycle and telemetry sampling.
+ */
+
 /// @file test_session_manager.cpp
 /// @brief Native unit and integration tests for SessionManager lifecycle and telemetry sampling.
 

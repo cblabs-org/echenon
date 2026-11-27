@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: test/test_native/test_cadence_sensor.cpp
+ * Description: Native unit tests for CadenceSensor pulse/RPM/debounce logic and ResistanceSensor filtering.
+ */
+
 #include <gtest/gtest.h>
 #include "echenon/CadenceSensor.h"
 #include "echenon/ResistanceSensor.h"

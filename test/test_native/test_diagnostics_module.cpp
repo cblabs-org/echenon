@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: test/test_native/test_diagnostics_module.cpp
+ * Description: Native unit tests for DiagnosticsModule event recording, ring buffer, and query functionality.
+ */
+
 /// @file test_diagnostics_module.cpp
 /// @brief Native unit tests for DiagnosticsModule event recording, ring buffer,
 ///        and query functionality.

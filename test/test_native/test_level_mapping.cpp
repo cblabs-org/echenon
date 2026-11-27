@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: test/test_native/test_level_mapping.cpp
+ * Description: Native unit tests for LevelMapping Echelon-to-internal resistance level conversions.
+ */
+
 #include <gtest/gtest.h>
 #include "echenon/LevelMapping.h"
 #include "echenon/LevelMapping.cpp"

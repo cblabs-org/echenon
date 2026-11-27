@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: test/test_native/test_intervals_uploader.cpp
+ * Description: Native unit tests for IntervalsIcuUploader API-key auth, upload, and config.
+ */
+
 /// @file test_intervals_uploader.cpp
 /// @brief Native unit tests for IntervalsIcuUploader API-key auth, upload, and config.
 ///

@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: test/test_native/test_recalibration.cpp
+ * Description: Native unit tests for CalibrationWizard and RecalibrationUI point fitting and power table updates.
+ */
+
 #include <gtest/gtest.h>
 #include "echenon/CalibrationWizard.h"
 #include "echenon/CalibrationWizard.cpp"

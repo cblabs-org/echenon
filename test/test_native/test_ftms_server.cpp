@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: test/test_native/test_ftms_server.cpp
+ * Description: Native unit tests for FTMSData packet encoding and FTMSServer lifecycle/HR telemetry.
+ */
+
 #include <gtest/gtest.h>
 #include "echenon/FTMSData.h"
 #include "echenon/LevelMapping.h"

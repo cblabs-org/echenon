@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: test/test_native/test_runaway_detector.cpp
+ * Description: Native unit tests for RunawayDetector out-of-range detection and timeout triggering.
+ */
+
 #include <gtest/gtest.h>
 #include "echenon/RunawayDetector.h"
 #include "echenon/RunawayDetector.cpp"

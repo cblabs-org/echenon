@@ -1,3 +1,10 @@
+/*
+ * Echenon (c) 2026 CB Labs
+ * SPDX-License-Identifier: Apache-2.0
+ * Module: test/test_native/test_tcx_generator.cpp
+ * Description: Native unit tests for TCX/TCX.gz generation, gzip round-trip, and virtual speed.
+ */
+
 /// @file test_tcx_generator.cpp
 /// @brief Native unit tests for TCX/TCX.gz generation, gzip round-trip, and virtual speed.
 
