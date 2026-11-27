@@ -47,9 +47,9 @@ work_orders:
   slug: wo3-upstream-ble-assessment-docs
   title: BLE-Without-WiFi Upstream Assessment & Core Doc Sync
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 3096c78313eaec1b4f5976d25714e320b00bc74b
 - id: WO-22.4
   slug: wo4-hw-verification-and-ride-evidence
   title: Hardware Verification, Live Asset Check & Installed-Board Ride Evidence

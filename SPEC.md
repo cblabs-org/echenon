@@ -2554,7 +2554,11 @@ firmware.
 1. The rider creates a Strava API application and sets its **Authorization
    Callback Domain** to the host the browser uses to reach Echenon:
    `echenon.local`, or the device's IP address where mDNS does not resolve.
-   Strava rejects a redirect whose host does not match this domain.
+   Strava rejects a redirect whose host does not match this domain. When Strava
+   prompts to upload a square app icon, the **Apps → Strava** Setup Guide
+   (`web/upload_settings.js`) links directly to `/icon-512.png`
+   (`download="echenon-icon-512.png"`, also committed at
+   `docs/assets/echenon-icon-512.png`).
 2. The rider enters the application's Client ID and Client Secret on the
    Upload Services tab. They are stored encrypted via `KeyManager`.
 3. "Connect Strava" redirects the browser to Strava's consent page with
@@ -2710,11 +2714,11 @@ that `echenon.local` resolves in Chrome on the P12.
 - Live metrics via WebSocket at 2 Hz (`/ws/echenon/live`)
 - Session controls (start / pause / resume / stop) via REST API
 - Ride history with TCX download
-- Upload queue mini-status from `/api/strava/status`
+- Upload queue mini-status from `/api/upload/status` (with multi-sink modal copy: `"Save to device and sync to connected apps"`)
 - ⚙️ gear icon → portal
-- PWA manifest (`display: standalone`, dark theme)
+- PWA manifest (`/manifest.json`, `display: standalone`, dark theme `#121212`) with Concept A ("Telemetry Dial") icons (`192x192` `/icon-192.png` and `512x512` `/icon-512.png`, `purpose: "any maskable"`) and `<head>` icon links in `web/ride.html` (`/favicon.svg`, `/favicon.ico` `sizes="any"`, `/icon-192.png` `apple-touch-icon`)
 - Dark theme, responsive 280–430 px layout
-- Flash budget: ≤ 3 KB gzipped
+- Flash budget: ≤ 3 KB gzipped (core `/ride` HTML/JS; PROGMEM branding assets served separately via `serveGzipAsset()`)
 
 **Live Ride View.** Updated in real time via WebSocket:
 
@@ -2894,6 +2898,16 @@ void SessionUI::registerTabs(ITabRegistry& registry) {
     registry.addTab("Session", nullptr, 60, kSessionIcon, "/session.js");
 }
 ```
+
+**PWA & Branding Asset Routes (`SessionOverlay::registerRoutes()`).**
+`SessionOverlay` serves the standalone `/ride` page, `/ride.js`, `/manifest.json`, and the four Concept A ("Telemetry Dial") branding assets as gzipped `PROGMEM` arrays via stateless `serveGzipAsset()` handlers (GRAVE-05 compliant, zero heap `std::function` allocations, zero DRAM cost). Because `portalBuilder.py` preserves hyphens in `.hpp` filenames while converting dots and hyphens to underscores in C symbol names, the PNG headers use `icon-192_png.hpp` / `icon-512_png.hpp` with identifiers `icon_192_png_gz*` / `icon_512_png_gz*`:
+
+| Route | Generated Header (`#if __has_include(...)`) | MIME Type | Purpose |
+|---|---|---|---|
+| `/favicon.svg` | `include/portal_assets/favicon_svg.hpp` | `image/svg+xml` | Rounded-square browser tab SVG icon (`rx="112"`) |
+| `/favicon.ico` | `include/portal_assets/favicon_ico.hpp` | `image/x-icon` | Legacy `32x32` ICO fallback (`sizes="any"`) |
+| `/icon-192.png` | `include/portal_assets/icon-192_png.hpp` | `image/png` | Full-bleed `192x192` PWA (`any maskable`) & `apple-touch-icon` |
+| `/icon-512.png` | `include/portal_assets/icon-512_png.hpp` | `image/png` | Full-bleed `512x512` PWA (`any maskable`) & Strava BYOA icon download |
 
 **Real-time data.** WebSocket push at 2 Hz on the PsychicHttp endpoint
 `/ws/session`; the ride page script opens the socket on page load.

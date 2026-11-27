@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Concept A Branding, PWA Icons & Device Asset Routes (`PR-22`, closes [#2](https://github.com/cblabs-org/echenon/issues/2)):**
+  - Added brand-neutral Concept A ("Telemetry Dial") icons: `web/favicon.svg`, `web/favicon.ico` (`32×32`), full-bleed `web/icon-192.png` and `web/icon-512.png`, and [`docs/assets/echenon-icon-512.png`](docs/assets/echenon-icon-512.png).
+  - Wired `#if __has_include(...)`-guarded stateless `serveGzipAsset()` routes in `SessionOverlay::registerRoutes()` for `/favicon.svg`, `/favicon.ico`, `/icon-192.png`, and `/icon-512.png`.
+  - Updated `web/manifest.json` (`192x192` and `512x512`, `"purpose": "any maskable"`), `web/ride.html` `<head>` icon links (`/favicon.svg`, `/favicon.ico`, `/icon-192.png`), and the `web/upload_settings.js` Strava BYOA setup guide with a direct `/icon-512.png` (`download="echenon-icon-512.png"`) download link.
+- **D1 Apache-2.0 SPDX License Headers:** Added canonical `Echenon (c) 2026 CB Labs` / `SPDX-License-Identifier: Apache-2.0` headers across all 20 unit test suites in `test/test_native/*.cpp` and `tools/ble-test/control-peripheral/src/main.cpp`.
+- **Upstream BLE-Without-WiFi Assessment:** Authored [`docs/upstream-ble-without-wifi-assessment.md`](docs/upstream-ble-without-wifi-assessment.md) documenting the source-verified `AppState::Running` gate in `cblabs-org/esp32-app-foundation` (`v1.0.0-beta.2` / `02d0b2de`) and preparing a ready-to-file upstream issue draft.
+
+### Changed
+- **Multi-Sink `/ride` UI Copy & Documentation Sync:** Aligned `web/ride.html` and `web/ride.js` end-ride modal and discard prompts from Strava-specific wording to `"connected apps"`, and updated [`SPEC.md`](SPEC.md) (§10.4, §11.1, §11.3) and [`README.md`](README.md) with the new asset routes, Strava BYOA icon download pointer, and PWA install details.
+
 ### Planned (Post-Beta / v2 Roadmap)
 - Re-enable wireless OTA updates (`WITH_OTA`) once upstream framework boot-guard hardening is complete.
 - v2 Active Intercept (MITM) Board (`DR-2`): closed-loop H-bridge resistance motor control, FTMS Control Point (`0x2AD9`) ERG/SIM target support, portal-native HR-zone auto-resistance, and console-off standalone mode (`UC6`).
