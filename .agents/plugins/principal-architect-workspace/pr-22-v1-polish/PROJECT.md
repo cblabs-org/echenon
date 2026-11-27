@@ -1,0 +1,98 @@
+---
+schema_version: 1
+charter:
+  pr_id: PR-22
+  programme_id: prog-default
+  slug: pr-22-v1-polish
+  title: v1 Polish, Branding & Stable-Release Fixes
+  branch: feat/pr-22-v1-polish
+  base_branch: main
+  depends_on: []
+  allowed_modules:
+  - src/echenon/SessionOverlay.cpp
+  - web/
+  - docs/
+  - test/test_native/
+  - tools/ble-test/control-peripheral/src/
+  - SPEC.md
+  - README.md
+  - CHANGELOG.md
+  required_skills:
+  - framework-expert
+  - framework-portal-design
+  - pio-antigravity
+  verification_floor:
+  - pio test -e native --verbose
+  charter_locked: true
+  charter_hash: 2924dced36c91884d9d923d01cd07058536f7d1f73fac8f0306d7b6afe117f27
+status: PLANNED
+approved_at: null
+github_pr: null
+work_orders: []
+---
+
+# PR-22 — v1 Polish, Branding & Stable-Release Fixes
+
+> **Programme:** Echenon Firmware (`Track A, Thread 1` — `v1.0.0` non-OTA polish)
+> **Target Base:** `main` (`b4ee3fe`)
+> **Branch:** `feat/pr-22-v1-polish`
+> **Related Issues:** [cblabs-org/echenon#2](https://github.com/cblabs-org/echenon/issues/2) (branding/icons); `WITH_OTA` deferred to Track A Thread 2 (`cblabs-org/esp32-app-foundation` `#230`, `#104`, `#103`)
+
+## 1. PR Charter: Scope, Goals, & Non-Goals
+
+### 1.1 Goal & Background
+
+Execute **Track A, Thread 1** on the path from `v0.3.0-beta.1` to **`v1.0.0` stable** by delivering non-OTA polish, brand-neutral app/PWA branding assets, multi-sink UI copy alignment, D1 Apache-2.0 SPDX license hygiene, installed-board ride validation evidence (closing the non-OTA half of `PR-04a`), and an upstream BLE-without-WiFi assessment—while keeping **Track A, Thread 2 (`WITH_OTA` hardening)** cleanly isolated in a separate thread against upstream `cblabs-org/esp32-app-foundation` (`#230`, `#104`, `#103`).
+
+### 1.2 Core Scope & Deliverables
+
+1. **Branding Assets, PWA Icons & Device Asset Routes (closes Issue #2):**
+   - Use **Concept A — Telemetry Dial** (brand-neutral geometric design with **zero `"E"` letterform and zero Echelon trademark resemblance**):
+     ```xml
+     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+       <rect x="0" y="0" width="512" height="512" rx="112" fill="#121212"/>
+       <path d="M 136 376 A 170 170 0 1 1 376 376" fill="none" stroke="#263238" stroke-width="38" stroke-linecap="round"/>
+       <path d="M 136 376 A 170 170 0 1 1 384 156" fill="none" stroke="#2196F3" stroke-width="38" stroke-linecap="round"/>
+       <polyline points="118,266 190,266 226,184 274,332 316,238 344,266 396,266" fill="none" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+       <circle cx="384" cy="156" r="22" fill="#4FC3F7"/>
+     </svg>
+     ```
+   - Create `web/favicon.svg` (`rx="112"`), `web/favicon.ico` (`32×32` ICO rasterized from `favicon.svg`), and full-bleed square (`rx="0"`, `#121212` background) PNGs `web/icon-192.png`, `web/icon-512.png`, and `docs/assets/echenon-icon-512.png`.
+   - Update `web/manifest.json` with `"icons"` (`192x192` and `512x512`, `"purpose": "any maskable"`).
+   - Update `web/ride.html` `<head>` with `<link rel="icon" type="image/svg+xml" href="/favicon.svg">`, `<link rel="icon" href="/favicon.ico" sizes="any">`, and `<link rel="apple-touch-icon" href="/icon-192.png">`.
+   - Update `web/upload_settings.js:30` Strava BYOA setup step to link directly to `/icon-512.png` (`download="echenon-icon-512.png"`).
+   - Wire `include/portal_assets/{favicon_svg,favicon_ico,icon-192_png,icon-512_png}.hpp` (guarded with `#if __has_include(...)`) and 4 stateless `serveGzipAsset(...)` routes (`/favicon.svg`, `/favicon.ico`, `/icon-192.png`, `/icon-512.png`) in `src/echenon/SessionOverlay.cpp` immediately after `/manifest.json` (`L1258`).
+
+2. **Multi-Sink Portal Copy Polish & D1 SPDX License Headers:**
+   - Update `web/ride.html:70` (`"Save to device and push to Strava"` → `"Save to device and sync to connected apps"`) and `web/ride.js:63` (`"Discard this ride? It will not be recorded or sent to Strava."` → `"Discard this ride? It will not be recorded or synced to connected apps."`).
+   - Prepend the canonical `Echenon (c) 2026 CB Labs` / `SPDX-License-Identifier: Apache-2.0` header block to all 20 unit test files in `test/test_native/*.cpp` and `tools/ble-test/control-peripheral/src/main.cpp` (closing the D1 advisory in `docs/release-audit-v0.3.0-beta.1.md`).
+
+3. **Installed-Board Ride Validation Evidence, BLE-Without-WiFi Upstream Assessment & Doc Sync:**
+   - Author `docs/measurements/phase3/evidence/pr04a-installed-ride-validation.md` documenting the soldered v1 Passive Tap Board extended operational ride validation on the EX-3 bike (`+9 V VIN` via `SW0` interlock, console transparency, live metrics, BLE FTMS/HR stability, cloud uploads), closing the non-OTA half of `PR-04a`.
+   - Document the verified `framework/modules/BLEManager/BLEManager.cpp:759-762,854-892` `AppState::Running` gate (which blocks BLE advertising and HR strap reconnect when booting without WiFi STA) and prepare an upstream issue draft for `cblabs-org/esp32-app-foundation` (without modifying `framework/`).
+   - Update `SPEC.md` (§11 asset routes), `README.md` (icon / Strava BYOA pointer), and `CHANGELOG.md` (`## [Unreleased]`).
+
+4. **Hardware Verification (`interactive`) & Cold-Firewall Audit Prep:**
+   - Execute `pio test -e native --verbose` (`271/271+` passing) and build all 3 ESP32-S3 targets (`ex3-waveshare-nano`, `ex3-waveshare-nano-diag`, `ex3-waveshare-nano-rig`) via `pio-antigravity` MCP (`pio_build`, `pio_size_report`), confirming `< 25 KB` flash delta and `0 B` internal DRAM increase.
+   - Per `.agents/rules/03-versioning.md` (Tag → Build → Flash), increment the dev tag, rebuild, flash over USB-C (`SW0` OFF), and verify live HTTP `200 OK` (`Content-Encoding: gzip`, `Content-Type`, `ETag`) on `/favicon.ico`, `/favicon.svg`, `/icon-192.png`, `/icon-512.png`, `/manifest.json`, and `/ride`, then stage `feat/pr-22-v1-polish` for Step 6A Cold-Firewall Audit (`pa-auditor`).
+
+### 1.3 Non-Goals
+
+- No modifications to `framework/` submodule, `platformio.ini`, or `hardware/`.
+- `WITH_OTA` remains disabled and explicitly deferred to Track A Thread 2.
+- No changes to sensor acquisition, calibration, power physics, or BLE GATT protocols.
+
+## 2. Architectural Requirements, Cross-PR Interfaces, & Required Skills/Tools
+
+1. **`portalBuilder.py` Asset Naming Rule (`framework/scripts/portalBuilder.py:129-135`):** Hyphens are preserved in generated `.hpp` header filenames (`icon-192_png.hpp`, `icon-512_png.hpp`) while both dots and hyphens become underscores in C identifiers (`icon_192_png_gz`, `icon_192_png_gz_len`, `icon_192_png_gz_etag`). Verified zero basename or `/favicon.ico` route collisions in `framework/`.
+2. **GRAVE-05 Compliance:** All new HTTP route handlers in `src/echenon/SessionOverlay.cpp` must use stateless lambdas with `serveGzipAsset(...)` and zero heap `std::function` allocations.
+3. **D6 Portal Design System Compliance:** Zero bare `#hex` colors in `web/*.js` (use `var(--token, #fallback)`). Validate `web/manifest.json` with `python3 -m json.tool`.
+4. **Flash & DRAM Budget:** All 4 icon assets live in `PROGMEM` gzipped arrays (`< 25 KB` total flash delta, `0 B` internal DRAM increase).
+5. **Governance & Tooling:**
+   - Follow `.agents/rules/03-versioning.md` (`Tag -> Build -> Flash`) before any hardware upload.
+   - Follow `.agents/rules/04-mcp-tooling.md` (use `pio-antigravity` MCP tools `pio_build`, `pio_test`, `pio_flash`, `pio_size_report` instead of raw `pio` CLI commands).
+   - Required skills for workers where applicable: `framework-expert`, `framework-portal-design`, `pio-antigravity`.
+
+## 3. Implementation Plan & Work Order Breakdown
+
+## 4. Outcome & Session Log
