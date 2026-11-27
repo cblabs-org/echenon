@@ -4,7 +4,7 @@ wo_id: WO-22.1
 pr_id: PR-22
 title: Branding Assets, PWA Icons, Portal Routes & Multi-Sink Copy Polish
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - web/favicon.svg
 - web/favicon.ico
@@ -33,7 +33,28 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: 9ba326d024f32ec510b497d95d81fda662b48deba6304d778f45d085a4ef5928
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_4be3a976d187
+  commit_sha: eeda2577afb682bb0356302f553ba2faa30fb9c3
+  files_modified:
+  - docs/assets/echenon-icon-512.png
+  - src/echenon/SessionOverlay.cpp
+  - web/favicon.ico
+  - web/favicon.svg
+  - web/icon-192.png
+  - web/icon-512.png
+  - web/manifest.json
+  - web/ride.html
+  - web/ride.js
+  - web/upload_settings.js
+  verification_summary: 'pio test -e native --verbose: ================ 271 test cases:
+    271 succeeded in 00:00:00.786 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-22.1 — Branding Assets, PWA Icons, Portal Routes & Multi-Sink Copy Polish

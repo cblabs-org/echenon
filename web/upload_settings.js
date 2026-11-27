@@ -27,7 +27,7 @@
             '    <li><strong>Website</strong> (required): enter the callback URL shown below &mdash; <code id="ech-callback-url" style="font-family:monospace;"></code></li>',
             '    <li>Set <strong>Authorization Callback Domain</strong> to: <code id="ech-callback-domain" style="font-family:monospace; background:var(--border, #e0e0e0); padding:2px 6px; border-radius:4px;"></code></li>',
             '    <li><strong>Application Description</strong>: e.g. <em>Echelon Ex3 Bike Data Importer</em></li>',
-            '    <li>After clicking <strong>Create</strong>, Strava will ask you to <strong>upload an app icon</strong> &mdash; any small image will do</li>',
+            '    <li>After clicking <strong>Create</strong>, Strava will ask you to <strong>upload an app icon</strong> &mdash; <a href="/icon-512.png" download="echenon-icon-512.png" style="color:var(--primary, #2196F3);">download the Echenon icon (512&times;512 PNG)</a></li>',
             '    <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> from the app page, enter them below, then click <strong>Save Credentials</strong></li>',
             '    <li>Click <strong>Authorize with Strava</strong> to connect your account</li>',
             '  </ol>',

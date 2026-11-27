@@ -45,6 +45,18 @@
 #include "include/portal_assets/ride_html.hpp"
 #include "include/portal_assets/ride_js.hpp"
 #include "include/portal_assets/manifest_json.hpp"
+#if __has_include("include/portal_assets/favicon_svg.hpp")
+#include "include/portal_assets/favicon_svg.hpp"
+#endif
+#if __has_include("include/portal_assets/favicon_ico.hpp")
+#include "include/portal_assets/favicon_ico.hpp"
+#endif
+#if __has_include("include/portal_assets/icon-192_png.hpp")
+#include "include/portal_assets/icon-192_png.hpp"
+#endif
+#if __has_include("include/portal_assets/icon-512_png.hpp")
+#include "include/portal_assets/icon-512_png.hpp"
+#endif
 #include "include/portal_assets/stored_rides_js.hpp"
 #if __has_include("include/portal_assets/intervals_settings_js.h")
 #include "include/portal_assets/intervals_settings_js.h"
@@ -1256,6 +1268,26 @@ void SessionOverlay::registerRoutes(PsychicHttpServer& server) {
     server.on("/manifest.json", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
         return serveGzipAsset(request, response, manifest_json_gz, manifest_json_gz_len, manifest_json_gz_etag, "application/manifest+json");
     });
+#if __has_include("include/portal_assets/favicon_svg.hpp")
+    server.on("/favicon.svg", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
+        return serveGzipAsset(request, response, favicon_svg_gz, favicon_svg_gz_len, favicon_svg_gz_etag, "image/svg+xml");
+    });
+#endif
+#if __has_include("include/portal_assets/favicon_ico.hpp")
+    server.on("/favicon.ico", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
+        return serveGzipAsset(request, response, favicon_ico_gz, favicon_ico_gz_len, favicon_ico_gz_etag, "image/x-icon");
+    });
+#endif
+#if __has_include("include/portal_assets/icon-192_png.hpp")
+    server.on("/icon-192.png", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
+        return serveGzipAsset(request, response, icon_192_png_gz, icon_192_png_gz_len, icon_192_png_gz_etag, "image/png");
+    });
+#endif
+#if __has_include("include/portal_assets/icon-512_png.hpp")
+    server.on("/icon-512.png", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {
+        return serveGzipAsset(request, response, icon_512_png_gz, icon_512_png_gz_len, icon_512_png_gz_etag, "image/png");
+    });
+#endif
 
     // Serve Stored Rides pill JavaScript
     server.on("/stored_rides.js", HTTP_GET, [](PsychicRequest* request, PsychicResponse* response) {

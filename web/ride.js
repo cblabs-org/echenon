@@ -60,7 +60,7 @@ ss();
 stopAction:function(a){
 if(a==='cancel'){$('stop-modal').style.display='none';return}
 if(a==='discard'){
-if(!confirm('Discard this ride? It will not be recorded or sent to Strava.'))return;
+if(!confirm('Discard this ride? It will not be recorded or synced to connected apps.'))return;
 $('stop-modal').style.display='none';
 f('/api/session/discard',{method:'POST'}).then(function(r){return r.json()}).then(function(d){
 st='IDLE';ub();ss();lh();

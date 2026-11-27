@@ -33,9 +33,9 @@ work_orders:
   slug: wo1-branding-portal-polish
   title: Branding Assets, PWA Icons, Portal Routes & Multi-Sink Copy Polish
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: eeda2577afb682bb0356302f553ba2faa30fb9c3
 - id: WO-22.2
   slug: wo2-d1-spdx-headers
   title: D1 Apache-2.0 SPDX License Headers
