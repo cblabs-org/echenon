@@ -32,7 +32,7 @@ required_skills:
 verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
-spec_hash: e23fef2af8a90307057610586516dc78de6d508381029b35eeb5a34b752f731e
+spec_hash: 9ba326d024f32ec510b497d95d81fda662b48deba6304d778f45d085a4ef5928
 completion: null
 ---
 
@@ -49,7 +49,7 @@ Create brand-neutral Concept A ("Telemetry Dial") favicon and PWA icon assets, w
 3. **GRAVE-05 Compliance:** All 4 new `server.on(...)` route handlers in `src/echenon/SessionOverlay.cpp` MUST be stateless lambdas calling `serveGzipAsset(...)` with zero heap `std::function` allocations.
 4. **D6 Portal Design System Compliance:** Zero bare `#hex` colors in `web/*.js` (only `var(--token, #fallback)`). Validate `web/manifest.json` with `python3 -m json.tool`.
 5. **Flash Budget & Temp Files:** Total gzipped size of `favicon.svg` + `favicon.ico` + `icon-192.png` + `icon-512.png` must remain `< 25 KB`. Any temporary scripts or intermediate files used during SVG rasterization MUST live in repo-local `tmp/` (per `.agents/rules/02-tmp_workspace.md`) and be cleaned up before `pa wo verify WO-22.1`.
-6. **MCP Tooling Priority (`.agents/rules/04-mcp-tooling.md`):** Use `pio-antigravity` MCP tool `pio_build` (NEVER raw `pio run`) to verify ESP32-S3 compilation (`ex3-waveshare-nano`). NEVER call `pio_flash` or upload filesystem.
+6. **ESP32-S3 Build Deferred to `WO-22.4`:** Full 3-target ESP32-S3 `pio_build` + `pio_size_report` verification is handled in `WO-22.4` (after resolving the host PlatformIO `tool-scons` mismatch). Verify `portalBuilder.py` generated headers (`include/portal_assets/{favicon_svg,favicon_ico,icon-192_png,icon-512_png}.hpp`) and native unit tests (`pa wo verify WO-22.1`). Never flash or upload filesystem.
 
 **Forbidden:** Do NOT edit `framework/**`, `platformio.ini`, `hardware/**`, `test/**`, `tools/**`, `SPEC.md`, `README.md`, or `CHANGELOG.md`.
 
@@ -78,7 +78,7 @@ Create brand-neutral Concept A ("Telemetry Dial") favicon and PWA icon assets, w
 - [ ] **Update `src/echenon/SessionOverlay.cpp`:**
   - Inside `#ifndef UNIT_TEST` (after `#include "include/portal_assets/manifest_json.hpp"`), add `#if __has_include(...)` guarded `#include` directives for `favicon_svg.hpp`, `favicon_ico.hpp`, `icon-192_png.hpp`, and `icon-512_png.hpp`.
   - Immediately after `/manifest.json` (`L1258`), add 4 `#if __has_include(...)` guarded stateless `serveGzipAsset(...)` routes for `/favicon.svg` (`"image/svg+xml"`), `/favicon.ico` (`"image/x-icon"`), `/icon-192.png` (`"image/png"`), and `/icon-512.png` (`"image/png"`).
-- [ ] **Verify Compilation:** Run `pio_build` on `ex3-waveshare-nano` via `pio-antigravity` MCP (`projectDir` = repo root, `environment: "ex3-waveshare-nano"`) to confirm `portalBuilder.py` generates all 4 `.hpp` headers and firmware builds cleanly with zero errors.
+- [ ] **Verify `portalBuilder.py` Generated Headers:** Confirm `include/portal_assets/{favicon_svg,favicon_ico,icon-192_png,icon-512_png}.hpp` exist with matching C identifiers (`favicon_svg_gz`, `favicon_ico_gz`, `icon_192_png_gz`, `icon_512_png_gz`) and zero basename collisions (full 3-target ESP32-S3 `pio_build` deferred to `WO-22.4`).
 
 ## 4. Verification, Cryptographic Receipt & Issue Surfacing
 
