@@ -17,6 +17,8 @@ charter:
   - SPEC.md
   - README.md
   - CHANGELOG.md
+  - platformio.ini
+  - framework
   required_skills:
   - framework-expert
   - framework-portal-design
@@ -24,7 +26,7 @@ charter:
   verification_floor:
   - pio test -e native --verbose
   charter_locked: true
-  charter_hash: 2924dced36c91884d9d923d01cd07058536f7d1f73fac8f0306d7b6afe117f27
+  charter_hash: df82429991d4826b7da6e023dd6df99c36609a6f6b610ec8988bba37f75d3624
 status: APPROVED
 approved_at: '2026-11-27T15:46:51.218462Z'
 github_pr: null
@@ -50,6 +52,13 @@ work_orders:
   status: COMPLETED
   attempts: 1
   commit_sha: 2cdceb946e0b23c0ab6fb9bcef2483f53f1b3f0b
+- id: WO-22.5
+  slug: wo5-framework-pioarduino-bump
+  title: Framework v1.0.0-beta.4 & pioarduino 55.03.313 Toolchain Bump
+  complexity: standard
+  status: PENDING
+  attempts: 0
+  commit_sha: null
 - id: WO-22.4
   slug: wo4-hw-verification-and-ride-evidence
   title: Hardware Verification, Live Asset Check & Installed-Board Ride Evidence
@@ -147,6 +156,14 @@ Execute **Track A, Thread 1** on the path from `v0.3.0-beta.1` to **`v1.0.0` sta
 - **Verification Command:** `pio test -e native --verbose`
 - **Scope:** Author `docs/upstream-ble-without-wifi-assessment.md` documenting the `BLEManager.cpp:759-762,854-892` `AppState::Running` gate and ready-to-file upstream issue draft for `cblabs-org/esp32-app-foundation`, and sync `SPEC.md`, `README.md`, and `CHANGELOG.md`.
 
+### WO-22.5 — Framework v1.0.0-beta.4 & pioarduino 55.03.313 Toolchain Bump
+- **Slug:** `wo5-framework-pioarduino-bump`
+- **Complexity:** `standard` (`Model: "flash"`)
+- **Allowed Files:** `platformio.ini`, `framework`, `CHANGELOG.md`
+- **Required Skills:** `framework-expert`, `pio-antigravity`
+- **Verification Command:** `pio test -e native --verbose`
+- **Scope:** Bump `framework` submodule to `v1.0.0-beta.4` (`cc05a422`), bump `platformio.ini` to `pioarduino/platform-espressif32` `55.03.313` (`ESP-IDF 5.5.6`, `Arduino 3.3.13`), compile all 3 ESP32-S3 targets via `pio_build` + `pio_size_report`, and note the alignment in `CHANGELOG.md`.
+
 ### WO-22.4 — Hardware Verification, Live Asset Check & Installed-Board Ride Evidence
 - **Slug:** `wo4-hw-verification-and-ride-evidence`
 - **Complexity:** `interactive` (`Model: "inherit"`)
@@ -160,3 +177,4 @@ Execute **Track A, Thread 1** on the path from `v0.3.0-beta.1` to **`v1.0.0` sta
 - **2026-11-27 (`WO-22.1`):** Completed (`1fa754c0`, `rcpt_4be3a976d187`, `271/271` native tests). Added Concept A branding/PWA assets (`17,979 B` / `17.56 KB` gzipped `< 25 KB`), `SessionOverlay.cpp` PROGMEM routes, and multi-sink `/ride` copy; deferred ESP32 `pio_build` to `WO-22.4` due to host `tool-scons` (`4.40801.0` vs `4.41101.0`) conflict.
 - **2026-11-27 (`WO-22.2`):** Completed (`3096c783`, `rcpt_8b5e000fb145`, `271/271` native tests). Prepended Apache-2.0 SPDX headers (`Module:`/`Description:`) to all 20 `test/test_native/*.cpp` files and `tools/ble-test/control-peripheral/src/main.cpp` (`0` missing).
 - **2026-11-27 (`WO-22.3`):** Completed (`2cdceb94`, `rcpt_fed6041ead78`, `271/271` native tests). Authored `docs/upstream-ble-without-wifi-assessment.md` and synced `SPEC.md`, `README.md`, and `CHANGELOG.md`. Pausing before `WO-22.4` (`interactive`) for user hardware touch-in.
+- **2026-11-28:** PR-22 Charter amended (`platformio.ini`, `framework`, `charter_hash: df824299...`); added `WO-22.5` (`wo5-framework-pioarduino-bump`) to align `framework` (`v1.0.0-beta.4`) and `pioarduino/platform-espressif32` (`55.03.313`) before `WO-22.4`.
