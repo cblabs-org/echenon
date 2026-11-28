@@ -58,7 +58,7 @@ work_orders:
   complexity: standard
   status: COMPLETED
   attempts: 1
-  commit_sha: 2a2b64e7276d38b07b1e0e15bef251ffdd31de83
+  commit_sha: d0cb89cd140942860c669272f3abfb890e33a174
 - id: WO-22.4
   slug: wo4-hw-verification-and-ride-evidence
   title: Hardware Verification, Live Asset Check & Installed-Board Ride Evidence
@@ -178,3 +178,4 @@ Execute **Track A, Thread 1** on the path from `v0.3.0-beta.1` to **`v1.0.0` sta
 - **2026-11-27 (`WO-22.2`):** Completed (`3096c783`, `rcpt_8b5e000fb145`, `271/271` native tests). Prepended Apache-2.0 SPDX headers (`Module:`/`Description:`) to all 20 `test/test_native/*.cpp` files and `tools/ble-test/control-peripheral/src/main.cpp` (`0` missing).
 - **2026-11-27 (`WO-22.3`):** Completed (`2cdceb94`, `rcpt_fed6041ead78`, `271/271` native tests). Authored `docs/upstream-ble-without-wifi-assessment.md` and synced `SPEC.md`, `README.md`, and `CHANGELOG.md`. Pausing before `WO-22.4` (`interactive`) for user hardware touch-in.
 - **2026-11-28:** PR-22 Charter amended (`platformio.ini`, `framework`, `charter_hash: df824299...`); added `WO-22.5` (`wo5-framework-pioarduino-bump`) to align `framework` (`v1.0.0-beta.4`) and `pioarduino/platform-espressif32` (`55.03.313`) before `WO-22.4`.
+- **2026-11-28 (`WO-22.5`):** Completed (`d0cb89cd`, `rcpt_3cf7e25b5c34`, `271/271` native tests). Bumped `framework` to `v1.0.0-beta.4` (`cc05a422`) and `platformio.ini` to `55.03.313`; all 3 ESP32-S3 targets compiled cleanly (`ex3-waveshare-nano`: `59,776 B` RAM, `1,835,363 B` flash). Pausing before `WO-22.4` (`interactive`) for user hardware touch-in.
