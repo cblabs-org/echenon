@@ -56,9 +56,9 @@ work_orders:
   slug: wo5-framework-pioarduino-bump
   title: Framework v1.0.0-beta.4 & pioarduino 55.03.313 Toolchain Bump
   complexity: standard
-  status: PENDING
-  attempts: 0
-  commit_sha: null
+  status: COMPLETED
+  attempts: 1
+  commit_sha: 2a2b64e7276d38b07b1e0e15bef251ffdd31de83
 - id: WO-22.4
   slug: wo4-hw-verification-and-ride-evidence
   title: Hardware Verification, Live Asset Check & Installed-Board Ride Evidence

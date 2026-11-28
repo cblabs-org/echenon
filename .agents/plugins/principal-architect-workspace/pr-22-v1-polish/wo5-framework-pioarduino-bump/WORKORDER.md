@@ -4,7 +4,7 @@ wo_id: WO-22.5
 pr_id: PR-22
 title: Framework v1.0.0-beta.4 & pioarduino 55.03.313 Toolchain Bump
 complexity: standard
-status: PENDING
+status: COMPLETED
 allowed_files:
 - platformio.ini
 - framework
@@ -25,7 +25,21 @@ verification_command: pio test -e native --verbose
 max_attempts: 5
 max_structural_failures: 2
 spec_hash: cf985a4675b9c6ab4916d386c0f8226069bb2c7d15c4a58efd94cb16a1dc2ba8
-completion: null
+completion:
+  status: COMPLETED
+  attempt_num: 1
+  receipt_id: rcpt_3cf7e25b5c34
+  commit_sha: 2a2b64e7276d38b07b1e0e15bef251ffdd31de83
+  files_modified:
+  - CHANGELOG.md
+  - framework
+  - platformio.ini
+  verification_summary: 'pio test -e native --verbose: ================ 271 test cases:
+    271 succeeded in 00:00:00.438 ================'
+  out_of_scope_findings: []
+  escalation_request: null
+  decisions_made: []
+  dead_ends: []
 ---
 
 # WO-22.5 — Framework v1.0.0-beta.4 & pioarduino 55.03.313 Toolchain Bump

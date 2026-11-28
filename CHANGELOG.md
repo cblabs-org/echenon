@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Multi-Sink `/ride` UI Copy & Documentation Sync:** Aligned `web/ride.html` and `web/ride.js` end-ride modal and discard prompts from Strava-specific wording to `"connected apps"`, and updated [`SPEC.md`](SPEC.md) (§10.4, §11.1, §11.3) and [`README.md`](README.md) with the new asset routes, Strava BYOA icon download pointer, and PWA install details.
+- **Framework & Toolchain Alignment (`PR-22`):** Bumped the `framework` (`cblabs-org/esp32-app-foundation`) submodule to `v1.0.0-beta.4` (`cc05a422`) and updated `platformio.ini` to `pioarduino/platform-espressif32` `55.03.313` (`ESP-IDF 5.5.6`, `Arduino 3.3.13`).
 
 ### Planned (Post-Beta / v2 Roadmap)
 - Re-enable wireless OTA updates (`WITH_OTA`) once upstream framework boot-guard hardening is complete.
